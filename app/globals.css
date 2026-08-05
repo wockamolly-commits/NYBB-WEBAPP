@@ -1,0 +1,247 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ================================================================
+   New York Buffalo Brad's brand tokens
+
+   The site is black-first. That is not a stylistic preference, it is
+   what the brand already is: sampling the live site's stylesheets,
+   #000000 appears 183 times against 68 for white, and the orange
+   #EF6212 leads everything at 237. A dark ground is also the correct
+   setting for the food photography, which is warm, glossy and shot
+   against either pale wood or flat orange.
+
+   Orange is the only loud thing. Yellow and red are accents with
+   narrow, stated jobs. Nothing else gets a color.
+   ================================================================ */
+@theme inline {
+  /* Grounds. Ink is not pure black: a trace of blue keeps large dark
+     areas from looking dead next to warm food photography, and gives
+     the charcoal card a visible edge against the page. */
+  --color-nybb-ink: #0b0b0c;
+  --color-nybb-charcoal: #17181a;
+  --color-nybb-graphite: #232528;
+
+  /* PRIMARY. Sampled from the live site, not invented. Every CTA,
+     price, active state and focus ring is this value. */
+  --color-nybb-orange: #ef6212;
+  /* The site's own lighter orange, used there in gradients. Here it is
+     the hover state, so hover stays inside the existing palette rather
+     than being a computed lightening of the primary. */
+  --color-nybb-orange-lit: #f47621;
+
+  /* Signage yellow. Extremely high contrast on ink, which is exactly
+     why it is restricted: badges, micro-labels and the low end of the
+     heat scale. Never a paragraph, never body text. */
+  --color-nybb-yellow: #f9ee18;
+
+  /* Buffalo red. Two jobs only: destructive actions, and the top of
+     the heat scale. Never adjacent to orange as a text pair. */
+  --color-nybb-red: #ee2329;
+
+  /* Reading color. Warm off-white rather than #FFFFFF, so long copy on
+     a near-black ground does not glare. */
+  --color-nybb-bone: #f5f1ea;
+
+  /* Heat scale. Five stops running yellow to red, used by the heat
+     meter on wings. Deliberately its own ramp and not a gradient
+     function, so a given heat level is always the same swatch whether
+     it appears on a product page, a receipt or a staff ticket. */
+  --color-nybb-heat-1: #f9ee18;
+  --color-nybb-heat-2: #f7c115;
+  --color-nybb-heat-3: #f47621;
+  --color-nybb-heat-4: #ef4a17;
+  --color-nybb-heat-5: #ee2329;
+
+  /* shadcn mapping (consumed by components/ui) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Fonts.
+
+     Display is a heavy condensed grotesque, which is what carries the
+     stadium-signage register the brand needs. Text is Inter because it
+     holds up at 14px on a phone, which is where most of this is read.
+
+     Mono is load-bearing, not decorative: prices, order short codes,
+     pickup codes, prep countdowns and the heat percentage are all
+     numerics that must align in a column and must not reflow as digits
+     change. Tabular figures do both. */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-anton);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /* Radii. Tighter than the reference project's 0.75rem: this brand is
+     signage and baskets, not a soft cafe. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  --radius: 0.5rem;
+
+  --background: #0b0b0c;
+  --foreground: #f5f1ea;
+
+  --card: #17181a;
+  --card-foreground: #f5f1ea;
+
+  --popover: #17181a;
+  --popover-foreground: #f5f1ea;
+
+  /* Orange on ink measures about 5.4:1, which passes AA for normal text
+     but is tiring below ~16px. It is therefore a color for headings,
+     prices, buttons and icons, and never for paragraphs. Body copy is
+     always --foreground. */
+  --primary: #ef6212;
+  --primary-foreground: #0b0b0c;
+
+  --secondary: #232528;
+  --secondary-foreground: #f5f1ea;
+
+  --muted: #17181a;
+  --muted-foreground: rgba(245, 241, 234, 0.68);
+
+  --accent: #232528;
+  --accent-foreground: #f5f1ea;
+
+  --destructive: #ee2329;
+
+  /* Hairlines are bone at low alpha rather than a mid grey, so borders
+     pick up the warmth of the page instead of reading blue. */
+  --border: rgba(245, 241, 234, 0.12);
+  --input: #232528;
+  --ring: #ef6212;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply font-sans;
+    min-width: 0;
+    /* The page body must never scroll sideways. Wide content (tables,
+       tickets, the analytics grid) gets its own overflow container. */
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  @supports not (overflow: clip) {
+    html,
+    body {
+      overflow-x: hidden;
+    }
+  }
+
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 16px minimum on form controls stops iOS Safari zooming the viewport
+     on focus, which on a checkout form reads as the page jumping. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: inherit;
+    }
+  }
+
+  /* Focus is an outline, never a box-shadow. A shadow-based ring is
+     silently defeated by any component that sets its own shadow, which
+     is a real failure mode inherited from the reference project. */
+  :focus-visible {
+    outline: 3px solid var(--color-nybb-orange);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Billboard headings. Uppercase and tight, because the display face
+     is drawn for signage and loosens visibly at body tracking. */
+  .font-display {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+  }
+
+  /* Every number the user has to read, compare or read aloud. */
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The product tile ground.
+
+     The legacy photo library forces this. Most cutouts are JPEGs
+     already flattened onto #EF6212 with no alpha, so they cannot float
+     on a dark card: dropped onto ink they render as an orange
+     rectangle. Rather than re-cutting 40 images, the tile itself is
+     orange. The flattened cutouts then land seamlessly, the lifestyle
+     wing shots square-crop inside the same frame, and the handful of
+     genuinely transparent cutouts composite onto it deliberately.
+
+     Against the near-black page this reads as the brand rather than as
+     a compromise, which is the point. */
+  .tile-orange {
+    background-color: var(--color-nybb-orange);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
