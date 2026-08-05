@@ -55,12 +55,15 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-PH">
-      <body
-        className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-      >
-        {children}
-      </body>
+    // The font variables belong on <html>, not on <body>. globals.css applies
+    // font-sans to the html element itself, and a custom property defined on
+    // body is not in scope for its own parent: --font-inter resolved to nothing
+    // there and every paragraph on the site silently fell back to a serif.
+    <html
+      lang="en-PH"
+      className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
+      <body>{children}</body>
     </html>
   );
 }

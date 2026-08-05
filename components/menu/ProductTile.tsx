@@ -1,0 +1,79 @@
+import Image from "next/image";
+import { catalogImage, itemPriceRange, type CatalogItem } from "@/lib/catalog";
+import { formatPesoRange } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { NoPhotoTile } from "./NoPhotoTile";
+
+/**
+ * A menu board tile.
+ *
+ * Every tile is a brand-orange square with a black name plate under it. That
+ * is not a style choice so much as the shape the existing photography forces,
+ * and the decision that lets a mixed library read as one grid:
+ *
+ *   - the burger, hotdog, ribs and pasta shots are cutouts already flattened
+ *     onto a flat orange by whoever exported them, so they land natively;
+ *   - the wing photographs are lifestyle shots on pale wood, square cropped,
+ *     and read as full-bleed photography inside the same frame;
+ *   - the three genuine alpha cutouts (the waffles) composite onto the orange
+ *     and look deliberate rather than accidental.
+ *
+ * One correction to the spec while implementing this: those flattened cutouts
+ * are NOT on #EF6212. Sampling their backgrounds gives seven different oranges
+ * between #d16828 and #e67d39, all duller than the brand value. A tile that
+ * painted #EF6212 behind them would show a visible seam, so the photograph is
+ * bled to all four edges instead and the tile colour only shows where there is
+ * no photograph at all.
+ */
+export function ProductTile({
+  item,
+  className,
+  priority = false,
+}: {
+  item: CatalogItem;
+  className?: string;
+  priority?: boolean;
+}) {
+  const image = catalogImage(item.imageKey);
+  const { fromCents, toCents } = itemPriceRange(item);
+
+  return (
+    <article
+      className={cn(
+        "group border-border bg-nybb-charcoal overflow-hidden rounded-md border",
+        className,
+      )}
+    >
+      <div className="tile-orange relative aspect-square overflow-hidden">
+        {image ? (
+          <Image
+            src={image.src}
+            alt={item.name}
+            fill
+            sizes="(min-width: 1024px) 23vw, (min-width: 640px) 31vw, 45vw"
+            placeholder="blur"
+            blurDataURL={image.blurDataURL}
+            priority={priority}
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+          />
+        ) : (
+          <NoPhotoTile name={item.name} className="absolute inset-0" />
+        )}
+      </div>
+
+      <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
+        <h3 className="text-sm leading-tight font-medium">
+          {item.code ? (
+            <span className="font-mono-tabular text-nybb-bone/45 mr-1.5 text-[11px]">
+              {item.code}
+            </span>
+          ) : null}
+          {item.name}
+        </h3>
+        <p className="font-mono-tabular text-nybb-orange shrink-0 text-sm tabular-nums">
+          {formatPesoRange(fromCents, toCents)}
+        </p>
+      </div>
+    </article>
+  );
+}

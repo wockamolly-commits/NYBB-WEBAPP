@@ -1,0 +1,318 @@
+{
+  "branch-mango-avenue": {
+    "src": "/img/branch-mango-avenue.650b4bb4.webp",
+    "width": 1600,
+    "height": 1067,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAADwAQCdASoMAAwAA4BaJbAC7AEDc0SvsoAA/vVP1s3b+o1BbeqG67oeJ+3jEd5m/+KRPSDSUs3eAFwvAKXmGi4vqg12rAK5eaW8ohgg9a++FTfOk7wZf8fySBFGqkXyUZwAAA==",
+    "treatment": "scene",
+    "source": "2024/05/BUFFALO-BRADS-MANGO-29.jpg"
+  },
+  "branch-sm-city": {
+    "src": "/img/branch-sm-city.d9ae7073.webp",
+    "width": 1600,
+    "height": 1067,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAAAQAgCdASoMAAwAA4BaJbACdAEQ+30Br+BAAP71oUpwtZMm3aaNeg7iFSv6Nr2mXXMqj5VicP6SLYV1fh1mTm7PsO9OSWGUwpy6+QE+gJ2RwqN9vW+rK8AQCQlCK8fI4llgAA==",
+    "treatment": "scene",
+    "source": "2025/03/SM-Store-copy.jpg"
+  },
+  "burger-angus": {
+    "src": "/img/burger-angus.523a876c.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRnAAAABXRUJQVlA4IGQAAAAwAgCdASoMAAwAA4BaJbACdLoAAxzR1aHIkAD44JNWzR837eMC0QJ9Rh5UzQz/GpQcxW2nCaRBW0I3mOHezPrGx/MyPTFSVsvYRgyETXYia/2MVE/2BiY/bEJEOwpjTOGoAAAA",
+    "treatment": "cutout",
+    "source": "2024/05/Brads-Angus-Burger.jpg"
+  },
+  "burger-blt": {
+    "src": "/img/burger-blt.0ee90c1d.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAACQAgCdASoMAAwAA4BaJbACdLoAyv8D18Tt1r1bgAD5ObzS99xiWjPKsdaO1WTGkJ7bJ8Ptpveg5mpdZQV0VZuEqW+T/My9GPPvPY7T1sHb8/2MU+179svvYnDWuq4BXhHAAA==",
+    "treatment": "cutout",
+    "source": "2024/05/BLT-Burger.jpg"
+  },
+  "burger-buffalo-chicken": {
+    "src": "/img/burger-buffalo-chicken.8999c13e.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAABwAgCdASoMAAwAA4BaJbACdLoBJgLf/A8sWuQAAOHKtGfVb1DztiEbaDk8i/2w5g1TwvHTU5TgnfTl4fbP6/JcdEwJeN3+6S9PYEpdp+c+Jfz/YxSR98N+ubX6ep1eurSAAA==",
+    "treatment": "cutout",
+    "source": "2024/05/Buffalo-Chicken-Burger.jpg"
+  },
+  "burger-quarterback": {
+    "src": "/img/burger-quarterback.6a70ce3d.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmwAAABXRUJQVlA4IGAAAACQAgCdASoMAAwAA4BaJbACdLoBJgLf/A6KuoeZAADHUMcGemrwngdjsGNoeZo7Vd+j2z+wJCuwal4P24EivVeBUhpxr/OM2qEKk/So0lYiJP+CO6sIVzi5hclBxuUe0AA=",
+    "treatment": "cutout",
+    "source": "2024/05/The-Quarter-Burger.jpg"
+  },
+  "burger-rookie": {
+    "src": "/img/burger-rookie.7c1ef553.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmwAAABXRUJQVlA4IGAAAACQAgCdASoMAAwAA4BaJbACdLoBJgAKsRidJhYYAADHUM6RjqkXAq3zULkpw/zBdvmt+xmJw9S2IvI9Q2MkNc26I90rr/OMGI4Uu0iD5YvRH/+CNTsID7ZhccknG5RECAA=",
+    "treatment": "cutout",
+    "source": "2024/05/Rookie-Burger-1.jpg"
+  },
+  "chicken-burger-cheezy": {
+    "src": "/img/chicken-burger-cheezy.21339738.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAACwAgCdASoMAAwAA4BaJbACdLoBEgNsBz/4EpaieAAArtF5wu51petpCC0HAB0DlWcKvPD3teUl3WW3e0slHNi2O5i8IX/6XM9E1ugzdC3Vf+Bnvfb74n2NLx4JBAAA",
+    "treatment": "cutout",
+    "source": "2025/03/Cheezy-Burger-bundle-1.jpg"
+  },
+  "chicken-burger-honey-garlic": {
+    "src": "/img/chicken-burger-honey-garlic.4fa6b12a.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmgAAABXRUJQVlA4IFwAAADQAQCdASoMAAwAA4BaJbACdLoAAS7mYACx9yAtp6GjdJHU5LTPS3DEv3JSZUUIdyGDt/72il0pcmn7JNyKhv85A9tY7gy25IFcBuv9VoKzXUt+J9jqaZx0nRMAAA==",
+    "treatment": "cutout",
+    "source": "2025/03/honey-Burger-bundle-1.jpg"
+  },
+  "chicken-burger-smokey-bbq": {
+    "src": "/img/chicken-burger-smokey-bbq.6b9c8518.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmgAAABXRUJQVlA4IFwAAAAwAgCdASoMAAwAA4BaJbACdLoBEgAH8qH4AACu0XmFWYHeQGiLY+yWqEPdZfiHdSkzH0J5T2lMOuORCOWnwN+Cf84rfaGOCxLCp40/7WjZ474eEzuwupFYVwAAAA==",
+    "treatment": "cutout",
+    "source": "2025/03/smoky-Burger-bundle-1.jpg"
+  },
+  "hotdog-chili-cheese": {
+    "src": "/img/hotdog-chili-cheese.1f01242d.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRnIAAABXRUJQVlA4IGYAAABQAgCdASoMAAwAA4BaJbACdLoAyv8Dh8BK8gAAxCmqziHGk6RqRCH6rPbgH7p4gBPAQ9s2bWThrBmhJ1Y9ZpX6ZF9pEBe1v/adKGjO0ESER4zEkv8Eaocy3fZXbEJHiaY0z5YAAAA=",
+    "treatment": "cutout",
+    "source": "2024/05/Chili-Cheese-Dog.jpg"
+  },
+  "hotdog-classic": {
+    "src": "/img/hotdog-classic.8329d145.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAAAwAgCdASoMAAwAA4BaJbACdLoAAs0soF1cAADEeJjtanBGmRhiNzjGQGSRB7kcb1SOKcHGK2vb+O4JC1gvW0iP33/2Uu92gXQQ+wmIImv/BGrKoHtDuWrbEJEOwpjTOGoAAA==",
+    "treatment": "cutout",
+    "source": "2024/05/Classic-Hotdog.jpg"
+  },
+  "hotdog-hawaiian-bbq": {
+    "src": "/img/hotdog-hawaiian-bbq.5be94bd9.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAAAQAgCdASoMAAwAA4BaJbACdLoAAs2CRxrgAMR5IbtGkajdvlmjx3gK1DWG7yC0cTV8GGVywOHflzI/Uw7hlLf/5xm1YVvz2d109W5/Qd09v15+WLjCNYL5t/l4RcAA",
+    "treatment": "cutout",
+    "source": "2024/05/Hawaiian-BBQ-Dog.jpg"
+  },
+  "hotdog-hungarian": {
+    "src": "/img/hotdog-hungarian.6c8297ef.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAABwAgCdASoMAAwAA4BaJbACdLoBJgLf/A6LM0sUAMR4mP0O2MJbMSSkrFK5tUY9sA35V544Y2TekTpycZv/DYpaFJnlH+cYm88PZ+lRpKxESf8EboyqOuCgzC5KDjco9oAAAA==",
+    "treatment": "cutout",
+    "source": "2024/05/Hungarian-Sausage.jpg"
+  },
+  "hotdog-jalapeno-cheese": {
+    "src": "/img/hotdog-jalapeno-cheese.6c5e4dea.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRnIAAABXRUJQVlA4IGYAAABQAgCdASoMAAwAA4BaJbACdLoAyv8CqKYQAAAAxHiY+DI7S/+eLqo49o+XVU6JR+uzbQbh/HIgoMuqQVZSQUB7jwCyY3//r6D4ipCQIkxrKAb/wRu3vk95VMUFzEoBO+IM74iAAAA=",
+    "treatment": "cutout",
+    "source": "2024/05/Jalapeno-Cheese-Dog.jpg"
+  },
+  "pasta-carbonara": {
+    "src": "/img/pasta-carbonara.e275d803.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRloAAABXRUJQVlA4IE4AAAAQAgCdASoMAAwAA4BaJbACdLoAAeF4LyYAAGFE1mFLqaYxS3nSceKBkjDz2f+DA8QDlJFCLao9gear+g/Cb0i7LqyU8z9zWl9NPDgAAAA=",
+    "treatment": "cutout",
+    "source": "2025/03/carbonara.jpg"
+  },
+  "pasta-spaghetti": {
+    "src": "/img/pasta-spaghetti.e57832a5.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRlgAAABXRUJQVlA4IEwAAAAQAgCdASoMAAwAA4BaJbACdLoAAaP9qvfAAGEgCiaO1Edb3rLFwIeCodZ5/37/8RXAsi/AeEH72dzX/BKsUQDmH3M7Sl3ZU5I06AAA",
+    "treatment": "cutout",
+    "source": "2025/03/spag.jpg"
+  },
+  "ribs-original": {
+    "src": "/img/ribs-original.def9d6ad.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAABwAgCdASoMAAwAA4BaJbACdLoBEgALgiJPSHr4APfXrHuvXZTB4H+7Z/nMIEPqCnh5bcABSAbN8wrDMWWFxEWetO/RsHDEi+w69x/5mIdun2GfnHJxAwIcn7Md/sV7JBR6Gc3ia241zlI5qIalDtAA",
+    "treatment": "cutout",
+    "source": "2025/03/RIBS-ORIG.jpg"
+  },
+  "ribs-spicy": {
+    "src": "/img/ribs-spicy.883d0d94.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRngAAABXRUJQVlA4IGwAAABQAgCdASoMAAwAA4BaJbACdLoBEgALLHVaa5gA99ese69dlQfCYrPA724o7PIPLnmWbgAJ9foDDjXz68laSz9wmb+QJeCe5buMPP8zEO3T7DPzeuIGBDpED7+xXskFFQhZiW7FcCU1QO7RAAA=",
+    "treatment": "cutout",
+    "source": "2025/03/RIBS-SPICY.jpg"
+  },
+  "scene-alfresco-dusk": {
+    "src": "/img/scene-alfresco-dusk.1c29d87f.webp",
+    "width": 1600,
+    "height": 1066,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAADwAQCdASoMAAwAA4BaJbACdAENy39i0gAA/uzhkw6SG4x8eJ9RxxN5lQ7shHFt+p4hJsXmckQcTu5bzOFL3juS2fdqCHQKh+Q8z2ngHLUCYZ5WGPaqTFIx/l/QAAAA",
+    "treatment": "scene",
+    "source": "2024/06/Untitled-design-41.png"
+  },
+  "scene-counter": {
+    "src": "/img/scene-counter.212d5278.webp",
+    "width": 1600,
+    "height": 1066,
+    "blurDataURL": "data:image/webp;base64,UklGRloAAABXRUJQVlA4IE4AAADQAQCdASoMAAwAA4BaJbACdAELKAGUAAD8jshczBclbdczHp55VY5hnnucusmVvsorcP71tGDpviSuCCoHn6uRcPzzvWQb19sXZ28AAAA=",
+    "treatment": "scene",
+    "source": "2024/07/Untitled-design-4.png"
+  },
+  "scene-food-hall": {
+    "src": "/img/scene-food-hall.683520b5.webp",
+    "width": 1600,
+    "height": 1066,
+    "blurDataURL": "data:image/webp;base64,UklGRnAAAABXRUJQVlA4IGQAAAAwAgCdASoMAAwAA4BaJaACdAYvXqxqN0Y+AAD+7RDUtLIURTEdW0HX5RtromEtJo3fygUQCe5F1CD3rHGU2RJvBX9lKSFv0f60hNWOhbGgPRjxzNFgiyY8kicAUaMSI5z+AAAA",
+    "treatment": "scene",
+    "source": "2024/07/Untitled-design-5.png"
+  },
+  "scene-kiosk": {
+    "src": "/img/scene-kiosk.6123d30e.webp",
+    "width": 1600,
+    "height": 1066,
+    "blurDataURL": "data:image/webp;base64,UklGRmQAAABXRUJQVlA4IFgAAAAQAgCdASoMAAwAA4BaJQBdgBu1NAc5w2AAAP48PMH4VDF6/EO/gNPrkk/se6OCRBwjRVoFuj/978X97lx9fXPO9hdzMytk3ot2ArDQBis8/dm0nJRiRewA",
+    "treatment": "scene",
+    "source": "2024/06/Untitled-design-46.png"
+  },
+  "side-mozzarella-sticks": {
+    "src": "/img/side-mozzarella-sticks.bd0465fb.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmYAAABXRUJQVlA4IFoAAAAwAgCdASoMAAwAA4BaJbACdAEWPF3tfbKPAAD98FYkQymi6cg03pAmQREr7sC9tLqZFt+j6zwJsyNm2DuNL4f7yuehYoDyo6cQvr7GquHc34RzLtsG+7U/QAA=",
+    "treatment": "lifestyle",
+    "source": "2024/05/Untitled-design-2024-05-22T160627.766.png",
+    "tentative": "Breaded sticks in a branded basket, identified by sight, not by filename."
+  },
+  "side-nuggets": {
+    "src": "/img/side-nuggets.c65749a7.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAABwAgCdASoMAAwAA4BaJbACdLoAyv8Dh1XMe7QAAPyMn7lSQ4hcs1K0VCH1Wq3FyXPQxztAy6YOA7nj4S71f0gwKky/XdlNp3mear7icxzaC4jTuPGb39+u6M/+XaAA",
+    "treatment": "cutout",
+    "source": "2024/05/Chicken-Nuggets-1.jpg"
+  },
+  "value-meals": {
+    "src": "/img/value-meals.a1509137.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAACQAgCdASoMAAwAA4BaJbACdLoAEJUW8gT9W2FfAADHFVrO/zZV8AZS27qKNQ5nbB//DvDRBXIfnWpFQwuntmNvf9sYSiX9pZKMdnEk9/j+sZdU3OP5L2BpuypyRmgdswAAAA==",
+    "treatment": "cutout",
+    "source": "2024/05/Value-Meals.jpg"
+  },
+  "waffle-bavarian": {
+    "src": "/img/waffle-bavarian.501e8aac.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRhABAABXRUJQVlA4WAoAAAAQAAAACwAACwAAQUxQSIAAAAANgJpt27Lsfp4XbQ7NaSS6QyIygC5AZBG3HTw5IzAAVSMkfd+XX4aIiMQ/0rac7waAGW/3CMouoKQiCBskJCiQSroLwypxPJ92QKM+h8AOgNI6EgWBP8QsoEBaSiP+GCBhgPoQERQ9Bo2ig/FHx05tEYuFvVZ1v+7B5+3+cH3gD1ZQOCBqAAAAEAIAnQEqDAAMAAOAWiWwAnQA3bNFZjT5iAD8p1Mw0HmRR0/f/Ovtk5khX+f2R2sj2bBIohmky8HheGpnPAc3nOtCbi6ONvNRp2uXcQbAVQ4d8INw/PZJZEv+dH/eVSI8z4/JjFaLYeAAAA==",
+    "treatment": "transparent",
+    "source": "2025/03/bavarian-coffee.png"
+  },
+  "waffle-chocolate": {
+    "src": "/img/waffle-chocolate.6cd7891f.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRvoAAABXRUJQVlA4WAoAAAAQAAAACwAACwAAQUxQSHAAAAABcFNt27K82OgOIVgZPYA10NFikIHDRARGcvgGGwX8/d4bzxARKV8eibTGbY/H4/UHJLHCIR+PpI7cVQK5Ym+ynM5RFvszgLvwZXpXNUCdGYCBOv6qmhlmjtkBA304M8rxwfKkgBl1EQkW2v1GtZYXVlA4IGQAAAAQAgCdASoMAAwAA4BaJbACdAEQ/gcicY6wAM4kKlLLJ4W65aLqiGx3baxFP4uFBOTfpCCN5dcclyD98lImv02au8o8qbqEolYlqFnyv0WH2S26Jr792dv47WLOnOFoQOw1LWAA",
+    "treatment": "transparent",
+    "source": "2025/03/chocolate-coffee.png"
+  },
+  "waffle-sunrise": {
+    "src": "/img/waffle-sunrise.1ede7389.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRggBAABXRUJQVlA4WAoAAAAQAAAACwAACwAAQUxQSHsAAAANgFvbtqpq74u7uzsxGbFLY3ThBWhICiEFEDJoQL7LfVpERCRMVIKd/IMUAH5jG8iQokiAgB//8DbrqXg4u5n1BK8KjPYXLEhBSoUULgCSFkEACpV/hTARtFiUP5KAIu7rY9cKQ8HPtP8xaZUjVqH8nojz4XL7dIj/NwAAVlA4IGYAAADwAQCdASoMAAwAA4BaJbACdAYuvuEDNcAA/fvK7TCuL2oQ92e+GVDaQxZSrr7XE+J82d1uieCn+czHtaFAZpvSWfNxXrubAire3BNBAT/6GQqnHgIjz0DF4vrCiva/9FbOMc1AAAA=",
+    "treatment": "transparent",
+    "source": "2025/03/egg-coffee.png"
+  },
+  "wings-bbq-lime": {
+    "src": "/img/wings-bbq-lime.b55aeae6.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmwAAABXRUJQVlA4IGAAAAAQAgCdASoMAAwAA4BaJbACdADcRTt1djAAAP6yOS8P0IME2snO7yGHx9rqMQIFa+pMApoSnrrUyjDSE1ka5cIUMkjbpb13BqH+Mg1JYjEr4jQYujUiYlb6RnJmEeIAAAA=",
+    "treatment": "lifestyle",
+    "source": "2024/05/BBQ-Lime-1.jpg"
+  },
+  "wings-cheezy": {
+    "src": "/img/wings-cheezy.f5ffade9.webp",
+    "width": 210,
+    "height": 210,
+    "blurDataURL": "data:image/webp;base64,UklGRoAAAABXRUJQVlA4IHQAAAAwAgCdASoMAAwAA4BaJbACdAYvXkpeVJJBgAD+51h2NZSZ/MspEs9INPmkn57l5atjdgW3UsjSq2x7Ve9bUwaBwbXx3kSv1Z9cYd3aUOEhK/I4oC1Dj8pRfyL4NLGn8OOaqh3UHEEDDtYGY5T0yrjnBBuAAA==",
+    "treatment": "lifestyle",
+    "source": "2025/03/Cheezy.jpg",
+    "lowRes": true
+  },
+  "wings-classic-buffalo": {
+    "src": "/img/wings-classic-buffalo.2012ba78.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRnAAAABXRUJQVlA4IGQAAABQAgCdASoMAAwAA4BaJbACdAYu5bXtYg+nRwAA/uhOl4MoChQ+n0LgrDttKh0d5Ad+JRgCYjRp99FAQLm/KbAZ5I18xvWFKH8HW+QcEfDvdpfpuqWlCEfXm4jfXcOWb/5gAAAA",
+    "treatment": "lifestyle",
+    "source": "2024/05/Classic-Buffalo.jpg"
+  },
+  "wings-garlic-parmesan": {
+    "src": "/img/wings-garlic-parmesan.36cb42c5.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAADwAQCdASoMAAwAA4BaJbACdADcWWRaBrAA/tdutopjnghDhWImWWlHUwEO+5DdJ0gwk1fA97W2IVXInPd1PFaWSGZKIs/Uo+ql5YEGZYZgZXqqqAYzrQE1B2AMw81q20gAAA==",
+    "treatment": "lifestyle",
+    "source": "2024/05/Garlic-Parmesan-1.jpg"
+  },
+  "wings-honey-garlic": {
+    "src": "/img/wings-honey-garlic.89e7dbb1.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAABQAgCdASoMAAwAA4BaJbACdAECpqmMRk03gAAA/n5Wo+fexah1V9WN3z7RQ7JimkvZIHr+T3+6FHGH97BbVJGTd7veTJJoErKNPjx+uI1xdDCZrTkEIPI54RFn3IAA",
+    "treatment": "lifestyle",
+    "source": "2024/05/Honey-Garlic-1.jpg"
+  },
+  "wings-honey-mustard": {
+    "src": "/img/wings-honey-mustard.5faee449.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAAAQAgCdASoMAAwAA4BaJbACdADbpCZmwqIAAP62mNWbLgWM1VKIzznTXwJxMU8Zs7rMhwOwyJFj92m80/Fo4CURGfawvtiak86timaF+v62jzqjmZyKQYqqNqulBpptG/+gAA==",
+    "treatment": "lifestyle",
+    "source": "2024/05/Honey-Mustard-1.jpg"
+  },
+  "wings-salted-egg": {
+    "src": "/img/wings-salted-egg.c0aabee7.webp",
+    "width": 210,
+    "height": 210,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAAAwAgCdASoMAAwAA4BaJbACdLoAAnfi79Fc0AD+YUHDghOEYb2sLapl7SLHBfJdnN0iUnKwHS6nVXBjpKPGlDmYWaEQ71UfsImu6ZFa3SvTebfF/tVTZlU8GHlRPhresAAAAA==",
+    "treatment": "lifestyle",
+    "source": "2025/03/Salted-Egg.jpg",
+    "lowRes": true
+  },
+  "wings-smokey-barbecue": {
+    "src": "/img/wings-smokey-barbecue.30a781db.webp",
+    "width": 210,
+    "height": 210,
+    "blurDataURL": "data:image/webp;base64,UklGRnAAAABXRUJQVlA4IGQAAABwAgCdASoMAAwAA4BaJbACdAYs3vu1d9r3I1AAAP5nYbGU3iRdFdzqUoB7TOEoKW8IzJSLK6ihXBpOr4f1Mxt5x9DS6/nZXqDnITFwmsPjc99g+Bp/lG8yIOovt9a5mPTFgAAA",
+    "treatment": "lifestyle",
+    "source": "2025/03/Smokey-Barbecue.jpg",
+    "lowRes": true
+  },
+  "wings-sweet-spicy": {
+    "src": "/img/wings-sweet-spicy.08ca748c.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRm4AAABXRUJQVlA4IGIAAADwAQCdASoMAAwAA4BaJbACdADb6U2XzAAA/spnsMtsdgLuxOfHVKRM2SfZcMvhKuOK37Bo3EdzsBJi6I8jYdvMyD4WA+tiuG0xPI7rsvmiwxylYpp0ve3r0b7ZZQ81AAAAAA==",
+    "treatment": "lifestyle",
+    "source": "2024/05/Sweet-Spicy-1.jpg"
+  },
+  "wordmark": {
+    "src": "/img/wordmark.a22d7a37.webp",
+    "width": 900,
+    "height": 519,
+    "blurDataURL": "data:image/webp;base64,UklGRjgBAABXRUJQVlA4WAoAAAAQAAAACwAACwAAQUxQSJEAAAAAMRwhJDMSFCgbMiAVPFBGTFlSOkY4EUoez//o+f//6+rGXP+dyv/t+v/+/f/TneDOx//y/93l1//u3OrNuPz5/6/JxPr39/+CA4n//fX1/vju/7wBAG7/+f3+/P/c/q8AAG7/+f7+/P+Q7t8BAEe7uNGUpJxGtaQUAAAGcG4rfYZzABAdAAEDERkXHVpRAAIAAFZQOCCAAAAAkAIAnQEqDAAMAAOAWiWwAnQwVAvQIuAv4vRK94AA/u7z4q1ab0gavb52D/TVcNhIJoaQFUFu4DpW1AstsCFsDjYUlzHpxAGiB6K2hBGM40jmMp/HPDh3va2Vimfh9w6vbuegXMBMfVz+Z9AF5nI9+V+3//P/H/DSHjvowyMAAAA=",
+    "treatment": "mark",
+    "source": "2024/05/hotWingsLogo.png"
+  }
+}

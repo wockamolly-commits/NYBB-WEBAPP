@@ -412,6 +412,15 @@ pickup platform is asking someone to physically walk somewhere, so showing them 
 like is functional, not decorative. Check each against the closed-branch list before publishing:
 at least one of them is the Sports Lounge frontage and must not ship.
 
+> **Resolved in Phase 0.** It is `2024/06/Untitled-design-47.png`: a mall frontage with "Sports
+> Lounge" set in script under the wordmark. That file is excluded, and
+> `tests/unit/catalog.test.ts` asserts on its archive path rather than on a filename, so it cannot
+> return through a rename. The other five are all Hot Wings and are safe to publish.
+>
+> One further caution the audit could not settle: `2024/06/Untitled-design-41.png`, the alfresco
+> branch at dusk, is unmistakably Hot Wings but the specific site is not identifiable from the
+> photograph. It is used as general imagery on `/about` and is never captioned with a branch name.
+
 There is also unlisted food photography in `2024/05/Untitled-design-2024-05-22T*.png`
 (2511x2560, seven files) including nuggets, garlic parmesan wings, honey mustard wings, and a
 Caesar salad. The salad is a Sports Lounge item, so a little of that menu was photographed after
@@ -466,10 +475,38 @@ composite onto that same orange and look deliberate rather than accidental. Agai
 page ground, a grid of orange tiles is loud, coherent, unmistakably NYBB, and it costs nothing. Do
 not fight the orange, make it the system.
 
+> **Corrected in Phase 0. The move is right, one premise behind it is wrong.** The flattened
+> cutouts do **not** sit on `#EF6212`. Sampling their backgrounds gives a different orange per
+> file: `#d16828` (BLT Burger), `#dd6d26` (Classic Hotdog), `#e47936` (Value Meals), `#dd8548`
+> (Ribs), `#e27731` (Spaghetti), `#d56a28` (Cheezy Burger bundle), `#e67d39` (Chicken Nuggets).
+> All are duller than the brand value, and no two match.
+>
+> So a tile that painted `#EF6212` behind a cutout would show a visible seam at the photograph's
+> edge, and the tiles would not match each other either. The implemented rule is therefore: the
+> photograph bleeds to all four edges of the tile, and the tile colour is only ever seen where
+> there is no photograph, which is `<NoPhotoTile>` and the transparent waffle cutouts. The grid
+> still reads as a wall of orange squares, which was the point.
+
 **Problem 2: a baked-in corner watermark.** Several photos carry a small orange corner triangle in
 the top-left, some with an internal shot code (`NY1`, `NY4`, `NY7`). It is part of the pixels. Crop
 it out during ingest, or align the square crop so it lands off-frame. Do not ship it: an unexplained
 code on a product card reads as a bug.
+
+> **Sharpened in Phase 0. It is not small.** On a 5184x3456 original the triangle spans 1801px
+> along the top edge, roughly 35% of the width; on a 300x300 thumbnail it spans 113px, roughly
+> 38%. There is no single percentage inset that works for both, and both fixed-inset and
+> crop-from-the-left attempts failed visibly: shifting the square right on a 3:2 original threw
+> away the left third of the frame and cut the basket in half.
+>
+> What works, and what `scripts/build-static-images.ts` implements: measure the run of
+> badge-coloured pixels along the top edge per file, then crop **downward** rather than rightward.
+> The badge covers roughly `x + y < run`, so any window whose top-left corner clears that line is
+> clean, and these shots have headroom to give but no width. Size is traded for framing on
+> purpose: a window at 80% of the short side is still around 2700px against a 900px output, so
+> shrinking costs nothing visible while a badly placed crop costs the photograph.
+>
+> The measurement is only safe on `lifestyle` sources. On a flattened cutout the entire top edge
+> is orange and the scan would match all of it, so it is skipped there.
 
 **Problem 3: two resolutions of the same wing photos.** A second, later set exists at
 `2025/03/` (`Classic-Buffalo.jpg`, `Salted-Egg.jpg`, `Cheezy.jpg`, `Smokey-Barbecue.jpg` and
@@ -506,6 +543,26 @@ The remaining true gaps are small and specific: three wing flavors needing a re-
 coffee and waffle lines, which have advertising art but no clean product shots. Both are a
 one-afternoon phone shoot against a plain background, not a production. Raise them as a scoped ask,
 not a blocker.
+
+> **Narrowed in Phase 0. The waffle line is covered; only coffee is not.** Two rows above are too
+> pessimistic:
+>
+> - **Waffles are not poster-only.** Beyond the three `*-coffee.png` transparent cutouts already
+>   noted, `2025/03/chocolate.jpg`, `2025/03/DSCF4657_.jpg` and `2025/03/DSCF4672_.jpg` are clean
+>   6000x4000 product shots of the chocolate, sunrise and bavarian waffles on white. The shipped
+>   tiles use the transparent cutouts, since those composite onto the tile ground and show the
+>   combo, which is a real menu item.
+> - **Mozzarella sticks are covered.** `2024/05/Untitled-design-2024-05-22T160627.766.png` is
+>   breaded sticks in a branded basket with a dip. Identified by sight rather than by filename, so
+>   it ships flagged `tentative` and is on the list to confirm with the owner.
+>
+> Still genuinely missing: French Fries, Hungarian Rice Meal, Chicken with Rice, and the whole
+> Iced Coffee Series. Those ship as `<NoPhotoTile>`.
+>
+> The three wing flavours are worse than the table suggests, not better. Cheezy, Salted Egg and
+> Smokey Barbecue exist only at 300x300, and the corner badge crop takes them to about 210px, so
+> they are visibly soft next to the other six at 900px. They are the sharpest item on the
+> re-shoot ask.
 
 #### Handling missing photos
 

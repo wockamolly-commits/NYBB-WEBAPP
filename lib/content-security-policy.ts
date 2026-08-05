@@ -58,6 +58,9 @@ export function contentSecurityPolicy(
     // nonce-based path for it that React supports today.
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
     `img-src 'self' data: blob:${supabaseImg}`,
+    // The landing hero is a self-hosted loop. No third party serves video here,
+    // and none should: an embed would drag in its own script origin.
+    `media-src 'self'`,
     `font-src 'self' data: https://fonts.gstatic.com`,
     `connect-src 'self'${supabaseConnect}${paymentsConnect}`,
     `frame-src 'self'${paymentsFrame}`,
