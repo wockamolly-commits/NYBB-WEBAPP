@@ -185,6 +185,9 @@ export default async function Home() {
 
         <FlavourGrid
           flavours={findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? []}
+          hrefFor={(flavour) =>
+            `/menu/${WINGS_ITEM_SLUG}/${WINGS_ITEM_SLUG}?flavour=${flavour.slug}`
+          }
           className="mt-10 sm:mt-12 lg:grid-cols-3 lg:gap-5"
           withDescriptions={false}
           imageSizes="(min-width: 1024px) 32vw, (min-width: 640px) 31vw, 45vw"

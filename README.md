@@ -7,9 +7,9 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 ## Status
 
-**Phase 0 complete. Phase 1 started: the storefront now reads its menu through
-one source-agnostic reader.** `npm run build`, `npm run lint` and `npm test`
-(104 tests) are all green, every page has been rendered and reviewed in a
+**Phase 0 complete. Phase 1 in progress: the menu reads through one
+source-agnostic reader, and the wings configurator is built.** `npm run build`,
+`npm run lint` and `npm test` (131 tests) are all green, every page has been rendered and reviewed in a
 browser at 375px and 1280px, and migrations `0001` to `0011` apply cleanly
 against a real Postgres in the test suite.
 
@@ -60,10 +60,19 @@ Phase 1 so far:
 - The pages pass the menu down rather than importing it. `CategoryNav` and
   `FlavourGrid` used to reach into `lib/catalog` directly, which quietly made
   them the two components that could not follow the menu to the database
+- `/menu/[category]/[item]` and `components/menu/ItemConfigurator.tsx`: size,
+  then flavour from the visual grid, then heat on the meter with the
+  variation-correct upcharge repricing live. Product tiles and flavour tiles
+  link into it, and a flavour tile opens the configurator on that flavour
+- The product photograph tracks the selection: choosing a flavour swaps the
+  hero to that flavour's own shot, with the alt text following it. Only groups
+  that carry photography can take the frame, so a heat level never blanks it
+- `lib/menu/line-pricing.ts`: the only place the UI adds money up, mirroring
+  what `place_order` will do in Postgres
 
 Next:
 
-1. The wings configurator, the cart, and the pickup slot picker.
+1. The cart and the pickup slot picker.
 2. `place_order` with idempotency and rate limiting, then the tracking page
    with the pickup code.
 3. Customer email OTP.

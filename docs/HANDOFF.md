@@ -13,8 +13,8 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 step 1 has landed.** `npm run build`, `npm run lint` and
-`npm test` (104 tests) are green.
+**Phase 0 is complete, and Phase 1 steps 1 and 2 have landed.** `npm run build`, `npm run lint`
+and `npm test` (131 tests) are green.
 
 - `lib/catalog/` holds the full Hot Wings menu, nine wing flavours, the Level of Hotness scale with
   its variation-dependent pricing, nine branches, and a generated image manifest. Its types mirror
@@ -44,13 +44,22 @@ Spec section 27. In order:
    `tests/sql/storefront-menu.test.ts` proves the claim rather than asserting it: the function
    output, run through the real zod parse and the real hydration, deep-equals the static
    projection.
-2. **The wings configurator** (spec section 10, N5): size, then flavour from the visual grid, then
-   heat on the meter with the variation-correct upcharge shown live.
+2. ~~The wings configurator (spec section 10, N5).~~ **Done**, at
+   `/menu/[category]/[item]`. It is one component for every item rather than a bespoke wings page:
+   a group whose options all carry photography renders as a visual grid, a group carrying heat
+   percentages renders on the meter, anything else is a priced list. Keying it on the data rather
+   than on `slug === "wing-flavour"` is what keeps it bespoke after the owner edits the menu in
+   Phase 4. The Add button is deliberately disabled until the cart exists, and says so.
+   The hero photograph follows the selected flavour, which is why the configurator owns both
+   columns and the page hands it the static copy as a `details` slot. `previewImage()` lives in
+   `lib/menu/preview.ts` rather than in `lib/menu/index.ts` on purpose: index re-exports
+   `getStorefrontMenu`, which pulls in `server-only`, and a client component importing it fails
+   the build.
 3. **Cart, pickup slot picker, checkout.** Slot generation reads `store_hours` plus
    `branches.pickup_slot_minutes`, generated on read for the next `slot_horizon_hours`.
 4. **`place_order`**, with idempotency through `checkout_attempts` and rate limiting through
    `rate_limit_hit()`. It must call `resolve_option_price_cents()` rather than reimplementing the
-   fallback, and it must increment `pickup_slots.reserved` in the same transaction as the insert.
+   fallback, it must agree with `lib/menu/line-pricing.ts` (and win where it does not), and it must increment `pickup_slots.reserved` in the same transaction as the insert.
 5. **Order tracking page** with the pickup code, then customer email OTP.
 
 ## Things earlier sessions learned the hard way

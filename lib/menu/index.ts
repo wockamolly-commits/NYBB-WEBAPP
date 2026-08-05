@@ -1,6 +1,7 @@
 import type { MenuCategory, MenuItem, MenuOptionGroup } from "./types";
 
 export { getStorefrontMenu } from "./storefront";
+export { previewImage } from "./preview";
 export { staticMenu } from "./static";
 export type * from "./types";
 

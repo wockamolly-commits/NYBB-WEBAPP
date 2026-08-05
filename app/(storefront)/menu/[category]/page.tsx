@@ -91,6 +91,9 @@ export default async function CategoryPage({
             </h2>
             <FlavourGrid
               flavours={findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? []}
+              hrefFor={(flavour) =>
+                `/menu/${category.slug}/${wings.slug}?flavour=${flavour.slug}`
+              }
               className="mt-6"
             />
 

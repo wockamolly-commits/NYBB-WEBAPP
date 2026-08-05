@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { MenuOption } from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
 import { NoPhotoTile } from "./NoPhotoTile";
@@ -21,8 +22,37 @@ import { NoPhotoTile } from "./NoPhotoTile";
  * photographs, which is noise in front of someone who has not decided they want
  * wings yet. There the name carries it and the description waits for /menu.
  */
+/**
+ * One body, linked or not. Duplicating the tile markup for the two cases is
+ * how the linked version and the display version drift apart.
+ */
+function Wrapper({
+  href,
+  className,
+  children,
+}: {
+  href?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return href ? (
+    <Link
+      href={href}
+      className={cn(
+        className,
+        "focus-visible:outline-nybb-ink focus-visible:outline-2 focus-visible:outline-offset-2",
+      )}
+    >
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  );
+}
+
 export function FlavourGrid({
   flavours,
+  hrefFor,
   className,
   withDescriptions = true,
   imageSizes = "(min-width: 1024px) 19vw, (min-width: 640px) 31vw, 45vw",
@@ -33,6 +63,12 @@ export function FlavourGrid({
    * one component on the page that could not follow the menu to the database.
    */
   flavours: MenuOption[];
+  /**
+   * Where a flavour goes when tapped. Supplied by the caller because only the
+   * page knows which item these options belong to. Omit it and the grid stays
+   * a display, which is what the landing page wants above the fold.
+   */
+  hrefFor?: (flavour: MenuOption) => string;
   className?: string;
   withDescriptions?: boolean;
   /**
@@ -54,35 +90,37 @@ export function FlavourGrid({
         const image = flavour.image;
 
         return (
-          <li
-            key={flavour.slug}
-            className="bg-nybb-charcoal text-nybb-bone group overflow-hidden rounded-md"
-          >
-            <div className="tile-orange relative aspect-square overflow-hidden">
-              {image ? (
-                <Image
-                  src={image.src}
-                  alt={`${flavour.name} wings`}
-                  fill
-                  sizes={imageSizes}
-                  placeholder="blur"
-                  blurDataURL={image.blurDataURL}
-                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                />
-              ) : (
-                <NoPhotoTile name={flavour.name} className="absolute inset-0" />
-              )}
-            </div>
-            <div className="px-3.5 py-3 sm:px-4 sm:py-3.5">
-              <h3 className="font-display text-base leading-none sm:text-lg">
-                {flavour.name}
-              </h3>
-              {withDescriptions && flavour.description ? (
-                <p className="text-nybb-bone/65 mt-2 text-xs leading-snug">
-                  {flavour.description}
-                </p>
-              ) : null}
-            </div>
+          <li key={flavour.slug} className="group">
+            <Wrapper
+              href={hrefFor?.(flavour)}
+              className="bg-nybb-charcoal text-nybb-bone block overflow-hidden rounded-md"
+            >
+              <div className="tile-orange relative aspect-square overflow-hidden">
+                {image ? (
+                  <Image
+                    src={image.src}
+                    alt={`${flavour.name} wings`}
+                    fill
+                    sizes={imageSizes}
+                    placeholder="blur"
+                    blurDataURL={image.blurDataURL}
+                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <NoPhotoTile name={flavour.name} className="absolute inset-0" />
+                )}
+              </div>
+              <div className="px-3.5 py-3 sm:px-4 sm:py-3.5">
+                <h3 className="font-display text-base leading-none sm:text-lg">
+                  {flavour.name}
+                </h3>
+                {withDescriptions && flavour.description ? (
+                  <p className="text-nybb-bone/65 mt-2 text-xs leading-snug">
+                    {flavour.description}
+                  </p>
+                ) : null}
+              </div>
+            </Wrapper>
           </li>
         );
       })}

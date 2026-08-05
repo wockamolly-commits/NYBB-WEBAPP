@@ -71,6 +71,9 @@ export default async function MenuPage() {
                 flavours={
                   findOptionGroup(category.items[0], WING_FLAVOUR_GROUP_SLUG)?.options ?? []
                 }
+                hrefFor={(flavour) =>
+                  `/menu/${category.slug}/${category.items[0].slug}?flavour=${flavour.slug}`
+                }
                 className="mt-6 lg:grid-cols-4"
                 imageSizes="(min-width: 1024px) 24vw, (min-width: 640px) 31vw, 45vw"
               />
