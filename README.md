@@ -7,7 +7,34 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 ## Status
 
-Phase 0, not started. No application code yet.
+**Phase 0, roughly half done.** `npm run build` is green and `npm test` passes 11/11.
+
+Done:
+
+- Next 16.2.9 + TypeScript + Tailwind v4 + Base UI scaffold
+- Brand token system in `app/globals.css`, including the five-stop heat ramp
+- Root layout, fonts (Anton / Inter / JetBrains Mono), metadata
+- Nonce-based CSP (`lib/content-security-policy.ts` + `proxy.ts`), security
+  headers and image config in `next.config.ts`, with unit tests
+
+Not started, and this is the next work:
+
+1. Migrations `0001`-`0010`: types, branches, price lists, menu, the two
+   price-override tables, cart, orders, pickup slots, store hours, staff,
+   app settings, RLS, explicit GRANTs. See spec section 6.
+2. `supabase/seed.sql` with the Hot Wings price list from spec section 2.2.
+   Sports Lounge items are reference only and must not be seeded.
+3. `scripts/ingest-legacy-images.ts` over `C:\dev\nybb-assets`. See spec
+   section 5.6 for the crop, alpha and resize rules.
+4. Header, footer, and the static landing / menu / about / contact pages,
+   rendering from a static catalog so the build never requires Supabase env.
+
+**Nothing has been visually verified yet.** The scaffold compiles and tests
+pass, but no page has been rendered in a browser. Verify before trusting the
+layout.
+
+No Supabase project exists yet, so migrations should be written but not
+applied.
 
 ## Start here
 
