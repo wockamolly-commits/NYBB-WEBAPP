@@ -57,7 +57,7 @@ export function HeatMeter({
         aria-hidden
         className={cn(
           "font-mono-tabular tracking-tight text-nybb-bone/70",
-          size === "sm" ? "text-[11px]" : "text-xs",
+          size === "sm" ? "text-xs" : "text-sm",
         )}
       >
         {percent}%
@@ -67,7 +67,7 @@ export function HeatMeter({
           aria-hidden
           className={cn(
             "font-display tracking-wide text-nybb-bone",
-            size === "sm" ? "text-[11px]" : "text-xs",
+            size === "sm" ? "text-xs" : "text-sm",
           )}
         >
           {label}

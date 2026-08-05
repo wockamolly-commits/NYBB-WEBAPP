@@ -164,7 +164,7 @@ export function ItemConfigurator({
       {item.variations.length > 1 ? (
         <fieldset>
           <legend className="font-display text-sm tracking-[0.08em]">Size</legend>
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="mt-3 grid grid-cols-2 gap-3">
             {item.variations.map((variation) => {
               const active = variation.slug === selection.variationSlug;
               return (
@@ -214,7 +214,7 @@ export function ItemConfigurator({
           </legend>
 
           {isVisualGroup(group) ? (
-            <ul className="mt-3 grid grid-cols-3 gap-2.5">
+            <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {group.options.map((option) => {
                 const active = chosen(group).includes(option.slug);
                 return (
@@ -236,7 +236,7 @@ export function ItemConfigurator({
                             src={option.image.src}
                             alt=""
                             fill
-                            sizes="(min-width: 640px) 12vw, 28vw"
+                            sizes="(min-width: 1024px) 12vw, (min-width: 640px) 18vw, 42vw"
                             placeholder="blur"
                             blurDataURL={option.image.blurDataURL}
                             className="object-cover"
@@ -247,7 +247,7 @@ export function ItemConfigurator({
                         className={cn(
                           // min-h so a flavour that wraps to two lines does not
                           // make its tile taller than the rest of the row.
-                          "flex min-h-10 items-center px-2 py-2 text-[11px] leading-tight",
+                          "flex min-h-11 items-center px-2 py-2 text-xs leading-tight",
                           active ? "bg-nybb-orange text-nybb-ink" : "text-nybb-bone/85",
                         )}
                       >

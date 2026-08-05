@@ -90,12 +90,12 @@ export function FlavourGrid({
         const image = flavour.image;
 
         return (
-          <li key={flavour.slug} className="group">
+          <li key={flavour.slug} className="group h-full">
             <Wrapper
               href={hrefFor?.(flavour)}
-              className="bg-nybb-charcoal text-nybb-bone block overflow-hidden rounded-md"
+              className="bg-nybb-charcoal text-nybb-bone flex h-full flex-col overflow-hidden rounded-md"
             >
-              <div className="tile-orange relative aspect-square overflow-hidden">
+              <div className="tile-orange relative aspect-square shrink-0 overflow-hidden">
                 {image ? (
                   <Image
                     src={image.src}
@@ -110,7 +110,7 @@ export function FlavourGrid({
                   <NoPhotoTile name={flavour.name} className="absolute inset-0" />
                 )}
               </div>
-              <div className="px-3.5 py-3 sm:px-4 sm:py-3.5">
+              <div className="flex flex-1 flex-col px-3 py-2.5 sm:px-4 sm:py-3.5">
                 <h3 className="font-display text-base leading-none sm:text-lg">
                   {flavour.name}
                 </h3>

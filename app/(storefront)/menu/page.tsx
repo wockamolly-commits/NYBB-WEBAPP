@@ -78,7 +78,7 @@ export default async function MenuPage() {
                 imageSizes="(min-width: 1024px) 24vw, (min-width: 640px) 31vw, 45vw"
               />
             ) : (
-              <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
                 {category.items.map((item) => (
                   <ProductTile
                     key={item.slug}

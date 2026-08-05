@@ -40,7 +40,17 @@ export function ProductTile({
   const { fromCents, toCents } = itemPriceRange(item);
 
   return (
-    <article className={cn("group", className)}>
+    // h-full and the column below are what make a row of tiles agree.
+    //
+    // A grid row is only as tidy as its tallest card, and these names run from
+    // "BLT" to "Brad's Angus Burger Meal", which at 320px is the difference
+    // between a one line plate and a four line one. Left alone, the plates
+    // measured 44px to 95px in the same grid: the photographs stopped
+    // bottom-aligning and the prices landed at four different heights. Making
+    // the card a full height flex column lets the grid equalise them, and the
+    // price is then pinned to the bottom so every price in a row sits on one
+    // line, whatever the names above them did.
+    <article className={cn("group h-full", className)}>
       {/* The whole tile is the target, not just the name. A 900px photograph
           that does nothing when tapped is the most common way a menu grid
           feels broken on a phone. */}
@@ -49,11 +59,11 @@ export function ProductTile({
         className={cn(
           // No border. --border is ink at 16%, which against charcoal draws
           // nothing at all; value already separates the tile from both grounds.
-          "bg-nybb-charcoal text-nybb-bone block overflow-hidden rounded-md",
+          "bg-nybb-charcoal text-nybb-bone flex h-full flex-col overflow-hidden rounded-md",
           "focus-visible:outline-nybb-ink focus-visible:outline-2 focus-visible:outline-offset-2",
         )}
       >
-        <div className="tile-orange relative aspect-square overflow-hidden">
+        <div className="tile-orange relative aspect-square shrink-0 overflow-hidden">
           {image ? (
             <Image
               src={image.src}
@@ -70,16 +80,21 @@ export function ProductTile({
           )}
         </div>
 
-        <div className="flex items-baseline justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5">
-          <h3 className="text-sm leading-tight font-medium">
-            {item.code ? (
-              <span className="font-mono-tabular text-nybb-bone/60 mr-1.5 text-[11px]">
-                {item.code}
-              </span>
-            ) : null}
-            {item.name}
-          </h3>
-          <p className="font-mono-tabular text-nybb-orange shrink-0 text-sm tabular-nums">
+        <div className="flex flex-1 flex-col px-3 py-2.5 sm:px-4 sm:py-3.5">
+          {/* The code gets its own line. Inline, it was competing with the
+              name for a 111px column and producing "BB1 The / Rookie", which
+              reads as a broken sentence rather than as a menu number. */}
+          {item.code ? (
+            <span className="font-mono-tabular text-nybb-bone/60 mb-1 block text-xs leading-none">
+              {item.code}
+            </span>
+          ) : null}
+
+          <h3 className="text-sm leading-snug font-medium text-balance">{item.name}</h3>
+
+          {/* mt-auto, so the price sits on the floor of the card rather than
+              wherever the name happened to stop. */}
+          <p className="font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm tabular-nums">
             {formatPesoRange(fromCents, toCents)}
           </p>
         </div>

@@ -42,7 +42,7 @@ export default function ContactPage() {
             key={branch.slug}
             className="bg-nybb-charcoal text-nybb-bone flex flex-col rounded-md p-5"
           >
-            <p className="font-mono-tabular text-nybb-bone/60 text-[11px] tracking-[0.14em] uppercase">
+            <p className="font-mono-tabular text-nybb-bone/60 text-xs tracking-[0.14em] uppercase">
               {branchFormatLabel[branch.format]}
             </p>
             <h2 className="font-display mt-2 text-xl leading-tight">
