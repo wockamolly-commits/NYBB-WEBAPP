@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "ingest:images": "tsx scripts/ingest-legacy-images.ts",
-    "build:static-images": "tsx scripts/build-static-images.ts"
+    "build:static-images": "tsx scripts/build-static-images.ts",
+    "build:seed": "tsx scripts/build-seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -31,6 +32,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

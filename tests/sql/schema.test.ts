@@ -1,0 +1,428 @@
+import { beforeAll, describe, expect, it } from "vitest";
+import type { PGlite } from "@electric-sql/pglite";
+import { freshDatabase, migrationFiles, scalar } from "./harness";
+
+/**
+ * Structural tests over migrations 0001 to 0010.
+ *
+ * These are the checks that would otherwise only fail after a Supabase project
+ * exists, which is to say after it is expensive to be wrong.
+ */
+describe("migrations", () => {
+  let db: PGlite;
+
+  beforeAll(async () => {
+    db = await freshDatabase();
+  }, 120_000);
+
+  it("are numbered contiguously from 0001", async () => {
+    const files = await migrationFiles();
+    expect(files.map((name) => name.slice(0, 4))).toEqual([
+      "0001", "0002", "0003", "0004", "0005",
+      "0006", "0007", "0008", "0009", "0010",
+    ]);
+  });
+
+  it("enable row level security on every table", async () => {
+    const result = await db.query<{ tablename: string }>(`
+      select c.relname as tablename
+      from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+      order by 1
+    `);
+    expect(result.rows.map((row) => row.tablename)).toEqual([]);
+  });
+
+  // The rule from 0009: the storefront reaches the database only through
+  // SECURITY DEFINER functions. A table privilege held by anon means somebody
+  // opened a direct read path, and that is worth failing a build over.
+  it("grant anon no privilege on any table", async () => {
+    const result = await db.query<{ tablename: string; privilege_type: string }>(`
+      select table_name as tablename, privilege_type
+      from information_schema.role_table_grants
+      where grantee = 'anon' and table_schema = 'public'
+      order by 1, 2
+    `);
+    expect(result.rows).toEqual([]);
+  });
+
+  // The writes that must stay inside SECURITY DEFINER functions, per spec
+  // section 22 point 3. A grant here would let a staff session change an order
+  // status with a bare update and skip the audit trail entirely.
+  it("grant authenticated no write on orders, payments or slots", async () => {
+    const result = await db.query<{ tablename: string; privilege_type: string }>(`
+      select table_name as tablename, privilege_type
+      from information_schema.role_table_grants
+      where grantee = 'authenticated'
+        and table_schema = 'public'
+        and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+        and table_name in (
+          'orders', 'order_items', 'order_item_options', 'order_status_events',
+          'payments', 'pickup_slots', 'pos_sync', 'checkout_attempts',
+          'carts', 'cart_items', 'cart_item_options',
+          'audit_logs', 'notifications', 'rate_limits',
+          'voucher_redemptions', 'push_subscriptions'
+        )
+      order by 1, 2
+    `);
+    expect(result.rows).toEqual([]);
+  });
+
+  // Postgres grants EXECUTE to PUBLIC on every new function. 0010 takes that
+  // back by name. A rate limiter any anonymous visitor can drive is not a rate
+  // limiter, so this one is not a style preference.
+  it("do not leave rate_limit_hit callable by anon", async () => {
+    const canCall = await scalar<boolean>(
+      db,
+      `select has_function_privilege('anon', 'rate_limit_hit(text, int, int)', 'execute')`,
+    );
+    expect(canCall).toBe(false);
+  });
+
+  // A policy expression is evaluated as the querying role, so a staff read
+  // fails on the FUNCTION rather than on the table if this is missed, which is
+  // a genuinely confusing error to land on.
+  it("let authenticated call the functions its own policies name", async () => {
+    for (const fn of ["current_role_kind()", "is_staff()", "is_admin()"]) {
+      const canCall = await scalar<boolean>(
+        db,
+        `select has_function_privilege('authenticated', '${fn}', 'execute')`,
+      );
+      expect(canCall, fn).toBe(true);
+    }
+  });
+
+  it("expose exactly three functions to anon", async () => {
+    const result = await db.query<{ name: string }>(`
+      select p.proname as name
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and has_function_privilege('anon', p.oid, 'execute')
+        -- Extension-owned functions are excluded. pgcrypto lands in the
+        -- extensions schema on Supabase but in public under PGlite, and its
+        -- forty PUBLIC-executable helpers are not this schema's doing.
+        and not exists (
+          select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e'
+        )
+      order by 1
+    `);
+    expect(result.rows.map((row) => row.name)).toEqual([
+      "branch_accepts_orders",
+      "branch_is_open_at",
+      "get_public_settings",
+    ]);
+  });
+
+  // The column is kept so that adding dine-in later is a constraint change
+  // rather than a migration of every order row. Until then it does not accept
+  // one.
+  it("pin orders.service_mode to pickup", async () => {
+    await db.exec(`
+      insert into price_lists (slug, name) values ('standard', 'Standard');
+      insert into branches (slug, name, short_name, format, price_list_id,
+                            address_line, city)
+      select 'pilot', 'Pilot', 'Pilot', 'street', id, 'Somewhere', 'Cebu City'
+      from price_lists where slug = 'standard';
+    `);
+    await expect(
+      db.exec(`
+        insert into orders (short_code, branch_id, price_list_id, pickup_code,
+                            service_mode, customer_name, customer_phone)
+        select 'NY-DINEIN', b.id, b.price_list_id, '1234', 'dine_in',
+               'Test', '09170000000'
+        from branches b where b.slug = 'pilot'
+      `),
+    ).rejects.toThrow(/service_mode/);
+  });
+});
+
+describe("option pricing", () => {
+  let db: PGlite;
+  let ids: {
+    optionFlat: string;
+    optionPerVariation: string;
+    optionFree: string;
+    half: string;
+    full: string;
+    listStandard: string;
+    listOther: string;
+  };
+
+  // A miniature menu rather than the real seed, so each of the three
+  // resolution paths can be isolated. The seed exercises the same function
+  // against the real numbers in seed.test.ts.
+  beforeAll(async () => {
+    db = await freshDatabase();
+    await db.exec(`
+      insert into price_lists (slug, name)
+        values ('standard', 'Standard'), ('kiosk', 'Kiosk');
+      insert into menu_categories (slug, name) values ('wings', 'Wings');
+      insert into menu_items (category_id, slug, name)
+        select id, 'wings', 'Wings' from menu_categories where slug = 'wings';
+      insert into item_variations (item_id, slug, label, short_label, price_cents)
+        select id, 'half', 'Half', 'HALF', 32900 from menu_items where slug = 'wings';
+      insert into item_variations (item_id, slug, label, short_label, price_cents)
+        select id, 'full', 'Full', 'FULL', 52900 from menu_items where slug = 'wings';
+      insert into menu_option_groups (slug, name) values ('heat', 'Heat');
+      insert into menu_options (group_id, slug, name, price_cents)
+        select id, 'per-variation', 'Per variation', null from menu_option_groups where slug = 'heat';
+      insert into menu_options (group_id, slug, name, price_cents)
+        select id, 'flat', 'Flat', 1500 from menu_option_groups where slug = 'heat';
+      insert into menu_options (group_id, slug, name, price_cents)
+        select id, 'free', 'Free', null from menu_option_groups where slug = 'heat';
+    `);
+
+    const row = (
+      await db.query<Record<string, string>>(`
+        select
+          (select id from menu_options where slug = 'flat') as "optionFlat",
+          (select id from menu_options where slug = 'per-variation') as "optionPerVariation",
+          (select id from menu_options where slug = 'free') as "optionFree",
+          (select id from item_variations where slug = 'half') as half,
+          (select id from item_variations where slug = 'full') as full,
+          (select id from price_lists where slug = 'standard') as "listStandard",
+          (select id from price_lists where slug = 'kiosk') as "listOther"
+      `)
+    ).rows[0];
+    ids = row as typeof ids;
+
+    await db.exec(`
+      insert into menu_option_variation_prices (option_id, variation_id, price_list_id, price_cents)
+      values
+        ('${ids.optionPerVariation}', '${ids.half}', '${ids.listStandard}', 3000),
+        ('${ids.optionPerVariation}', '${ids.full}', '${ids.listStandard}', 4000);
+    `);
+  }, 120_000);
+
+  // Centavos come back from a bigint column, which the driver may hand over
+  // as a number or a bigint depending on magnitude. Normalise once.
+  const resolve = async (option: string, variation: string, list: string) =>
+    Number(
+      await scalar<number | bigint>(
+        db,
+        `select resolve_option_price_cents('${option}', '${variation}', '${list}')`,
+      ),
+    );
+
+  it("path 1: a variation-specific row wins", async () => {
+    expect(await resolve(ids.optionPerVariation, ids.half, ids.listStandard)).toBe(3000);
+    expect(await resolve(ids.optionPerVariation, ids.full, ids.listStandard)).toBe(4000);
+  });
+
+  it("path 2: falls back to the option's flat price", async () => {
+    expect(await resolve(ids.optionFlat, ids.half, ids.listStandard)).toBe(1500);
+    // Flat means flat: the variation makes no difference on this path.
+    expect(await resolve(ids.optionFlat, ids.full, ids.listStandard)).toBe(1500);
+  });
+
+  it("path 3: free when neither exists", async () => {
+    expect(await resolve(ids.optionFree, ids.half, ids.listStandard)).toBe(0);
+  });
+
+  // The failure that would actually ship: a second price list is created, the
+  // override rows are written for the first, and the new branch quietly gives
+  // its heat away. Resolution is per price list, and this proves it.
+  it("does not leak one price list's overrides into another", async () => {
+    expect(await resolve(ids.optionPerVariation, ids.half, ids.listOther)).toBe(0);
+  });
+
+  it("resolves a variation price from the list, then from the base row", async () => {
+    const base = await scalar<number | bigint>(
+      db,
+      `select resolve_variation_price_cents('${ids.half}', '${ids.listStandard}')`,
+    );
+    expect(Number(base)).toBe(32900);
+
+    await db.exec(`
+      insert into item_variation_prices (variation_id, price_list_id, price_cents)
+      values ('${ids.half}', '${ids.listOther}', 35900)
+    `);
+    const overridden = await scalar<number | bigint>(
+      db,
+      `select resolve_variation_price_cents('${ids.half}', '${ids.listOther}')`,
+    );
+    expect(Number(overridden)).toBe(35900);
+  });
+
+  // Null here means "this variation does not exist", which callers must treat
+  // as a hard error. A missing item price is a bug, not a discount, and this
+  // is the line that separates it from the deliberate 0 above.
+  it("returns null for an unknown variation rather than zero", async () => {
+    const missing = await scalar<number | null>(
+      db,
+      `select resolve_variation_price_cents(
+         '00000000-0000-0000-0000-000000000000', '${ids.listStandard}')`,
+    );
+    expect(missing).toBeNull();
+  });
+});
+
+describe("pickup slots and hours", () => {
+  let db: PGlite;
+  let branchId: string;
+
+  beforeAll(async () => {
+    db = await freshDatabase();
+    await db.exec(`
+      insert into price_lists (slug, name) values ('standard', 'Standard');
+      insert into branches (slug, name, short_name, format, price_list_id,
+                            address_line, city, is_active, is_accepting_orders)
+      select 'pilot', 'Pilot', 'Pilot', 'street', id, 'Somewhere', 'Cebu City', true, true
+      from price_lists where slug = 'standard';
+    `);
+    branchId = await scalar<string>(db, `select id from branches where slug = 'pilot'`);
+  }, 120_000);
+
+  it("refuse to reserve past capacity", async () => {
+    await db.exec(`
+      insert into pickup_slots (branch_id, slot_start, capacity, reserved)
+      values ('${branchId}', timestamptz '2026-09-01 19:00+08', 6, 6)
+    `);
+    await expect(
+      db.exec(`
+        update pickup_slots set reserved = reserved + 1
+        where branch_id = '${branchId}'
+      `),
+    ).rejects.toThrow(/pickup_slots_within_capacity/);
+  });
+
+  it("refuse two orders the same live pickup code at one branch", async () => {
+    const order = (code: string, status: string) => `
+      insert into orders (short_code, branch_id, price_list_id, pickup_code, status,
+                          customer_name, customer_phone)
+      select '${code}', '${branchId}', pl.id, '4242', '${status}', 'Test', '09170000000'
+      from price_lists pl where pl.slug = 'standard';
+    `;
+    await db.exec(order("NY-AAAAAA", "ready"));
+    await expect(db.exec(order("NY-BBBBBB", "pending"))).rejects.toThrow(
+      /orders_active_pickup_code_key/,
+    );
+    // Once the first order is off the counter the code is free again, which is
+    // the only reason four digits is enough.
+    await db.exec(order("NY-CCCCCC", "claimed"));
+  });
+
+  // No hours means closed. The real weekday hours are still an open question
+  // for the owner, and a platform that invents them is worse than one that
+  // says it does not know.
+  it("report a branch with no store_hours as closed", async () => {
+    const open = await scalar<boolean>(
+      db,
+      `select branch_is_open_at('${branchId}', timestamptz '2026-09-01 12:00+08')`,
+    );
+    expect(open).toBe(false);
+  });
+
+  it("respect a normal window", async () => {
+    // 2026-09-01 is a Tuesday in Asia/Manila, so weekday 2.
+    await db.exec(`
+      insert into store_hours (branch_id, weekday, opens_at, closes_at)
+      values ('${branchId}', 2, '10:00', '21:00')
+    `);
+    const at = (iso: string) =>
+      scalar<boolean>(db, `select branch_is_open_at('${branchId}', timestamptz '${iso}')`);
+
+    expect(await at("2026-09-01 09:59+08")).toBe(false);
+    expect(await at("2026-09-01 10:00+08")).toBe(true);
+    expect(await at("2026-09-01 20:59+08")).toBe(true);
+    expect(await at("2026-09-01 21:00+08")).toBe(false);
+  });
+
+  // A forecourt that trades until 2am is not an exotic case in this branch
+  // mix, and the tail after midnight belongs to the day the window opened on.
+  it("respect a window that crosses midnight", async () => {
+    // Wednesday, weekday 3.
+    await db.exec(`
+      insert into store_hours (branch_id, weekday, opens_at, closes_at)
+      values ('${branchId}', 3, '18:00', '02:00')
+    `);
+    const at = (iso: string) =>
+      scalar<boolean>(db, `select branch_is_open_at('${branchId}', timestamptz '${iso}')`);
+
+    expect(await at("2026-09-02 17:59+08")).toBe(false);
+    expect(await at("2026-09-02 23:30+08")).toBe(true);
+    // Thursday 01:00 is still Wednesday's shift.
+    expect(await at("2026-09-03 01:00+08")).toBe(true);
+    expect(await at("2026-09-03 02:00+08")).toBe(false);
+  });
+
+  it("stay closed while the branch is inactive", async () => {
+    await db.exec(`update branches set is_active = false where id = '${branchId}'`);
+    const open = await scalar<boolean>(
+      db,
+      `select branch_is_open_at('${branchId}', timestamptz '2026-09-01 12:00+08')`,
+    );
+    expect(open).toBe(false);
+    await db.exec(`update branches set is_active = true where id = '${branchId}'`);
+  });
+
+  it("gate ordering on the global switch as well as the branch", async () => {
+    const accepts = () =>
+      scalar<boolean>(
+        db,
+        `select branch_accepts_orders('${branchId}', timestamptz '2026-09-01 12:00+08')`,
+      );
+    expect(await accepts()).toBe(true);
+
+    await db.exec(`update app_settings set accepting_orders = false where id = 1`);
+    expect(await accepts()).toBe(false);
+    await db.exec(`update app_settings set accepting_orders = true where id = 1`);
+
+    await db.exec(`update branches set is_accepting_orders = false where id = '${branchId}'`);
+    expect(await accepts()).toBe(false);
+  });
+});
+
+describe("code generators", () => {
+  let db: PGlite;
+
+  beforeAll(async () => {
+    db = await freshDatabase();
+  }, 120_000);
+
+  it("produce short codes with no lookalike characters", async () => {
+    const result = await db.query<{ code: string }>(
+      `select generate_short_code() as code from generate_series(1, 200)`,
+    );
+    for (const { code } of result.rows) {
+      expect(code).toMatch(/^NY-[2-9A-HJ-NP-Z]{6}$/);
+    }
+  });
+
+  it("produce four-digit pickup codes across the whole range", async () => {
+    const result = await db.query<{ code: string }>(
+      `select generate_pickup_code() as code from generate_series(1, 500)`,
+    );
+    const codes = result.rows.map((row) => row.code);
+    for (const code of codes) expect(code).toMatch(/^[0-9]{4}$/);
+    // Leading zeros must survive: lpad, not a bare cast.
+    expect(codes.every((code) => code.length === 4)).toBe(true);
+    expect(new Set(codes).size).toBeGreaterThan(400);
+  });
+});
+
+describe("rate limiter", () => {
+  let db: PGlite;
+
+  beforeAll(async () => {
+    db = await freshDatabase();
+  }, 120_000);
+
+  it("allows up to the limit, then refuses", async () => {
+    const hit = () => scalar<boolean>(db, `select rate_limit_hit('k', 3, 60)`);
+    expect(await hit()).toBe(true);
+    expect(await hit()).toBe(true);
+    expect(await hit()).toBe(true);
+    expect(await hit()).toBe(false);
+  });
+
+  it("rolls the window when it goes stale", async () => {
+    await db.exec(`select rate_limit_hit('roll', 1, 60)`);
+    expect(await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`)).toBe(false);
+    await db.exec(`update rate_limits set window_start = now() - interval '2 hours'
+                   where key = 'roll'`);
+    expect(await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`)).toBe(true);
+  });
+});

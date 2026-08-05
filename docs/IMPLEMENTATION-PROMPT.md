@@ -800,6 +800,58 @@ Every table gets RLS. Inherit the ZOMBEANS policy shape:
 - Anything a customer can enumerate must go through a `SECURITY DEFINER` RPC, never a direct table
   select.
 
+### 6.6 Corrections from writing the migrations
+
+Migrations `0001` to `0010` are written (not applied: no Supabase project exists). Where the
+schema departs from 6.1 to 6.5 above, this is what it does instead and why. Everything not listed
+here was built as specified.
+
+1. **`branches.brand` admits one value.** 6.4 drafted it as `'hot_wings' | 'sports_lounge'`. The
+   Sports Lounge closed in August 2026 and nothing in this platform may reference it, so the column
+   carries `check (brand = 'hot_wings')`. The multi-brand seam survives; widening it is a
+   constraint change.
+
+2. **`branches.phones` is `text[]`, not `phone text`.** Two of the nine branches publish two
+   numbers. An array keeps both without a second table.
+
+3. **`branches` also carries `timezone` and five image columns.** The timezone is read by
+   `branch_is_open_at()` rather than hardcoded, which is the same class of mistake, in miniature,
+   as keeping hours in two places. The image columns give
+   `scripts/ingest-legacy-images.ts` somewhere to write the two branch photographs that exist.
+
+4. **`payment_status` gains `'due'`.** A counter order is money the business expects to collect in
+   person; an unpaid online order is an intent awaiting a webhook that expires and releases a
+   pickup slot. ZOMBEANS called both `'pending'` and its dashboard could not tell them apart.
+
+5. **`anon` holds no table privilege at all, not even on the menu.** 6.5 asks for RPC-only
+   enumeration and this takes it literally: the public read surface is three functions, reviewable
+   in one sitting, rather than policies spread across eleven catalog tables that must all stay
+   correct as columns are added. `get_public_settings()` exists so that locking `app_settings` does
+   not repeat the ZOMBEANS silent-empty-read bug.
+
+6. **Two resolver functions carry the pricing rule**, `resolve_variation_price_cents()` and
+   `resolve_option_price_cents()`. 6.4 puts the resolution order inside `place_order`. Keeping it
+   in one function instead means `place_order`, `get_storefront_menu()` and the admin preview
+   cannot drift, which matters more than the indirection costs. All three fallback paths are tested
+   (`tests/sql/schema.test.ts`), plus the failure that would actually ship: overrides written for
+   one price list leaking into another.
+
+7. **`menu_options.price_cents` is nullable and null is load-bearing.** It means the option has no
+   flat price at all and the variation decides. Every Level of Hotness row above "No heat" is null.
+
+8. **`user_role` is `admin | staff`, with a separate `staff_role` of `cashier | kitchen |
+   manager`.** Section 13's four roles do not all belong in the RLS primitive: policies only ever
+   need to know whether a session may touch operational data. The job is what supplies default
+   permissions.
+
+9. **Nothing is seeded that only the owner can answer.** `store_hours` is empty and
+   `branch_is_open_at()` fails closed, so a branch with unknown hours is shut rather than guessing.
+   All nine branches are seeded `is_active = false`.
+
+10. **`supabase/seed.sql` is generated**, by `npm run build:seed` from `lib/catalog/`. Hand-writing
+    the menu a second time in SQL guarantees the two copies disagree within a month, and a menu
+    that disagrees with itself charges the wrong price.
+
 ---
 
 ## 7. Information architecture

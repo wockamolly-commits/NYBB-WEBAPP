@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.ts", "tests/sql/**/*.test.ts"],
+    // The SQL suite boots Postgres compiled to WebAssembly, once per file.
+    testTimeout: 30_000,
+    hookTimeout: 120_000,
   },
   resolve: {
     alias: {

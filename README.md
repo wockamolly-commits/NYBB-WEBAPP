@@ -7,9 +7,13 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 ## Status
 
-**Phase 0, storefront pages done. Database not started.** `npm run build`,
-`npm run lint` and `npm test` (46 tests) are all green, and every page has been
-rendered and reviewed in a browser at 375px and 1280px.
+**Phase 0 complete.** `npm run build`, `npm run lint` and `npm test` (81 tests)
+are all green, every page has been rendered and reviewed in a browser at 375px
+and 1280px, and migrations `0001` to `0010` apply cleanly against a real
+Postgres in the test suite.
+
+No Supabase project exists yet, so the migrations are written and verified but
+deliberately not applied anywhere.
 
 Done:
 
@@ -29,19 +33,31 @@ Done:
   (`scripts/build-hero-video.sh`), with poster, reduced-motion and no-JS
   fallbacks all verified
 
-Not started, and this is the next work:
+- Migrations `0001` to `0010` under `supabase/migrations`: types, branches and
+  price lists, menu with both price-override tables, carts, orders and pickup
+  slots, payments and POS sync, staff and audit, settings and vouchers, then
+  RLS and explicit GRANTs. See spec section 6, and 6.6 for where the schema
+  departs from it
+- `supabase/seed.sql`, generated from `lib/catalog/` by `npm run build:seed`,
+  so the storefront and the database cannot drift
+- `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
+  `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
+  differ in destination and nothing else
+- 81 tests, 35 of which run the migrations and the seed against Postgres
+  compiled to WebAssembly, so the schema is verifiable with no project to
+  point at
 
-1. Migrations `0001`-`0010`: types, branches, price lists, menu, the two
-   price-override tables, cart, orders, pickup slots, store hours, staff,
-   app settings, RLS, explicit GRANTs. See spec section 6.
-2. `supabase/seed.sql`, generated from `lib/catalog/menu.ts`. Sports Lounge
-   items are reference only and must not be seeded.
-3. `scripts/ingest-legacy-images.ts`: the real Supabase Storage ingest, which
-   replaces the committed derivatives under `public/img`. The transform rules
-   in `scripts/build-static-images.ts` carry over unchanged; only the
-   destination differs.
+Next, and this is Phase 1:
 
-No Supabase project exists yet, so migrations should be written but not applied.
+1. `get_storefront_menu()`, and the menu pages read from it rather than from
+   the static catalog.
+2. The wings configurator, the cart, and the pickup slot picker.
+3. `place_order` with idempotency and rate limiting, then the tracking page
+   with the pickup code.
+4. Customer email OTP.
+
+Phase 1 is blocked on two answers from the owner: which branch is the pilot,
+and its real weekday hours. Nothing in the schema guesses either.
 
 ## Start here
 
@@ -77,9 +93,42 @@ bash scripts/build-hero-video.sh /path/to/nybb-vid.mp4
 ```
 
 `public/img` (3.1 MB of WebP derivatives) and `public/video` (1.4 MB) are
-committed because Phase 0 has no Storage bucket to serve them from. Phase 1
-moves the menu photography to Supabase Storage and `public/img` can then be
-deleted.
+committed because Phase 0 has no Storage bucket to serve them from. Once a
+Supabase project exists, the third step moves the menu photography into it:
+
+```bash
+npm run ingest:images -- --dry-run    # prints what it would upload
+npm run ingest:images
+```
+
+That uploads each derivative under a `randomUUID()` path, writes `image_url`
+onto `menu_items`, `menu_options` and `branches`, and deletes the object the
+row previously pointed at. After it has run, `public/img` is dead weight for
+that environment.
+
+The two jobs share `scripts/lib/image-pipeline.ts`, which holds the crop, the
+corner-badge measurement and the alpha handling. They differ in destination and
+in nothing else, which is the only way that claim stays true: a correction to
+the badge scan cannot fix one and leave the other shipping a watermark.
+
+## Database
+
+```bash
+npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
+npm test              # applies 0001 to 0010 and the seed to a real Postgres
+```
+
+The migration tests run PGlite, which is Postgres compiled to WebAssembly, so
+a CHECK that does not compile, a policy naming a missing function or a GRANT on
+the wrong signature fails in `npm test` rather than on the day a project is
+finally created. What it cannot prove is what a live PostgREST request returns:
+`auth.uid()` and the three Supabase roles are shims. Read a green run as "the
+schema is coherent", not as "RLS is proven".
+
+`supabase/seed.sql` is generated. Edit `lib/catalog/`, then regenerate. It is
+an upsert throughout, so it is safe to re-run: it reasserts the published
+prices, which is the point of it, and leaves availability and branch operating
+settings alone, because those belong to whoever is running the shop.
 
 ### What the audit of the archive changed
 
