@@ -30,7 +30,7 @@ export default function MenuPage() {
         <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
           The menu
         </h1>
-        <p className="text-nybb-bone/70 mt-4 max-w-lg text-base leading-relaxed">
+        <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
           Prices are the same at every branch. Online ordering opens soon; until
           then, call the branch you want to collect from.
         </p>
@@ -52,7 +52,7 @@ export default function MenuPage() {
                 Open category
               </Link>
             </div>
-            <p className="text-nybb-bone/60 mt-2 text-sm">
+            <p className="text-nybb-ink/60 mt-2 text-sm">
               {category.blurb}
               {category.slug === "chicken-wings" ? (
                 <span className="font-mono-tabular text-nybb-orange ml-2">
@@ -65,7 +65,10 @@ export default function MenuPage() {
                 labelled "Chicken Wings" would waste all nine flavour
                 photographs, which are the best material the brand has. */}
             {category.slug === "chicken-wings" ? (
-              <FlavourGrid className="mt-6 lg:grid-cols-4" />
+              <FlavourGrid
+                className="mt-6 lg:grid-cols-4"
+                imageSizes="(min-width: 1024px) 24vw, (min-width: 640px) 31vw, 45vw"
+              />
             ) : (
               <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
                 {category.items.map((item) => (

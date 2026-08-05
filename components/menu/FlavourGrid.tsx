@@ -15,12 +15,32 @@ import { NoPhotoTile } from "./NoPhotoTile";
  *
  * Three flavours (Cheezy, Salted Egg, Smokey Barbecue) survive only as 300x300
  * thumbnails, so they ship smaller than the rest and are on the re-shoot ask.
+ *
+ * `withDescriptions` splits the two jobs this grid does. On /menu the reader is
+ * choosing, so the one line under each name is the information they came for.
+ * On the landing page it is nine small paragraphs stacked under nine
+ * photographs, which is noise in front of someone who has not decided they want
+ * wings yet. There the name carries it and the description waits for /menu.
  */
-export function FlavourGrid({ className }: { className?: string }) {
+export function FlavourGrid({
+  className,
+  withDescriptions = true,
+  imageSizes = "(min-width: 1024px) 19vw, (min-width: 640px) 31vw, 45vw",
+}: {
+  className?: string;
+  withDescriptions?: boolean;
+  /**
+   * Must be kept honest against whatever column count `className` sets. The
+   * default describes the five column default below; a caller that overrides
+   * the grid has to override this too, or the browser fetches a candidate
+   * sized for a tile a third of the width it is actually painting.
+   */
+  imageSizes?: string;
+}) {
   return (
     <ul
       className={cn(
-        "grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5",
+        "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5",
         className,
       )}
     >
@@ -30,7 +50,7 @@ export function FlavourGrid({ className }: { className?: string }) {
         return (
           <li
             key={flavour.slug}
-            className="border-border bg-nybb-charcoal group overflow-hidden rounded-md border"
+            className="bg-nybb-charcoal text-nybb-bone group overflow-hidden rounded-md"
           >
             <div className="tile-orange relative aspect-square overflow-hidden">
               {image ? (
@@ -38,7 +58,7 @@ export function FlavourGrid({ className }: { className?: string }) {
                   src={image.src}
                   alt={`${flavour.name} wings`}
                   fill
-                  sizes="(min-width: 1024px) 19vw, (min-width: 640px) 31vw, 45vw"
+                  sizes={imageSizes}
                   placeholder="blur"
                   blurDataURL={image.blurDataURL}
                   className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
@@ -47,10 +67,12 @@ export function FlavourGrid({ className }: { className?: string }) {
                 <NoPhotoTile name={flavour.name} className="absolute inset-0" />
               )}
             </div>
-            <div className="px-3 py-2.5">
-              <h3 className="font-display text-base leading-none">{flavour.name}</h3>
-              {flavour.description ? (
-                <p className="text-nybb-bone/60 mt-1.5 text-xs leading-snug">
+            <div className="px-3.5 py-3 sm:px-4 sm:py-3.5">
+              <h3 className="font-display text-base leading-none sm:text-lg">
+                {flavour.name}
+              </h3>
+              {withDescriptions && flavour.description ? (
+                <p className="text-nybb-bone/65 mt-2 text-xs leading-snug">
                   {flavour.description}
                 </p>
               ) : null}

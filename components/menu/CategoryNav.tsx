@@ -23,7 +23,7 @@ export function CategoryNav({
   return (
     <nav
       aria-label="Menu categories"
-      className="border-border bg-nybb-ink/90 sticky top-14 z-40 border-b backdrop-blur-md sm:top-16"
+      className="border-border bg-nybb-ink/90 text-nybb-bone sticky top-18 z-40 border-b backdrop-blur-md sm:top-22"
     >
       <ul className="mx-auto flex max-w-6xl snap-x snap-mandatory gap-1 overflow-x-auto px-3 py-2 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categories.map((category) => (

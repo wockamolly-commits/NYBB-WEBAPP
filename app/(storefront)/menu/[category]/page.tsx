@@ -50,7 +50,7 @@ export default async function CategoryPage({
         <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
           {category.name}
         </h1>
-        <p className="text-nybb-bone/70 mt-4 max-w-lg text-base leading-relaxed">
+        <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
           {category.blurb}
         </p>
 
@@ -75,7 +75,7 @@ export default async function CategoryPage({
             <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
               Then pick a level
             </h2>
-            <p className="text-nybb-bone/60 mt-2 max-w-lg text-sm">
+            <p className="text-nybb-ink/60 mt-2 max-w-lg text-sm">
               The level is an add-on, and it is priced against the size you
               chose. A full order carries more sauce, so it costs more to bring
               the heat.
@@ -86,7 +86,7 @@ export default async function CategoryPage({
             <div className="mt-6 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
               <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-sm">
                 <thead>
-                  <tr className="text-nybb-bone/50 text-left">
+                  <tr className="text-nybb-ink/50 text-left">
                     <th scope="col" className="border-border border-b py-2.5 pr-4 font-normal">
                       Level
                     </th>
@@ -143,7 +143,7 @@ export default async function CategoryPage({
                           key={variation.slug}
                           className="border-border flex items-baseline justify-between gap-4 border-b pb-1.5 text-sm"
                         >
-                          <span className="text-nybb-bone/70">{variation.name}</span>
+                          <span className="text-nybb-ink/70">{variation.name}</span>
                           <span className="font-mono-tabular text-nybb-orange">
                             {formatPeso(variation.priceCents)}
                           </span>

@@ -45,6 +45,30 @@
      a near-black ground does not glare. */
   --color-nybb-bone: #f5f1ea;
 
+  /* Chrome.
+     ================================================================
+     The navbar and the footer have to be light, because the wordmark's
+     "NEW YORK" line is solid black with no outline and disappears on
+     anything dark. Bone was the first answer and it was wrong: at 95%
+     lightness and almost no chroma it reads as a sheet of paper laid
+     on top of the site, and two of them bracketing an amber page look
+     like something unfinished.
+
+     So the chrome is parchment, not paper. Both stops sit on the same
+     warm yellow hue as the page's own gradient, just pulled up in
+     value and down in chroma, which is what makes the navbar read as
+     the amber ground lit from the front rather than as a white block
+     covering it.
+
+     Depth is the point: the surface always runs cream to parchment, so
+     neither the navbar nor the footer is ever one flat tone. Even at
+     the deepest stop the black "NEW YORK" measures 15:1. */
+  --color-nybb-cream: #faf3e3;
+  --color-nybb-parchment: #f2e4c6;
+  /* The footer's legal plinth, one step deeper again, so the page ends
+     on a base rather than fading out. */
+  --color-nybb-parchment-deep: #ecdab4;
+
   /* Heat scale. Five stops running yellow to red, used by the heat
      meter on wings. Deliberately its own ramp and not a gradient
      function, so a given heat level is always the same swatch whether
@@ -102,8 +126,14 @@
 :root {
   --radius: 0.5rem;
 
-  --background: #0b0b0c;
-  --foreground: #f5f1ea;
+  /* The page ground is the brand's warm gradient, painted on body below.
+     This solid is the fallback and the value anything using bg-background
+     gets: a mid stop of that gradient, so the two never disagree. */
+  --background: #f7a70f;
+  /* Ink, because the ground is now light. Dark surfaces (the header, the
+     category bar, every card) set text-nybb-bone on the container so their
+     contents inherit the right colour rather than each leaf declaring it. */
+  --foreground: #0b0b0c;
 
   --card: #17181a;
   --card-foreground: #f5f1ea;
@@ -129,9 +159,11 @@
 
   --destructive: #ee2329;
 
-  /* Hairlines are bone at low alpha rather than a mid grey, so borders
-     pick up the warmth of the page instead of reading blue. */
-  --border: rgba(245, 241, 234, 0.12);
+  /* Hairlines are ink at low alpha, because the page ground is light now.
+     They stay legible on the warm gradient, and on the dark cards they go
+     nearly invisible, which is correct: a charcoal card on amber is
+     already separated by value and does not need a drawn edge too. */
+  --border: rgba(11, 11, 12, 0.16);
   --input: #232528;
   --ring: #ef6212;
 }
@@ -151,10 +183,97 @@
     text-size-adjust: 100%;
   }
 
+  /* The page ground.
+     ================================================================
+     Amber down to signage yellow, interpolated in oklab. The live site
+     runs a flat two-stop ramp; four stops with a deeper orange at the
+     top gives the falloff a curve instead of a straight line, and oklab
+     keeps the midtones from going muddy the way sRGB does across a hue
+     shift this wide.
+
+     Fixed, so the gradient belongs to the window rather than to the
+     document. A gradient that scrolls with a long menu page stops
+     reading as light and starts reading as a very tall image.
+
+     Dark surfaces sit ON this: the header, the category bar, product
+     tiles, the footer. That contrast is the layout now. */
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply text-foreground antialiased;
     min-width: 0;
     overflow-x: clip;
+    background-color: var(--background);
+    background-image: linear-gradient(
+      180deg in oklab,
+      #f2860f 0%,
+      #f7a70f 26%,
+      #f9c614 58%,
+      #fae51a 100%
+    );
+    background-attachment: fixed;
+  }
+
+  /* The buffalo.
+     ================================================================
+     A drawn mark, not a recovered one. What was here before was a
+     detailed 19th century engraving pulled out of a JPEG screenshot by
+     stretching the blue channel, and it failed three ways: it came out
+     as a photographic negative so the fur read as highlights, it carried
+     thousands of strokes that collapse into a smudge at watermark
+     opacity, and it was white, so it desaturated a soft blob of the
+     gradient instead of sitting inside it.
+
+     public/brand/buffalo-head.1bbc998b.svg is a single bold silhouette
+     with no interior texture, in the gradient's own hue taken down to
+     near black. It darkens rather than lightens, so it reads as an
+     emboss pressed into the ground. See the note in the file for why the
+     crown is tufted.
+
+     A pseudo-element rather than a second background-image on body, so
+     its opacity is tunable on its own, and behind everything at
+     z-index -1.
+
+     Sizing. The old mark was portrait and could be given a height in vh
+     safely; this one is landscape at 1.39:1, so a height in vh runs it
+     off both sides of a phone and cuts the horn tips. min() bounds it
+     against whichever axis is scarce instead.
+
+     The numbers are large on purpose. Sized to sit inside the viewport
+     comfortably it came out around 612px on a 1440x900 desktop, which is
+     narrower than the 1152px content column: the whole animal ended up
+     behind the cards and the page just looked faintly blotchy. At
+     min(92vw, 135vh) the crown clears the top of the grid and the horns
+     reach into the side margins, so what is visible reads as one large
+     emblem behind the content rather than as unexplained shapes. On a
+     phone the vw term wins and the whole animal fits on screen. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("/brand/buffalo-head.1bbc998b.svg");
+    background-repeat: no-repeat;
+    background-position: center 42%;
+    background-size: min(92vw, 135vh) auto;
+    /* A solid dark silhouette carries much further than the old white
+       engraving did, so this sits below where that one ended up. The
+       landing page runs full bleed dark bands over this ground, and at
+       0.09 the mark is atmosphere on the amber sections and vanishes
+       cleanly under the dark ones instead of leaving visible fragments. */
+    opacity: 0.09;
+  }
+
+  /* Grain, at 3.5%. A gradient this smooth bands visibly on an 8-bit
+     panel, and dithering it with noise is the standard fix. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   @supports not (overflow: clip) {
@@ -216,6 +335,87 @@
   .font-mono-tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The heading scale.
+     ================================================================
+     Three tiers, and the gaps between them are the page's hierarchy.
+     Before this every section on the landing page shared one clamp, so
+     seven sections all claimed to be equally important and none of them
+     read as the point.
+
+     The display cap is 6rem. Anton at more than that stops being a
+     headline and starts being a texture, and on a 1440 screen a 6.5rem
+     line was already colliding with the video's subject. */
+  .heading-hero {
+    font-size: clamp(2.75rem, 9vw, 6rem);
+    line-height: 0.85;
+  }
+
+  .heading-major {
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    line-height: 0.9;
+  }
+
+  .heading-minor {
+    font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+    line-height: 0.95;
+  }
+
+  /* The chrome surface, shared by the navbar and the footer.
+     ================================================================
+     One declaration in one place is what makes them read as the same
+     material at opposite ends of the page rather than as two light
+     areas that happen to be a similar colour. The gradient is short in
+     the navbar and long in the footer because it is sized to the
+     element, so the same rule gives a subtle wash across an 88px bar
+     and a real fall of light down a 400px footer.
+
+     Warm shadow, not neutral. A grey shadow under a parchment bar on a
+     warm page reads as dirt; this one is brown, offset and softly
+     blurred, so the bar sits above the hero instead of being butted
+     against it. */
+  .surface-chrome {
+    background-image: linear-gradient(
+      180deg in oklab,
+      var(--color-nybb-cream) 0%,
+      var(--color-nybb-parchment) 100%
+    );
+  }
+
+  /* The heat scale bars, and the page's only authored motion.
+     ================================================================
+     One moment, in one place: the five stops of the Level of Hotness
+     drawing themselves in sequence as the section arrives. That is the
+     product's own mechanism animating, not a fade applied to every
+     section in turn.
+
+     Transform only, so nothing reflows: the bar's real length is set
+     from the --fill custom property and stays fixed, and the reveal
+     scales it along whichever axis the layout is using at that
+     breakpoint. Exponential ease out, 640ms, staggered 70ms per stop.
+
+     The default is the drawn state. HeatScale only rewinds this on the
+     client, so no JavaScript and reduced motion both keep the bars. */
+  .heat-bar {
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 640ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .heat-bar[data-shown="true"] {
+    transform: scaleX(1);
+  }
+
+  @media (min-width: 640px) {
+    .heat-bar {
+      transform: scaleY(0);
+      transform-origin: bottom center;
+    }
+
+    .heat-bar[data-shown="true"] {
+      transform: scaleY(1);
+    }
   }
 
   /* The product tile ground.

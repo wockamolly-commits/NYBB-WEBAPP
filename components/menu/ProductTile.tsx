@@ -40,7 +40,9 @@ export function ProductTile({
   return (
     <article
       className={cn(
-        "group border-border bg-nybb-charcoal overflow-hidden rounded-md border",
+        // No border. --border is ink at 16%, which against charcoal draws
+        // nothing at all; value already separates the tile from both grounds.
+        "group bg-nybb-charcoal text-nybb-bone overflow-hidden rounded-md",
         className,
       )}
     >
@@ -61,10 +63,10 @@ export function ProductTile({
         )}
       </div>
 
-      <div className="flex items-baseline justify-between gap-3 px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-3 px-3.5 py-3 sm:px-4 sm:py-3.5">
         <h3 className="text-sm leading-tight font-medium">
           {item.code ? (
-            <span className="font-mono-tabular text-nybb-bone/45 mr-1.5 text-[11px]">
+            <span className="font-mono-tabular text-nybb-bone/60 mr-1.5 text-[11px]">
               {item.code}
             </span>
           ) : null}
