@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
- * Structural tests over migrations 0001 to 0010.
+ * Structural tests over migrations 0001 to 0011.
  *
  * These are the checks that would otherwise only fail after a Supabase project
  * exists, which is to say after it is expensive to be wrong.
@@ -20,6 +20,7 @@ describe("migrations", () => {
     expect(files.map((name) => name.slice(0, 4))).toEqual([
       "0001", "0002", "0003", "0004", "0005",
       "0006", "0007", "0008", "0009", "0010",
+      "0011",
     ]);
   });
 
@@ -93,7 +94,7 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly three functions to anon", async () => {
+  it("expose exactly four functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -108,10 +109,15 @@ describe("migrations", () => {
         )
       order by 1
     `);
+    // The entire public read surface, reviewable in one glance. Widening it is
+    // supposed to be a decision, which is why this list is spelled out rather
+    // than counted: get_storefront_menu joined it in 0011 and had to come
+    // through this assertion to do so.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
       "get_public_settings",
+      "get_storefront_menu",
     ]);
   });
 

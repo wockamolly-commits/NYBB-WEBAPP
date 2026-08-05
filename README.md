@@ -7,10 +7,11 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 ## Status
 
-**Phase 0 complete.** `npm run build`, `npm run lint` and `npm test` (81 tests)
-are all green, every page has been rendered and reviewed in a browser at 375px
-and 1280px, and migrations `0001` to `0010` apply cleanly against a real
-Postgres in the test suite.
+**Phase 0 complete. Phase 1 started: the storefront now reads its menu through
+one source-agnostic reader.** `npm run build`, `npm run lint` and `npm test`
+(104 tests) are all green, every page has been rendered and reviewed in a
+browser at 375px and 1280px, and migrations `0001` to `0011` apply cleanly
+against a real Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
 deliberately not applied anywhere.
@@ -43,18 +44,29 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 81 tests, 35 of which run the migrations and the seed against Postgres
+- 104 tests, 52 of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
-Next, and this is Phase 1:
+Phase 1 so far:
 
-1. `get_storefront_menu()`, and the menu pages read from it rather than from
-   the static catalog.
-2. The wings configurator, the cart, and the pickup slot picker.
-3. `place_order` with idempotency and rate limiting, then the tracking page
+- Migration `0011`: `get_storefront_menu()`, the whole priced menu as one
+  jsonb document, plus `resolve_price_list_id()`. Granted to `anon`, which
+  takes the public read surface from three functions to four
+- `lib/menu/`: one reader (`getStorefrontMenu()`) that serves the database
+  when Supabase is configured and the static catalog when it is not, behind a
+  single runtime shape. Every page and every menu component now takes that
+  shape, so nothing in the UI knows which source it got
+- The pages pass the menu down rather than importing it. `CategoryNav` and
+  `FlavourGrid` used to reach into `lib/catalog` directly, which quietly made
+  them the two components that could not follow the menu to the database
+
+Next:
+
+1. The wings configurator, the cart, and the pickup slot picker.
+2. `place_order` with idempotency and rate limiting, then the tracking page
    with the pickup code.
-4. Customer email OTP.
+3. Customer email OTP.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
 and its real weekday hours. Nothing in the schema guesses either.
@@ -115,7 +127,7 @@ the badge scan cannot fix one and leave the other shipping a watermark.
 
 ```bash
 npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
-npm test              # applies 0001 to 0010 and the seed to a real Postgres
+npm test              # applies 0001 to 0011 and the seed to a real Postgres
 ```
 
 The migration tests run PGlite, which is Postgres compiled to WebAssembly, so

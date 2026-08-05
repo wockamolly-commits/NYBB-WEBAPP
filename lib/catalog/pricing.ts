@@ -1,4 +1,20 @@
-import type { CatalogItem, CatalogOption, CatalogVariation } from "./types";
+/**
+ * Price resolution, shared by the authoring catalog and the database menu.
+ *
+ * The parameter types here are structural rather than named on purpose. The
+ * same rules have to apply to `CatalogItem` (lib/catalog, authoring) and to
+ * `MenuItem` (lib/menu, runtime), and duplicating them per type is exactly how
+ * the two would eventually disagree about what something costs.
+ */
+
+type PricedOption = {
+  /** Null means there is no flat price and the variation decides. */
+  priceCents: number | null;
+  /** Variation slug to price. Takes precedence over `priceCents`. */
+  variationPriceCents?: Record<string, number> | null;
+};
+
+type PricedVariation = { priceCents: number };
 
 /**
  * Resolve what an option adds to the line, given the variation it is attached
@@ -9,8 +25,8 @@ import type { CatalogItem, CatalogOption, CatalogVariation } from "./types";
  * (PHP 30 on a HALF, PHP 40 on a FULL, and PHP 40 / PHP 60 for INSANE), which
  * the usual flat-delta option model cannot express.
  *
- * The resolution order is the same one `place_order` will use in Postgres, so
- * the two can be tested against each other:
+ * The resolution order is the same one `resolve_option_price_cents()` uses in
+ * Postgres, so the two can be tested against each other:
  *
  *   1. a variation-specific price, if one exists for this (option, variation)
  *   2. the option's flat price
@@ -21,7 +37,7 @@ import type { CatalogItem, CatalogOption, CatalogVariation } from "./types";
  * SECURITY DEFINER function, and the client sends ids, never money.
  */
 export function optionPriceCents(
-  option: CatalogOption,
+  option: PricedOption,
   variationSlug: string | null,
 ): number {
   if (variationSlug && option.variationPriceCents) {
@@ -33,7 +49,7 @@ export function optionPriceCents(
 }
 
 /** The cheapest and dearest a variation of this item can be, before options. */
-export function itemPriceRange(item: CatalogItem): {
+export function itemPriceRange(item: { variations: PricedVariation[] }): {
   fromCents: number;
   toCents: number;
 } {
@@ -42,7 +58,9 @@ export function itemPriceRange(item: CatalogItem): {
 }
 
 /** The variation a product page opens on: always the cheapest entry point. */
-export function defaultVariation(item: CatalogItem): CatalogVariation {
+export function defaultVariation<T extends PricedVariation>(item: {
+  variations: T[];
+}): T {
   return item.variations.reduce((cheapest, variation) =>
     variation.priceCents < cheapest.priceCents ? variation : cheapest,
   );

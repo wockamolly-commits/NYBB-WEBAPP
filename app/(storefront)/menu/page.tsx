@@ -3,7 +3,8 @@ import Link from "next/link";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
-import { categories } from "@/lib/catalog";
+import { getStorefrontMenu, WING_FLAVOUR_GROUP_SLUG } from "@/lib/menu";
+import { findOptionGroup } from "@/lib/menu";
 
 export const metadata: Metadata = {
   title: "Menu",
@@ -14,17 +15,18 @@ export const metadata: Metadata = {
 /**
  * The whole menu on one page, with the category rail jumping between sections.
  *
- * Phase 0 reads the static catalog, which is also why this page is fully
- * static. In Phase 1 it reads `get_storefront_menu()` at build time and
- * revalidates by tag on a menu mutation. Note the inherited trap: once this
- * page calls Supabase during `next build`, a Vercel Preview scope without
- * NEXT_PUBLIC_SUPABASE_* fails the build, so the reader must keep a static
- * fallback.
+ * The menu comes from `get_storefront_menu()` when Supabase is configured and
+ * from the static catalog when it is not. This page is statically generated,
+ * so that call happens during `next build`: the inherited trap is that a
+ * Vercel Preview scope missing NEXT_PUBLIC_SUPABASE_* would fail the build,
+ * which is exactly why the reader keeps the fallback rather than throwing.
  */
-export default function MenuPage() {
+export default async function MenuPage() {
+  const { categories } = await getStorefrontMenu();
+
   return (
     <>
-      <CategoryNav hrefFor={(slug) => `#${slug}`} />
+      <CategoryNav categories={categories} hrefFor={(slug) => `#${slug}`} />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
@@ -66,6 +68,9 @@ export default function MenuPage() {
                 photographs, which are the best material the brand has. */}
             {category.slug === "chicken-wings" ? (
               <FlavourGrid
+                flavours={
+                  findOptionGroup(category.items[0], WING_FLAVOUR_GROUP_SLUG)?.options ?? []
+                }
                 className="mt-6 lg:grid-cols-4"
                 imageSizes="(min-width: 1024px) 24vw, (min-width: 640px) 31vw, 45vw"
               />

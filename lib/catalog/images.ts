@@ -20,3 +20,28 @@ export function catalogImage(key: string | undefined): CatalogImage | null {
 export function imageKeys(): string[] {
   return Object.keys(images);
 }
+
+/**
+ * The same derivatives, indexed by the archive path they came from.
+ *
+ * This is the bridge that keeps photography on the page during the window
+ * where the database is authoritative but Storage has not been filled yet.
+ * `supabase/seed.sql` writes `image_source` (provenance) but deliberately not
+ * `image_url`, because scripts/ingest-legacy-images.ts writes that after it
+ * uploads. Between those two events a database-backed menu would otherwise
+ * render every tile as a designed-but-empty square.
+ *
+ * Matching on the archive path rather than on the item slug is the point: it
+ * is the same identifier both sides already record, so nothing has to be kept
+ * in sync by hand.
+ */
+const bySource = new Map<string, CatalogImage>(
+  Object.values(images)
+    .filter((image) => Boolean(image.source))
+    .map((image) => [image.source, image]),
+);
+
+export function catalogImageBySource(source: string | null | undefined): CatalogImage | null {
+  if (!source) return null;
+  return bySource.get(source) ?? null;
+}

@@ -4,13 +4,20 @@ import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { ProductTile } from "@/components/menu/ProductTile";
-import { categories, findCategory, optionPriceCents } from "@/lib/catalog";
-import { wingHeat } from "@/lib/catalog/menu";
+import { optionPriceCents } from "@/lib/catalog/pricing";
+import {
+  findCategory,
+  findOptionGroup,
+  getStorefrontMenu,
+  WING_FLAVOUR_GROUP_SLUG,
+  WING_HEAT_GROUP_SLUG,
+} from "@/lib/menu";
 import { formatPeso, formatPesoCompact } from "@/lib/format";
 
 type Params = { category: string };
 
-export function generateStaticParams(): Params[] {
+export async function generateStaticParams(): Promise<Params[]> {
+  const { categories } = await getStorefrontMenu();
   return categories.map((category) => ({ category: category.slug }));
 }
 
@@ -23,7 +30,8 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { category: slug } = await params;
-  const category = findCategory(slug);
+  const { categories } = await getStorefrontMenu();
+  const category = findCategory(categories, slug);
   if (!category) return {};
 
   return { title: category.name, description: category.blurb };
@@ -35,16 +43,27 @@ export default async function CategoryPage({
   params: Promise<Params>;
 }) {
   const { category: slug } = await params;
-  const category = findCategory(slug);
+  const { categories } = await getStorefrontMenu();
+  const category = findCategory(categories, slug);
   if (!category) notFound();
 
-  const isWings = category.slug === "chicken-wings";
-  const heatLevels = wingHeat.options.filter((option) => (option.heatPercent ?? 0) > 0);
+  // The heat table is driven by the wings item's own option group rather than
+  // by a module-level constant, so an owner editing the scale in Phase 4 moves
+  // this page with it.
+  const wings = category.items[0];
+  const heatLevels = (findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? []).filter(
+    (option) => (option.heatPercent ?? 0) > 0,
+  );
+  const isWings = heatLevels.length > 0;
   const priced = category.items.filter((item) => item.variations.length > 1);
 
   return (
     <>
-      <CategoryNav activeSlug={category.slug} hrefFor={(next) => `/menu/${next}`} />
+      <CategoryNav
+        categories={categories}
+        activeSlug={category.slug}
+        hrefFor={(next) => `/menu/${next}`}
+      />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
@@ -70,7 +89,10 @@ export default async function CategoryPage({
             <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
               Pick a flavour
             </h2>
-            <FlavourGrid className="mt-6" />
+            <FlavourGrid
+              flavours={findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? []}
+              className="mt-6"
+            />
 
             <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
               Then pick a level

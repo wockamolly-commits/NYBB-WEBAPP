@@ -13,16 +13,20 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete.** `npm run build`, `npm run lint` and `npm test` (81 tests) are green.
+**Phase 0 is complete, and Phase 1 step 1 has landed.** `npm run build`, `npm run lint` and
+`npm test` (104 tests) are green.
 
 - `lib/catalog/` holds the full Hot Wings menu, nine wing flavours, the Level of Hotness scale with
   its variation-dependent pricing, nine branches, and a generated image manifest. Its types mirror
   the Phase 1 tables.
 - `components/` and `app/(storefront)/` render the landing, `/menu`, `/menu/[category]`, `/about`
   and `/contact`, all reviewed in a browser at 375px and 1280px.
-- `supabase/migrations/0001` to `0010` are written. Spec section 6 is the design and **section 6.6
+- `supabase/migrations/0001` to `0011` are written. Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
+- `lib/menu/` is the source-agnostic menu reader added in Phase 1. `getStorefrontMenu()` returns
+  `get_storefront_menu()` when Supabase is configured and the static catalog when it is not, in one
+  runtime shape. Pages pass the result down; no component imports the catalog any more.
 - `supabase/seed.sql` is generated from `lib/catalog/` by `npm run build:seed`. Do not edit it.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
@@ -36,9 +40,10 @@ connector is not authorized in this environment.
 
 Spec section 27. In order:
 
-1. **`get_storefront_menu()`** as migration `0011`, then switch the menu pages from the static
-   catalog to it. The shapes already match, so this should be a change of source. Grant it to
-   `anon` in the same migration: `anon` has no table privileges at all, by design.
+1. ~~`get_storefront_menu()` as migration `0011`.~~ **Done.** Granted to `anon`, and
+   `tests/sql/storefront-menu.test.ts` proves the claim rather than asserting it: the function
+   output, run through the real zod parse and the real hydration, deep-equals the static
+   projection.
 2. **The wings configurator** (spec section 10, N5): size, then flavour from the visual grid, then
    heat on the meter with the variation-correct upcharge shown live.
 3. **Cart, pickup slot picker, checkout.** Slot generation reads `store_hours` plus
@@ -78,6 +83,15 @@ because each one costs a day if rediscovered.
 8. **A policy expression is evaluated as the querying role.** `authenticated` therefore needs
    EXECUTE on `is_staff()` and friends, or every staff read fails on the function rather than on
    the table, which is a puzzling error to land on.
+9. **The seed writes `image_source` but never `image_url`.** The Storage ingest writes the URL
+   later, so between the seed and that run the database knows the provenance of every photograph
+   and cannot serve one. The reader bridges it by matching `image_source` back to the committed
+   derivative, and the bridge retires itself once `image_url` is populated. Build the image object
+   in SQL on provenance, not on the URL, or every tile renders empty.
+10. **A null price list is not a harmless default.** `resolve_variation_price_cents` falls through
+   to the published price, but `resolve_option_price_cents` falls through to
+   `menu_options.price_cents`, which is NULL for every heat level by design, and coalesces to
+   zero. `resolve_price_list_id()` raises instead. Never reintroduce a null-list path.
 
 ## Do not
 

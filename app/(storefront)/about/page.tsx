@@ -3,7 +3,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { branches, catalogImage } from "@/lib/catalog";
-import { wingFlavours, wingHeat } from "@/lib/catalog/menu";
+import {
+  findItem,
+  findOptionGroup,
+  getStorefrontMenu,
+  WINGS_ITEM_SLUG,
+  WING_FLAVOUR_GROUP_SLUG,
+  WING_HEAT_GROUP_SLUG,
+} from "@/lib/menu";
 
 export const metadata: Metadata = {
   title: "About",
@@ -11,19 +18,27 @@ export const metadata: Metadata = {
     "New York Buffalo Brad's Hot Wings: nine flavours, five levels of heat, and counters across Cebu.",
 };
 
-const facts = [
-  { label: "Flavours", value: String(wingFlavours.options.length) },
-  {
-    label: "Levels of heat",
-    value: String(wingHeat.options.filter((option) => (option.heatPercent ?? 0) > 0).length),
-  },
-  { label: "Counters in Cebu", value: String(branches.length) },
-];
-
-export default function AboutPage() {
+export default async function AboutPage() {
   const hero = catalogImage("scene-alfresco-dusk");
   const counter = catalogImage("scene-counter");
-  const insane = wingHeat.options.find((option) => option.slug === "insane");
+
+  // Counted from the live menu, not hardcoded. A page that says "nine
+  // flavours" while the menu sells ten is the kind of thing nobody notices
+  // until a customer does.
+  const { categories } = await getStorefrontMenu();
+  const wings = findItem(categories, WINGS_ITEM_SLUG);
+  const flavours = findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? [];
+  const heat = findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? [];
+  const insane = heat.find((option) => option.slug === "insane");
+
+  const facts = [
+    { label: "Flavours", value: String(flavours.length) },
+    {
+      label: "Levels of heat",
+      value: String(heat.filter((option) => (option.heatPercent ?? 0) > 0).length),
+    },
+    { label: "Counters in Cebu", value: String(branches.length) },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">

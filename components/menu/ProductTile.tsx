@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { catalogImage, itemPriceRange, type CatalogItem } from "@/lib/catalog";
+import { itemPriceRange } from "@/lib/catalog/pricing";
+import type { MenuItem } from "@/lib/menu/types";
 import { formatPesoRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { NoPhotoTile } from "./NoPhotoTile";
@@ -30,11 +31,11 @@ export function ProductTile({
   className,
   priority = false,
 }: {
-  item: CatalogItem;
+  item: MenuItem;
   className?: string;
   priority?: boolean;
 }) {
-  const image = catalogImage(item.imageKey);
+  const image = item.image;
   const { fromCents, toCents } = itemPriceRange(item);
 
   return (

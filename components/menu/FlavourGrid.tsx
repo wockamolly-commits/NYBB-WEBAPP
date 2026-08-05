@@ -1,6 +1,5 @@
 import Image from "next/image";
-import { catalogImage } from "@/lib/catalog";
-import { wingFlavours } from "@/lib/catalog/menu";
+import type { MenuOption } from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
 import { NoPhotoTile } from "./NoPhotoTile";
 
@@ -23,10 +22,17 @@ import { NoPhotoTile } from "./NoPhotoTile";
  * wings yet. There the name carries it and the description waits for /menu.
  */
 export function FlavourGrid({
+  flavours,
   className,
   withDescriptions = true,
   imageSizes = "(min-width: 1024px) 19vw, (min-width: 640px) 31vw, 45vw",
 }: {
+  /**
+   * The wing flavour option group, passed in rather than imported. The grid
+   * used to reach into the static catalog itself, which quietly made it the
+   * one component on the page that could not follow the menu to the database.
+   */
+  flavours: MenuOption[];
   className?: string;
   withDescriptions?: boolean;
   /**
@@ -44,8 +50,8 @@ export function FlavourGrid({
         className,
       )}
     >
-      {wingFlavours.options.map((flavour) => {
-        const image = catalogImage(flavour.imageKey);
+      {flavours.map((flavour) => {
+        const image = flavour.image;
 
         return (
           <li

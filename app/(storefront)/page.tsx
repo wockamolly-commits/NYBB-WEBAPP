@@ -4,14 +4,17 @@ import { HeroVideo } from "@/components/site/HeroVideo";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
 import { ActionLink, TextLink } from "@/components/ui/ActionLink";
+import { branches, catalogImage } from "@/lib/catalog";
+import { optionPriceCents } from "@/lib/catalog/pricing";
 import {
-  branches,
-  catalogImage,
   featuredItems,
   findItem,
-  optionPriceCents,
-} from "@/lib/catalog";
-import { wingHeat } from "@/lib/catalog/menu";
+  findOptionGroup,
+  getStorefrontMenu,
+  WINGS_ITEM_SLUG,
+  WING_FLAVOUR_GROUP_SLUG,
+  WING_HEAT_GROUP_SLUG,
+} from "@/lib/menu";
 import { formatPesoCompact } from "@/lib/format";
 import { telHref } from "@/lib/phone";
 
@@ -55,18 +58,6 @@ import { telHref } from "@/lib/phone";
  * phone numbers. It does not describe a checkout that does not exist.
  */
 
-const wings = findItem("chicken-wings");
-
-const heatLevels: HeatLevel[] = wingHeat.options
-  .filter((option) => (option.heatPercent ?? 0) > 0)
-  .map((option) => ({
-    slug: option.slug,
-    name: option.name,
-    percent: option.heatPercent ?? 0,
-    half: formatPesoCompact(optionPriceCents(option, "half")),
-    full: formatPesoCompact(optionPriceCents(option, "full")),
-  }));
-
 const steps = [
   {
     n: "01",
@@ -90,11 +81,29 @@ const steps = [
   },
 ];
 
-export default function Home() {
-  const featured = featuredItems();
+export default async function Home() {
+  const { categories } = await getStorefrontMenu();
+  const featured = featuredItems(categories);
   const counter = catalogImage("scene-counter");
+
+  const wings = findItem(categories, WINGS_ITEM_SLUG);
   const half = wings?.variations.find((variation) => variation.slug === "half");
   const full = wings?.variations.find((variation) => variation.slug === "full");
+
+  // Both the scale and its two prices come from the menu the page rendered
+  // from, so the landing page cannot advertise a heat price the menu no longer
+  // charges.
+  const heatLevels: HeatLevel[] = (
+    findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? []
+  )
+    .filter((option) => (option.heatPercent ?? 0) > 0)
+    .map((option) => ({
+      slug: option.slug,
+      name: option.name,
+      percent: option.heatPercent ?? 0,
+      half: formatPesoCompact(optionPriceCents(option, "half")),
+      full: formatPesoCompact(optionPriceCents(option, "full")),
+    }));
 
   return (
     <>
@@ -175,6 +184,7 @@ export default function Home() {
         </header>
 
         <FlavourGrid
+          flavours={findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? []}
           className="mt-10 sm:mt-12 lg:grid-cols-3 lg:gap-5"
           withDescriptions={false}
           imageSizes="(min-width: 1024px) 32vw, (min-width: 640px) 31vw, 45vw"

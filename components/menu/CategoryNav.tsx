@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { categories } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,9 +13,12 @@ import { cn } from "@/lib/utils";
  * every entry is a jump link to its section.
  */
 export function CategoryNav({
+  categories,
   activeSlug,
   hrefFor,
 }: {
+  /** Passed in, so the rail follows whatever source the page rendered from. */
+  categories: { slug: string; name: string }[];
   activeSlug?: string;
   hrefFor: (slug: string) => string;
 }) {
