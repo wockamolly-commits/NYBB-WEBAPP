@@ -1,4 +1,4 @@
-# Handoff, 2026-08-05
+# Handoff, 2026-08-05 (updated)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -31,10 +31,22 @@ and `npm test` (131 tests) are green.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  35 of the 81 tests live there.
+  52 of the 131 tests live there.
+- Everything through the small-screen pass is committed and pushed. `main` is level with
+  `origin/main` at `12460e1`.
 
 **Nothing has been applied to a database.** No Supabase project exists, and the Supabase MCP
 connector is not authorized in this environment.
+
+3. ~~Small-screen pass at 320 to 390.~~ **Done** (`12460e1`). Worth knowing how, because the
+   method found the real defects and cleared two suspected ones: a throwaway Playwright script
+   loaded seven pages at 320, 360 and 390 and reported sideways scroll, text clipped by its own
+   box, type under 12px, and per-row card geometry. Nothing overlapped and the category rail's
+   overflow was a scrolling rail doing its job; what was real was name plates measuring 44px to
+   95px in one grid. Menu tiles are now full height flex columns so the grid equalises a row, and
+   the price is pinned with `mt-auto` so prices in a row share a line. Group cards by top
+   coordinate when checking heights, or you will compare tiles from different rows and chase a
+   phantom.
 
 ## Next work: Phase 1, ordering
 
@@ -55,12 +67,20 @@ Spec section 27. In order:
    `lib/menu/preview.ts` rather than in `lib/menu/index.ts` on purpose: index re-exports
    `getStorefrontMenu`, which pulls in `server-only`, and a client component importing it fails
    the build.
-3. **Cart, pickup slot picker, checkout.** Slot generation reads `store_hours` plus
-   `branches.pickup_slot_minutes`, generated on read for the next `slot_horizon_hours`.
-4. **`place_order`**, with idempotency through `checkout_attempts` and rate limiting through
+4. **The cart.** `carts`, `cart_items` and `cart_item_options` exist, and `customer_carts` is the
+   cross-device sync. `lib/menu/line-pricing.ts` already computes a line; the cart reuses it and
+   must not grow a second copy of that arithmetic. The configurator's Add button is disabled and
+   labelled "Ordering opens soon": wiring it is the first visible step.
+5. **Pickup slot picker.** Slot generation reads `store_hours` plus `branches.pickup_slot_minutes`,
+   generated on read for the next `slot_horizon_hours`. **This is where the two unanswered owner
+   questions bite:** `store_hours` is deliberately empty, `branch_is_open_at()` fails closed, and
+   all nine branches are seeded `is_active = false`, so the picker will correctly offer no windows
+   until the pilot branch and its real weekday hours arrive. Build it anyway, and make the empty
+   state say why rather than looking broken.
+6. **`place_order`**, with idempotency through `checkout_attempts` and rate limiting through
    `rate_limit_hit()`. It must call `resolve_option_price_cents()` rather than reimplementing the
    fallback, it must agree with `lib/menu/line-pricing.ts` (and win where it does not), and it must increment `pickup_slots.reserved` in the same transaction as the insert.
-5. **Order tracking page** with the pickup code, then customer email OTP.
+7. **Order tracking page** with the pickup code, then customer email OTP.
 
 ## Things earlier sessions learned the hard way
 
@@ -113,3 +133,6 @@ because each one costs a day if rediscovered.
 - Do not write Next.js from memory. This is Next 16: middleware is `proxy.ts`, `params` is a
   Promise. Read `node_modules/next/dist/docs/`.
 - Do not run the dev server through Bash. One is already running on port 3000.
+- Do not judge mobile layout by eye. Measure it, per item 3 above.
+- Do not add a second place that adds money up. `lib/menu/line-pricing.ts` is the display side and
+  `place_order` is the authority; when they disagree the server is right.
