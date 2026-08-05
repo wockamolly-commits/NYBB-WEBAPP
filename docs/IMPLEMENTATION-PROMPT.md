@@ -1,9 +1,16 @@
 # Master Implementation Prompt: New York Buffalo Brad's Pickup Ordering Platform
 
-> **How to use this file.** Open a fresh Claude Code session in an empty directory and paste this
-> entire document as the first message. It is written to be self-contained: it assumes the agent
-> has never seen the ZOMBEANS project, the NYBB website, or this conversation. Everything it needs
-> to make correct decisions is stated below, including the parts where it must stop and ask.
+> **How to use this file.** This is the specification for the project it lives in. Read it in full
+> before starting work, and re-read the relevant section before starting each phase. Do not paste
+> it into chat: at roughly 1,500 lines it would dominate the context window and it would be lost
+> the moment that context compacts. Reading it from disk means you can return to it.
+>
+> It is written to be self-contained. It assumes you have never seen the ZOMBEANS project, the NYBB
+> website, or the conversation that produced this document. Everything needed to make correct
+> decisions is stated below, including the parts where you must stop and ask.
+>
+> `README.md` holds the live build status and what remains. `AGENTS.md` holds the standing rules.
+> If reality contradicts this document, say so and update it rather than silently diverging.
 
 ---
 
