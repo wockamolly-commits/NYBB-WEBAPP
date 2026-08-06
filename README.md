@@ -9,14 +9,21 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 **Phase 0 complete. Phase 1 in progress: the menu reads through one
 source-agnostic reader, the wings configurator is built, and the cart, the
-pickup slot picker and checkout are live. A customer can place a real pickup
-order and gets a pickup code back.** `npm run build`, `npm run lint` and
-`npm test` (279 tests) are all green, every page has been rendered and reviewed
-in a browser at 320px, 375px and 1280px, and migrations `0001` to `0013` apply
-cleanly against a real Postgres in the test suite.
+pickup slot picker, checkout and order tracking are live. A customer can place
+a real pickup order, gets a pickup code back, and can open the order again from
+its tracking link.** `npm run build`, `npm run lint` and `npm test` (310 tests)
+are all green, every page has been rendered and reviewed in a browser at 320px,
+375px and 1280px, and migrations `0001` to `0014` apply cleanly against a real
+Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
-deliberately not applied anywhere.
+deliberately not applied anywhere. **That should change next**: customer email
+OTP is the first step that cannot be built without one, and RLS and grants have
+so far only been checked against PGlite, where `anon`, `authenticated` and
+`auth.uid()` are shims. Creating the project does not require the section 28
+answers: apply the migrations and the seed, and the site stays exactly as
+honest as it is now, because `store_hours` is still empty and no branch is
+active.
 
 **The storefront renders dynamically, and that is deliberate.** A nonce-based
 CSP and static generation are mutually exclusive in Next: the nonce is minted
@@ -56,7 +63,7 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 279 tests, 113 of which run the migrations and the seed against Postgres
+- 310 tests, 127 of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
@@ -117,12 +124,25 @@ Phase 1 so far:
 - The rest of `/checkout`: name, phone, optional email and note, payment stated
   rather than chosen, and a confirmation carrying the four-digit pickup code,
   the order number, the window and what to pay at the counter
+- Migration `0014`: `get_order_by_tracking()`, one order for the customer
+  holding its tracking token or signed in as its owner. A wrong token and a
+  code that never existed get the same answer, because a short code drawn to be
+  read aloud is by construction guessable and the difference would make the
+  code space worth scraping
+- `lib/orders/` and `/order/[code]`: the tracking page, carrying the pickup
+  code, the window, where to collect and what was ordered, read from the order's
+  own snapshots rather than from a menu that has moved on. The link is a bearer
+  credential, so the page is `noindex`, the referrer policy keeps the token off
+  other hosts, and nothing logs it
 
 Next:
 
-1. The order tracking page, reading `orders.tracking_token`.
-2. Customer email OTP, which is also when the Server Action starts forwarding
-   an access token so orders stop being anonymous.
+1. Customer email OTP, which is also when the Server Action starts forwarding
+   an access token so orders stop being anonymous. **This is the first step
+   that needs a real Supabase project**, and it is the right moment to create
+   one: RLS and grants have only ever been checked against PGlite, where the
+   roles are shims, and no request has yet gone browser to PostgREST to
+   Postgres and back.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
 and its real weekday hours. Nothing in the schema guesses either.

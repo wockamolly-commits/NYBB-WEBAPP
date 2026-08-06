@@ -20,7 +20,7 @@ describe("migrations", () => {
     expect(files.map((name) => name.slice(0, 4))).toEqual([
       "0001", "0002", "0003", "0004", "0005",
       "0006", "0007", "0008", "0009", "0010",
-      "0011", "0012", "0013",
+      "0011", "0012", "0013", "0014",
     ]);
   });
 
@@ -94,7 +94,7 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly six functions to anon", async () => {
+  it("expose exactly seven functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -120,9 +120,16 @@ describe("migrations", () => {
     // reach it as themselves so auth.uid() stamps orders.user_id, which a
     // service-role client would make impossible. What keeps that safe is that
     // it takes slugs and quantities and resolves every peso itself.
+    //
+    // get_order_by_tracking (0014) is the first read here that returns a named
+    // person's details, and the only one that demands a secret to do it. The
+    // short code identifies the order; the tracking token authorizes reading
+    // it, and a wrong token is given the same answer as a code that never
+    // existed so the code space is not worth scraping.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
+      "get_order_by_tracking",
       "get_pickup_slots",
       "get_public_settings",
       "get_storefront_menu",

@@ -1,4 +1,4 @@
-# Handoff, 2026-08-06 (updated for the button system and place_order)
+# Handoff, 2026-08-06 (updated for place_order and order tracking)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -13,8 +13,8 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 steps 1 to 6 have landed.** `npm run build`, `npm run lint` and
-`npm test` (279 tests in 14 files) are green.
+**Phase 0 is complete, and Phase 1 steps 1 to 7 have landed.** `npm run build`, `npm run lint` and
+`npm test` (310 tests in 16 files) are green.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -35,7 +35,7 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0013` are written. Spec section 6 is the design and **section 6.6
+- `supabase/migrations/0001` to `0014` are written. Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
 - `lib/menu/` is the source-agnostic menu reader added in Phase 1. `getStorefrontMenu()` returns
@@ -45,22 +45,34 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  113 of the 279 tests live there.
-- Everything through the button system is committed and pushed. `main` is level with `origin/main`
-  at `c959b09`.
+  127 of the 310 tests live there.
+- Everything through the order tracking page is committed and pushed.
 
 **Nothing has been applied to a database.** No Supabase project exists, and the Supabase MCP
 connector is not authorized in this environment.
 
-3. ~~Small-screen pass at 320 to 390.~~ **Done** (`12460e1`). Worth knowing how, because the
-   method found the real defects and cleared two suspected ones: a throwaway Playwright script
-   loaded seven pages at 320, 360 and 390 and reported sideways scroll, text clipped by its own
-   box, type under 12px, and per-row card geometry. Nothing overlapped and the category rail's
-   overflow was a scrolling rail doing its job; what was real was name plates measuring 44px to
-   95px in one grid. Menu tiles are now full height flex columns so the grid equalises a row, and
-   the price is pinned with `mt-auto` so prices in a row share a line. Group cards by top
-   coordinate when checking heights, or you will compare tiles from different rows and chase a
-   phantom.
+**When the project should be created: now, before step 8.** Everything through the tracking page
+was buildable without one, because PGlite runs the real migrations and the storefront falls back to
+the static catalog. Customer email OTP is the first thing that cannot be: Supabase Auth is the
+thing being integrated, so there is nothing to write against.
+
+Two more reasons not to leave it later than that:
+
+- **RLS and grants are the least tested part of this codebase, and the harness says so in its own
+  header.** PGlite proves the schema is coherent. It cannot prove what a PostgREST request returns,
+  because `anon`, `authenticated` and `auth.uid()` are shims there. Seven functions are now granted
+  to `anon`, two of them (`place_order`, `get_order_by_tracking`) doing real work with real
+  consequences, and none has ever run as a real anonymous role.
+- **The checkout round trip has never happened.** `place_order` is proven against Postgres and the
+  Server Action is proven at its boundary, but no request has gone browser to PostgREST to Postgres
+  and back. That is the seam where a wrong argument name or a missing grant hides.
+
+**Creating the project does not need the section 28 answers.** Apply the migrations and the seed,
+and the site stays exactly as honest as it is now: `store_hours` is empty, all nine branches are
+`is_active = false`, and every surface says "Pickup times are not open yet". The owner's answers
+are what flip a branch on, not what create a database. **This retires "do not apply the
+migrations" below**, which was written when there was nowhere to apply them to. Two projects
+(staging and production) if budget allows, per spec section 25.
 
 ## Next work: Phase 1, ordering
 
@@ -81,6 +93,15 @@ Spec section 27. In order:
    `lib/menu/preview.ts` rather than in `lib/menu/index.ts` on purpose: index re-exports
    `getStorefrontMenu`, which pulls in `server-only`, and a client component importing it fails
    the build.
+3. ~~Small-screen pass at 320 to 390.~~ **Done** (`12460e1`). Worth knowing how, because the
+   method found the real defects and cleared two suspected ones: a throwaway Playwright script
+   loaded seven pages at 320, 360 and 390 and reported sideways scroll, text clipped by its own
+   box, type under 12px, and per-row card geometry. Nothing overlapped and the category rail's
+   overflow was a scrolling rail doing its job; what was real was name plates measuring 44px to
+   95px in one grid. Menu tiles are now full height flex columns so the grid equalises a row, and
+   the price is pinned with `mt-auto` so prices in a row share a line. Group cards by top
+   coordinate when checking heights, or you will compare tiles from different rows and chase a
+   phantom.
 4. ~~**The cart.**~~ **Done**, at `/cart`, with `lib/cart/` and `components/cart/`.
 
    - **It stores slugs, not products.** A stored line is item, variation, chosen options and a
@@ -188,16 +209,47 @@ Spec section 27. In order:
      way to ship a broken screen.
    - `/checkout` was measured at 375 and 1280 against the production build. No sideways scroll,
      nothing clipped, fields at 16px so iOS does not zoom the page, 46px tall.
-7. **Order tracking page** with the pickup code, then customer email OTP.
+7. ~~**Order tracking page** with the pickup code.~~ **Done**, as migration `0014`, `lib/orders/`,
+   `components/order/OrderTracker.tsx` and `/order/[code]`.
 
-   - `place_order` already returns `trackingToken`, and `orders_tracking_token_key` is indexed for
-     it. The page needs `get_order_by_tracking()`, which 0010 has been expecting since Phase 0.
-   - **When OTP lands, wire the access token through `placeOrder`.** Today every order is a guest
+   - **The URL is a bearer credential, and it is paid for in three places.** `?t=` carries the
+     tracking token, and whoever holds the link can read a name, a phone number and the code that
+     claims the food. That is the only way a guest who never signed in reaches their own order. So
+     the page is `noindex`, `Referrer-Policy: strict-origin-when-cross-origin` in `next.config.ts`
+     keeps the query string off other hosts, and **nothing logs the token**, ever. Break any of
+     those three and the trade stops being worth making.
+   - **A wrong token and a code that never existed get the same answer**, because a six character
+     code from a 31 character alphabet is guessable at scale by design, and a difference between
+     those two answers would make the code space worth scraping. There is a test asserting the two
+     are literally equal.
+   - **"Missing" and "unavailable" are different, though.** An outage says nothing about whether an
+     order exists, and telling a customer "we cannot find that order" when the database is briefly
+     unreachable is how they order the same food twice. `OrderLookup` has three states for that
+     reason, and the page says something different for each.
+   - **It reads the snapshots, never the menu.** A rename cannot rewrite what a placed order says
+     it was, which is what the `*_snapshot` columns in 0005 are for. Tested.
+   - **The whole status ladder is written, though only `pending` is reachable.** Nothing can move
+     an order until the staff board lands in Phase 2. The copy exists now because the copy is the
+     part that needs thinking about, and because a page handling only the status it can currently
+     reach would render an empty box on the first day the board works.
+   - `/order/[code]` was measured at 375 and 1280 against the production build with a fixture in
+     place of the reader. The step ladder needed a responsive pass: four labels in 12px caps do not
+     fit four columns at 375, and 12px is the floor, so the phone gets the four bars plus "Step 3
+     of 4, Ready" and the full ladder returns at `sm`. Screen readers get every rung at every
+     width.
+8. **Customer email OTP**, the last step of Phase 1. **This one needs a Supabase project**, unlike
+   everything before it.
+
+   - **Wire the access token through `placeOrder` at the same time.** Today every order is a guest
      order, because `app/actions/checkout.ts` calls the RPC with the cookie-free anon client. Spec
      section 14 is specific: the action takes the token as an argument and builds a client with it,
      so `auth.uid()` inside `place_order` stamps `orders.user_id`. Do not reach for a service-role
      client to solve it, or every order becomes a guest order placed with a key the storefront has
      no business holding.
+   - `get_order_by_tracking` already accepts a signed-in owner without a token, so order history
+     works the moment sign-in does.
+   - Configure the Supabase Magic Link, Confirm Signup and Invite templates to show `{{ .Token }}`
+     and drop `{{ .ConfirmationURL }}`, per spec section 14.
 
 ## Things earlier sessions learned the hard way
 
@@ -299,7 +351,9 @@ because each one costs a day if rediscovered.
 - Do not hand-roll a control. `components/ui/Button.tsx` is the button system, and a bare
   underline is for navigation, never for an action. See the bullet above.
 - Do not hand-edit `supabase/seed.sql`. Change `lib/catalog/` and run `npm run build:seed`.
-- Do not apply the migrations. Verify them with `npm test` instead.
+- Do not apply the migrations **to a project that does not exist yet**, and do not invent one to
+  get around a failing test: `npm test` is the verification loop. Once the owner creates the
+  Supabase project, applying them is the first thing to do, per the note above.
 - Do not link `/terms`, `/privacy` or `/refund`. They do not exist yet and land with PayMongo.
 - Do not write Next.js from memory. This is Next 16: middleware is `proxy.ts`, `params` is a
   Promise. Read `node_modules/next/dist/docs/`.

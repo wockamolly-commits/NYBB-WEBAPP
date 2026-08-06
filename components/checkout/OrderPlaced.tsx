@@ -2,6 +2,7 @@
 
 import { ButtonLink } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
+import { orderTrackingHref } from "@/lib/orders/tracking";
 import { dayLabel, formatSlotRange, localDateKey } from "@/lib/slots/format";
 import type { PlacedOrder } from "@/lib/checkout/types";
 
@@ -14,13 +15,15 @@ import type { PlacedOrder } from "@/lib/checkout/types";
  * identifies the order in conversation and staff will ask for it, but nobody
  * needs it in the moment of collection.
  *
- * There is no live status here yet, and the copy does not imply one. The
- * tracking page is the next step in Phase 1, and until it exists this screen is
- * the only copy of the code, which is why it says to keep it rather than
- * quietly relying on the customer not to close the tab.
+ * The tracking link is the primary action underneath it, and it is the only
+ * time the tracking token is ever put in front of the customer. If they leave
+ * this screen without following or saving it, a guest order becomes
+ * unreachable from a browser, which is why the copy says so plainly instead of
+ * quietly relying on them not to close the tab.
  */
 export function OrderPlaced({ order }: { order: PlacedOrder }) {
   const timezone = order.branch.timezone;
+  const tracking = orderTrackingHref(order.shortCode, order.trackingToken);
   const window = formatSlotRange(
     { startsAt: order.pickupSlotStart, endsAt: order.pickupSlotEnd },
     timezone,
@@ -56,8 +59,8 @@ export function OrderPlaced({ order }: { order: PlacedOrder }) {
             {order.pickupCode}
           </p>
           <p className="text-nybb-bone/70 mt-4 max-w-prose text-sm leading-relaxed">
-            Keep this screen, or write the code down. It is what proves the order
-            is yours, so please do not post it anywhere.
+            It is what proves the order is yours, so please do not post it
+            anywhere.
           </p>
         </div>
 
@@ -79,8 +82,24 @@ export function OrderPlaced({ order }: { order: PlacedOrder }) {
         </dl>
       </div>
 
+      {/* The primary action, and the only place the tracking token is ever put
+          in front of the customer. There is no account to look this up from
+          yet, so a guest who leaves without following or bookmarking this has
+          no way back to the order from a browser. Hence the sentence under it,
+          which is a warning rather than a nicety. */}
+      <div className="mt-6">
+        <ButtonLink href={tracking} tone="light" size="lg">
+          Track this order
+        </ButtonLink>
+        <p className="text-nybb-ink/70 mt-3 max-w-prose text-sm leading-relaxed">
+          Bookmark that page, or keep this tab open. The link is what opens your
+          order later, and we cannot send you another copy of it until accounts
+          arrive.
+        </p>
+      </div>
+
       <div className="mt-6 flex flex-wrap gap-3">
-        <ButtonLink href="/menu" tone="light">
+        <ButtonLink href="/menu" tone="light" variant="secondary">
           Order something else
         </ButtonLink>
         <ButtonLink href="/contact" tone="light" variant="ghost">
