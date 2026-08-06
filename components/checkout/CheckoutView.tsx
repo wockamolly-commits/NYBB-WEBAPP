@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
-import { ActionLink } from "@/components/ui/ActionLink";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
@@ -51,9 +51,9 @@ export function CheckoutView({
           times will be waiting here.
         </p>
         <div className="mt-6">
-          <ActionLink href="/menu" tone="light">
+          <ButtonLink href="/menu" tone="light">
             Browse the menu
-          </ActionLink>
+          </ButtonLink>
         </div>
       </div>
     );
@@ -63,15 +63,30 @@ export function CheckoutView({
   const timezone = slots.branch?.timezone ?? "Asia/Manila";
   const chosenSlot = slots.slots.find((slot) => slot.startsAt === chosen);
 
+  // items-start, so each card is as tall as what is in it.
+  // ================================================================
+  // A grid row stretches its items to the tallest one, and the order summary
+  // is the taller of these two whenever the branch has no windows to offer.
+  // The pickup panel was therefore painting a charcoal slab roughly a
+  // thousand pixels tall around four lines of text, which is the current live
+  // state of this screen: a "not open yet" notice sitting at the top of an
+  // enormous empty box reads as a panel that failed to load rather than as an
+  // honest answer.
+  //
+  // This does not cost the sticky summary anything. align-self sizes the item,
+  // not the grid area, so the right column still has the whole row to travel
+  // through on a long day of slots, which is the only time it has anywhere to
+  // travel to. Its own h-fit is redundant once the row stops stretching, so it
+  // goes.
   return (
-    <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
+    <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12">
       <div className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-7">
         <SlotPicker slots={slots} onSelect={setSelectedSlot} />
       </div>
 
-      <div className="lg:sticky lg:top-28 lg:h-fit">
+      <div className="lg:sticky lg:top-28">
         <div className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-6">
-          <h2 className="font-display text-sm tracking-[0.08em]">Your order</h2>
+          <h2 className="font-display heading-panel">Your order</h2>
 
           <ul className="border-nybb-bone/15 mt-4 space-y-3 border-b pb-4 text-sm">
             {resolved.lines.map((line) => (
@@ -80,7 +95,8 @@ export function CheckoutView({
                   <span className="font-mono-tabular text-nybb-bone/55 mr-2">
                     {line.line.quantity}x
                   </span>
-                  {line.item.name}
+                  {/* Named the way the cart named it one screen earlier. */}
+                  <span className="font-display">{line.item.name}</span>
                   <span className="text-nybb-bone/55 block text-xs">
                     {[
                       line.item.variations.length > 1 ? line.variation.name : null,
@@ -98,17 +114,15 @@ export function CheckoutView({
           </ul>
 
           <div className="mt-4 flex items-baseline justify-between gap-4">
-            <span className="font-display text-sm tracking-[0.08em]">Subtotal</span>
+            <span className="font-display heading-panel">Subtotal</span>
             <span className="font-mono-tabular text-nybb-orange text-2xl">
               {formatPeso(resolved.subtotalCents)}
             </span>
           </div>
 
-          <p className="border-nybb-bone/15 mt-4 border-t pt-4 text-xs leading-relaxed">
-            <span className="text-nybb-bone/55 block tracking-[0.14em] uppercase">
-              Pickup
-            </span>
-            <span className="text-nybb-bone mt-1 block">
+          <p className="border-nybb-bone/15 mt-4 border-t pt-4 leading-relaxed">
+            <span className="type-caps text-nybb-bone/55 block">Pickup</span>
+            <span className="text-nybb-bone mt-1 block text-sm">
               {chosenSlot
                 ? `${formatSlotRange(chosenSlot, timezone)}, ${slots.branch?.shortName}`
                 : "No time chosen yet"}
@@ -119,14 +133,10 @@ export function CheckoutView({
               placed, because place_order does not exist yet and neither do the
               name, phone and payment fields that feed it. Saying so beats a
               button that fails. */}
-          <button
-            type="button"
-            disabled
-            className="bg-nybb-bone/15 text-nybb-bone/55 font-display mt-6 min-h-12 w-full cursor-not-allowed rounded-md text-sm tracking-[0.06em]"
-          >
+          <Button tone="dark" size="lg" block disabled className="mt-6">
             {chosenSlot ? "Placing orders opens soon" : "Choose a pickup time"}
-          </button>
-          <p className="text-nybb-bone/55 mt-3 text-xs leading-relaxed">
+          </Button>
+          <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
             Your details and payment land with the next release. To order today,
             call the branch on the{" "}
             <Link
@@ -138,14 +148,18 @@ export function CheckoutView({
             .
           </p>
 
-          <div className="mt-5">
-            <Link
-              href="/cart"
-              className="font-display text-nybb-bone/65 hover:text-nybb-bone inline-flex min-h-11 items-center text-xs underline underline-offset-4 transition-colors"
-            >
-              Back to the cart
-            </Link>
-          </div>
+          {/* Full width and inset to the card's edges, so it reads as the
+              second rank of the same stack rather than as a stray underline
+              hanging off the bottom left corner of the panel. */}
+          <ButtonLink
+            href="/cart"
+            tone="dark"
+            variant="ghost"
+            block
+            className="mt-4"
+          >
+            Back to the cart
+          </ButtonLink>
         </div>
       </div>
     </div>

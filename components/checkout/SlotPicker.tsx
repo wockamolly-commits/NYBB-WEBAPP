@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PRESSABLE } from "@/components/ui/Button";
 import {
   capacityNote,
   formatSlotRange,
@@ -47,9 +48,9 @@ export function SlotPicker({
 
   return (
     <section aria-labelledby="pickup-time">
-      <h2 id="pickup-time" className="font-display text-sm tracking-[0.08em]">
+      <h2 id="pickup-time" className="font-display heading-panel">
         Pickup time
-        <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-normal">
+        <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-[0.08em]">
           Required
         </span>
       </h2>
@@ -62,16 +63,21 @@ export function SlotPicker({
           role="status"
           className="border-nybb-bone/25 mt-4 rounded-md border border-dashed p-4"
         >
-          <p className="font-display text-nybb-bone text-sm">{unavailable.title}</p>
-          <p className="text-nybb-bone/65 mt-2 text-xs leading-relaxed">{unavailable.body}</p>
+          <p className="font-display heading-panel text-nybb-bone">
+            {unavailable.title}
+          </p>
+          {/* This paragraph is the entire answer to "why can I not pick a
+              time", and two of the five reasons are administrative rather
+              than a fault. It reads at body size. */}
+          <p className="text-nybb-bone/65 mt-2 text-sm leading-relaxed">
+            {unavailable.body}
+          </p>
         </div>
       ) : null}
 
       {days.map((day) => (
         <div key={day.key} className="mt-5">
-          <h3 className="text-nybb-bone/55 text-xs tracking-[0.14em] uppercase">
-            {day.label}
-          </h3>
+          <h3 className="type-caps text-nybb-bone/55">{day.label}</h3>
 
           <ul className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {day.slots.map((slot) => {
@@ -92,13 +98,14 @@ export function SlotPicker({
                       // menu tiles: a grid row is only as tidy as its tallest
                       // card, and the fix is to let the row equalise them
                       // rather than to hope the content matches.
-                      "flex h-full min-h-16 w-full flex-col items-start justify-center rounded-md px-3 py-2.5 text-left transition-colors",
+                      PRESSABLE,
+                      "flex h-full min-h-16 w-full flex-col items-start justify-center rounded-md px-3 py-2.5 text-left",
                       active
                         ? "bg-nybb-orange text-nybb-ink"
                         : open
-                          ? "border-nybb-bone/25 hover:border-nybb-bone/60 border"
+                          ? "border-nybb-bone/25 hover:border-nybb-bone/60 hover:bg-nybb-bone/5 border"
                           : // Flat, not hidden. The window is real and taken.
-                            "border-nybb-bone/10 text-nybb-bone/35 cursor-not-allowed border",
+                            "border-nybb-bone/10 text-nybb-bone/35 cursor-not-allowed border disabled:active:scale-100",
                     )}
                   >
                     <span className="font-mono-tabular text-sm leading-none">
@@ -127,7 +134,7 @@ export function SlotPicker({
       ))}
 
       {slots.branch && days.length > 0 ? (
-        <p className="text-nybb-bone/55 mt-4 text-xs leading-relaxed">
+        <p className="text-nybb-bone/65 mt-4 max-w-[62ch] text-sm leading-relaxed">
           Collect at {slots.branch.name}. Windows are {slots.branch.slotMinutes} minutes
           long, and the earliest is {slots.branch.prepMinutes} minutes from now because
           that is how long the kitchen needs.

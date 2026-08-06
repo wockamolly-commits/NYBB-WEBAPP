@@ -3,7 +3,8 @@ import { HeatScale, type HeatLevel } from "@/components/site/HeatScale";
 import { HeroVideo } from "@/components/site/HeroVideo";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
-import { ActionLink, TextLink } from "@/components/ui/ActionLink";
+import { ButtonLink } from "@/components/ui/Button";
+import { TextLink } from "@/components/ui/TextLink";
 import { branches, catalogImage } from "@/lib/catalog";
 import { optionPriceCents } from "@/lib/catalog/pricing";
 import {
@@ -45,7 +46,7 @@ import { telHref } from "@/lib/phone";
  *
  * COLOUR. Orange only on dark. On the amber ground the brand orange measures
  * about 1.8:1 and vanished; every link, step number and CTA that used to be
- * orange on amber is now ink. See components/ui/ActionLink.tsx, which is where
+ * orange on amber is now ink. See components/ui/Button.tsx, which is where
  * that rule is enforced rather than remembered.
  *
  * MOTION. One authored moment, in one place: the five heat stops drawing
@@ -114,8 +115,13 @@ export default async function Home() {
         <HeroVideo />
 
         <div className="relative mx-auto w-full max-w-6xl px-5 pt-32 pb-16 sm:px-8 sm:pb-24">
-          <p className="font-mono-tabular text-nybb-orange text-xs tracking-[0.28em]">
-            PICKUP ONLY / CEBU
+          {/* The one kicker on the site, and it keeps its own wide tracking
+              rather than the shared label value: this is the hero, where a
+              display treatment is allowed to be a display treatment. The face
+              is Anton and not the mono, because there is not a digit in it and
+              mono here was only ever dressing the line up as technical. */}
+          <p className="font-display text-nybb-orange text-xs tracking-[0.28em]">
+            Pickup only / Cebu
           </p>
 
           {/* Explicitly bone. The heading inherited --foreground, which the
@@ -133,12 +139,12 @@ export default async function Home() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            <ActionLink href="/menu" tone="dark">
+            <ButtonLink href="/menu" tone="dark" size="lg">
               See the menu
-            </ActionLink>
-            <ActionLink href="#branches" tone="dark" variant="secondary">
+            </ButtonLink>
+            <ButtonLink href="#branches" tone="dark" variant="secondary" size="lg">
               Find a branch
-            </ActionLink>
+            </ButtonLink>
           </div>
 
           {/* The honest status line. It used to be a full width band below the
@@ -169,7 +175,7 @@ export default async function Home() {
               level of heat on top, at no change to the flavour you picked.
             </p>
             {half && full ? (
-              <p className="font-mono-tabular text-nybb-ink/75 mt-4 text-xs tracking-[0.1em] uppercase">
+              <p className="font-mono-tabular type-caps text-nybb-ink/75 mt-4">
                 Half 6 pcs {formatPesoCompact(half.priceCents)}
                 <span aria-hidden className="px-2">
                   /

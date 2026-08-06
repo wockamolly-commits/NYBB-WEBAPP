@@ -66,9 +66,7 @@ export default async function CategoryPage({
       />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-        <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
-          {category.name}
-        </h1>
+        <h1 className="font-display heading-page">{category.name}</h1>
         <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
           {category.blurb}
         </p>
@@ -86,9 +84,7 @@ export default async function CategoryPage({
 
         {isWings ? (
           <>
-            <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
-              Pick a flavour
-            </h2>
+            <h2 className="font-display heading-minor mt-16">Pick a flavour</h2>
             <FlavourGrid
               flavours={findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? []}
               hrefFor={(flavour) =>
@@ -97,9 +93,7 @@ export default async function CategoryPage({
               className="mt-6"
             />
 
-            <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
-              Then pick a level
-            </h2>
+            <h2 className="font-display heading-minor mt-16">Then pick a level</h2>
             <p className="text-nybb-ink/60 mt-2 max-w-lg text-sm">
               The level is an add-on, and it is priced against the size you
               chose. A full order carries more sauce, so it costs more to bring
@@ -154,9 +148,7 @@ export default async function CategoryPage({
 
         {priced.length > 0 ? (
           <>
-            <h2 className="font-display mt-16 text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
-              Sizes
-            </h2>
+            <h2 className="font-display heading-minor mt-16">Sizes</h2>
             <dl className="mt-6 space-y-6">
               {priced.map((item) => (
                 <div key={item.slug}>

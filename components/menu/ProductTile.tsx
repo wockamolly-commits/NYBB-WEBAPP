@@ -94,7 +94,7 @@ export function ProductTile({
 
           {/* mt-auto, so the price sits on the floor of the card rather than
               wherever the name happened to stop. */}
-          <p className="font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm tabular-nums">
+          <p className="font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm">
             {formatPesoRange(fromCents, toCents)}
           </p>
         </div>

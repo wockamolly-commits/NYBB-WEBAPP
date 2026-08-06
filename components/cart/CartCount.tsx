@@ -33,7 +33,7 @@ export function CartCount() {
       {showing ? (
         <span
           aria-hidden
-          className="bg-nybb-orange text-nybb-ink font-mono-tabular absolute top-1 right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] leading-none"
+          className="bg-nybb-orange text-nybb-ink font-mono-tabular absolute top-1 right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[0.6875rem] leading-none"
         >
           {quantity}
         </span>

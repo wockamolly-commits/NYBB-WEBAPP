@@ -14,9 +14,7 @@ export default function ContactPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="font-display heading-hero">
-        Branches
-      </h1>
+      <h1 className="font-display heading-page">Branches</h1>
       <p className="text-nybb-ink/75 mt-4 max-w-lg text-base leading-relaxed">
         {branches.length} counters across Cebu, from street fronts to food halls
         to petrol stations. Call the one you want to collect from.
@@ -42,7 +40,11 @@ export default function ContactPage() {
             key={branch.slug}
             className="bg-nybb-charcoal text-nybb-bone flex flex-col rounded-md p-5"
           >
-            <p className="font-mono-tabular text-nybb-bone/60 text-xs tracking-[0.14em] uppercase">
+            {/* The display face, not mono. "FOOD HALL" carries no digits and
+                nothing here has to align in a column, so mono was doing the
+                job of looking technical rather than the job it is loaded for.
+                Anton at this size is the site's own label voice. */}
+            <p className="font-display type-caps text-nybb-bone/60">
               {branchFormatLabel[branch.format]}
             </p>
             <h2 className="font-display mt-2 text-xl leading-tight">
@@ -92,9 +94,7 @@ export default function ContactPage() {
           by a hairline, and orange on charcoal measures 5.4:1, so the email
           and the landline become legible without changing colour. */}
       <section className="bg-nybb-charcoal text-nybb-bone mt-12 rounded-md p-6 sm:p-8">
-        <h2 className="font-display text-2xl leading-none sm:text-3xl">
-          Franchise enquiries
-        </h2>
+        <h2 className="font-display heading-minor">Franchise enquiries</h2>
         <p className="text-nybb-bone/65 mt-3 max-w-lg text-sm leading-relaxed">
           Five Brad Dragons Food Franchise Corporation, Unit D, 20th Floor,
           Latitude Corporate Center, Mindanao Avenue, Cebu Business Park, Cebu

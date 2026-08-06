@@ -29,9 +29,7 @@ export default async function CheckoutPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
-        Checkout
-      </h1>
+      <h1 className="font-display heading-page">Checkout</h1>
       <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
         Pick the window you want to collect in. The kitchen holds one slot per
         order, so the time you choose is the time your wings are ready.

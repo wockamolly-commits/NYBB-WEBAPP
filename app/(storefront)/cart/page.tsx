@@ -28,9 +28,7 @@ export default async function CartPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
-        Your cart
-      </h1>
+      <h1 className="font-display heading-page">Your cart</h1>
       <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
         Pickup only, from the branch you choose at checkout. Prices are the same
         at every branch.

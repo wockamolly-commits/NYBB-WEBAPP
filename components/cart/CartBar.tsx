@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ButtonLink } from "@/components/ui/Button";
 import { cartQuantity, snapshotTotalCents } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
@@ -45,12 +45,9 @@ export function CartBar() {
             </span>
           </p>
 
-          <Link
-            href="/cart"
-            className="bg-nybb-orange text-nybb-ink hover:bg-nybb-orange-lit font-display inline-flex min-h-11 shrink-0 items-center rounded-md px-5 text-sm tracking-[0.06em] transition-colors duration-200"
-          >
+          <ButtonLink href="/cart" tone="dark">
             View cart
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     </>

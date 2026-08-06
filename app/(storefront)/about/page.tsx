@@ -49,7 +49,11 @@ export default async function AboutPage() {
           light ground, and red is spoken for (destructive actions and the top
           of the heat scale). So the emphasis comes from the line break and the
           scale instead, and solid ink reads at 7.7:1. */}
-      <h1 className="font-display heading-hero">
+      {/* heading-page, not heading-hero. The hero tier belongs to the landing
+          page's one billboard line; using it here as well meant "Branches"
+          and "A wing house" were set two steps larger than "The menu" and
+          "Your cart", which is a hierarchy claim neither page is making. */}
+      <h1 className="font-display heading-page">
         A wing house,
         <br />
         Cebu built
@@ -70,7 +74,12 @@ export default async function AboutPage() {
       ) : null}
 
       <div className="mt-12 grid gap-10 md:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-5 text-base leading-relaxed">
+        {/* max-w. The 1.4fr column runs about 650px inside a 1152px content
+            width, which at 16px Inter is roughly 80 characters: past the point
+            where the eye reliably finds the start of the next line. 68ch holds
+            the column at a readable measure on a desktop and never binds at
+            the breakpoints below it. */}
+        <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
           <p className="text-nybb-ink/75">
             New York Buffalo Brad&rsquo;s Hot Wings serves American style
             chicken wings across Cebu, from a street front on Mango Avenue to
@@ -95,9 +104,7 @@ export default async function AboutPage() {
           <dl className="space-y-5">
             {facts.map((fact) => (
               <div key={fact.label}>
-                <dt className="text-nybb-bone/50 text-xs tracking-[0.14em] uppercase">
-                  {fact.label}
-                </dt>
+                <dt className="type-caps text-nybb-bone/50">{fact.label}</dt>
                 <dd className="font-mono-tabular text-nybb-orange mt-1 text-3xl">
                   {fact.value}
                 </dd>
@@ -107,9 +114,7 @@ export default async function AboutPage() {
 
           {insane ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
-              <p className="text-nybb-bone/50 text-xs tracking-[0.14em] uppercase">
-                Top of the scale
-              </p>
+              <p className="type-caps text-nybb-bone/50">Top of the scale</p>
               <HeatMeter
                 percent={insane.heatPercent ?? 100}
                 label={insane.name}
@@ -125,7 +130,12 @@ export default async function AboutPage() {
           Why we are building this
         </h2>
         <div className="mt-6 grid gap-10 md:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-5 text-base leading-relaxed">
+          {/* max-w. The 1.4fr column runs about 650px inside a 1152px content
+            width, which at 16px Inter is roughly 80 characters: past the point
+            where the eye reliably finds the start of the next line. 68ch holds
+            the column at a readable measure on a desktop and never binds at
+            the breakpoints below it. */}
+        <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
             <p className="text-nybb-ink/75">
               Ordering ahead currently means an aggregator app. That works, but
               it means the queue, the customer and the order data all belong to

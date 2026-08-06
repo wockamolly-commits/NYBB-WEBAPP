@@ -5,8 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
-import { ActionLink } from "@/components/ui/ActionLink";
-import { MAX_QUANTITY, MIN_QUANTITY, lineHref, resolveCart } from "@/lib/cart/lines";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
+import { lineHref, resolveCart } from "@/lib/cart/lines";
 import {
   clearCart,
   reconcileCart,
@@ -40,7 +41,7 @@ function DroppedNotice({ dropped, repriced }: CartChanges) {
       role="status"
       className="border-nybb-ink/30 text-nybb-ink/80 mt-6 rounded-md border border-dashed p-4 text-sm leading-relaxed"
     >
-      <p className="font-display text-nybb-ink text-sm tracking-[0.06em]">
+      <p className="font-display heading-panel text-nybb-ink">
         The menu changed while this was in your cart
       </p>
       <ul className="mt-2 space-y-1">
@@ -100,9 +101,9 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           of heat, and every one of them is priced before you commit to it.
         </p>
         <div className="mt-6">
-          <ActionLink href="/menu" tone="light">
+          <ButtonLink href="/menu" tone="light">
             Browse the menu
-          </ActionLink>
+          </ButtonLink>
         </div>
       </div>
     );
@@ -177,29 +178,13 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
                   </p>
 
                   <div className="mt-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-3 pt-3">
-                    <div className="border-nybb-bone/25 flex items-center rounded-md border">
-                      <button
-                        type="button"
-                        onClick={() => setCartLineQuantity(line.key, quantity - 1)}
-                        disabled={quantity <= MIN_QUANTITY}
-                        aria-label={`One fewer ${line.item.name}`}
-                        className="hover:bg-nybb-bone/10 flex h-10 w-10 items-center justify-center text-lg transition-colors disabled:opacity-35"
-                      >
-                        -
-                      </button>
-                      <output className="font-mono-tabular w-9 text-center text-sm">
-                        {quantity}
-                      </output>
-                      <button
-                        type="button"
-                        onClick={() => setCartLineQuantity(line.key, quantity + 1)}
-                        disabled={quantity >= MAX_QUANTITY}
-                        aria-label={`One more ${line.item.name}`}
-                        className="hover:bg-nybb-bone/10 flex h-10 w-10 items-center justify-center text-lg transition-colors disabled:opacity-35"
-                      >
-                        +
-                      </button>
-                    </div>
+                    <QuantityStepper
+                      size="sm"
+                      quantity={quantity}
+                      onChange={(next) => setCartLineQuantity(line.key, next)}
+                      fewerLabel={`One fewer ${line.item.name}`}
+                      moreLabel={`One more ${line.item.name}`}
+                    />
 
                     {/* ml-auto so that when this wraps under the stepper on a
                         320px phone it still finishes on the card's right edge,
@@ -211,26 +196,29 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
                           {formatPeso(line.unitPriceCents)} each
                         </span>
                       ) : null}
-                      {/* A bordered square, not underlined text. An underline
-                          is this site's link vocabulary, and a link is a place
-                          you go rather than a thing you do, so "Remove" read as
-                          navigation dropped into a card. Matching the stepper's
-                          border and its 40px box also puts the two controls of
-                          this row on one baseline. */}
-                      <button
-                        type="button"
+                      {/* A square control, not underlined text. An underline is
+                          this site's link vocabulary, and a link is a place you
+                          go rather than a thing you do, so "Remove" read as
+                          navigation dropped into a card.
+
+                          Outlined and neutral at rest, red only under the
+                          cursor. Nine trash icons standing permanently red down
+                          the side of a cart is a list that looks like it is
+                          erroring; the colour belongs to the moment before the
+                          press, not to the page. Signage red on charcoal
+                          measures 4.2:1, which is well past the 3:1 an icon
+                          needs. */}
+                      <Button
+                        tone="dark"
+                        variant="secondary"
+                        size="icon"
                         onClick={() => removeCartLine(line.key)}
                         aria-label={`Remove ${line.item.name}`}
                         title={`Remove ${line.item.name}`}
-                        // 42px, which is the stepper's 40px button plus the 1px
-                        // border on each side of the group holding it. Sized in
-                        // one number rather than h-10 plus a border, which
-                        // border-box would take back out and leave this two
-                        // pixels short of its neighbour.
-                        className="border-nybb-bone/25 text-nybb-bone/65 hover:border-nybb-bone/60 hover:text-nybb-bone hover:bg-nybb-bone/10 flex size-[2.625rem] items-center justify-center rounded-md border transition-colors"
+                        className="text-nybb-bone/65 hover:border-nybb-red/70 hover:text-nybb-red hover:bg-nybb-red/10 active:bg-nybb-red/15"
                       >
                         <Trash2 aria-hidden className="h-4 w-4" strokeWidth={2} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -239,26 +227,39 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           })}
         </ul>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-          <button
-            type="button"
+        {/* The two things you can do to the list as a whole.
+
+            They were a 12px underline and a 12px underline of a different
+            colour, which put the one irreversible action on this screen in the
+            same typographic register as a footnote. Both are buttons now, at
+            the same height and on the same baseline, but not at the same rank:
+            adding something else is an ordinary thing to do and gets an
+            outline, while emptying the cart is rare and irreversible and stays
+            quiet until it is engaged, at which point it goes red. Adding is on
+            the right, next to the checkout column it leads towards; emptying is
+            on the far left, as far from that column as the row allows.
+
+            Order flips on a phone: the constructive action comes first under
+            the thumb, and the destructive one goes to the bottom where it is
+            not the thing you hit while reaching for the total. */}
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            tone="light"
+            variant="danger"
             onClick={clearCart}
-            className="text-nybb-ink/60 hover:text-nybb-ink inline-flex min-h-11 items-center text-xs underline underline-offset-4 transition-colors"
           >
+            <Trash2 aria-hidden className="h-4 w-4" strokeWidth={2} />
             Empty the cart
-          </button>
-          <Link
-            href="/menu"
-            className="font-display text-nybb-ink inline-flex min-h-11 items-center text-xs tracking-[0.06em] underline underline-offset-[7px] decoration-nybb-ink/30 hover:decoration-nybb-ink transition-colors"
-          >
+          </Button>
+          <ButtonLink href="/menu" tone="light" variant="secondary">
             Add something else
-          </Link>
+          </ButtonLink>
         </div>
       </div>
 
       <div className="lg:sticky lg:top-28 lg:h-fit">
         <div className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-6">
-          <h2 className="font-display text-sm tracking-[0.08em]">Order total</h2>
+          <h2 className="font-display heading-panel">Order total</h2>
 
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex items-baseline justify-between gap-4">
@@ -270,7 +271,7 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           </dl>
 
           <div className="border-nybb-bone/15 mt-4 flex items-baseline justify-between gap-4 border-t pt-4">
-            <span className="font-display text-sm tracking-[0.08em]">Subtotal</span>
+            <span className="font-display heading-panel">Subtotal</span>
             <span className="font-mono-tabular text-nybb-orange text-2xl" aria-live="polite">
               {formatPeso(resolved.subtotalCents)}
             </span>
@@ -280,13 +281,21 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
               there. What it cannot do yet is place the order, and it says so
               on arrival rather than here, because whether any window exists is
               a question only the server can answer. */}
-          <Link
+          <ButtonLink
             href="/checkout"
-            className="bg-nybb-orange text-nybb-ink hover:bg-nybb-orange-lit font-display mt-6 flex min-h-12 w-full items-center justify-center rounded-md text-sm tracking-[0.06em] transition-colors duration-200"
+            tone="dark"
+            size="lg"
+            block
+            className="mt-6"
           >
             Choose a pickup time
-          </Link>
-          <p className="text-nybb-bone/55 mt-3 text-xs leading-relaxed">
+          </ButtonLink>
+          {/* 14px, not 12px. This is the sentence that tells a customer the
+              order cannot actually be placed yet and what to do instead, so it
+              is the last thing on the screen that should be set at footnote
+              size. bone/65 is the same secondary weight the rest of the dark
+              copy uses, which is a step up from the /55 it had. */}
+          <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
             Pickup only. Placing the order online opens with the next release,
             so to order today, call the branch on the{" "}
             <Link

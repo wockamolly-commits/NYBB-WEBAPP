@@ -105,9 +105,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h2 className="font-display text-nybb-ink text-xs tracking-[0.14em]">
-              Branches
-            </h2>
+            <h2 className="font-display type-caps text-nybb-ink">Branches</h2>
             <ul className="mt-5 space-y-2.5">
               {branches.slice(0, 5).map((branch) => (
                 <li key={branch.slug} className="text-nybb-ink/70 text-sm">
@@ -126,9 +124,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h2 className="font-display text-nybb-ink text-xs tracking-[0.14em]">
-              Company
-            </h2>
+            <h2 className="font-display type-caps text-nybb-ink">Company</h2>
             <ul className="mt-5 space-y-2.5 text-sm">
               <li>
                 <Link
@@ -156,9 +152,7 @@ export function Footer() {
               </li>
             </ul>
 
-            <h2 className="font-display text-nybb-ink mt-7 text-xs tracking-[0.14em]">
-              Follow
-            </h2>
+            <h2 className="font-display type-caps text-nybb-ink mt-7">Follow</h2>
             <ul className="mt-5 flex gap-5 text-sm">
               {socials.map((social) => (
                 <li key={social.href}>

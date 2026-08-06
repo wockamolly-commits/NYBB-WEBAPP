@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
+import { Button, PRESSABLE } from "@/components/ui/Button";
+import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { lineKey } from "@/lib/cart/lines";
 import { addToCart } from "@/lib/cart/store";
 import { optionPriceCents } from "@/lib/catalog/pricing";
@@ -195,7 +197,7 @@ export function ItemConfigurator({
           does not appear at all rather than appearing with one dead button. */}
       {item.variations.length > 1 ? (
         <fieldset>
-          <legend className="font-display text-sm tracking-[0.08em]">Size</legend>
+          <legend className="font-display heading-panel">Size</legend>
           <div className="mt-3 grid grid-cols-2 gap-3">
             {item.variations.map((variation) => {
               const active = variation.slug === selection.variationSlug;
@@ -208,10 +210,11 @@ export function ItemConfigurator({
                     setSelection((current) => ({ ...current, variationSlug: variation.slug }))
                   }
                   className={cn(
-                    "flex min-h-16 flex-col items-start justify-center rounded-md px-4 py-3 text-left transition-colors",
+                    PRESSABLE,
+                    "flex min-h-16 flex-col items-start justify-center rounded-md px-4 py-3 text-left",
                     active
                       ? "bg-nybb-orange text-nybb-ink"
-                      : "border-nybb-bone/25 hover:border-nybb-bone/60 border",
+                      : "border-nybb-bone/25 hover:border-nybb-bone/60 hover:bg-nybb-bone/5 border",
                   )}
                 >
                   <span className="font-display text-base leading-none">
@@ -237,9 +240,13 @@ export function ItemConfigurator({
 
       {item.optionGroups.map((group) => (
         <fieldset key={group.slug} className="mt-7">
-          <legend className="font-display text-sm tracking-[0.08em]">
+          <legend className="font-display heading-panel">
             {group.name}
-            <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-normal">
+            {/* The qualifier inherits uppercase from .font-display, and caps
+                at 12px with normal tracking close up into a single shape.
+                It keeps its own tracking rather than the legend's, so it
+                stays visibly a second voice inside the same line. */}
+            <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-[0.08em]">
               {group.minSelect > 0 ? "Required" : "Optional"}
               {group.maxSelect > 1 ? `, up to ${group.maxSelect}` : ""}
             </span>
@@ -256,7 +263,8 @@ export function ItemConfigurator({
                       aria-pressed={active}
                       onClick={() => choose(group, option.slug)}
                       className={cn(
-                        "w-full overflow-hidden rounded-md text-left transition-shadow",
+                        PRESSABLE,
+                        "w-full overflow-hidden rounded-md text-left",
                         active
                           ? "ring-nybb-orange ring-2"
                           : "ring-nybb-bone/15 hover:ring-nybb-bone/40 ring-1",
@@ -279,7 +287,14 @@ export function ItemConfigurator({
                         className={cn(
                           // min-h so a flavour that wraps to two lines does not
                           // make its tile taller than the rest of the row.
-                          "flex min-h-11 items-center px-2 py-2 text-xs leading-tight",
+                          //
+                          // The display face, because these are the same nine
+                          // flavours FlavourGrid names in Anton on the menu and
+                          // the landing page. Set in Inter here, one photograph
+                          // of Salted Egg was labelled two different ways
+                          // depending on which screen the customer reached it
+                          // from.
+                          "font-display flex min-h-11 items-center px-2 py-2 text-xs leading-tight",
                           active ? "bg-nybb-orange text-nybb-ink" : "text-nybb-bone/85",
                         )}
                       >
@@ -303,10 +318,11 @@ export function ItemConfigurator({
                       aria-pressed={active}
                       onClick={() => choose(group, option.slug)}
                       className={cn(
-                        "flex min-h-14 w-full items-center justify-between gap-4 rounded-md px-4 py-2.5 text-left transition-colors",
+                        PRESSABLE,
+                        "flex min-h-14 w-full items-center justify-between gap-4 rounded-md px-4 py-2.5 text-left",
                         active
                           ? "border-nybb-orange bg-nybb-orange/10 border"
-                          : "border-nybb-bone/20 hover:border-nybb-bone/50 border",
+                          : "border-nybb-bone/20 hover:border-nybb-bone/50 hover:bg-nybb-bone/5 border",
                       )}
                     >
                       <span className="min-w-0">
@@ -340,41 +356,18 @@ export function ItemConfigurator({
       <div className={cn(hasChoices && "border-nybb-bone/15 mt-8 border-t pt-6")}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span id="quantity-label" className="font-display text-sm tracking-[0.08em]">
+            <span id="quantity-label" className="font-display heading-panel">
               Quantity
             </span>
-            <div className="border-nybb-bone/25 flex items-center rounded-md border">
-              <button
-                type="button"
-                onClick={() => setQuantity(selection.quantity - 1)}
-                disabled={selection.quantity <= MIN_QUANTITY}
-                aria-label="One fewer"
-                className="hover:bg-nybb-bone/10 flex h-11 w-11 items-center justify-center text-lg transition-colors disabled:opacity-35"
-              >
-                -
-              </button>
-              <output
-                aria-labelledby="quantity-label"
-                className="font-mono-tabular w-10 text-center text-base"
-              >
-                {selection.quantity}
-              </output>
-              <button
-                type="button"
-                onClick={() => setQuantity(selection.quantity + 1)}
-                disabled={selection.quantity >= MAX_QUANTITY}
-                aria-label="One more"
-                className="hover:bg-nybb-bone/10 flex h-11 w-11 items-center justify-center text-lg transition-colors disabled:opacity-35"
-              >
-                +
-              </button>
-            </div>
+            <QuantityStepper
+              quantity={selection.quantity}
+              onChange={setQuantity}
+              labelledBy="quantity-label"
+            />
           </div>
 
           <p className="text-right">
-            <span className="text-nybb-bone/55 block text-xs tracking-[0.14em] uppercase">
-              Total
-            </span>
+            <span className="type-caps text-nybb-bone/55 block">Total</span>
             <span className="font-mono-tabular text-nybb-orange text-2xl" aria-live="polite">
               {formatPeso(totalCents)}
             </span>
@@ -387,19 +380,15 @@ export function ItemConfigurator({
         </div>
 
         <div className="mt-6">
-          <button
-            type="button"
+          <Button
+            tone="dark"
+            size="lg"
+            block
             onClick={add}
             disabled={problem !== null}
-            className={cn(
-              "font-display min-h-12 w-full rounded-md text-sm tracking-[0.06em] transition-colors duration-200",
-              problem
-                ? "bg-nybb-bone/15 text-nybb-bone/55 cursor-not-allowed"
-                : "bg-nybb-orange text-nybb-ink hover:bg-nybb-orange-lit",
-            )}
           >
             {problem ? `Pick a ${problem.group.name.toLowerCase()}` : "Add to cart"}
-          </button>
+          </Button>
 
           {/* One live region rather than a message that appears and disappears,
               so a screen reader hears the confirmation without the paragraph
@@ -410,7 +399,7 @@ export function ItemConfigurator({
               the owner, so this says so instead of pretending. */}
           <p
             aria-live="polite"
-            className="text-nybb-bone/55 mt-3 text-xs leading-relaxed"
+            className="text-nybb-bone/65 mt-3 text-sm leading-relaxed"
           >
             {confirmation === null ? (
               <>

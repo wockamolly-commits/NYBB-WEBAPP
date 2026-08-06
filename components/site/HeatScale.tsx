@@ -126,13 +126,13 @@ export function HeatScale({
 
           <dl className="order-2 flex gap-5 text-right sm:order-3 sm:mt-4 sm:block sm:space-y-1 sm:gap-0 sm:text-left">
             <div className="flex items-baseline gap-1.5 sm:justify-between sm:gap-2">
-              <dt className="text-nybb-bone/50 text-xs">Half</dt>
+              <dt className="type-caps text-nybb-bone/50">Half</dt>
               <dd className="font-mono-tabular text-nybb-orange text-sm">
                 +{level.half}
               </dd>
             </div>
             <div className="flex items-baseline gap-1.5 sm:justify-between sm:gap-2">
-              <dt className="text-nybb-bone/50 text-xs">Full</dt>
+              <dt className="type-caps text-nybb-bone/50">Full</dt>
               <dd className="font-mono-tabular text-nybb-orange text-sm">
                 +{level.full}
               </dd>

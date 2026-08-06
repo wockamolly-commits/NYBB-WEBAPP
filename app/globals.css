@@ -40,6 +40,21 @@
   /* Buffalo red. Two jobs only: destructive actions, and the top of
      the heat scale. Never adjacent to orange as a text pair. */
   --color-nybb-red: #ee2329;
+  /* The destructive fill, and why it is not the signage red above.
+     ================================================================
+     #EE2329 is a display colour: it cannot carry a label. Bone on it
+     measures 3.8:1 and ink on it measures 4.6:1, so a red button at
+     full signage strength either fails AA outright or scrapes past it
+     on a colour pairing that looks like a warning triangle. Taken two
+     steps down the same hue, bone measures 5.2:1 at rest and 6.8:1 on
+     hover, which is what lets "Empty the cart" be unmistakably red and
+     still read as a considered control rather than a fire alarm
+     dropped onto the amber page.
+
+     Signage red keeps its two declared jobs: the top of the heat
+     scale, and the accent a destructive icon control takes on hover. */
+  --color-nybb-red-deep: #c81319;
+  --color-nybb-red-deeper: #a80f15;
 
   /* Reading color. Warm off-white rather than #FFFFFF, so long copy on
      a near-black ground does not glare. */
@@ -157,7 +172,9 @@
   --accent: #232528;
   --accent-foreground: #f5f1ea;
 
-  --destructive: #ee2329;
+  /* The shadcn slot takes the readable red, not the signage one, for the
+     reason given against --color-nybb-red-deep above. */
+  --destructive: #c81319;
 
   /* Hairlines are ink at low alpha, because the page ground is light now.
      They stay legible on the warm gradient, and on the dark cards they go
@@ -289,6 +306,19 @@
     max-width: 100%;
   }
 
+  /* Orphan control on every paragraph, list item and definition on the
+     site. Nothing on this page is long enough for the cost of `pretty`
+     to matter, and the thing it fixes is everywhere: a two word last
+     line under a 60 character paragraph, or a single word alone under a
+     branch address. Browsers without it ignore it. */
+  p,
+  li,
+  dd,
+  dt,
+  figcaption {
+    text-wrap: pretty;
+  }
+
   button,
   a,
   input,
@@ -315,9 +345,44 @@
 
   /* Focus is an outline, never a box-shadow. A shadow-based ring is
      silently defeated by any component that sets its own shadow, which
-     is a real failure mode inherited from the reference project. */
+     is a real failure mode inherited from the reference project.
+
+     THE RING COLOUR BELONGS TO THE GROUND, NOT TO THE CONTROL.
+     ================================================================
+     This ring was orange everywhere, which was correct when the site
+     was black-first and wrong the moment the page ground became amber:
+     orange on amber measures 1.8:1, so every focused control on the
+     page had a ring that was, in practice, not there. The offset makes
+     it worse rather than better, because both sides of the ring are
+     then page colour.
+
+     So ink is the default, at 7.6:1 on the darkest stop of the
+     gradient, and the dark surfaces flip it back to orange (6.0:1 on
+     ink) for everything inside them. Keying that off the background
+     utility means a charcoal card added next year gets a legible ring
+     without anyone remembering to ask for one. :where() keeps the
+     specificity at zero, so a control can still override it, which is
+     what components/ui/Button.tsx does when its tone says the ground
+     is dark regardless of what it is sitting in. */
+  :where(.bg-nybb-ink, .bg-nybb-ink\/90, .bg-nybb-charcoal) {
+    --focus-ring: var(--color-nybb-orange);
+
+    /* Light type on a near-black ground blooms: the letterforms spread
+       into the surround and the counters close up, which is why the
+       same Inter that looks correct as ink on amber looks slightly
+       congested as bone on charcoal. A sixth of a percent of tracking
+       is the standard correction, and it is applied here rather than
+       leaf by leaf so a new dark card inherits it.
+
+       Zero specificity on purpose. Anything that states its own
+       tracking, which is every display heading and every label, keeps
+       it, and no text size utility sets letter-spacing at all, so this
+       reaches exactly the untracked reading copy it is meant for. */
+    letter-spacing: 0.006em;
+  }
+
   :focus-visible {
-    outline: 3px solid var(--color-nybb-orange);
+    outline: 3px solid var(--focus-ring, var(--color-nybb-ink));
     outline-offset: 2px;
   }
 }
@@ -339,27 +404,79 @@
 
   /* The heading scale.
      ================================================================
-     Three tiers, and the gaps between them are the page's hierarchy.
+     Four tiers, and the gaps between them are the page's hierarchy.
      Before this every section on the landing page shared one clamp, so
      seven sections all claimed to be equally important and none of them
      read as the point.
 
      The display cap is 6rem. Anton at more than that stops being a
      headline and starts being a texture, and on a 1440 screen a 6.5rem
-     line was already colliding with the video's subject. */
+     line was already colliding with the video's subject.
+
+     TRACKING IS SIZED WITH THE TYPE, NOT SET ONCE.
+     ================================================================
+     .font-display carries +0.005em, which is the value a condensed face
+     needs at the small end where it is set as a label. Left unchanged at
+     96px that same value opens the word up: Anton is drawn tight and
+     wants to be tighter still as a billboard, so each tier takes back a
+     little more of it as it grows. The floor here is -0.015em, well
+     inside the -0.04em past which a face starts losing its counters.
+
+     Balanced wrapping on the three lower tiers, where the copy is real
+     and variable ("Franchise enquiries", a category name from the
+     database). The hero is excluded on purpose: it sets its own breaks
+     with <br>, and balancing an already-broken line does nothing but
+     fight the author. */
   .heading-hero {
     font-size: clamp(2.75rem, 9vw, 6rem);
     line-height: 0.85;
+    letter-spacing: -0.015em;
+  }
+
+  /* Every route title that is not the landing hero. It used to be four
+     copies of an inline clamp on the menu, category, cart and checkout
+     pages, plus heading-hero on about and contact, so the site had two
+     different sizes for one role and neither of them was named. */
+  .heading-page {
+    font-size: clamp(2.5rem, 9vw, 5rem);
+    line-height: 0.88;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
   }
 
   .heading-major {
     font-size: clamp(2.25rem, 5vw, 3.5rem);
     line-height: 0.9;
+    letter-spacing: -0.008em;
+    text-wrap: balance;
   }
 
   .heading-minor {
     font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     line-height: 0.95;
+    letter-spacing: -0.004em;
+    text-wrap: balance;
+  }
+
+  /* The heading inside a card: "Order total", "Size", "Pickup time".
+     Small, so it does not outrank the number underneath it, and tracked,
+     because Anton at 14px in caps closes up. Written out in eight places
+     as `text-sm tracking-[0.08em]` before this existed. */
+  .heading-panel {
+    font-size: 0.875rem;
+    line-height: 1.15;
+    letter-spacing: 0.08em;
+  }
+
+  /* The micro-label: a data caption, a footer column heading, the
+     name of the thing the number beside it measures. Deliberately
+     family-agnostic, because this role is worn by all three faces
+     depending on what it labels, and only the metrics are shared. */
+  .type-caps {
+    font-size: 0.75rem;
+    line-height: 1.25;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
 
   /* The chrome surface, shared by the navbar and the footer.

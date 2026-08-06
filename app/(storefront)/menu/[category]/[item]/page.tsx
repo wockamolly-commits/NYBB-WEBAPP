@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ItemConfigurator } from "@/components/menu/ItemConfigurator";
-import { TextLink } from "@/components/ui/ActionLink";
+import { TextLink } from "@/components/ui/TextLink";
 import { itemPriceRange } from "@/lib/catalog/pricing";
 import { formatPesoRange } from "@/lib/format";
 import { findCategory, getStorefrontMenu } from "@/lib/menu";

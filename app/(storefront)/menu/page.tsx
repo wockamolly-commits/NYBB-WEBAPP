@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
+import { TextLink } from "@/components/ui/TextLink";
 import { getStorefrontMenu, WING_FLAVOUR_GROUP_SLUG } from "@/lib/menu";
 import { findOptionGroup } from "@/lib/menu";
 
@@ -29,9 +29,7 @@ export default async function MenuPage() {
       <CategoryNav categories={categories} hrefFor={(slug) => `#${slug}`} />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-        <h1 className="font-display text-[clamp(2.5rem,9vw,5rem)] leading-[0.88]">
-          The menu
-        </h1>
+        <h1 className="font-display heading-page">The menu</h1>
         <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
           Prices are the same at every branch. Online ordering opens soon; until
           then, call the branch you want to collect from.
@@ -44,20 +42,19 @@ export default async function MenuPage() {
             className="scroll-mt-32 pt-14 sm:scroll-mt-36"
           >
             <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-              <h2 className="font-display text-[clamp(1.75rem,5vw,2.75rem)] leading-none">
-                {category.name}
-              </h2>
-              <Link
-                href={`/menu/${category.slug}`}
-                className="font-display text-nybb-orange hover:text-nybb-orange-lit text-xs tracking-[0.06em] transition-colors"
-              >
+              <h2 className="font-display heading-minor">{category.name}</h2>
+              {/* Two leftovers from the black-first site, both orange on the
+                  amber ground at about 1.8:1. Every other standing invitation
+                  on the storefront is already a TextLink, and every other
+                  price printed on this ground is ink. */}
+              <TextLink href={`/menu/${category.slug}`} tone="light">
                 Open category
-              </Link>
+              </TextLink>
             </div>
-            <p className="text-nybb-ink/60 mt-2 text-sm">
+            <p className="text-nybb-ink/70 mt-2 text-sm">
               {category.blurb}
               {category.slug === "chicken-wings" ? (
-                <span className="font-mono-tabular text-nybb-orange ml-2">
+                <span className="font-mono-tabular text-nybb-ink ml-2">
                   Half 329 / Full 529
                 </span>
               ) : null}
