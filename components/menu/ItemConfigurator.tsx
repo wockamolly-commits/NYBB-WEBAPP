@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
+import { lineKey } from "@/lib/cart/lines";
+import { addToCart } from "@/lib/cart/store";
 import { optionPriceCents } from "@/lib/catalog/pricing";
 import { formatPeso, formatPesoCompact } from "@/lib/format";
 import {
@@ -108,6 +110,36 @@ export function ItemConfigurator({
   // An item with one price and no add-ons has nothing above the quantity row,
   // so the divider there would be a rule with nothing to divide.
   const hasChoices = item.variations.length > 1 || item.optionGroups.length > 0;
+
+  // The confirmation is tied to the line that was added, not to a timer. Change
+  // the flavour and it goes, because "Added to cart" sitting under a different
+  // configuration is a claim about wings the customer is not looking at.
+  const [added, setAdded] = useState<{ key: string; ok: boolean; quantity: number } | null>(
+    null,
+  );
+  const currentKey = lineKey({
+    itemSlug: item.slug,
+    variationSlug: selection.variationSlug,
+    optionSlugs: selection.optionSlugs,
+  });
+  const confirmation = added?.key === currentKey ? added : null;
+
+  function add() {
+    const { ok } = addToCart({
+      itemSlug: item.slug,
+      variationSlug: selection.variationSlug,
+      optionSlugs: selection.optionSlugs,
+      quantity: selection.quantity,
+      // Display only, and refreshed from the menu every time the cart page
+      // resolves. See lib/cart/lines.ts.
+      unitPriceCents: unitCents,
+    });
+
+    setAdded({ key: currentKey, ok, quantity: selection.quantity });
+    // Back to one, so a second tap on a screen that already says "3 added"
+    // does not quietly make it six.
+    if (ok) setSelection((current) => ({ ...current, quantity: MIN_QUANTITY }));
+  }
 
   function choose(group: MenuOptionGroup, optionSlug: string) {
     setSelection((current) => ({
@@ -354,27 +386,63 @@ export function ItemConfigurator({
           </p>
         </div>
 
-        {/* What is true today. The cart is the next piece of Phase 1, so this
-            screen prices an order it cannot yet take, and says so rather than
-            showing a button that does nothing. The branch numbers work. */}
         <div className="mt-6">
           <button
             type="button"
-            disabled
-            className="bg-nybb-bone/15 text-nybb-bone/55 font-display min-h-12 w-full cursor-not-allowed rounded-md text-sm tracking-[0.06em]"
+            onClick={add}
+            disabled={problem !== null}
+            className={cn(
+              "font-display min-h-12 w-full rounded-md text-sm tracking-[0.06em] transition-colors duration-200",
+              problem
+                ? "bg-nybb-bone/15 text-nybb-bone/55 cursor-not-allowed"
+                : "bg-nybb-orange text-nybb-ink hover:bg-nybb-orange-lit",
+            )}
           >
-            {problem ? `Pick a ${problem.group.name.toLowerCase()}` : "Ordering opens soon"}
+            {problem ? `Pick a ${problem.group.name.toLowerCase()}` : "Add to cart"}
           </button>
-          <p className="text-nybb-bone/55 mt-3 text-xs leading-relaxed">
-            Online ordering is not live yet. Build your order here to see the
-            price, then{" "}
-            <Link
-              href="/contact"
-              className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
-            >
-              call the branch
-            </Link>{" "}
-            you want to collect from.
+
+          {/* One live region rather than a message that appears and disappears,
+              so a screen reader hears the confirmation without the paragraph
+              itself coming and going under the button.
+
+              What is true today: the cart works, checkout does not. Pickup
+              times need the pilot branch and its hours, which are still with
+              the owner, so this says so instead of pretending. */}
+          <p
+            aria-live="polite"
+            className="text-nybb-bone/55 mt-3 text-xs leading-relaxed"
+          >
+            {confirmation === null ? (
+              <>
+                Build your order now. Checkout opens once pickup times are
+                published; until then,{" "}
+                <Link
+                  href="/contact"
+                  className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                >
+                  call the branch
+                </Link>{" "}
+                you want to collect from.
+              </>
+            ) : confirmation.ok ? (
+              <>
+                <span className="text-nybb-bone">
+                  {confirmation.quantity > 1
+                    ? `${confirmation.quantity} added to your cart.`
+                    : "Added to your cart."}
+                </span>{" "}
+                <Link
+                  href="/cart"
+                  className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                >
+                  View cart
+                </Link>
+              </>
+            ) : (
+              <span className="text-nybb-bone">
+                Your cart is full. Remove something from it before adding more.
+              </span>
+            )}
           </p>
         </div>
         </div>

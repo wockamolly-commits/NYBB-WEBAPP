@@ -1,3 +1,4 @@
+import { CartBar } from "@/components/cart/CartBar";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 
@@ -23,6 +24,9 @@ export default function StorefrontLayout({
       <Header />
       <main id="main">{children}</main>
       <Footer />
+      {/* After the footer, because it reserves its own height there rather
+          than covering the last line of it. */}
+      <CartBar />
     </>
   );
 }

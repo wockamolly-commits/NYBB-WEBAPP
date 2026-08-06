@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
+import { CartCount } from "@/components/cart/CartCount";
 import { HeatRule } from "@/components/site/HeatRule";
 
 /**
@@ -64,6 +65,11 @@ export function Header() {
           />
         </Link>
 
+        {/* The nav and the cart travel together at the right end of the bar.
+            The cart is a client island: its count comes from localStorage, so
+            the server cannot know it and this header stays a server component
+            around it. */}
+        <div className="flex items-center gap-4 sm:gap-7">
         <nav aria-label="Main">
           <ul className="flex items-center gap-6 sm:gap-9">
             {links.map((link) => (
@@ -83,6 +89,9 @@ export function Header() {
             ))}
           </ul>
         </nav>
+
+          <CartCount />
+        </div>
       </div>
 
       <HeatRule className="h-[3px]" />
