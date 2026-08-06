@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { contentSecurityPolicy } from "@/lib/content-security-policy";
 
@@ -87,5 +89,29 @@ describe("contentSecurityPolicy", () => {
     expect(directive(csp, "base-uri")).toBe("base-uri 'self'");
     expect(directive(csp, "form-action")).toBe("form-action 'self'");
     expect(csp).toContain("upgrade-insecure-requests");
+  });
+});
+
+/**
+ * The other half of the policy, which is not in this file at all.
+ *
+ * A nonce is minted per request and Next can only stamp it onto script tags
+ * while rendering that request. Prerender a page and its HTML carries no
+ * nonce, `strict-dynamic` then discards the `'self'` allowlist, and the
+ * browser blocks every script on it. That shipped: for one release nothing on
+ * the production site hydrated, and `next dev` renders per request so it
+ * looked fine the whole time.
+ *
+ * There is no unit to test here, only a decision that has to stay made, so
+ * this asserts on the source. It is a tripwire, not a design: it fails loudly
+ * the day somebody deletes a line whose absence is otherwise invisible until
+ * a customer cannot tap Add to cart.
+ */
+describe("the nonce requires dynamic rendering", () => {
+  const rootLayout = readFileSync(join(process.cwd(), "app", "layout.tsx"), "utf8");
+
+  it("keeps the root layout, and so every route, out of the prerender", () => {
+    expect(rootLayout).toContain('from "next/server"');
+    expect(rootLayout).toMatch(/await connection\(\)/);
   });
 });

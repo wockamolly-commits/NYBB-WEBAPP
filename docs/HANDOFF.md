@@ -16,10 +16,11 @@ into chat, it is ~1,600 lines. Read it from disk.
 **Phase 0 is complete, and Phase 1 steps 1, 2 and 4 have landed.** `npm run build`, `npm run lint`
 and `npm test` (169 tests) are green.
 
-**Read the eleventh trap below before anything else.** The production build does not hydrate at
-all: the nonce CSP is stamped onto statically prerendered HTML that carries no nonce, so every
-script is blocked. It is not a cart bug, it predates the cart, and it makes the whole storefront
-non-interactive in production. Nothing else in this document matters as much.
+**The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
+mutually exclusive in Next, and for one release that conflict left the production build blocking
+every script and hydrating nothing. `await connection()` in `app/layout.tsx` is what resolves it.
+Read trap 11 before touching rendering, caching or `proxy.ts`, and trap 12 before believing the
+browser pane about anything that waits for a frame.
 
 - `lib/catalog/` holds the full Hot Wings menu, nine wing flavours, the Level of Hotness scale with
   its variation-dependent pricing, nine branches, and a generated image manifest. Its types mirror
@@ -98,10 +99,10 @@ Spec section 27. In order:
    - `customer_carts` is untouched. It is keyed by `auth.users(id)` and customer sign-in is the
      last step of Phase 1, so the sync arrives as a second writer of the same `Cart`.
 
-   Verified in a browser at 320 and 375: pricing, the drop-and-reprice notice, write-back to
-   localStorage, the live header badge, the sticky bar clearing the footer, and no sideways
-   scroll. The Add button on the item page could not be clicked in a browser for the reason in
-   trap 11; its logic is under unit test.
+   Verified at 320 and 375 in the pane, and end to end against the production build in Chrome:
+   the configurator prices live, Add to cart writes the configured line, the confirmation and the
+   header badge follow it, the cart page reprices it from the menu, and `dynamicParams = false`
+   still returns 404 for an unknown item now that the route renders dynamically.
 5. **Pickup slot picker.** Slot generation reads `store_hours` plus `branches.pickup_slot_minutes`,
    generated on read for the next `slot_horizon_hours`. **This is where the two unanswered owner
    questions bite:** `store_hours` is deliberately empty, `branch_is_open_at()` fails closed, and
@@ -152,25 +153,44 @@ because each one costs a day if rediscovered.
    to the published price, but `resolve_option_price_cents` falls through to
    `menu_options.price_cents`, which is NULL for every heat level by design, and coalesces to
    zero. `resolve_price_list_id()` raises instead. Never reintroduce a null-list path.
-11. **The nonce CSP and static generation cannot both be right, and today the CSP wins and the
-   site loses.** `proxy.ts` mints a nonce per request and stamps `script-src 'nonce-...'
-   'strict-dynamic'` on the response. Next can only put that nonce on the script tags of a page
-   it renders *in that request*. Every storefront page is statically prerendered, so the HTML
-   Next serves carries no nonce at all, `strict-dynamic` then disables the `'self'` allowlist,
-   and the browser blocks every script on the page. **In `next start` nothing on this site
-   hydrates:** the cart page sits on its skeleton forever and the configurator never replaces its
-   Suspense fallback. `next dev` renders per request, so it stamps the nonce and hydrates, which
-   is why this survived Phase 0 review.
+11. **The nonce CSP and static generation cannot both be right. Fixed by making the site dynamic,
+   and it must stay that way.** `proxy.ts` mints a nonce per request and stamps `script-src
+   'nonce-...' 'strict-dynamic'` on the response. Next can only put that nonce on the script tags
+   of a page it renders *in that request*. Every storefront page used to be statically
+   prerendered, so the HTML Next served carried no nonce at all, `strict-dynamic` discarded the
+   `'self'` allowlist, and the browser blocked every script on the page. For one release nothing
+   on the production site hydrated. `next dev` renders per request, so it stamped the nonce and
+   looked fine, which is how this survived Phase 0 review.
 
-   Reproduce it in one minute: `npm run build`, start the `prod` configuration in
-   `.claude/launch.json`, open any page, read the console. Expect "Loading the script ... violates
-   the following Content Security Policy directive" for every chunk.
+   The fix is `await connection()` in `app/layout.tsx`. It stops prerendering there, and since
+   that layout wraps every route the whole site renders per request. Next's own guide is blunt:
+   "When you use nonces in your CSP, all pages must be dynamically rendered." So it was the nonce
+   or SSG, and spec section 22 item 7 makes the nonce Tier 1 and non-negotiable while SSG is a
+   caching preference in section 23. Section 23 now carries the correction.
 
-   The three ways out are all real decisions, which is why none of them was taken here:
-   force the storefront to render dynamically and lose SSG; drop `'strict-dynamic'` and lean on
-   `'self'` for scripts, which is a genuine weakening of spec section 22; or keep the nonce for
-   dynamic routes only and serve the static ones a hash-based or `'self'` policy. Pick one with
-   the security requirement in front of you, not in passing.
+   What it costs is HTML rendering per request, not database work. The menu still arrives through
+   `getStorefrontMenu()` and can be cached by tag behind it, which is where to go if the cost ever
+   bites. Do not answer it by putting the nonce back into a prerendered page.
+
+   `tests/unit/content-security-policy.test.ts` asserts the `connection()` call is still there. It
+   is a source-level tripwire rather than a real unit test, deliberately: deleting that line breaks
+   nothing you can see until a customer cannot tap Add to cart.
+
+12. **A Suspense boundary that never resolves in the in-app browser pane is not a bug.** React
+   19.2 queues a boundary reveal and performs it on an animation frame. The pane runs with
+   `document.visibilityState === "hidden"` and never fires `requestAnimationFrame`, so the
+   boundary sits at `<!--$~-->` (`SUSPENSE_QUEUED_START_DATA`) with its content parked in a
+   `<div hidden id="S:0">` forever. The configurator looks broken and is not.
+
+   This cost real time, and worse, it was briefly written up here as evidence of trap 11. It was
+   not: trap 11 was proved by actual CSP violations in the console and by `/cart` sitting on its
+   skeleton, and it is genuinely fixed. Check `document.hidden` before believing the pane about
+   anything that waits for a frame.
+
+   To verify anything frame-dependent, drive a real browser. Playwright is a devDependency and its
+   downloaded browsers are absent on this machine, but `chromium.launch({ channel: "chrome" })`
+   uses the installed Chrome and works. Use Chromium, never WebKit: `upgrade-insecure-requests`
+   upgrades localhost and WebKit renders the page unstyled and unhydrated, testing nothing.
 
 ## Do not
 
@@ -188,6 +208,9 @@ because each one costs a day if rediscovered.
   `place_order` is the authority; when they disagree the server is right. The cart is not an
   exception: `lib/cart/lines.ts` calls into `line-pricing.ts` for every peso, and the one price it
   stores is a cache that `resolveCart` overwrites.
-- Do not read a browser check of anything interactive from `next dev` alone until trap 11 is
-  settled. Dev hydrates and production does not, so dev proves less than it looks like it does.
-  `.claude/launch.json` now has a `prod` configuration on port 3001 for exactly this.
+- Do not make any route static again, and do not reach for PPR or `cacheComponents`. Both are
+  incompatible with a nonce, per trap 11. If a page needs to be faster, cache the data behind
+  `getStorefrontMenu()`, not the HTML.
+- Do not judge anything interactive from `next dev` alone. Dev renders per request and production
+  did not, which is precisely how trap 11 hid for a phase. `.claude/launch.json` has a `prod`
+  configuration on port 3001 for exactly this.

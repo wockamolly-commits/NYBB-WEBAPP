@@ -1495,9 +1495,26 @@ the database: `place_order`, `staff_set_order_status`, `cashier_advance_order`,
 `claim_order_with_code`, `award_loyalty_points`, `get_storefront_menu`, `get_order_by_tracking`,
 `store_is_open_at`, `order_analytics`, `rate_limit_hit`.
 
-**Caching:** menu pages statically generated and revalidated by tag on menu mutations. Settings and
-hours cached with `unstable_cache` and a named tag, invalidated by the settings action. Order data
-is never cached.
+**Caching:** ~~menu pages statically generated and revalidated by tag on menu mutations.~~ Settings
+and hours cached with `unstable_cache` and a named tag, invalidated by the settings action. Order
+data is never cached.
+
+**Correction, written while building Phase 1.** Menu pages cannot be statically generated, because
+section 22 item 7 requires a nonce-based CSP and the two are mutually exclusive. A nonce is minted
+per request, and Next can only stamp it onto script tags while rendering that request; a
+prerendered page carries no nonce, `strict-dynamic` then discards the `'self'` allowlist, and the
+browser blocks every script on the page. Next's own guide states it plainly: "When you use nonces
+in your CSP, all pages must be dynamically rendered." PPR is incompatible for the same reason.
+
+This was not theoretical. Both were specified, both were built, and the production build hydrated
+nothing at all for a release: `next dev` renders per request and hid it completely.
+
+The security requirement is Tier 1 and non-negotiable, so it wins, and `app/layout.tsx` calls
+`await connection()` to keep every route dynamic. Caching moves down a layer rather than being
+abandoned: the menu is still cached by tag behind `getStorefrontMenu()`, and what is paid per
+request is HTML rendering, not a database round trip. If that ever costs too much, cache the data
+and the fragments. Do not restore prerendering, and do not weaken the CSP to buy it back without
+the owner agreeing to trade away a Tier 1 control.
 
 ---
 

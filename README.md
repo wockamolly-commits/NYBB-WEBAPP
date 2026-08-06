@@ -16,13 +16,15 @@ against a real Postgres in the test suite.
 No Supabase project exists yet, so the migrations are written and verified but
 deliberately not applied anywhere.
 
-**One open defect, and it is a big one.** In a production build nothing on the
-site hydrates. `proxy.ts` stamps a per-request nonce CSP with `strict-dynamic`,
-but every storefront page is statically prerendered, so the HTML Next serves
-carries no nonce and the browser blocks every script. `next dev` renders per
-request and hydrates, which is why it went unnoticed. Handoff trap 11 has the
-reproduction and the three ways out, all of which are decisions about spec
-section 22 rather than typos.
+**The storefront renders dynamically, and that is deliberate.** A nonce-based
+CSP and static generation are mutually exclusive in Next: the nonce is minted
+per request, and a prerendered page carries none, so `strict-dynamic` discards
+the `'self'` allowlist and the browser blocks every script. Both were
+specified, and for one release the production build hydrated nothing at all
+while `next dev` looked perfectly healthy. Spec section 22 makes the CSP Tier 1
+and non-negotiable, so `app/layout.tsx` calls `await connection()` and every
+route is server-rendered on demand. Section 23 carries the correction, handoff
+trap 11 has the detail, and a test fails if that call ever goes missing.
 
 Done:
 

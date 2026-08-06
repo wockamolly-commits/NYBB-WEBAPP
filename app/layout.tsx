@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Anton, Inter, JetBrains_Mono } from "next/font/google";
+import { connection } from "next/server";
 import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
@@ -51,9 +52,39 @@ export const viewport: Viewport = {
   themeColor: "#0b0b0c",
 };
 
-export default function RootLayout({
+/**
+ * WHY THIS LAYOUT WAITS FOR A REQUEST, AND WHY THE WHOLE SITE IS DYNAMIC.
+ *
+ * `proxy.ts` mints a fresh nonce per request and puts it in the CSP. Next can
+ * only stamp that nonce onto its script tags while rendering *in that request*.
+ * A prerendered page is built before any request exists, so its HTML carries no
+ * nonce, `strict-dynamic` then discards the `'self'` allowlist, and the browser
+ * blocks every script on the page. That is not a theory: it shipped, and until
+ * this line landed nothing on the production site hydrated at all. The cart sat
+ * on its skeleton and the configurator never replaced its Suspense fallback.
+ * `next dev` renders per request, so it stamped the nonce and looked fine,
+ * which is exactly how it survived review.
+ *
+ * `connection()` is the documented way out. It stops prerendering here, and
+ * because this layout wraps every route, it stops it everywhere. Next's own
+ * guide is blunt about the trade: "When you use nonces in your CSP, all pages
+ * must be dynamically rendered."
+ *
+ * So it is one or the other, and spec section 22 decides which. A nonce-based
+ * CSP with `strict-dynamic` is Tier 1, non-negotiable. Static generation is a
+ * caching preference in section 23. The security requirement wins, and section
+ * 23 now records the correction.
+ *
+ * What this costs is HTML rendering per request, not database work: the menu
+ * still comes through `getStorefrontMenu()` and can be cached by tag behind it.
+ * If that cost ever bites, the fix is caching the data and the fragments, not
+ * quietly putting the nonce back into a prerendered page.
+ */
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  await connection();
+
   return (
     // The font variables belong on <html>, not on <body>. globals.css applies
     // font-sans to the html element itself, and a custom property defined on
