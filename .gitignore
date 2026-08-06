@@ -38,3 +38,13 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# design tooling: DESIGN.md, .impeccable/design.json and .impeccable/live/config.json
+# are the design system and are tracked. Everything else under .impeccable/ is a
+# generated run artifact (critique reports, the detector cache, live session
+# journals) and belongs to the machine that produced it.
+/.impeccable/*
+!/.impeccable/design.json
+!/.impeccable/live/
+/.impeccable/live/*
+!/.impeccable/live/config.json
