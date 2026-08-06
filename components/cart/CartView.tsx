@@ -276,21 +276,19 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
             </span>
           </div>
 
-          {/* What is true today. Checkout needs a pickup time, and pickup times
-              need the pilot branch and its opening hours, which are the two
-              questions still with the owner. Saying that is better than a
-              button that fails. */}
-          <button
-            type="button"
-            disabled
-            className="bg-nybb-bone/15 text-nybb-bone/55 font-display mt-6 min-h-12 w-full cursor-not-allowed rounded-md text-sm tracking-[0.06em]"
+          {/* Checkout is a real screen now: the pickup window can be chosen
+              there. What it cannot do yet is place the order, and it says so
+              on arrival rather than here, because whether any window exists is
+              a question only the server can answer. */}
+          <Link
+            href="/checkout"
+            className="bg-nybb-orange text-nybb-ink hover:bg-nybb-orange-lit font-display mt-6 flex min-h-12 w-full items-center justify-center rounded-md text-sm tracking-[0.06em] transition-colors duration-200"
           >
-            Checkout opens soon
-          </button>
+            Choose a pickup time
+          </Link>
           <p className="text-nybb-bone/55 mt-3 text-xs leading-relaxed">
-            Pickup times are not published yet, so this order cannot be placed
-            online. To order today, call the branch you want to collect from on
-            the{" "}
+            Pickup only. Placing the order online opens with the next release,
+            so to order today, call the branch on the{" "}
             <Link
               href="/contact"
               className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"

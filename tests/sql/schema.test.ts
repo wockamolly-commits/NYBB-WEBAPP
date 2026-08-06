@@ -20,7 +20,7 @@ describe("migrations", () => {
     expect(files.map((name) => name.slice(0, 4))).toEqual([
       "0001", "0002", "0003", "0004", "0005",
       "0006", "0007", "0008", "0009", "0010",
-      "0011",
+      "0011", "0012",
     ]);
   });
 
@@ -94,7 +94,7 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly four functions to anon", async () => {
+  it("expose exactly five functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -111,11 +111,14 @@ describe("migrations", () => {
     `);
     // The entire public read surface, reviewable in one glance. Widening it is
     // supposed to be a decision, which is why this list is spelled out rather
-    // than counted: get_storefront_menu joined it in 0011 and had to come
-    // through this assertion to do so.
+    // than counted: get_storefront_menu joined it in 0011 and get_pickup_slots
+    // in 0012, and both had to come through this assertion to do so. What the
+    // newest one exposes is opening times and remaining capacity, which a
+    // customer standing at the counter can see anyway.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
+      "get_pickup_slots",
       "get_public_settings",
       "get_storefront_menu",
     ]);

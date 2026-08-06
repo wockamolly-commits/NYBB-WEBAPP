@@ -8,9 +8,9 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 ## Status
 
 **Phase 0 complete. Phase 1 in progress: the menu reads through one
-source-agnostic reader, the wings configurator is built, and the cart is
-live.** `npm run build`, `npm run lint` and `npm test` (169 tests) are all green, every page has been rendered and reviewed in a
-browser at 320px, 375px and 1280px, and migrations `0001` to `0011` apply cleanly
+source-agnostic reader, the wings configurator is built, and the cart and the
+pickup slot picker are live.** `npm run build`, `npm run lint` and `npm test` (220 tests) are all green, every page has been rendered and reviewed in a
+browser at 320px, 375px and 1280px, and migrations `0001` to `0012` apply cleanly
 against a real Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
@@ -88,13 +88,23 @@ Phase 1 so far:
 - `/cart`, a header count and a bottom-sticky bar on small screens, all reading
   one module store through `useSyncExternalStore` so the storefront stays a
   server tree with client islands in it
+- Migration `0012`: `get_pickup_slots()`, the pickup windows for the next
+  `slot_horizon_hours`, generated on read from `store_hours` and
+  `pickup_slot_minutes` and never materialized. It asks `branch_is_open_at()`
+  rather than re-reading hours, so there is still one definition of open, and
+  it anchors the grid to the branch's local midnight so two customers a minute
+  apart compute the same boundaries
+- `lib/slots/` and `/checkout`: the picker, first field on the screen because
+  it is the constraint that can invalidate the order. A full window is shown
+  and disabled rather than hidden, and when there is nothing to choose the
+  screen names the reason. Today that reason is that no branch has been
+  switched on, which is the honest answer while the pilot is unchosen
 
 Next:
 
-1. The pickup slot picker.
-2. `place_order` with idempotency and rate limiting, then the tracking page
+1. `place_order` with idempotency and rate limiting, then the tracking page
    with the pickup code.
-3. Customer email OTP.
+2. Customer email OTP.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
 and its real weekday hours. Nothing in the schema guesses either.

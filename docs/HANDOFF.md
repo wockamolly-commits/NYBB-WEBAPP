@@ -13,8 +13,8 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 steps 1, 2 and 4 have landed.** `npm run build`, `npm run lint`
-and `npm test` (169 tests) are green.
+**Phase 0 is complete, and Phase 1 steps 1, 2, 4 and 5 have landed.** `npm run build`,
+`npm run lint` and `npm test` (220 tests) are green.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -103,12 +103,34 @@ Spec section 27. In order:
    the configurator prices live, Add to cart writes the configured line, the confirmation and the
    header badge follow it, the cart page reprices it from the menu, and `dynamicParams = false`
    still returns 404 for an unknown item now that the route renders dynamically.
-5. **Pickup slot picker.** Slot generation reads `store_hours` plus `branches.pickup_slot_minutes`,
-   generated on read for the next `slot_horizon_hours`. **This is where the two unanswered owner
-   questions bite:** `store_hours` is deliberately empty, `branch_is_open_at()` fails closed, and
-   all nine branches are seeded `is_active = false`, so the picker will correctly offer no windows
-   until the pilot branch and its real weekday hours arrive. Build it anyway, and make the empty
-   state say why rather than looking broken.
+5. ~~**Pickup slot picker.**~~ **Done**, as migration `0012`, `lib/slots/` and
+   `components/checkout/`, reachable at `/checkout` from the cart.
+
+   - **`get_pickup_slots()` is the only implementation of the grid**, and there is no TypeScript
+     copy. The picker renders what the database returns and `place_order` will book against the
+     same function, so the screen cannot offer a minute the transaction would then refuse.
+   - **It calls `branch_is_open_at()` rather than reading `store_hours`.** 0002 says that function
+     is the one definition of "open"; re-deriving windows here would be a second one, and the two
+     would part company the first time somebody touched a midnight-crossing shift. It costs two
+     calls per candidate window. If that ever matters, cache it, do not fork it.
+   - **The grid is anchored to the branch's local midnight, not to now.** `pickup_slots` is unique
+     on `(branch_id, slot_start)`, so two customers a minute apart have to compute identical
+     boundaries or they book two rows for one window and the capacity check never binds.
+   - **A window has to fit entirely inside opening hours**, tested at its start and one second
+     before its end, and the horizon bounds when a customer may *collect*, so the last window ends
+     at the horizon rather than starting there.
+   - **The empty state is the feature today.** `unavailableReason` is one of `no_branch`,
+     `no_hours`, `not_accepting`, `closed_now` or `fully_booked`, and the screen says which. Two of
+     those are the expected state of this project rather than faults, so the copy reads as "not
+     open for this yet" and points at the branch phone numbers. What renders right now is
+     "Pickup times are not open yet", because no branch is active.
+   - **A full window stays on screen and goes flat**, per spec section 10 N1. A window that
+     vanishes reads as a broken page; a window visibly taken reads as a busy shop.
+   - `/checkout` is half a screen and says so. Name, phone and payment land with `place_order`,
+     because a form that collects a phone number and cannot place an order is worse than no form.
+
+   23 SQL tests cover generation against real Postgres, all with an injected clock, including the
+   Friday 18:00 to 02:00 shift. 27 unit tests cover the formatting, all in the branch timezone.
 6. **`place_order`**, with idempotency through `checkout_attempts` and rate limiting through
    `rate_limit_hit()`. It must call `resolve_option_price_cents()` rather than reimplementing the
    fallback, it must agree with `lib/menu/line-pricing.ts` (and win where it does not), and it must increment `pickup_slots.reserved` in the same transaction as the insert.
@@ -196,7 +218,12 @@ because each one costs a day if rediscovered.
 
 - Do not invent answers to spec section 28. The pilot branch and the real weekday hours are still
   unanswered and they block Phase 1. `store_hours` is deliberately empty, `branch_is_open_at()`
-  fails closed, and all nine branches are seeded `is_active = false`.
+  fails closed, and all nine branches are seeded `is_active = false`. The slot picker is now the
+  loudest place this shows: it renders "Pickup times are not open yet" on every visit, and that is
+  it working, not it failing. Seed a branch in a test if you need windows, never in the seed.
+- Do not add a TypeScript implementation of the slot grid, for the same reason there is only one
+  place that adds money up. `get_pickup_slots()` is the grid, `place_order` books against it, and
+  `lib/slots/` only formats what it returns.
 - Do not hand-edit `supabase/seed.sql`. Change `lib/catalog/` and run `npm run build:seed`.
 - Do not apply the migrations. Verify them with `npm test` instead.
 - Do not link `/terms`, `/privacy` or `/refund`. They do not exist yet and land with PayMongo.
