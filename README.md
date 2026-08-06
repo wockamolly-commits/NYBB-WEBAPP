@@ -8,13 +8,21 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 ## Status
 
 **Phase 0 complete. Phase 1 in progress: the menu reads through one
-source-agnostic reader, and the wings configurator is built.** `npm run build`,
-`npm run lint` and `npm test` (131 tests) are all green, every page has been rendered and reviewed in a
-browser at 375px and 1280px, and migrations `0001` to `0011` apply cleanly
+source-agnostic reader, the wings configurator is built, and the cart is
+live.** `npm run build`, `npm run lint` and `npm test` (169 tests) are all green, every page has been rendered and reviewed in a
+browser at 320px, 375px and 1280px, and migrations `0001` to `0011` apply cleanly
 against a real Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
 deliberately not applied anywhere.
+
+**One open defect, and it is a big one.** In a production build nothing on the
+site hydrates. `proxy.ts` stamps a per-request nonce CSP with `strict-dynamic`,
+but every storefront page is statically prerendered, so the HTML Next serves
+carries no nonce and the browser blocks every script. `next dev` renders per
+request and hydrates, which is why it went unnoticed. Handoff trap 11 has the
+reproduction and the three ways out, all of which are decisions about spec
+section 22 rather than typos.
 
 Done:
 
@@ -69,10 +77,19 @@ Phase 1 so far:
   that carry photography can take the frame, so a heat level never blanks it
 - `lib/menu/line-pricing.ts`: the only place the UI adds money up, mirroring
   what `place_order` will do in Postgres
+- `lib/cart/` and `components/cart/`: the cart, in localStorage, storing slugs
+  and quantities and no product data at all. It is matched back to the live
+  menu on every visit by `resolveCart()`, which reprices the lines and drops
+  the ones the menu no longer sells, saying which and why rather than shrinking
+  in silence. Every peso comes from `line-pricing.ts`; the cart adds nothing up
+  itself. `customer_carts` is the sync target and waits for customer sign-in
+- `/cart`, a header count and a bottom-sticky bar on small screens, all reading
+  one module store through `useSyncExternalStore` so the storefront stays a
+  server tree with client islands in it
 
 Next:
 
-1. The cart and the pickup slot picker.
+1. The pickup slot picker.
 2. `place_order` with idempotency and rate limiting, then the tracking page
    with the pickup code.
 3. Customer email OTP.

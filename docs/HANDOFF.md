@@ -1,4 +1,4 @@
-# Handoff, 2026-08-05 (updated)
+# Handoff, 2026-08-05 (updated for the cart)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -13,8 +13,13 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 steps 1 and 2 have landed.** `npm run build`, `npm run lint`
-and `npm test` (131 tests) are green.
+**Phase 0 is complete, and Phase 1 steps 1, 2 and 4 have landed.** `npm run build`, `npm run lint`
+and `npm test` (169 tests) are green.
+
+**Read the eleventh trap below before anything else.** The production build does not hydrate at
+all: the nonce CSP is stamped onto statically prerendered HTML that carries no nonce, so every
+script is blocked. It is not a cart bug, it predates the cart, and it makes the whole storefront
+non-interactive in production. Nothing else in this document matters as much.
 
 - `lib/catalog/` holds the full Hot Wings menu, nine wing flavours, the Level of Hotness scale with
   its variation-dependent pricing, nine branches, and a generated image manifest. Its types mirror
@@ -67,10 +72,36 @@ Spec section 27. In order:
    `lib/menu/preview.ts` rather than in `lib/menu/index.ts` on purpose: index re-exports
    `getStorefrontMenu`, which pulls in `server-only`, and a client component importing it fails
    the build.
-4. **The cart.** `carts`, `cart_items` and `cart_item_options` exist, and `customer_carts` is the
-   cross-device sync. `lib/menu/line-pricing.ts` already computes a line; the cart reuses it and
-   must not grow a second copy of that arithmetic. The configurator's Add button is disabled and
-   labelled "Ordering opens soon": wiring it is the first visible step.
+4. ~~**The cart.**~~ **Done**, at `/cart`, with `lib/cart/` and `components/cart/`.
+
+   - **It stores slugs, not products.** A stored line is item, variation, chosen options and a
+     quantity. No name, no photograph, no category: those are read from the live menu every time
+     the cart is opened, which is what makes a cart left overnight correct in the morning.
+   - **`resolveCart()` is the join, and it reports.** A line whose item, size or option has left
+     the menu is dropped *and named on screen*, because a cart that quietly shrinks between
+     visits reads as the site losing the order. It also reprices, so a stale figure survives
+     exactly as long as it takes the customer to open the cart.
+   - **The one stored price is deliberate and matches the schema.** `unitPriceCents` on a stored
+     line is the same idea as `cart_items.unit_price_cents`: display only, so the sticky bar can
+     show a total on pages that never loaded a menu. It is written *by* `line-pricing.ts`, so it
+     is a cache and not a second implementation. `lib/cart/lines.ts` does not add money up.
+   - **Identity is `lineKey()`**, sorted and canonical, so the same wings configured in a
+     different order merge into one line instead of arriving in the kitchen as two tickets.
+   - **The store is a module, not a context.** `useSyncExternalStore` over localStorage, so the
+     header, the sticky bar and the cart page share one cart without turning the storefront into
+     a client tree. `loaded` is part of the snapshot on purpose: without it, "empty" and "not read
+     yet" are the same state and the cart page flashes its empty message over a real order.
+   - **`reconcileCart()` lives in the store, not in the view.** Writing the correction back is
+     what destroys the evidence for the notice, so one place owns both. It settles: the notice
+     shows on the visit that earned it and not on the next one. An earlier version did this with
+     `setState` inside an effect and the React compiler lint rejected it, correctly.
+   - `customer_carts` is untouched. It is keyed by `auth.users(id)` and customer sign-in is the
+     last step of Phase 1, so the sync arrives as a second writer of the same `Cart`.
+
+   Verified in a browser at 320 and 375: pricing, the drop-and-reprice notice, write-back to
+   localStorage, the live header badge, the sticky bar clearing the footer, and no sideways
+   scroll. The Add button on the item page could not be clicked in a browser for the reason in
+   trap 11; its logic is under unit test.
 5. **Pickup slot picker.** Slot generation reads `store_hours` plus `branches.pickup_slot_minutes`,
    generated on read for the next `slot_horizon_hours`. **This is where the two unanswered owner
    questions bite:** `store_hours` is deliberately empty, `branch_is_open_at()` fails closed, and
@@ -121,6 +152,25 @@ because each one costs a day if rediscovered.
    to the published price, but `resolve_option_price_cents` falls through to
    `menu_options.price_cents`, which is NULL for every heat level by design, and coalesces to
    zero. `resolve_price_list_id()` raises instead. Never reintroduce a null-list path.
+11. **The nonce CSP and static generation cannot both be right, and today the CSP wins and the
+   site loses.** `proxy.ts` mints a nonce per request and stamps `script-src 'nonce-...'
+   'strict-dynamic'` on the response. Next can only put that nonce on the script tags of a page
+   it renders *in that request*. Every storefront page is statically prerendered, so the HTML
+   Next serves carries no nonce at all, `strict-dynamic` then disables the `'self'` allowlist,
+   and the browser blocks every script on the page. **In `next start` nothing on this site
+   hydrates:** the cart page sits on its skeleton forever and the configurator never replaces its
+   Suspense fallback. `next dev` renders per request, so it stamps the nonce and hydrates, which
+   is why this survived Phase 0 review.
+
+   Reproduce it in one minute: `npm run build`, start the `prod` configuration in
+   `.claude/launch.json`, open any page, read the console. Expect "Loading the script ... violates
+   the following Content Security Policy directive" for every chunk.
+
+   The three ways out are all real decisions, which is why none of them was taken here:
+   force the storefront to render dynamically and lose SSG; drop `'strict-dynamic'` and lean on
+   `'self'` for scripts, which is a genuine weakening of spec section 22; or keep the nonce for
+   dynamic routes only and serve the static ones a hash-based or `'self'` policy. Pick one with
+   the security requirement in front of you, not in passing.
 
 ## Do not
 
@@ -135,4 +185,9 @@ because each one costs a day if rediscovered.
 - Do not run the dev server through Bash. One is already running on port 3000.
 - Do not judge mobile layout by eye. Measure it, per item 3 above.
 - Do not add a second place that adds money up. `lib/menu/line-pricing.ts` is the display side and
-  `place_order` is the authority; when they disagree the server is right.
+  `place_order` is the authority; when they disagree the server is right. The cart is not an
+  exception: `lib/cart/lines.ts` calls into `line-pricing.ts` for every peso, and the one price it
+  stores is a cache that `resolveCart` overwrites.
+- Do not read a browser check of anything interactive from `next dev` alone until trap 11 is
+  settled. Dev hydrates and production does not, so dev proves less than it looks like it does.
+  `.claude/launch.json` now has a `prod` configuration on port 3001 for exactly this.
