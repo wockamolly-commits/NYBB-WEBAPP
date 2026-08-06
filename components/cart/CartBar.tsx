@@ -18,15 +18,19 @@ import { formatPeso } from "@/lib/format";
  * renders on pages that never loaded a menu. `resolveCart` on the cart page is
  * the correction, and the customer is one tap away from it. See `lines.ts`.
  *
- * It hides itself on /cart. A sticky bar whose only action is "view cart" is
- * noise on the cart.
+ * It hides itself on /cart and /checkout. A sticky bar whose only action is
+ * "view cart" is noise on the cart, and worse than noise on checkout: there it
+ * covers the bottom of the order summary with a second running total and a
+ * button pointing back the way the customer just came.
  */
+const HIDDEN_ON = new Set(["/cart", "/checkout"]);
+
 export function CartBar() {
   const { cart, loaded } = useCart();
   const pathname = usePathname();
   const quantity = cartQuantity(cart);
 
-  if (!loaded || quantity === 0 || pathname === "/cart") return null;
+  if (!loaded || quantity === 0 || HIDDEN_ON.has(pathname)) return null;
 
   return (
     <>

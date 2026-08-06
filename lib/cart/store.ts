@@ -114,9 +114,31 @@ export function removeCartLine(key: string): void {
   commit(removeLine(state.cart, key));
 }
 
-export function clearCart(): void {
+/**
+ * Empty the cart, and hand back what was in it.
+ *
+ * The return value is the whole undo feature. Emptying a cart is the one
+ * irreversible thing on this screen, and the usual guard is a dialog asking
+ * whether you meant it, which interrupts every customer who did mean it in
+ * order to catch the rare one who did not. Handing the old cart back to the
+ * caller lets the screen offer to put it back instead, so the action stays
+ * one tap and stops being irreversible.
+ *
+ * It is deliberately not stored. Undo is the moment after the press, not a
+ * bin that fills up: a cart restored on the next visit is a cart the customer
+ * has already forgotten throwing away.
+ */
+export function clearCart(): Cart {
   load();
+  const emptied = state.cart;
   commit(emptyCart);
+  return emptied;
+}
+
+/** Put a cart back exactly as it was. The other half of `clearCart`. */
+export function restoreCart(cart: Cart): void {
+  load();
+  commit(cart);
 }
 
 /**

@@ -3,18 +3,20 @@
 import { Trash2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
-import { lineHref, resolveCart } from "@/lib/cart/lines";
+import { cartQuantity, lineHref, resolveCart } from "@/lib/cart/lines";
 import {
   clearCart,
   reconcileCart,
   removeCartLine,
+  restoreCart,
   setCartLineQuantity,
   type CartChanges,
 } from "@/lib/cart/store";
+import type { Cart } from "@/lib/cart/types";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
 import { previewImage } from "@/lib/menu/preview";
@@ -69,6 +71,15 @@ function DroppedNotice({ dropped, repriced }: CartChanges) {
 export function CartView({ categories }: { categories: MenuCategory[] }) {
   const { cart, loaded, changes } = useCart();
 
+  /**
+   * What "Empty the cart" just threw away, held only until the page is left.
+   *
+   * Component state rather than the store, because this is the offer to undo
+   * and not a second copy of the cart. Navigating away ends the offer, which
+   * is correct: undo belongs to the moment after the press.
+   */
+  const [emptied, setEmptied] = useState<Cart | null>(null);
+
   // Arriving at the cart is when the stored lines meet the live menu. The
   // store does the reconciling, because correcting the cart and remembering
   // why are one action and only it can hold both.
@@ -93,18 +104,59 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
   }
 
   if (resolved.lines.length === 0) {
+    const undone = emptied === null ? 0 : cartQuantity(emptied);
+
     return (
       <div className="mt-8">
         {changes ? <DroppedNotice dropped={changes.dropped} repriced={changes.repriced} /> : null}
-        <p className="text-nybb-ink/70 mt-6 max-w-prose leading-relaxed">
-          Nothing in the cart yet. Wings come in nine flavours and five levels
-          of heat, and every one of them is priced before you commit to it.
-        </p>
-        <div className="mt-6">
-          <ButtonLink href="/menu" tone="light">
-            Browse the menu
-          </ButtonLink>
-        </div>
+
+        {emptied ? (
+          // role="status", so the undo is announced rather than only drawn.
+          // A customer using a screen reader who has just emptied a cart by
+          // accident is exactly the one who most needs to hear that it can be
+          // put back, and a silently swapped panel tells them nothing.
+          <div
+            role="status"
+            className="border-nybb-ink/30 mt-6 max-w-prose rounded-md border border-dashed p-5"
+          >
+            <p className="font-display heading-panel text-nybb-ink">
+              That emptied your cart
+            </p>
+            <p className="text-nybb-ink/75 mt-2 text-sm leading-relaxed">
+              Nothing has been ordered and nothing is lost yet. Putting it back
+              restores {undone === 1 ? "the item" : `all ${undone} items`}{" "}
+              exactly as {undone === 1 ? "it was" : "they were"}, as long as you
+              stay on this page.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button
+                tone="light"
+                onClick={() => {
+                  restoreCart(emptied);
+                  setEmptied(null);
+                }}
+              >
+                Put it back
+              </Button>
+              <ButtonLink href="/menu" tone="light" variant="secondary">
+                Browse the menu
+              </ButtonLink>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-nybb-ink/70 mt-6 max-w-prose leading-relaxed">
+              Nothing in the cart yet. Wings come in nine flavours and five
+              levels of heat, and every one of them is priced before you commit
+              to it.
+            </p>
+            <div className="mt-6">
+              <ButtonLink href="/menu" tone="light">
+                Browse the menu
+              </ButtonLink>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -246,7 +298,7 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           <Button
             tone="light"
             variant="danger"
-            onClick={clearCart}
+            onClick={() => setEmptied(clearCart())}
           >
             <Trash2 aria-hidden className="h-4 w-4" strokeWidth={2} />
             Empty the cart
