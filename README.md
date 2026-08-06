@@ -17,13 +17,18 @@ are all green, every page has been rendered and reviewed in a browser at 320px,
 Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
-deliberately not applied anywhere. **That should change next**: customer email
-OTP is the first step that cannot be built without one, and RLS and grants have
-so far only been checked against PGlite, where `anon`, `authenticated` and
-`auth.uid()` are shims. Creating the project does not require the section 28
-answers: apply the migrations and the seed, and the site stays exactly as
-honest as it is now, because `store_hours` is still empty and no branch is
-active.
+deliberately not applied anywhere. **That should change next, and it is waiting
+on the owner rather than on any code.** Creating the project needs a browser and
+an account: the CLI is present but unauthenticated, and the MCP connector is not
+authorized. Applying the migrations is a single command once it exists, and
+`docs/HANDOFF.md` has the exact procedure under "Creating the project".
+
+It matters because customer email OTP is the first step that cannot be built
+without one, and because RLS and grants have so far only been checked against
+PGlite, where `anon`, `authenticated` and `auth.uid()` are shims. Creating the
+project does not require the section 28 answers: apply the migrations and the
+seed, and the site stays exactly as honest as it is now, because `store_hours`
+is still empty and no branch is active.
 
 **The storefront renders dynamically, and that is deliberate.** A nonce-based
 CSP and static generation are mutually exclusive in Next: the nonce is minted
@@ -137,24 +142,56 @@ Phase 1 so far:
   own snapshots rather than from a menu that has moved on. The link is a bearer
   credential, so the page is `noindex`, the referrer policy keeps the token off
   other hosts, and nothing logs it
+- **The landing hero pass.** The Level of Hotness is in the first viewport now,
+  as a strip beside the copy, so the hero shows its evidence instead of naming
+  a quantity the reader has to take on trust. The band further down stopped
+  being a second drawing of the same ramp and became what its own heading
+  always said it was: a price list, five rows, both upcharges in a column you
+  can compare down. The two surfaces are split by **job, not by size**, and the
+  band keeps the site's one authored animation because it is where somebody is
+  choosing. The hero's second button is "Call a branch", which makes the
+  disclosure's remedy reachable from where the disclosure is read and retires a
+  collision with the header's "Branches"
 
 Next:
 
-1. Customer email OTP, which is also when the Server Action starts forwarding
+1. **Create the Supabase project and apply `0001` to `0014` plus the seed.**
+   This is the owner's action and it is what everything else now waits on.
+   `docs/HANDOFF.md` has the procedure.
+2. Customer email OTP, which is also when the Server Action starts forwarding
    an access token so orders stop being anonymous. **This is the first step
-   that needs a real Supabase project**, and it is the right moment to create
-   one: RLS and grants have only ever been checked against PGlite, where the
-   roles are shims, and no request has yet gone browser to PostgREST to
-   Postgres and back.
+   that needs the project**, which is why the project comes first: RLS and
+   grants have only ever been checked against PGlite, where the roles are
+   shims, and no request has yet gone browser to PostgREST to Postgres and
+   back.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
-and its real weekday hours. Nothing in the schema guesses either.
+and its real weekday hours. Nothing in the schema guesses either. Creating the
+Supabase project is **not** blocked on those two, and should not wait for them.
 
 ## Start here
 
 1. `AGENTS.md` for the standing rules.
-2. `docs/IMPLEMENTATION-PROMPT.md` for the full specification: architecture, data model, feature
+2. `docs/HANDOFF.md` for where things stand, the twelve traps earlier sessions
+   hit, and the Supabase procedure that is next.
+3. `docs/IMPLEMENTATION-PROMPT.md` for the full specification: architecture, data model, feature
    classification from ZOMBEANS, build phases, and open questions.
+
+## Design system
+
+`DESIGN.md` is the design system and `PRODUCT.md` is the product record. Both
+are tracked, and **`DESIGN.md` is required reading before any visual work**. It
+was derived from what shipped rather than from what was intended, which is why
+its named rules read as corrections: the header is in the fold, short viewports
+key on height rather than width, the same form appears once per page, and the
+one authored animation belongs to the surface where a decision is made.
+
+`.impeccable/design.json` is the same system in machine form, and
+`.impeccable/live/config.json` goes with it. Everything else under
+`.impeccable/` is a generated run artifact, so `.gitignore` denies that
+directory and re-allows those two files by name. A new artifact type is
+therefore ignored by default, which is the only arrangement that stays correct
+without anyone maintaining it.
 
 ## What this replaces
 
@@ -206,7 +243,7 @@ the badge scan cannot fix one and leave the other shipping a watermark.
 
 ```bash
 npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
-npm test              # applies 0001 to 0011 and the seed to a real Postgres
+npm test              # applies 0001 to 0014 and the seed to a real Postgres
 ```
 
 The migration tests run PGlite, which is Postgres compiled to WebAssembly, so

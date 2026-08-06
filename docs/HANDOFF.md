@@ -1,4 +1,4 @@
-# Handoff, 2026-08-06 (updated for place_order and order tracking)
+# Handoff, 2026-08-06 (updated for the landing hero pass and the design system)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -10,6 +10,13 @@ Brad's Hot Wings in Cebu. The project lives at `C:\dev\nybb-order`.
 **Read first, in this order:** `AGENTS.md` (standing rules), `README.md` (live status), then the
 relevant section of `docs/IMPLEMENTATION-PROMPT.md` (the full specification). Do not paste the spec
 into chat, it is ~1,600 lines. Read it from disk.
+
+**`DESIGN.md` before any visual work, and `PRODUCT.md` before any decision about who a screen is
+for.** They are tracked now. `DESIGN.md` is the design system, derived from what shipped rather than
+from what was intended, and it carries the named rules that were each learned expensively.
+`PRODUCT.md` is the product record, and its load-bearing claim is that the three audiences are
+co-equally primary, so a surface decides locally which one it serves rather than inheriting a
+ranking.
 
 ## Where things stand
 
@@ -46,10 +53,63 @@ browser pane about anything that waits for a frame.
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
   127 of the 310 tests live there.
-- Everything through the order tracking page is committed and pushed.
+- **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
+  Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
+  form and is tracked with it; `.impeccable/live/config.json` is tracked too. Everything else under
+  `.impeccable/` is a generated run artifact (critique reports, the detector cache, live session
+  journals) and is gitignored, because it belongs to the machine that produced it rather than to
+  the project. The `.gitignore` block that does this is deny-all-then-allow, which is the only
+  shape that keeps a new artifact type out by default.
+- **The landing hero pass has landed** (`8e9d462`, `4bc6173`). `main` is at `4bc6173` and
+  everything, including this, is committed and pushed.
 
-**Nothing has been applied to a database.** No Supabase project exists, and the Supabase MCP
-connector is not authorized in this environment.
+  **Correcting the previous handoff:** it said "everything through the order tracking page is
+  committed and pushed" while two commits sat unpushed on `design/landing-hero-pass`. That is the
+  one respect in which it was stale, and it is worth noticing how: the sentence was true when
+  written and became false the moment a branch was cut. A handoff that claims a push state has to
+  be rewritten by whoever merges, not by whoever wrote it.
+
+  What the two commits did:
+
+  - **The hero states the heat scale; the band prices it.** They used to be the same object drawn
+    twice within two screens, which is a repeat rather than a statement and its restatement, and it
+    cost the band its reveal: five stops drawing themselves is only a moment if the object is new
+    when it arrives. So they were split by *job*. `components/site/HeroHeat.tsx` is the ramp, still,
+    no prices. `components/site/HeatScale.tsx` is now a priced list of five rows, horizontal at
+    every width, and it keeps the site's only authored animation because it is where somebody is
+    choosing. Both rules are recorded in `DESIGN.md` under Named Rules.
+  - **Short viewports key on height, never on width.** A landscape phone at 844x390 is past every
+    width breakpoint while having under 300px below the header, so a width-keyed rule hands it the
+    desktop treatment and put the primary CTA 113px below the fold. The hero's short-viewport rules
+    are `max-height` queries. This is now a `DESIGN.md` rule and a `do` in `design.json`.
+  - **The hero sets `text-nybb-bone` on its container.** Anything in there that does not name its
+    own colour inherits `--foreground`, which the move to a light page ground turned into ink: near
+    black type on a near black wash. The level names walked straight into this while their
+    percentages, which do name a colour, rendered fine, so DOM-counting measurement passed it and
+    only a screenshot caught it.
+  - The second CTA is "Call a branch", which retires a real collision (the header's "Branches" goes
+    to `/contact`, this goes to the section on this page) and makes the disclosure's remedy
+    reachable from where the disclosure is read.
+  - The hero poster is fetched once, not twice: the still stays mounted under the video instead of
+    the video carrying a `poster` attribute of its own.
+
+**Nothing has been applied to a database.** No Supabase project exists.
+
+**And an agent cannot create one.** This is worth writing down because it has now been rediscovered
+in two sessions. Creating the project needs one of three things, and none of them is available to a
+session running here:
+
+- the Supabase MCP connector, which is **not authorized** in this environment and cannot be
+  authorized from a non-interactive session, because the OAuth flow needs a browser and a human;
+- `npx supabase login`, which is interactive for the same reason. **The CLI itself is present
+  (2.111.0 via `npx`), so this is an authorization problem and not a tooling one**;
+- a `SUPABASE_ACCESS_TOKEN` in the environment, which is not set. There is no `.env.local`, only
+  `.env.example`.
+
+It should stay that way. The project lives in the owner's account, a database password has to be
+chosen and stored, and section 25 wants two projects, which is a billing decision. **This is the
+owner's action, and the handoff's job is to make it a five minute one rather than to work around
+it.** See "Creating the project" below for the exact steps and the exact commands that follow.
 
 **When the project should be created: now, before step 8.** Everything through the tracking page
 was buildable without one, because PGlite runs the real migrations and the storefront falls back to
@@ -73,6 +133,56 @@ and the site stays exactly as honest as it is now: `store_hours` is empty, all n
 are what flip a branch on, not what create a database. **This retires "do not apply the
 migrations" below**, which was written when there was nowhere to apply them to. Two projects
 (staging and production) if budget allows, per spec section 25.
+
+### Creating the project, and applying 0001 to 0014 plus the seed
+
+**Steps 1 and 2 are the owner's and cannot be delegated to a session.** Everything from step 3 is a
+command an agent can run once the values in step 2 exist.
+
+1. **Create the project** at `supabase.com/dashboard`. Region **Singapore (`ap-southeast-1`)**, which
+   is the nearest to Cebu; anything further adds a round trip to every PostgREST call on the
+   critical path. Store the database password in a password manager at the moment it is generated,
+   because the dashboard shows it exactly once. Two projects (`nybb-staging`, `nybb-prod`) if budget
+   allows, per section 25; one is enough to unblock step 8, and the second can follow.
+2. **Copy four values** from Project Settings: the project URL, the anon/publishable key, the
+   service role key, and the connection string. Put the first three in `.env.local` under the names
+   `.env.example` already uses (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`). `.env.local` is gitignored. **The service role key is a secret that
+   bypasses RLS entirely**: it belongs in `.env.local` and in the Vercel environment, never in a
+   client component and never in a commit.
+3. **Apply the migrations.** Verified reachable from here: `supabase db push --db-url` works without
+   `supabase link` and without a `supabase/config.toml`, and the CLI is present at 2.111.0 via
+   `npx`. Use the **session pooler** connection string, and percent-encode the password.
+
+   ```bash
+   npx supabase db push --db-url "postgresql://postgres.<ref>:<password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres" --include-all
+   ```
+
+   Run it with `--dry-run` first. **`--include-all` is not optional here and this is the one open
+   risk in this procedure.** These migrations are numbered `0001` to `0014`, not in the CLI's usual
+   14-digit timestamp format, so the remote history table will contain none of them and the CLI's
+   default is to push only what it recognises as new. This was not provable from here: it needs a
+   reachable Postgres, Docker was not running and there is no `psql` on this machine. **Check the
+   dry run output names all fourteen files, in order, before running it for real.**
+4. **Apply the seed.** There is no `psql` on this machine and `--include-seed` reads its path from a
+   `config.toml` that this repo deliberately does not have, so the shortest honest route is to paste
+   `supabase/seed.sql` into the dashboard SQL editor. It is 284 lines and it is an upsert
+   throughout, so a re-run is safe and is in fact the point of it. If you would rather the CLI did
+   it, `supabase init` generates the `config.toml` that `--include-seed` needs, but review that file
+   before committing it: it is a few hundred lines of local-development defaults that nobody here
+   has read.
+5. **Then prove the thing PGlite cannot.** This is the whole reason the project comes before step 8,
+   so do not skip to the feature. Load `/menu` against the real project and confirm the reader takes
+   the database path rather than the static fallback. Then place an order end to end from the
+   browser against the production build on port 3001. That is the first time a request will have
+   gone browser to PostgREST to Postgres and back, and it is the seam where a wrong argument name or
+   a missing grant hides. Expect to find something.
+
+   To place that order you have to open a branch, and **the owner's section 28 answers are still
+   missing**, so do it the way the "Do not" section already requires: switch a branch on and give it
+   hours **in a scratch SQL statement against staging**, place the order, then put it back. Never in
+   `seed.sql`, and never in a way that survives into production, because a branch marked open is a
+   promise to a customer that somebody is standing at that counter.
 
 ## Next work: Phase 1, ordering
 
@@ -351,9 +461,20 @@ because each one costs a day if rediscovered.
 - Do not hand-roll a control. `components/ui/Button.tsx` is the button system, and a bare
   underline is for navigation, never for an action. See the bullet above.
 - Do not hand-edit `supabase/seed.sql`. Change `lib/catalog/` and run `npm run build:seed`.
-- Do not apply the migrations **to a project that does not exist yet**, and do not invent one to
-  get around a failing test: `npm test` is the verification loop. Once the owner creates the
-  Supabase project, applying them is the first thing to do, per the note above.
+- Do not invent a Supabase project to get around a failing test: `npm test` is the verification
+  loop and it needs no project. **The old "do not apply the migrations" rule is retired**, and the
+  procedure above replaces it: the moment the owner creates the project, applying 0001 to 0014 and
+  the seed is the first thing to do.
+- Do not draw the heat ramp twice on one page. A level keeps its swatch everywhere, but the *form*
+  is once per page: the hero strip states the scale and the band prices it. The band owns the site's
+  one authored animation because it is where somebody is choosing, and the hero strip is
+  deliberately still. Both rules are in `DESIGN.md`.
+- Do not key a short-viewport rule on width. A landscape phone at 844x390 is past every width
+  breakpoint with under 300px of usable height, so width rules hand it the desktop treatment and
+  push the CTAs off the screen. Use `max-height`.
+- Do not rely on counting elements to prove something is visible. The hero's level names were in the
+  DOM, correct, in order, and invisible, because they named no colour and inherited ink onto ink.
+  Measurement passed it and a screenshot caught it.
 - Do not link `/terms`, `/privacy` or `/refund`. They do not exist yet and land with PayMongo.
 - Do not write Next.js from memory. This is Next 16: middleware is `proxy.ts`, `params` is a
   Promise. Read `node_modules/next/dist/docs/`.
