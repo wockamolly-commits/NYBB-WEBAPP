@@ -51,7 +51,10 @@ Done:
   heat meter, product tile, flavour grid and the no-photo tile
 - Video hero cut and re-encoded from the brand food film
   (`scripts/build-hero-video.sh`), with poster, reduced-motion and no-JS
-  fallbacks all verified
+  fallbacks all verified, a pause control for WCAG 2.2.2, and the wordmark
+  that is burnt into the film's top left corner cropped off at the encoder.
+  **The committed clips predate that crop and still carry the mark**: re-run
+  the script against the master to clear it. See the note in the script
 
 - Migrations `0001` to `0010` under `supabase/migrations`: types, branches and
   price lists, menu with both price-override tables, carts, orders and pickup

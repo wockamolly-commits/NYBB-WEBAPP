@@ -119,8 +119,16 @@ export default async function Home() {
               rather than the shared label value: this is the hero, where a
               display treatment is allowed to be a display treatment. The face
               is Anton and not the mono, because there is not a digit in it and
-              mono here was only ever dressing the line up as technical. */}
-          <p className="font-display text-nybb-orange text-xs tracking-[0.28em]">
+              mono here was only ever dressing the line up as technical.
+
+              Bone rather than orange. This line sits at the very top of the
+              type block, which is the one place the scrim is thinnest, and 12px
+              of brand orange measured 2.2:1 there over the old video and would
+              not clear 4.5:1 over the photograph either. Orange is not what
+              identifies this line; the face and the tracking are, and both are
+              kept. The colour is spent on the headline below, where the text is
+              large enough to be held at 3:1 and low enough to sit on ink. */}
+          <p className="font-display text-nybb-bone/85 text-xs tracking-[0.28em]">
             Pickup only / Cebu
           </p>
 
