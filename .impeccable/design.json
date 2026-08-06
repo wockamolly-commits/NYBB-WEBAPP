@@ -177,8 +177,8 @@
       },
       {
         "name": "heat-reveal",
-        "value": "transform 640ms cubic-bezier(0.16, 1, 0.3, 1), staggered 70ms per stop",
-        "purpose": "The site's only authored animation: the five heat stops drawing themselves in sequence as the section arrives. Transform only, so nothing reflows. The default is the drawn state, so no-JS and reduced motion both keep the bars."
+        "value": "transform 640ms cubic-bezier(0.16, 1, 0.3, 1), staggered 70ms per stop, horizontal at every width",
+        "purpose": "The site only authored animation: the five priced heat rows extending their measure bars in sequence as the band arrives. Transform only, so nothing reflows. The drawn state is the default, so no-JS and reduced motion both keep it."
       },
       {
         "name": "tile-photo",
@@ -393,6 +393,16 @@
         "name": "The Header Is In The Fold Rule",
         "body": "The header is sticky top-0 and therefore still in flow, so the first screen is the hero plus the bar above it. A hero sized to fill the viewport actually overfills it. Size it to leave roughly an eighth of the viewport to the next section, so the page reads as having more below rather than ending at a seam.",
         "section": "layout"
+      },
+      {
+        "name": "The Two Heat Surfaces Rule",
+        "body": "A level is the same swatch everywhere, but the same form may only appear once per page. If two surfaces would both draw the ramp, one of them changes job: state the scale, or price it, not both in the same shape.",
+        "section": "components"
+      },
+      {
+        "name": "The Moment Belongs To The Band Rule",
+        "body": "The five bars extending in sequence is the site's only authored animation and it lives where somebody is choosing. The hero strip is deliberately still, which is what keeps the band's entrance worth having.",
+        "section": "components"
       }
     ],
     "dos": [

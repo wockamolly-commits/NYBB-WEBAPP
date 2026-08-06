@@ -4,25 +4,33 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The Level of Hotness, drawn as one scale.
+ * What each level of heat costs.
  *
- * The landing page used to render the HeatMeter component five times, once per
- * level. That is twenty five swatches saying a single thing, and it read as
- * five repeated cards rather than as a scale, which is what the product
- * actually is: one ramp you move along, priced at every stop.
+ * WHY THIS IS A PRICE LIST AND NOT A RAMP ANY MORE.
+ * ================================================================
+ * It used to be five tall bars ascending left to right, which was the right
+ * object right up until the hero started doing exactly that. Two drawings of
+ * one ramp inside two screens is not a statement and its restatement, it is a
+ * repeat, and the second one arrives having already been seen. That cost the
+ * page its only authored moment: five stops drawing themselves is a reveal, and
+ * a reveal of something the visitor met a screen and a half ago reveals
+ * nothing.
  *
- * So this is a single object. Five bars ascending left to right in the brand's
- * own five fixed heat colours, each carrying its name, its percentage and the
- * two upcharges. Nothing has to explain that the right hand end is hotter.
+ * So the two surfaces were split by job rather than by size. The hero strip
+ * says heat is sold on a scale. This says what each stop costs, which is the
+ * question somebody actually has once they believe the first part, and it is
+ * the question the section's own heading has always asked ("Heat is on the
+ * menu", "pay for the level, not for a different dish"). Prices lead now, in
+ * the numeric face, aligned in a column so five upcharges can be compared at a
+ * glance. That is a menu, and this is a restaurant.
  *
- * On a phone the whole thing rotates: five rows, each with its label and price
- * above a full width bar whose length ascends down the list. Same object, same
- * reading order, no horizontal scroll, and the bar keeps the full column width
- * so 20% and 100% are still obviously different lengths.
- *
- * The ramp is the five fixed tokens rather than a gradient function, for the
- * reason globals.css gives: a given level is the same swatch on a product
- * page, a receipt and a kitchen ticket.
+ * The measure survives as a row-length bar rather than a column-height one. It
+ * is still the level's own fixed swatch, because a level is the same colour on
+ * a product page, a receipt and a kitchen ticket, but it now reads as the data
+ * bar in a priced row rather than as a second ramp. The authored moment lives
+ * here, where it always did: the five bars extend in sequence as the section
+ * arrives, and horizontally at every width now that the layout no longer
+ * flips.
  */
 
 /** Static class names, so Tailwind's scanner can see all five. */
@@ -87,57 +95,65 @@ export function HeatScale({
   }, []);
 
   return (
-    <ol
-      ref={ref}
-      className={cn("grid gap-y-7 sm:grid-cols-5 sm:gap-x-3 lg:gap-x-5", className)}
-    >
+    <ol ref={ref} className={cn("w-full", className)}>
       {levels.map((level, index) => (
         <li
           key={level.slug}
-          className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-3 sm:flex sm:flex-col sm:items-stretch sm:gap-0"
+          className={cn(
+            "border-nybb-bone/15 grid items-baseline gap-x-5 gap-y-4 border-t py-5",
+            // Phone: the name and the two prices on one line, the measure
+            // spanning underneath. Desktop: the measure takes the middle,
+            // where it is read against the prices on its right.
+            "grid-cols-[minmax(0,1fr)_auto_auto]",
+            "sm:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)_5rem_5rem] sm:items-center sm:gap-x-8",
+          )}
         >
-          {/* The track. A fixed box on both axes, so every bar is read
-              against the same full length and the five stops stay directly
-              comparable. */}
-          <div className="order-3 col-span-2 flex h-2.5 w-full items-end self-center sm:order-1 sm:col-span-1 sm:h-40 lg:h-52">
+          <div className="min-w-0">
+            <p className="font-display text-lg leading-none sm:text-xl">
+              {level.name}
+            </p>
+            <p className="font-mono-tabular text-nybb-bone/55 mt-2 text-xs leading-none">
+              {level.percent}%
+            </p>
+          </div>
+
+          {/* The measure. A fixed track so all five are read against one
+              length, with the bar's real width set from the percentage and the
+              reveal scaling it rather than resizing it, so nothing reflows. */}
+          <div className="order-last col-span-3 h-2 w-full sm:order-none sm:col-span-1">
             <div
+              aria-hidden
               data-shown={shown}
               className={cn(
-                "heat-bar h-full w-[var(--fill)] rounded-[2px] sm:h-[var(--fill)] sm:w-full",
+                "heat-bar h-full rounded-full",
                 RAMP[index] ?? RAMP[RAMP.length - 1],
               )}
               style={
                 {
-                  "--fill": `${level.percent}%`,
+                  width: `${level.percent}%`,
                   transitionDelay: `${index * 70}ms`,
                 } as React.CSSProperties
               }
             />
           </div>
 
-          <div className="order-1 sm:order-2 sm:pt-5">
-            <p className="font-display text-lg leading-none sm:text-xl">
-              {level.name}
-            </p>
-            <p className="font-mono-tabular text-nybb-bone/50 mt-1.5 text-xs">
-              {level.percent}%
-            </p>
-          </div>
+          {/* Each price carries its own label at every width. A column heading
+              would be cheaper, but the phone puts these two numbers beside a
+              name rather than under a header, and two unlabelled peso amounts
+              side by side is a puzzle. */}
+          <p className="text-right">
+            <span className="type-caps text-nybb-bone/50 block">Half</span>
+            <span className="font-mono-tabular text-nybb-orange mt-1.5 block text-sm sm:text-base">
+              +{level.half}
+            </span>
+          </p>
 
-          <dl className="order-2 flex gap-5 text-right sm:order-3 sm:mt-4 sm:block sm:space-y-1 sm:gap-0 sm:text-left">
-            <div className="flex items-baseline gap-1.5 sm:justify-between sm:gap-2">
-              <dt className="type-caps text-nybb-bone/50">Half</dt>
-              <dd className="font-mono-tabular text-nybb-orange text-sm">
-                +{level.half}
-              </dd>
-            </div>
-            <div className="flex items-baseline gap-1.5 sm:justify-between sm:gap-2">
-              <dt className="type-caps text-nybb-bone/50">Full</dt>
-              <dd className="font-mono-tabular text-nybb-orange text-sm">
-                +{level.full}
-              </dd>
-            </div>
-          </dl>
+          <p className="text-right">
+            <span className="type-caps text-nybb-bone/50 block">Full</span>
+            <span className="font-mono-tabular text-nybb-orange mt-1.5 block text-sm sm:text-base">
+              +{level.full}
+            </span>
+          </p>
         </li>
       ))}
     </ol>

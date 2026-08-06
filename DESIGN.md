@@ -504,13 +504,27 @@ in the wings configurator, on the order confirmation, on the staff ticket and on
 slip, with the same five swatches every time. It is the one thing in this interface that could not
 be lifted from a template, and it is treated accordingly.
 
-Two further expressions of the same object, and the difference between them is how much of the
-decision they support. The **heat band** on the landing page is the full one: five ascending bars in
-a tall track, each carrying its name, percentage and both upcharges, and it owns the page's single
-authored animation. The **hero strip** is the compressed one: the same five swatches and the same
-ascending read at a fraction of the height, with the names and percentages but no prices and no
-motion. The strip states that heat is sold on a scale; the band is where somebody chooses a level.
-Neither is a decoration derived from the other, and a level is the same swatch in both.
+The landing page carries two more surfaces built from the same five swatches, and they are split by
+**job, not by size**. The **hero strip** is the ramp: five ascending columns, named and given their
+percentages, stating that heat here is sold on a scale. The **heat band** is the price list: five
+rows, each with the level, its percentage, a horizontal measure bar, and both upcharges in a column
+you can compare down. The strip makes the claim; the band answers the question the claim provokes,
+which is what each stop costs.
+
+They were the same object once, both drawn as ascending ramps, and that was wrong in a way worth
+recording. Two drawings of one ramp within two screens is not a statement and its restatement, it is
+a repeat, and it cost the band its reveal: five stops drawing themselves is only a moment if the
+object is new when it arrives.
+
+### Named Rules
+
+**The Two Heat Surfaces Rule.** A level is the same swatch everywhere, but the same *form* may only
+appear once per page. If two surfaces would both draw the ramp, one of them changes job: state the
+scale, or price it, not both in the same shape.
+
+**The Moment Belongs To The Band Rule.** The five bars extending in sequence is the site's only
+authored animation and it lives where somebody is choosing. The hero strip is deliberately still,
+which is what keeps the band's entrance worth having.
 
 ### The heat rule (signature)
 

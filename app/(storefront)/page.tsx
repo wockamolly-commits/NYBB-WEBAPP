@@ -347,7 +347,12 @@ export default async function Home() {
             </p>
           </header>
 
-          <HeatScale levels={heatLevels} className="mt-14 sm:mt-16" />
+          {/* Capped well inside the 6xl column. Left to fill it, the price
+              columns sat at the far right and the eye had to cross about 950px
+              of empty band to get from "Lite" to what Lite costs, which is the
+              oldest failure mode of a wide table. At 3xl the name, the measure
+              and the two numbers are one glance. */}
+          <HeatScale levels={heatLevels} className="mt-14 max-w-3xl sm:mt-16" />
 
           <p className="text-nybb-bone/55 mt-10 text-xs">
             Prices are the upcharge on top of any flavour, per order.

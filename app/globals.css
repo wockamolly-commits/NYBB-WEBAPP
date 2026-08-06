@@ -507,10 +507,15 @@
      product's own mechanism animating, not a fade applied to every
      section in turn.
 
+     Horizontal at every width now. The scale used to flip to vertical
+     columns at sm, so the reveal had to flip axis with it; the band is
+     a priced list of rows at every size since the hero took over the
+     ramp, and one axis is all it needs. The hero's own strip is
+     deliberately still, so this stays the only place it happens.
+
      Transform only, so nothing reflows: the bar's real length is set
-     from the --fill custom property and stays fixed, and the reveal
-     scales it along whichever axis the layout is using at that
-     breakpoint. Exponential ease out, 640ms, staggered 70ms per stop.
+     from its width and stays fixed, and the reveal scales it.
+     Exponential ease out, 640ms, staggered 70ms per stop.
 
      The default is the drawn state. HeatScale only rewinds this on the
      client, so no JavaScript and reduced motion both keep the bars. */
@@ -522,17 +527,6 @@
 
   .heat-bar[data-shown="true"] {
     transform: scaleX(1);
-  }
-
-  @media (min-width: 640px) {
-    .heat-bar {
-      transform: scaleY(0);
-      transform-origin: bottom center;
-    }
-
-    .heat-bar[data-shown="true"] {
-      transform: scaleY(1);
-    }
   }
 
   /* The product tile ground.
