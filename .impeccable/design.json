@@ -388,6 +388,11 @@
         "name": "The Full Thing Stays On Screen Rule",
         "body": "A sold-out flavour, a taken pickup window and an out-of-stock item go flat, not away. Removing them makes the interface look broken and hides the information that the shop is busy.",
         "section": "components"
+      },
+      {
+        "name": "The Header Is In The Fold Rule",
+        "body": "The header is sticky top-0 and therefore still in flow, so the first screen is the hero plus the bar above it. A hero sized to fill the viewport actually overfills it. Size it to leave roughly an eighth of the viewport to the next section, so the page reads as having more below rather than ending at a seam.",
+        "section": "layout"
       }
     ],
     "dos": [
@@ -400,7 +405,8 @@
       "Do use transform-only hover and press effects, so nothing reflows.",
       "Do use the heat ramp's five fixed swatches wherever a heat level appears.",
       "Do spend motion on the product's own mechanisms rather than on arrivals, and make the drawn or finished state the default so no-JS and reduced motion both keep it.",
-      "Do let states differ structurally before reaching for a colour to distinguish them."
+      "Do let states differ structurally before reaching for a colour to distinguish them.",
+      "Do key short-viewport rules on max-height, never on width. A landscape phone at 844x390 is past every width breakpoint while having under 300px of usable height."
     ],
     "donts": [
       "Don't set Buffalo Orange as type on any light surface. It measures 1.8:1 on the amber ground and 2.6:1 on parchment. As a graphic it is fine.",

@@ -327,6 +327,20 @@ same baseline, whatever the names above them did.
 **Breakpoints.** Tailwind defaults, and only three of them are used: `sm` (640px), `md` (768px),
 `lg` (1024px). Layout is designed at 320px first and verified there.
 
+**Short viewports key on height, not width.** A landscape phone at 844x390 is 844 wide, so every
+width-keyed rule hands it the desktop treatment while it has under 300px of room below the header.
+Anything that must stay above the fold takes a `max-height` query, not a width one. The hero gives
+back its padding and drops to a `2.5rem` headline under `max-height: 500px`, which is what keeps its
+buttons reachable. Orientation is not something CSS can ask about, and width answers the wrong
+question.
+
+### Named Rules
+
+**The Header Is In The Fold Rule.** The header is `sticky top-0` and therefore still in flow, so the
+first screen is the hero plus the bar above it. A hero sized to fill the viewport actually overfills
+it. Size it to leave roughly an eighth of the viewport to the next section, so the page reads as
+having more below rather than ending at a seam.
+
 **Horizontal overflow is a bug.** The page body never scrolls sideways. Wide content, meaning
 tables, tickets, and the analytics grid, gets its own overflow container.
 
@@ -489,6 +503,14 @@ followed by the percentage in tabular mono and the level name in Anton. The same
 in the wings configurator, on the order confirmation, on the staff ticket and on the printed pickup
 slip, with the same five swatches every time. It is the one thing in this interface that could not
 be lifted from a template, and it is treated accordingly.
+
+Two further expressions of the same object, and the difference between them is how much of the
+decision they support. The **heat band** on the landing page is the full one: five ascending bars in
+a tall track, each carrying its name, percentage and both upcharges, and it owns the page's single
+authored animation. The **hero strip** is the compressed one: the same five swatches and the same
+ascending read at a fraction of the height, with the names and percentages but no prices and no
+motion. The strip states that heat is sold on a scale; the band is where somebody chooses a level.
+Neither is a decoration derived from the other, and a level is the same swatch in both.
 
 ### The heat rule (signature)
 

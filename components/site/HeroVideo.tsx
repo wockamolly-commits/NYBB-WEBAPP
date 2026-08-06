@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/Button";
  * It is reached before the two CTAs, which follows from this component being
  * painted under the copy, and it is worth keeping rather than working around.
  * Someone tabbing here because the motion is the problem should not have to
- * pass through "See the menu" and "Find a branch" to reach the thing that stops
+ * pass through "See the menu" and "Call a branch" to reach the thing that stops
  * it, and the cost is one extra tab for everyone else in a section that holds
  * only two other controls.
  *
@@ -124,6 +124,29 @@ export function HeroVideo() {
 
   return (
     <div className="absolute inset-0 overflow-hidden">
+      {/* The still is always mounted, and the video paints over it.
+          ================================================================
+          It used to be one or the other, with the video carrying a `poster`
+          attribute of its own, and that shipped the same picture twice: the
+          server rendered this Image and the browser fetched next/image's
+          responsive variant, then hydration swapped in the video and the
+          poster attribute fetched the raw file as well. 73 KB plus 38 KB at
+          1440 for one image.
+
+          Leaving the still underneath costs nothing (it is already decoded)
+          and removes the second request, because the video no longer needs a
+          poster: there is one behind it. It also keeps the optimised variant
+          on the path that most needs it, which is the metered connection that
+          never gets a video at all. */}
+      <Image
+        src="/video/hero-poster.webp"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover"
+      />
+
       {playable ? (
         <video
           ref={video}
@@ -136,24 +159,14 @@ export function HeroVideo() {
           // visitor ever sees the bottom of the hero, and it competes with
           // hydration and with the nine flavour images below it.
           preload="metadata"
-          poster="/video/hero-poster.webp"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          className="h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         >
           <source src="/video/hero.webm" type="video/webm" />
           <source src="/video/hero.mp4" type="video/mp4" />
         </video>
-      ) : (
-        <Image
-          src="/video/hero-poster.webp"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover"
-        />
-      )}
+      ) : null}
 
       {/* The flat hold, for the top of the type block. */}
       <div aria-hidden className="bg-nybb-ink/38 absolute inset-0" />
