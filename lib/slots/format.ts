@@ -65,7 +65,12 @@ export function formatSlotTime(iso: string, timezone: string): string {
  * ends share one. The window straddling noon or midnight is exactly where
  * dropping it would mislead.
  */
-export function formatSlotRange(slot: PickupSlot, timezone: string): string {
+export function formatSlotRange(
+  // Only the two ends, so the confirmation screen can format the window it was
+  // given back by place_order without inventing a capacity to go with it.
+  slot: Pick<PickupSlot, "startsAt" | "endsAt">,
+  timezone: string,
+): string {
   const start = clockParts(slot.startsAt, timezone);
   const end = clockParts(slot.endsAt, timezone);
 

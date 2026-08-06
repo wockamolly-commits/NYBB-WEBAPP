@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { PRESSABLE } from "@/components/ui/Button";
 import {
   capacityNote,
@@ -31,19 +30,27 @@ import { cn } from "@/lib/utils";
  */
 export function SlotPicker({
   slots,
+  selected,
   onSelect,
+  disabled = false,
 }: {
   slots: PickupSlots;
-  onSelect?: (startsAt: string | null) => void;
+  /**
+   * Controlled by the checkout screen rather than held here, because the
+   * selection can be invalidated by something this component never sees: a
+   * window that filled between page load and Place order. The screen reloads
+   * the grid and clears the choice in one move, and a copy kept in here would
+   * survive that and point at a minute that is gone.
+   */
+  selected: string | null;
+  onSelect: (startsAt: string | null) => void;
+  disabled?: boolean;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
   const days = groupSlotsByDay(slots);
   const unavailable = unavailableMessage(slots);
 
   function choose(startsAt: string) {
-    const next = selected === startsAt ? null : startsAt;
-    setSelected(next);
-    onSelect?.(next);
+    onSelect(selected === startsAt ? null : startsAt);
   }
 
   return (
@@ -90,7 +97,7 @@ export function SlotPicker({
                   <button
                     type="button"
                     aria-pressed={active}
-                    disabled={!open}
+                    disabled={!open || disabled}
                     onClick={() => choose(slot.startsAt)}
                     className={cn(
                       // h-full, so a window carrying "2 left" does not stand

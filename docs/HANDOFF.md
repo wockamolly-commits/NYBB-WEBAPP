@@ -1,4 +1,4 @@
-# Handoff, 2026-08-05 (updated for the cart)
+# Handoff, 2026-08-06 (updated for the button system and place_order)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -13,8 +13,8 @@ into chat, it is ~1,600 lines. Read it from disk.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 steps 1, 2, 4 and 5 have landed.** `npm run build`,
-`npm run lint` and `npm test` (220 tests) are green.
+**Phase 0 is complete, and Phase 1 steps 1 to 6 have landed.** `npm run build`, `npm run lint` and
+`npm test` (279 tests in 14 files) are green.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -27,7 +27,15 @@ browser pane about anything that waits for a frame.
   the Phase 1 tables.
 - `components/` and `app/(storefront)/` render the landing, `/menu`, `/menu/[category]`, `/about`
   and `/contact`, all reviewed in a browser at 375px and 1280px.
-- `supabase/migrations/0001` to `0011` are written. Spec section 6 is the design and **section 6.6
+- **`components/ui/Button.tsx` is the control system, and it is not optional.** It exports
+  `Button`, `ButtonLink`, `buttonStyles` and `PRESSABLE`, alongside `QuantityStepper` and
+  `TextLink` in the same folder. `ActionLink.tsx` is deleted. Every control on the site goes
+  through these: no hand-rolled `<button>`, and no bare underline on anything that performs an
+  action rather than navigating. Destructive actions take `variant="danger"`, which is quiet at
+  rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
+  reading their order. The focus ring colour is derived from the background utility on the
+  surrounding surface, so never set one per control.
+- `supabase/migrations/0001` to `0013` are written. Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
 - `lib/menu/` is the source-agnostic menu reader added in Phase 1. `getStorefrontMenu()` returns
@@ -37,9 +45,9 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  52 of the 131 tests live there.
-- Everything through the small-screen pass is committed and pushed. `main` is level with
-  `origin/main` at `12460e1`.
+  113 of the 279 tests live there.
+- Everything through the button system is committed and pushed. `main` is level with `origin/main`
+  at `c959b09`.
 
 **Nothing has been applied to a database.** No Supabase project exists, and the Supabase MCP
 connector is not authorized in this environment.
@@ -96,6 +104,15 @@ Spec section 27. In order:
      what destroys the evidence for the notice, so one place owns both. It settles: the notice
      shows on the visit that earned it and not on the next one. An earlier version did this with
      `setState` inside an effect and the React compiler lint rejected it, correctly.
+   - **Emptying the cart is undoable, and that is why it is allowed to be one tap.** The store
+     keeps the discarded `Cart` in memory (never in localStorage: an undo that survives a reload
+     is a cart that comes back from the dead) and the view offers "Undo" until the next cart
+     write clears it. A confirmation dialog asks a customer to think about a decision that costs
+     nothing to reverse; an undo lets them find out.
+   - **The sticky cart bar hides itself on `/cart` and `/checkout`.** A bar advertising the cart,
+     pinned over the cart, is a bar covering the thing it is pointing at. It reads the pathname
+     rather than being conditionally rendered by each page, so a new route that shows the order
+     does not have to remember.
    - `customer_carts` is untouched. It is keyed by `auth.users(id)` and customer sign-in is the
      last step of Phase 1, so the sync arrives as a second writer of the same `Cart`.
 
@@ -131,10 +148,56 @@ Spec section 27. In order:
 
    23 SQL tests cover generation against real Postgres, all with an injected clock, including the
    Friday 18:00 to 02:00 shift. 27 unit tests cover the formatting, all in the branch timezone.
-6. **`place_order`**, with idempotency through `checkout_attempts` and rate limiting through
-   `rate_limit_hit()`. It must call `resolve_option_price_cents()` rather than reimplementing the
-   fallback, it must agree with `lib/menu/line-pricing.ts` (and win where it does not), and it must increment `pickup_slots.reserved` in the same transaction as the insert.
+6. ~~**`place_order`.**~~ **Done**, as migration `0013`, `lib/checkout/`, `app/actions/checkout.ts`
+   and the rest of the checkout screen. `/checkout` is now a whole screen: pickup window, name,
+   phone, optional email and note, and a Place order button that produces a pickup code.
+
+   - **It is the only place a peso is decided, and it decides them by asking.** It calls
+     `resolve_price_list_id()`, `resolve_variation_price_cents()`, `resolve_option_price_cents()`,
+     `branch_accepts_orders()` and `get_pickup_slots()` rather than restating any of them. The
+     last one is the load-bearing one: the picker renders what that function returns and
+     `place_order` books against the same call, so the screen cannot offer a minute the
+     transaction would refuse.
+   - **The payload carries no money at all.** Item slug, variation slug, option slugs, quantity,
+     a pickup minute, a name and a number. `tests/unit/checkout.test.ts` proves it by handing the
+     schema an object with prices in it and asserting the string "cents" does not survive to the
+     payload. There is a matching SQL test that prices a cart with `lib/menu/line-pricing.ts` and
+     with `place_order` and asserts the same peso.
+   - **The window is booked in the same transaction as the insert**, through an upsert on
+     `pickup_slots`. `pickup_slots_within_capacity` is the guard, not the `remaining` figure the
+     picker showed: that number can be invalidated a millisecond later. The loser of a race gets
+     no order, no items and no payment row, which there is a test for.
+   - **Idempotency is `checkout_attempts`, claimed before anything else can have a side effect.**
+     The browser mints one uuid per checkout in a ref and sends it again on every retry. A replay
+     returns the stored result, including the tracking token, which is captured in the same
+     transaction so a guest order cannot lose its private link.
+   - **The rate limit is on an identity the database can see for itself**, `auth.uid()` or the
+     phone number, never a key the caller supplies, because `place_order` is granted to `anon`
+     and anything in the payload is something an attacker picks. It fails open per 0008. Note
+     what it therefore counts: orders that *commit*, since a rejected attempt rolls back its own
+     increment. **The IP dimension is not built.** Postgres cannot see the client address, so it
+     belongs in the Server Action, and the action needs a service-role client to call
+     `rate_limit_hit` at all (0010). That is the one piece of spec section 22 item 6 still open.
+   - **Guests can order, and that is a documented divergence from the spec, not an oversight.**
+     Section 17 now carries the correction and the reasoning: counter is the only rail while
+     PayMongo is dark, so requiring an account would close ordering rather than narrow it. It is
+     reversible in one `if` and it is the owner's call.
+   - **Every refusal is a sentence, and `lib/checkout/messages.ts` is where the machine codes
+     become one.** There is a test that fails if a code is added to `0013` without an answer here,
+     because falling through to "something went wrong" for a problem with a real answer is a quiet
+     way to ship a broken screen.
+   - `/checkout` was measured at 375 and 1280 against the production build. No sideways scroll,
+     nothing clipped, fields at 16px so iOS does not zoom the page, 46px tall.
 7. **Order tracking page** with the pickup code, then customer email OTP.
+
+   - `place_order` already returns `trackingToken`, and `orders_tracking_token_key` is indexed for
+     it. The page needs `get_order_by_tracking()`, which 0010 has been expecting since Phase 0.
+   - **When OTP lands, wire the access token through `placeOrder`.** Today every order is a guest
+     order, because `app/actions/checkout.ts` calls the RPC with the cookie-free anon client. Spec
+     section 14 is specific: the action takes the token as an argument and builds a client with it,
+     so `auth.uid()` inside `place_order` stamps `orders.user_id`. Do not reach for a service-role
+     client to solve it, or every order becomes a guest order placed with a key the storefront has
+     no business holding.
 
 ## Things earlier sessions learned the hard way
 
@@ -209,10 +272,19 @@ because each one costs a day if rediscovered.
    skeleton, and it is genuinely fixed. Check `document.hidden` before believing the pane about
    anything that waits for a frame.
 
-   To verify anything frame-dependent, drive a real browser. Playwright is a devDependency and its
-   downloaded browsers are absent on this machine, but `chromium.launch({ channel: "chrome" })`
-   uses the installed Chrome and works. Use Chromium, never WebKit: `upgrade-insecure-requests`
-   upgrades localhost and WebKit renders the page unstyled and unhydrated, testing nothing.
+   To verify anything frame-dependent, drive a real browser. **Playwright's browsers are now
+   installed**, so `chromium.launch()` works directly and the `channel: "chrome"` workaround that
+   earlier handoffs described is no longer needed. Use Chromium, never WebKit:
+   `upgrade-insecure-requests` upgrades localhost and WebKit renders the page unstyled and
+   unhydrated, testing nothing.
+
+13. **A CSS grid row stretches its items to the tallest one, and that turns an honest empty state
+    into a broken-looking one.** `/checkout` puts the pickup panel beside the order summary. With
+    no branch active the panel holds four lines of text and the summary holds the whole order, so
+    the panel painted a charcoal slab roughly a thousand pixels tall around its "not open yet"
+    notice, which reads as a panel that failed to load. `items-start` on the grid fixes it and
+    costs the sticky summary nothing, because `align-self` sizes the item rather than the grid
+    area. Whenever a panel can legitimately be nearly empty, check it next to a full one.
 
 ## Do not
 
@@ -224,6 +296,8 @@ because each one costs a day if rediscovered.
 - Do not add a TypeScript implementation of the slot grid, for the same reason there is only one
   place that adds money up. `get_pickup_slots()` is the grid, `place_order` books against it, and
   `lib/slots/` only formats what it returns.
+- Do not hand-roll a control. `components/ui/Button.tsx` is the button system, and a bare
+  underline is for navigation, never for an action. See the bullet above.
 - Do not hand-edit `supabase/seed.sql`. Change `lib/catalog/` and run `npm run build:seed`.
 - Do not apply the migrations. Verify them with `npm test` instead.
 - Do not link `/terms`, `/privacy` or `/refund`. They do not exist yet and land with PayMongo.

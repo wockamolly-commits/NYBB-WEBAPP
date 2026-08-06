@@ -8,10 +8,12 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 ## Status
 
 **Phase 0 complete. Phase 1 in progress: the menu reads through one
-source-agnostic reader, the wings configurator is built, and the cart and the
-pickup slot picker are live.** `npm run build`, `npm run lint` and `npm test` (220 tests) are all green, every page has been rendered and reviewed in a
-browser at 320px, 375px and 1280px, and migrations `0001` to `0012` apply cleanly
-against a real Postgres in the test suite.
+source-agnostic reader, the wings configurator is built, and the cart, the
+pickup slot picker and checkout are live. A customer can place a real pickup
+order and gets a pickup code back.** `npm run build`, `npm run lint` and
+`npm test` (279 tests) are all green, every page has been rendered and reviewed
+in a browser at 320px, 375px and 1280px, and migrations `0001` to `0013` apply
+cleanly against a real Postgres in the test suite.
 
 No Supabase project exists yet, so the migrations are written and verified but
 deliberately not applied anywhere.
@@ -54,7 +56,7 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 104 tests, 52 of which run the migrations and the seed against Postgres
+- 279 tests, 113 of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
@@ -99,12 +101,28 @@ Phase 1 so far:
   and disabled rather than hidden, and when there is nothing to choose the
   screen names the reason. Today that reason is that no branch has been
   switched on, which is the honest answer while the pilot is unchosen
+- Migration `0013`: `place_order()`, the one place an order comes into
+  existence and the only place a peso is decided. It is idempotent on a
+  browser-minted attempt id through `checkout_attempts`, rate limited through
+  `rate_limit_hit()` on an identity the database can see for itself, and it
+  books the pickup window in the same transaction as the insert, so a full
+  window is genuinely unbookable rather than merely counted. It calls the
+  existing price resolvers, `branch_accepts_orders()` and `get_pickup_slots()`
+  rather than restating any of them
+- `lib/checkout/` and `app/actions/checkout.ts`: the Server Action, the zod
+  gate at the boundary, and the table that turns a refusal into a sentence with
+  something to do next. The request carries item, variation and option slugs, a
+  quantity, a pickup minute, a name and a number. Not one price, and there is a
+  test that proves a price cannot survive the parse
+- The rest of `/checkout`: name, phone, optional email and note, payment stated
+  rather than chosen, and a confirmation carrying the four-digit pickup code,
+  the order number, the window and what to pay at the counter
 
 Next:
 
-1. `place_order` with idempotency and rate limiting, then the tracking page
-   with the pickup code.
-2. Customer email OTP.
+1. The order tracking page, reading `orders.tracking_token`.
+2. Customer email OTP, which is also when the Server Action starts forwarding
+   an access token so orders stop being anonymous.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
 and its real weekday hours. Nothing in the schema guesses either.

@@ -1094,8 +1094,10 @@ Four screens from menu to confirmation. Never more.
 
 - The cart lives in `localStorage` and syncs to `customer_carts` when signed in.
 - Signed-in users get name, phone, and email prefilled.
-- Guests can reach checkout, but the pay-at-counter option is disabled with a clear "Sign in to
-  pay at the counter" affordance rather than a silent absence. Online prepay stays available.
+- ~~Guests can reach checkout, but the pay-at-counter option is disabled with a clear "Sign in to
+  pay at the counter" affordance rather than a silent absence. Online prepay stays available.~~
+  **Superseded, see the correction in section 17.** Guests can place a counter order. Online prepay
+  is flag-gated off, so the original rule would have closed ordering rather than narrowed it.
 - The pickup slot picker is the first field, not the last: it is the constraint that can invalidate
   the whole order, so surface it early.
 - A mobile bottom-sticky cart bar appears whenever the cart is non-empty.
@@ -1310,8 +1312,33 @@ showed as "Unmapped" with truncated dropdowns. Assume ZenPOS paginates too.
 ## 17. Payment flow
 
 **Pay at counter (default on).** Order is placed `pending` with a `payments` row in `due` state.
-Requires a signed-in account. Payment is recorded at the moment of claim, in the same action that
-verifies the pickup code. No-show after the window releases the slot and cancels.
+~~Requires a signed-in account.~~ Payment is recorded at the moment of claim, in the same action
+that verifies the pickup code. No-show after the window releases the slot and cancels.
+
+**Correction, written while building `place_order`.** Pay at the counter does not require a
+signed-in account, and section 11's "Sign in to pay at the counter" affordance is therefore not
+built either. Three things make the original rule unshippable here:
+
+1. **It would close ordering entirely.** Online prepay is the alternative the rule assumes a guest
+   still has, and it is flag-gated off behind `paymongo_enabled` until the business is approved.
+   Counter is the only rail. A guest who cannot use it cannot order at all.
+2. **Sign-in arrives last.** Section 27 puts customer email OTP at the end of Phase 1, after
+   `place_order` and after the tracking page. Requiring an account first inverts that order and
+   leaves two steps with nothing to demonstrate.
+3. **The schema was built for guest orders.** `orders.user_id` is nullable and documented "Null for
+   guests", `checkout_attempts.actor_kind` admits `'guest'`, and `orders.tracking_token` exists
+   specifically because "guest order tracking requires this". Refusing guest orders would leave all
+   three unreachable.
+
+The reference required an account for cash so the order would count for loyalty, vouchers and
+order history, and so a no-show had a name attached. None of those exist on this platform yet, and
+the pickup code plus a phone number carries the counter. When customer sign-in lands, the signed-in
+path is strictly better (prefilled details, order history, a tracking page that needs no token) and
+should be the one the screen encourages, but not the only one it allows.
+
+**This is reversible in one `if`, and it is the owner's call rather than a technical one.** If they
+want accounts compulsory, `place_order` raises `AUTH_REQUIRED` when `auth.uid()` is null, and
+`lib/checkout/messages.ts` grows one entry.
 
 **Online prepay (default off, flag `paymongo_enabled`).** Port the ZOMBEANS PayMongo layer whole:
 `lib/paymongo/{client,config,intents,methods,webhook,confirmation,attach-result}.ts`, the

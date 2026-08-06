@@ -20,7 +20,7 @@ describe("migrations", () => {
     expect(files.map((name) => name.slice(0, 4))).toEqual([
       "0001", "0002", "0003", "0004", "0005",
       "0006", "0007", "0008", "0009", "0010",
-      "0011", "0012",
+      "0011", "0012", "0013",
     ]);
   });
 
@@ -94,7 +94,7 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly five functions to anon", async () => {
+  it("expose exactly six functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -109,18 +109,24 @@ describe("migrations", () => {
         )
       order by 1
     `);
-    // The entire public read surface, reviewable in one glance. Widening it is
+    // The entire public surface, reviewable in one glance. Widening it is
     // supposed to be a decision, which is why this list is spelled out rather
-    // than counted: get_storefront_menu joined it in 0011 and get_pickup_slots
-    // in 0012, and both had to come through this assertion to do so. What the
-    // newest one exposes is opening times and remaining capacity, which a
-    // customer standing at the counter can see anyway.
+    // than counted: get_storefront_menu joined it in 0011, get_pickup_slots in
+    // 0012, and place_order in 0013, and each had to come through this
+    // assertion to do so.
+    //
+    // place_order is the first WRITE on the list, and it is here on purpose. A
+    // guest has to be able to place an order, and a signed-in customer has to
+    // reach it as themselves so auth.uid() stamps orders.user_id, which a
+    // service-role client would make impossible. What keeps that safe is that
+    // it takes slugs and quantities and resolves every peso itself.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
       "get_pickup_slots",
       "get_public_settings",
       "get_storefront_menu",
+      "place_order",
     ]);
   });
 
