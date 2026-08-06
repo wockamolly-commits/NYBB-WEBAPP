@@ -1,0 +1,418 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-06T04:40:00Z",
+  "title": "Design System: NYBB Order",
+  "extensions": {
+    "colorMeta": {
+      "griddle-amber": {
+        "role": "secondary",
+        "displayName": "Griddle Amber",
+        "canonical": "#f7a70f",
+        "note": "The page ground. Painted as a fixed four-stop gradient in oklab: #f2860f 0%, #f7a70f 26%, #f9c614 58%, #fae51a 100%. The token is the mid stop, which is what any flat background use resolves to.",
+        "tonalRamp": [
+          "oklch(0.15 0.09 65)",
+          "oklch(0.27 0.12 65)",
+          "oklch(0.39 0.15 65)",
+          "oklch(0.51 0.17 65)",
+          "oklch(0.63 0.17 65)",
+          "oklch(0.775 0.17 65)",
+          "oklch(0.87 0.12 65)",
+          "oklch(0.95 0.06 65)"
+        ]
+      },
+      "buffalo-orange": {
+        "role": "primary",
+        "displayName": "Buffalo Orange",
+        "canonical": "#ef6212",
+        "note": "Sampled from the live site (237 instances), not invented. 5.4:1 on char, 1.8:1 on the amber ground, 2.6:1 on parchment.",
+        "tonalRamp": [
+          "oklch(0.15 0.08 42)",
+          "oklch(0.26 0.12 42)",
+          "oklch(0.37 0.15 42)",
+          "oklch(0.48 0.17 42)",
+          "oklch(0.59 0.184 42)",
+          "oklch(0.653 0.184 42)",
+          "oklch(0.80 0.13 42)",
+          "oklch(0.94 0.05 42)"
+        ]
+      },
+      "char": {
+        "role": "neutral",
+        "displayName": "Char",
+        "canonical": "#0b0b0c",
+        "note": "Not pure black. A trace of blue keeps large dark areas from looking dead beside warm food photography. Roughly 11:1 against the amber ground.",
+        "tonalRamp": [
+          "oklch(0.145 0.004 265)",
+          "oklch(0.24 0.004 265)",
+          "oklch(0.34 0.004 265)",
+          "oklch(0.45 0.004 265)",
+          "oklch(0.56 0.004 265)",
+          "oklch(0.68 0.004 265)",
+          "oklch(0.82 0.004 265)",
+          "oklch(0.95 0.004 265)"
+        ]
+      },
+      "warm-bone": {
+        "role": "neutral",
+        "displayName": "Warm Bone",
+        "canonical": "#f5f1ea",
+        "note": "Reading colour on dark surfaces. Warm off-white rather than pure white, so long copy on near-black does not glare.",
+        "tonalRamp": [
+          "oklch(0.15 0.008 85)",
+          "oklch(0.27 0.008 85)",
+          "oklch(0.39 0.008 85)",
+          "oklch(0.51 0.008 85)",
+          "oklch(0.63 0.008 85)",
+          "oklch(0.75 0.008 85)",
+          "oklch(0.87 0.008 85)",
+          "oklch(0.955 0.008 85)"
+        ]
+      },
+      "parchment": {
+        "role": "neutral",
+        "displayName": "Parchment",
+        "canonical": "#f2e4c6",
+        "note": "The chrome surface, always paired with Cream as a gradient so the navbar and footer are never one flat tone. Black type measures 15:1 at the deepest stop.",
+        "tonalRamp": [
+          "oklch(0.15 0.02 90)",
+          "oklch(0.27 0.028 90)",
+          "oklch(0.39 0.034 90)",
+          "oklch(0.51 0.04 90)",
+          "oklch(0.63 0.043 90)",
+          "oklch(0.75 0.043 90)",
+          "oklch(0.86 0.043 90)",
+          "oklch(0.925 0.043 90)"
+        ]
+      },
+      "signage-yellow": {
+        "role": "tertiary",
+        "displayName": "Signage Yellow",
+        "canonical": "#f9ee18",
+        "note": "Extremely high contrast on ink, which is why it is rationed to badges, micro-labels and the bottom stop of the heat scale. Never a paragraph.",
+        "tonalRamp": [
+          "oklch(0.15 0.07 105)",
+          "oklch(0.27 0.10 105)",
+          "oklch(0.39 0.13 105)",
+          "oklch(0.51 0.15 105)",
+          "oklch(0.63 0.17 105)",
+          "oklch(0.75 0.18 105)",
+          "oklch(0.86 0.19 105)",
+          "oklch(0.936 0.196 105)"
+        ]
+      },
+      "buffalo-red": {
+        "role": "tertiary",
+        "displayName": "Buffalo Red",
+        "canonical": "#ee2329",
+        "note": "A display colour that cannot carry a label. Bone on it measures 3.8:1 and char 4.6:1. Two jobs only: the top of the heat scale, and a destructive icon accent on hover.",
+        "tonalRamp": [
+          "oklch(0.15 0.09 27)",
+          "oklch(0.26 0.13 27)",
+          "oklch(0.37 0.17 27)",
+          "oklch(0.47 0.20 27)",
+          "oklch(0.585 0.232 27)",
+          "oklch(0.70 0.19 27)",
+          "oklch(0.83 0.13 27)",
+          "oklch(0.95 0.05 27)"
+        ]
+      },
+      "red-deep": {
+        "role": "tertiary",
+        "displayName": "Red Deep",
+        "canonical": "#c81319",
+        "note": "The destructive fill on engagement. Warm bone measures 5.2:1 here and 6.8:1 on Red Deeper, which is what lets a destructive control be unmistakably red and still read as considered."
+      }
+    },
+    "typographyMeta": {
+      "hero": {
+        "displayName": "Hero",
+        "purpose": "The landing headline and nothing else. The 6rem cap is real: Anton past that becomes a texture rather than a headline. Excluded from balanced wrapping because it sets its own breaks."
+      },
+      "page": {
+        "displayName": "Page Title",
+        "purpose": "Every route title that is not the landing hero: menu, category, cart, checkout, about, contact."
+      },
+      "major": {
+        "displayName": "Section",
+        "purpose": "Section headings within a page."
+      },
+      "minor": {
+        "displayName": "Sub-section",
+        "purpose": "Sub-section headings."
+      },
+      "panel": {
+        "displayName": "Panel Heading",
+        "purpose": "The heading inside a card. Small on purpose, so it does not outrank the number underneath it, and tracked because Anton at 14px in caps closes up."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "All reading copy. Inter, chosen because it holds at 14px on a phone. Orphan control is applied globally."
+      },
+      "label": {
+        "displayName": "Micro-label",
+        "purpose": "A data caption or the name of the thing the number beside it measures. Family-agnostic: this role is worn by all three faces depending on what it labels, and only the metrics are shared."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Every number the user reads, compares or says out loud. Prices, order codes, pickup codes, countdowns, quantities, heat percentages. Tabular figures so columns align and digits do not reflow."
+      }
+    },
+    "shadows": [
+      {
+        "name": "chrome-float",
+        "value": "0 12px 28px -14px rgba(84, 46, 8, 0.32)",
+        "purpose": "The only shadow in the system. The sticky bar overlaps the hero video and needs to sit above it rather than butt against it with a hard seam. Warm and offset, because a neutral grey shadow on a warm page reads as dirt."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "200ms ease-out",
+        "purpose": "Every hover and focus transition on a control. Colour and border only, never size, so nothing reflows under the cursor."
+      },
+      {
+        "name": "press",
+        "value": "scale(0.98) over 75ms",
+        "purpose": "The shared press. Answers immediately and releases lazily, which is what makes a control feel connected to the finger. Pinned to scale(1) under reduced motion, because a zero duration on a transform still moves it, just instantly."
+      },
+      {
+        "name": "heat-reveal",
+        "value": "transform 640ms cubic-bezier(0.16, 1, 0.3, 1), staggered 70ms per stop",
+        "purpose": "The site's only authored animation: the five heat stops drawing themselves in sequence as the section arrives. Transform only, so nothing reflows. The default is the drawn state, so no-JS and reduced motion both keep the bars."
+      },
+      {
+        "name": "tile-photo",
+        "value": "transform 500ms ease-out to scale(1.04)",
+        "purpose": "The product photograph on hover inside its clipped frame."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (Light Ground)",
+      "kind": "button",
+      "refersTo": "button-primary-light",
+      "description": "The main action on the amber page ground. Char fill, because the brand orange measures 1.8:1 out here.",
+      "html": "<button class=\"ds-btn ds-btn-primary-light\">ADD TO CART</button>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-btn-primary-light { background: var(--color-nybb-ink, #0b0b0c); color: var(--color-nybb-bone, #f5f1ea); } .ds-btn-primary-light:hover { background: var(--color-nybb-charcoal, #17181a); } .ds-btn-primary-light:active { background: var(--color-nybb-graphite, #232528); }"
+    },
+    {
+      "name": "Primary Button (Dark Ground)",
+      "kind": "button",
+      "refersTo": "button-primary-dark",
+      "description": "The same action inside a charcoal card, where Buffalo Orange measures 5.4:1 and is the brand's CTA fill.",
+      "html": "<button class=\"ds-btn ds-btn-primary-dark\">PLACE ORDER</button>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; text-decoration: none; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-btn-primary-dark { background: var(--color-nybb-orange, #ef6212); color: var(--color-nybb-ink, #0b0b0c); } .ds-btn-primary-dark:hover, .ds-btn-primary-dark:active { background: var(--color-nybb-orange-lit, #f47621); } .ds-btn-primary-dark:focus-visible { outline-color: var(--color-nybb-orange, #ef6212); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary-light",
+      "description": "The outlined tier. Its border sits at 55% ink so the control's own boundary clears 3:1 against the gradient.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">KEEP BROWSING</button>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; text-decoration: none; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-btn-secondary { background: transparent; color: var(--color-nybb-ink, #0b0b0c); border: 1px solid rgba(11, 11, 12, 0.55); } .ds-btn-secondary:hover { border-color: rgba(11, 11, 12, 0.85); background: rgba(11, 11, 12, 0.05); } .ds-btn-secondary:active { background: rgba(11, 11, 12, 0.1); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost-light",
+      "description": "The quiet tier. Full button geometry, no weight at rest, a tinted ground under the cursor. It exists so a secondary action can be quiet without falling out of the system into bare underlined text.",
+      "html": "<button class=\"ds-btn ds-btn-ghost\">ADD SOMETHING ELSE</button>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; text-decoration: none; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-btn-ghost { background: transparent; color: rgba(11, 11, 12, 0.75); } .ds-btn-ghost:hover { color: var(--color-nybb-ink, #0b0b0c); background: rgba(11, 11, 12, 0.08); } .ds-btn-ghost:active { background: rgba(11, 11, 12, 0.12); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger-light",
+      "description": "Quiet at rest, red the moment you engage it. A destructive action is rare and secondary and cannot outrank the action the screen exists for.",
+      "html": "<button class=\"ds-btn ds-btn-danger\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6\"/></svg>EMPTY THE CART</button>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; text-decoration: none; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-btn-danger { background: transparent; color: rgba(11, 11, 12, 0.85); border: 1px solid rgba(11, 11, 12, 0.55); } .ds-btn-danger:hover, .ds-btn-danger:focus-visible { background: var(--color-nybb-red-deep, #c81319); color: var(--color-nybb-bone, #f5f1ea); border-color: transparent; } .ds-btn-danger:active { background: var(--color-nybb-red-deeper, #a80f15); color: var(--color-nybb-bone, #f5f1ea); border-color: transparent; }"
+    },
+    {
+      "name": "Product Tile",
+      "kind": "card",
+      "refersTo": "product-tile",
+      "description": "A menu board tile: a square orange image frame above a black name plate. The orange ground exists because most legacy cutouts were exported already flattened onto orange and cannot float on a dark card.",
+      "html": "<a class=\"ds-tile\" href=\"#\"><span class=\"ds-tile-frame\"></span><span class=\"ds-tile-plate\"><span class=\"ds-tile-code\">BB3</span><span class=\"ds-tile-name\">BLT Burger</span><span class=\"ds-tile-price\">₱279</span></span></a>",
+      "css": ".ds-tile { display: flex; flex-direction: column; width: 12rem; overflow: hidden; border-radius: 0.4rem; background: var(--color-nybb-charcoal, #17181a); color: var(--color-nybb-bone, #f5f1ea); text-decoration: none; } .ds-tile-frame { display: block; aspect-ratio: 1; background: var(--color-nybb-orange, #ef6212); } .ds-tile-plate { display: flex; flex-direction: column; flex: 1; padding: 0.875rem 1rem; } .ds-tile-code { font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 0.75rem; line-height: 1; color: rgba(245, 241, 234, 0.6); margin-bottom: 0.25rem; } .ds-tile-name { font-family: var(--font-sans, Inter), system-ui, sans-serif; font-size: 0.875rem; line-height: 1.375; font-weight: 500; } .ds-tile-price { font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 0.875rem; color: var(--color-nybb-orange, #ef6212); margin-top: auto; padding-top: 0.5rem; } .ds-tile:hover .ds-tile-frame { filter: brightness(1.04); } .ds-tile:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Transparent fill on a dark card, with colour the only thing that moves between states. 16px on purpose: anything smaller makes iOS Safari zoom the viewport on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Phone</span><input class=\"ds-input\" type=\"tel\" placeholder=\"0917 000 0000\" /></label>",
+      "css": ".ds-field { display: block; width: 16rem; } .ds-field-label { display: block; font-size: 0.75rem; line-height: 1.25; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245, 241, 234, 0.55); } .ds-input { margin-top: 0.5rem; width: 100%; border-radius: 0.4rem; border: 1px solid rgba(245, 241, 234, 0.25); background: transparent; padding: 0.625rem 0.75rem; font-family: var(--font-sans, Inter), system-ui, sans-serif; font-size: 1rem; line-height: 1.5; color: var(--color-nybb-bone, #f5f1ea); transition: border-color 200ms ease-out; } .ds-input::placeholder { color: rgba(245, 241, 234, 0.35); } .ds-input:hover { border-color: rgba(245, 241, 234, 0.45); } .ds-input:focus { border-color: rgba(245, 241, 234, 0.6); outline: none; } .ds-input:focus-visible { outline: 3px solid var(--color-nybb-orange, #ef6212); outline-offset: 2px; }"
+    },
+    {
+      "name": "Heat Meter",
+      "kind": "custom",
+      "description": "The signature component. Five fixed swatches, the percentage in tabular mono, the level name in the display face. Identical on the product page, the confirmation, the staff ticket and the printed pickup slip.",
+      "html": "<span class=\"ds-heat\" role=\"img\" aria-label=\"Heat level 60 percent, Hot\"><span class=\"ds-heat-bars\"><i class=\"on s1\"></i><i class=\"on s2\"></i><i class=\"on s3\"></i><i></i><i></i></span><span class=\"ds-heat-pct\">60%</span><span class=\"ds-heat-name\">HOT</span></span>",
+      "css": ".ds-heat { display: inline-flex; align-items: center; gap: 0.625rem; } .ds-heat-bars { display: inline-flex; align-items: center; gap: 0.25rem; } .ds-heat-bars i { display: block; width: 1rem; height: 0.625rem; border-radius: 1px; background: var(--color-nybb-graphite, #232528); } .ds-heat-bars i.s1 { background: var(--color-nybb-heat-1, #f9ee18); } .ds-heat-bars i.s2 { background: var(--color-nybb-heat-2, #f7c115); } .ds-heat-bars i.s3 { background: var(--color-nybb-heat-3, #f47621); } .ds-heat-pct { font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 0.875rem; letter-spacing: -0.01em; color: rgba(245, 241, 234, 0.7); } .ds-heat-name { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; letter-spacing: 0.05em; color: var(--color-nybb-bone, #f5f1ea); }"
+    },
+    {
+      "name": "Heat Rule",
+      "kind": "custom",
+      "description": "The five stops as hard bands, running along the bottom edge of the navbar and the top edge of the footer so the page is bracketed by the brand's own scale. Hard stops, never a blend.",
+      "html": "<span class=\"ds-heat-rule\" aria-hidden=\"true\"></span>",
+      "css": ".ds-heat-rule { display: block; width: 100%; height: 3px; background: linear-gradient(90deg, var(--color-nybb-heat-1, #f9ee18) 0 20%, var(--color-nybb-heat-2, #f7c115) 20% 40%, var(--color-nybb-heat-3, #f47621) 40% 60%, var(--color-nybb-heat-4, #ef4a17) 60% 80%, var(--color-nybb-heat-5, #ee2329) 80% 100%); }"
+    },
+    {
+      "name": "Pickup Slot Window",
+      "kind": "custom",
+      "description": "A selection control, not a button. Carries aria-pressed, and its look is owned by whether it is chosen. Shown here in all three states: available, chosen, and taken.",
+      "html": "<ul class=\"ds-slots\"><li><button class=\"ds-slot\" aria-pressed=\"false\"><span class=\"ds-slot-time\">11:45 - 12:00</span></button></li><li><button class=\"ds-slot is-chosen\" aria-pressed=\"true\"><span class=\"ds-slot-time\">12:00 - 12:15</span><span class=\"ds-slot-note\">2 left</span></button></li><li><button class=\"ds-slot\" aria-pressed=\"false\" disabled><span class=\"ds-slot-time\">12:15 - 12:30</span><span class=\"ds-slot-note\">Fully booked</span></button></li></ul>",
+      "css": ".ds-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.625rem; list-style: none; margin: 0; padding: 0; max-width: 30rem; } .ds-slot { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; width: 100%; height: 100%; min-height: 4rem; padding: 0.625rem 0.75rem; text-align: left; border-radius: 0.4rem; border: 1px solid rgba(245, 241, 234, 0.25); background: transparent; color: var(--color-nybb-bone, #f5f1ea); cursor: pointer; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-slot:hover:not(:disabled):not(.is-chosen) { border-color: rgba(245, 241, 234, 0.6); background: rgba(245, 241, 234, 0.05); } .ds-slot:active:not(:disabled) { transform: scale(0.98); transition-duration: 75ms; } .ds-slot:focus-visible { outline: 3px solid var(--color-nybb-orange, #ef6212); outline-offset: 2px; } .ds-slot.is-chosen { background: var(--color-nybb-orange, #ef6212); color: var(--color-nybb-ink, #0b0b0c); border-color: transparent; } .ds-slot:disabled { border-color: rgba(245, 241, 234, 0.1); color: rgba(245, 241, 234, 0.35); cursor: not-allowed; } .ds-slot:disabled:active { transform: none; } .ds-slot-time { font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 0.875rem; line-height: 1; } .ds-slot-note { margin-top: 0.375rem; font-family: var(--font-sans, Inter), system-ui, sans-serif; font-size: 0.75rem; line-height: 1; color: var(--color-nybb-orange, #ef6212); } .ds-slot.is-chosen .ds-slot-note { color: rgba(11, 11, 12, 0.75); } .ds-slot:disabled .ds-slot-note { color: rgba(245, 241, 234, 0.35); }"
+    },
+    {
+      "name": "Order Status Ladder",
+      "kind": "custom",
+      "description": "Four equal bars across the order card, orange for reached. Labels appear from the sm breakpoint and are replaced on a phone by a single step line, because the longest label does not fit a 70px column and cannot wrap.",
+      "html": "<ol class=\"ds-ladder\"><li class=\"done\"><span class=\"bar\"></span><span class=\"label\">Placed</span></li><li class=\"done\"><span class=\"bar\"></span><span class=\"label\">Preparing</span></li><li><span class=\"bar\"></span><span class=\"label\">Ready</span></li><li><span class=\"bar\"></span><span class=\"label\">Collected</span></li></ol>",
+      "css": ".ds-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; list-style: none; margin: 0; padding: 0; max-width: 26rem; } .ds-ladder .bar { display: block; height: 0.25rem; border-radius: 9999px; background: rgba(245, 241, 234, 0.15); } .ds-ladder .done .bar { background: var(--color-nybb-orange, #ef6212); } .ds-ladder .label { display: block; margin-top: 0.5rem; font-size: 0.75rem; line-height: 1.25; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(245, 241, 234, 0.4); } .ds-ladder .done .label { color: var(--color-nybb-bone, #f5f1ea); }"
+    },
+    {
+      "name": "Sticky Cart Bar",
+      "kind": "custom",
+      "description": "Pinned to the bottom of the viewport below the lg breakpoint only, because on a phone the header scrolls away and the cart with it. A real spacer of the same height sits in the flow so the bar covers nothing.",
+      "html": "<div class=\"ds-cartbar\"><p class=\"ds-cartbar-meta\"><span class=\"ds-cartbar-count\">3 items</span><span class=\"ds-cartbar-total\">₱1,187</span></p><a class=\"ds-btn ds-btn-primary-dark\" href=\"#\">VIEW CART</a></div>",
+      "css": ".ds-btn { font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; letter-spacing: 0.06em; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 2.75rem; padding: 0 1.25rem; border: 0; border-radius: 0.4rem; white-space: nowrap; user-select: none; cursor: pointer; text-decoration: none; transition: background-color 200ms ease-out, border-color 200ms ease-out, color 200ms ease-out, transform 200ms ease-out; } .ds-btn:active { transform: scale(0.98); transition-duration: 75ms; } .ds-btn:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; } .ds-cartbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 24rem; padding: 0.75rem 1rem; background: var(--color-nybb-charcoal, #17181a); color: var(--color-nybb-bone, #f5f1ea); box-shadow: 0 -12px 28px -14px rgba(11, 11, 12, 0.55); } .ds-cartbar-meta { margin: 0; min-width: 0; } .ds-cartbar-count { display: block; font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; line-height: 1; } .ds-cartbar-total { display: block; margin-top: 0.25rem; font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 1rem; line-height: 1; color: var(--color-nybb-orange, #ef6212); }"
+    },
+    {
+      "name": "Nav Link",
+      "kind": "nav",
+      "refersTo": "chrome-bar",
+      "description": "On parchment, where orange measures 2.6:1 as type. The accent stays in the brand's colour by being a graphic rather than a text colour: an orange rule drawing in from the left on a transform.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\">Menu</a><a class=\"ds-nav-link\" href=\"#\">Branches</a></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 2.25rem; align-items: center; padding: 0.75rem 1.5rem; background: linear-gradient(180deg, var(--color-nybb-cream, #faf3e3) 0%, var(--color-nybb-parchment, #f2e4c6) 100%); box-shadow: 0 12px 28px -14px rgba(84, 46, 8, 0.32); } .ds-nav-link { position: relative; display: inline-flex; align-items: center; min-height: 2.75rem; font-family: var(--font-display, Anton), Impact, sans-serif; text-transform: uppercase; font-size: 0.875rem; letter-spacing: 0.1em; text-decoration: none; color: rgba(11, 11, 12, 0.7); transition: color 200ms ease-out; } .ds-nav-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0.6rem; height: 2px; border-radius: 9999px; background: var(--color-nybb-orange, #ef6212); transform: scaleX(0); transform-origin: left; transition: transform 200ms ease-out; } .ds-nav-link:hover { color: var(--color-nybb-ink, #0b0b0c); } .ds-nav-link:hover::after { transform: scaleX(1); } .ds-nav-link:focus-visible { outline: 3px solid var(--color-nybb-ink, #0b0b0c); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Basket Liner",
+    "overview": "The whole system is the branded greaseproof sheet the wings actually arrive on. A warm printed ground that runs hot at the top and cools to signage yellow at the bottom. Black type stamped onto it hard enough to read across a counter. A buffalo pressed into the paper rather than printed over it. And a five-stop heat scale printed along the edge, top and bottom, bracketing everything in between. Once that image is in mind, every rule in this document follows from it: why the ground is loud, why the chrome is parchment instead of white, why the mark darkens rather than lightens, and why nothing floats.\n\nHot, printed, engineered. The ground is genuinely saturated, and that is the brand: the live site samples at 237 instances of the orange against 183 of black, so a timid neutral page would be a different restaurant. What keeps a saturated page from reading as a flyer is that every loud move is governed by a stated rule with a measured number behind it. The orange is unusable as type on this ground at 1.8:1, so it is never type on this ground. The focus ring is ink on light and orange on dark because the ring's neighbours are the ground on both sides once it is offset. The destructive red is two steps down its own hue because signage red cannot carry a label.\n\nNothing in this system is decorative by accident. The grain exists because a gradient this smooth bands on an 8-bit panel. The buffalo is a single bold silhouette because a detailed engraving collapses into a smudge at watermark opacity. The one authored animation on the site is the heat scale drawing itself, which is the product's own mechanism moving, not a fade applied to seven sections in turn.",
+    "keyCharacteristics": [
+      "A fixed warm gradient ground, with dark surfaces sitting on it. That contrast is the layout.",
+      "Anton in caps for every heading, Inter for reading, JetBrains Mono for every number.",
+      "One radius, 0.4rem, on essentially everything.",
+      "No shadows except one warm offset under the sticky chrome.",
+      "A five-stop heat ramp that is the same five swatches everywhere it appears.",
+      "Every colour pair carries a measured contrast ratio, and the ratio decided the value."
+    ],
+    "rules": [
+      {
+        "name": "The One Loud Thing Rule",
+        "body": "Orange is the only loud colour. Yellow and red are accents with narrow, stated jobs. Nothing else in this system gets a colour at all.",
+        "section": "colors"
+      },
+      {
+        "name": "The Orange Is For Dark Rule",
+        "body": "Buffalo Orange on the amber ground measures 1.8:1 and on parchment 2.6:1. It is therefore never type on a light surface. It may appear on a light surface only as a graphic: a rule, an underline, a fill. On ink it measures 5.4:1 and is for headings, prices, buttons and icons, never for paragraphs.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ground Owns the Ring Rule",
+        "body": "The focus ring colour belongs to the surface, not to the control. Ink is the default, at 7.6:1 on the darkest stop of the gradient, and dark surfaces flip it to orange, at 6.0:1 on ink. This is keyed off the background utility at zero specificity, so a charcoal card added next year gets a legible ring without anyone remembering to ask for one.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Adjacent Rule",
+        "body": "Orange text never sits on red, and red never sits on orange.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tracking Scales With the Type Rule",
+        "body": "The display class carries +0.005em, which is what a condensed face needs at label size. Left unchanged at 96px that same value opens the word up, so each tier takes back more of it as it grows, down to a floor of -0.015em. Never set tracking once and apply it across sizes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Numbers Are Mono Rule",
+        "body": "If a value is a price, a code, a countdown, a quantity or a percentage, it is JetBrains Mono with tabular figures. No exceptions, because these appear beside each other in columns and in receipts.",
+        "section": "typography"
+      },
+      {
+        "name": "The Bloom Correction Rule",
+        "body": "Light type on a near-black ground blooms: counters close and letterforms spread. Dark surfaces therefore add 0.006em of tracking to untracked reading copy, applied at the surface at zero specificity so a new dark card inherits it and anything stating its own tracking keeps it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sixteen Pixel Rule",
+        "body": "Form controls are 16px below the sm breakpoint. Anything smaller makes iOS Safari zoom the viewport on focus, which on a checkout form reads as the page jumping.",
+        "section": "typography"
+      },
+      {
+        "name": "The Value, Not Shadow Rule",
+        "body": "Surfaces separate by lightness. Do not add a shadow or a border to something that is already 11:1 away from what is behind it.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Warm Shadow Rule",
+        "body": "If a shadow is genuinely needed, it is brown and offset. A neutral grey shadow on a warm page reads as dirt.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Radius Rule",
+        "body": "New components take 0.4rem unless there is a stated geometric reason not to. A system with five radii in play reads as five systems.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Real Edge Or Nothing Rule",
+        "body": "The amber ground is so light and so saturated that nothing subtle survives on it. Ink at 40% measures 2.3:1 against the gradient, so there is no soft plate available here. A control either takes a real edge or it takes none.",
+        "section": "shapes"
+      },
+      {
+        "name": "The States Differ Structurally Rule",
+        "body": "Before adding a colour to distinguish a state, check whether the state already differs in structure. A ready order carries an orange heading, orange bars and a six-line orange code; a stopped one has no code and no ladder at all. A coloured stripe on top of that says something the screen has already said twice, and one card wearing a stripe that no other card wears reads as a component from a different product.",
+        "section": "components"
+      },
+      {
+        "name": "The Press Is Shared Rule",
+        "body": "Anything a finger can press answers with the same 2% scale on the same timing, whether it is a button, a chip, a flavour tile or a pickup window. Selection controls are not buttons, but they are pressable, and the feel has to agree.",
+        "section": "components"
+      },
+      {
+        "name": "The Full Thing Stays On Screen Rule",
+        "body": "A sold-out flavour, a taken pickup window and an out-of-stock item go flat, not away. Removing them makes the interface look broken and hides the information that the shop is busy.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do put dark surfaces on the amber ground. That contrast is the layout, and alternating bare ground with full-bleed dark bands is how a page gets its structure here.",
+      "Do measure every new colour pair and record the ratio. Every value in this system has one behind it.",
+      "Do composite a colour through a 1x1 canvas and read the pixel back when checking contrast programmatically. Tailwind v4 emits oklch() and naive RGB parsing of getComputedStyle produces fake failures near 1.1:1.",
+      "Do use 2.75rem as the minimum interactive height, everywhere.",
+      "Do let the ground set the focus ring, and let the tone prop set it on a control that knows better than its surroundings.",
+      "Do set text colour on a dark container and let its contents inherit, rather than declaring a colour on every leaf.",
+      "Do use transform-only hover and press effects, so nothing reflows.",
+      "Do use the heat ramp's five fixed swatches wherever a heat level appears.",
+      "Do spend motion on the product's own mechanisms rather than on arrivals, and make the drawn or finished state the default so no-JS and reduced motion both keep it.",
+      "Do let states differ structurally before reaching for a colour to distinguish them."
+    ],
+    "donts": [
+      "Don't set Buffalo Orange as type on any light surface. It measures 1.8:1 on the amber ground and 2.6:1 on parchment. As a graphic it is fine.",
+      "Don't use signage red for anything but the top of the heat scale and a hover accent. A destructive fill takes Red Deep.",
+      "Don't put orange text on red or red text on orange.",
+      "Don't add a border or a shadow to a surface already separated by value.",
+      "Don't use a neutral grey anywhere. Not in a shadow, not in a hairline, not in a disabled state.",
+      "Don't implement a focus ring as a box-shadow. Any component that sets its own shadow silently defeats it. Focus is an outline, 3px, offset 2px.",
+      "Don't set a form control below 16px on a phone.",
+      "Don't set the display face below 0.75rem, or above 6rem.",
+      "Don't apply a blanket entrance animation to sections as they scroll. Motion is earned by meaning here, and a fade applied to seven sections in turn says nothing about any of them. Motion that animates the product's own mechanism, the way the heat scale draws its five stops, is exactly what this system wants more of.",
+      "Don't introduce a second radius scale, a second accent colour, or a fourth typeface."
+    ]
+  }
+}
