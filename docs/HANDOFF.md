@@ -1,4 +1,4 @@
-# Handoff, 2026-08-06 (updated for the landing hero pass and the design system)
+# Handoff, 2026-08-07 (updated for the Supabase project, and the grant hole applying it found)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -21,7 +21,7 @@ ranking.
 ## Where things stand
 
 **Phase 0 is complete, and Phase 1 steps 1 to 7 have landed.** `npm run build`, `npm run lint` and
-`npm test` (310 tests in 16 files) are green.
+`npm test` (327 tests in 17 files) are green.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -42,7 +42,7 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0014` are written. Spec section 6 is the design and **section 6.6
+- `supabase/migrations/0001` to `0015` are written and applied. Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
 - `lib/menu/` is the source-agnostic menu reader added in Phase 1. `getStorefrontMenu()` returns
@@ -52,7 +52,8 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  127 of the 310 tests live there.
+  127 of the 327 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
   form and is tracked with it; `.impeccable/live/config.json` is tracked too. Everything else under
@@ -93,11 +94,57 @@ browser pane about anything that waits for a frame.
   - The hero poster is fetched once, not twice: the still stays mounted under the video instead of
     the video carrying a `poster` attribute of its own.
 
-**Nothing has been applied to a database.** No Supabase project exists.
+**The Supabase project exists and 0001 to 0015 plus the seed are applied to it.** Project ref
+`ktltawglqblcqduavcre`, region `ap-southeast-1`. `.env.local` holds the URL, the anon key, the
+service role key and `SUPABASE_DB_URL`, and is gitignored.
 
-**And an agent cannot create one.** This is worth writing down because it has now been rediscovered
-in two sessions. Creating the project needs one of three things, and none of them is available to a
-session running here:
+**Applying it immediately found a real hole, which is the entire argument for doing it before step
+8.** See migration `0015` and trap 14. Summary: every function in `public` was executable by `anon`,
+including `rate_limit_hit`, and the whole test suite was green while it was true.
+
+Two things about the connection, both learned the slow way:
+
+- **The direct connection does not work from this machine.** `db.<ref>.supabase.co` has an AAAA
+  record and no A record, so it is IPv6 only and fails with `ENOTFOUND` rather than with anything
+  that names the real problem. Use the **session pooler**, which is IPv4:
+  `postgresql://postgres.<ref>:<password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`.
+  Port 5432, not the transaction pooler's 6543, because these are DDL migrations.
+- **`--include-all` turned out not to be needed.** The earlier handoff flagged the `0001`-style
+  filenames as a risk; the CLI reads them fine and listed all fourteen in order. That risk is
+  closed.
+
+Two commands, and neither needs `supabase link` or a `config.toml`:
+
+```bash
+set -a && . ./.env.local && set +a && npx supabase db push --db-url "$SUPABASE_DB_URL"
+```
+
+```bash
+set -a && . ./.env.local && set +a && npx supabase db query --db-url "$SUPABASE_DB_URL" -f supabase/seed.sql
+```
+
+**The seed needs one transformation to go through `db query`**, which sends a single prepared
+statement and refuses multiple commands. `seed.sql` is nine `insert`s inside a `begin`/`commit`.
+Replacing those two markers with `do $seed$ begin` and `end $seed$;` makes it one statement and
+keeps the atomicity the transaction was there for. Do **not** edit the tracked file to do this, it
+is generated; transform a copy. There is no `psql` on this machine.
+
+**What is proven against the live project**, as opposed to against PGlite:
+
+- `get_storefront_menu` returns the ten categories over PostgREST as `anon`, and the storefront
+  genuinely reads it. Proved by writing a string into `menu_categories.blurb` that exists nowhere in
+  `lib/catalog/`, loading `/menu` from the production build, finding it in the server-rendered HTML,
+  and then restoring it by re-running the seed. Both halves matter: the static fallback renders an
+  identical page, so seeing a menu proves nothing by itself.
+- `get_pickup_slots` returns `unavailableReason: "no_branch"`. Correct, and the honest state.
+- `rate_limit_hit` returns **HTTP 401, `42501 permission denied`** to `anon`, and is callable by
+  `service_role`. That is the fix in `0015` proven at the PostgREST layer rather than in `pg_proc`.
+
+Round trip latency to `ap-southeast-1` was 120ms to 530ms per RPC from here.
+
+**An agent still cannot create a project**, which matters for the second one (production, per
+section 25). Creating it needs one of three things, and none is available to a session running
+here:
 
 - the Supabase MCP connector, which is **not authorized** in this environment and cannot be
   authorized from a non-interactive session, because the OAuth flow needs a browser and a human;
@@ -490,6 +537,38 @@ because each one costs a day if rediscovered.
     notice, which reads as a panel that failed to load. `items-start` on the grid fixes it and
     costs the sticky summary nothing, because `align-self` sizes the item rather than the grid
     area. Whenever a panel can legitimately be nearly empty, check it next to a full one.
+
+14. **A revoke naming the wrong grantee is a revoke that does nothing, and Supabase makes `PUBLIC`
+    the wrong grantee.** This is the most expensive thing found so far, and it was invisible to 327
+    passing tests.
+
+    Postgres grants function EXECUTE to `PUBLIC` by default, so 0010 revokes `from public` and hands
+    it back by name. Correct on Postgres. But Supabase additionally ships `alter default privileges
+    for role postgres in schema public grant execute on functions to anon, authenticated,
+    service_role`, so every function these migrations create arrives carrying an **explicit**
+    `anon=X/postgres` grant. Revoking from `PUBLIC` removes a privilege nobody held and leaves that
+    one untouched.
+
+    The result, on the first project this was ever applied to: `anon` could execute all nineteen
+    functions in `public`. The price resolvers, `resolve_pickup_branch_id`, both code generators,
+    and `rate_limit_hit`. That last one is the damaging one, and 0010's own comment says why: a
+    limiter an anonymous caller can invoke directly is one they can drive to its ceiling against any
+    key they can guess, which turns the rate limit into a way to lock a chosen phone number out of
+    ordering.
+
+    **The tests were right and the database they ran against was wrong.** Both
+    `tests/sql/schema.test.ts` and `tests/sql/place-order.test.ts` already asserted that `anon`
+    cannot call `rate_limit_hit` and that exactly seven functions are exposed. They passed, because
+    PGlite is a bare Postgres with no such default privilege. `tests/sql/harness.ts` had already
+    learned this lesson for **tables** and says so in its own comment; it simply had no equivalent
+    line for **functions**. It does now, and the existing assertions fail without `0015`.
+
+    Two general lessons worth more than the specific bug. When you revoke, check
+    `pg_proc.proacl` and see who actually holds the privilege, rather than assuming the default
+    grantee. And when a harness shims a platform, every shim it is missing is a class of bug it
+    cannot see: the tables line was there because somebody hit this before, and the functions line
+    was not.
+
 
 ## Do not
 

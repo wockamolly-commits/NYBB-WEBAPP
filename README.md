@@ -16,19 +16,29 @@ are all green, every page has been rendered and reviewed in a browser at 320px,
 375px and 1280px, and migrations `0001` to `0014` apply cleanly against a real
 Postgres in the test suite.
 
-No Supabase project exists yet, so the migrations are written and verified but
-deliberately not applied anywhere. **That should change next, and it is waiting
-on the owner rather than on any code.** Creating the project needs a browser and
-an account: the CLI is present but unauthenticated, and the MCP connector is not
-authorized. Applying the migrations is a single command once it exists, and
-`docs/HANDOFF.md` has the exact procedure under "Creating the project".
+**The Supabase project now exists, and `0001` to `0015` plus the seed are
+applied to it.** The storefront reads the real database over PostgREST, proved
+by writing a string into a category blurb that exists nowhere in `lib/catalog/`,
+finding it in the server-rendered HTML of the production build, and restoring it
+by re-running the seed. The static fallback renders an identical page, so seeing
+a menu proves nothing on its own.
 
-It matters because customer email OTP is the first step that cannot be built
-without one, and because RLS and grants have so far only been checked against
-PGlite, where `anon`, `authenticated` and `auth.uid()` are shims. Creating the
-project does not require the section 28 answers: apply the migrations and the
-seed, and the site stays exactly as honest as it is now, because `store_hours`
-is still empty and no branch is active.
+**Applying it immediately found a hole that 327 passing tests could not see, and
+that is the whole argument for doing it before building on top.** Supabase ships
+a default privilege granting `EXECUTE` on functions to `anon`, so every function
+these migrations create arrived carrying an explicit `anon=X` grant. `0010`
+revokes `from public`, which is the grantee Postgres uses by default but not the
+one Supabase had used, so the revoke removed a privilege nobody held. Every
+function in `public` was callable by `anon`, including `rate_limit_hit`, which
+turns the rate limiter into a way to lock a chosen phone number out of ordering.
+
+Migration `0015` fixes it and `tests/sql/harness.ts` now reproduces the default
+privilege, so the assertions that were already written fail without it. The
+tests were right the whole time; the database they ran against was the thing
+that was wrong. See handoff trap 14.
+
+Nothing about the site's behaviour changed: `store_hours` is still empty and no
+branch is active, so every surface still says pickup is not open yet.
 
 **The storefront renders dynamically, and that is deliberate.** A nonce-based
 CSP and static generation are mutually exclusive in Next: the nonce is minted
@@ -167,19 +177,14 @@ Phase 1 so far:
 
 Next:
 
-1. **Create the Supabase project and apply `0001` to `0014` plus the seed.**
-   This is the owner's action and it is what everything else now waits on.
-   `docs/HANDOFF.md` has the procedure.
-2. Customer email OTP, which is also when the Server Action starts forwarding
-   an access token so orders stop being anonymous. **This is the first step
-   that needs the project**, which is why the project comes first: RLS and
-   grants have only ever been checked against PGlite, where the roles are
-   shims, and no request has yet gone browser to PostgREST to Postgres and
-   back.
+1. Customer email OTP, the last step of Phase 1, which is also when the Server
+   Action starts forwarding an access token so orders stop being anonymous.
+   The project it needed now exists.
+2. A second Supabase project for production, per spec section 25. The current
+   one should be treated as staging.
 
 Phase 1 is blocked on two answers from the owner: which branch is the pilot,
-and its real weekday hours. Nothing in the schema guesses either. Creating the
-Supabase project is **not** blocked on those two, and should not wait for them.
+and its real weekday hours. Nothing in the schema guesses either.
 
 ## Start here
 

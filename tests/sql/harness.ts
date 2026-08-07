@@ -26,10 +26,28 @@ const SEED = path.join(process.cwd(), "supabase", "seed.sql");
 /**
  * The pieces Supabase provides that a bare Postgres does not.
  *
- * The default privileges line is not decoration: it reproduces the Supabase
- * bootstrap grant that hands anon and authenticated TRUNCATE, REFERENCES and
- * TRIGGER on every new table. Without it, 0010's revoke would pass here and
- * fail to matter in production, which is the opposite of a useful test.
+ * The default privileges lines are not decoration: they reproduce the Supabase
+ * bootstrap grants. Without them, a revoke in the migrations would pass here
+ * and fail to matter in production, which is the opposite of a useful test.
+ *
+ * The tables line came first and covers TRUNCATE, REFERENCES and TRIGGER on
+ * every new table.
+ *
+ * **The functions line was missing until 0015, and its absence hid a real
+ * hole for the whole of Phase 1.** Supabase also ships a default privilege
+ * granting EXECUTE on functions to anon, authenticated and service_role, so
+ * every function these migrations create arrived with an explicit `anon=X`
+ * grant on it. 0010 and the Phase 1 migrations revoke EXECUTE `from public`,
+ * which is the grantee Postgres uses by default but is NOT the grantee
+ * Supabase had used, so the revoke removed a privilege nobody held and left
+ * the real one untouched. In the first project this was ever applied to, anon
+ * could execute all nineteen functions in `public`, including `rate_limit_hit`
+ * and every price resolver.
+ *
+ * `tests/sql/place-order.test.ts` was already asserting the opposite, and
+ * passing, because a bare Postgres has no such default. The test was right the
+ * whole time; the database it ran against was the thing that was wrong. Do not
+ * remove this line to make something go green.
  */
 const SUPABASE_SHIM = `
   create role anon nologin;
@@ -46,6 +64,9 @@ const SUPABASE_SHIM = `
 
   alter default privileges in schema public
     grant all on tables to anon, authenticated, service_role;
+
+  alter default privileges in schema public
+    grant execute on functions to anon, authenticated, service_role;
 `;
 
 export async function migrationFiles(): Promise<string[]> {
