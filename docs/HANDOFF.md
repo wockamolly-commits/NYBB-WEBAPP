@@ -306,9 +306,8 @@ Spec section 27. In order:
      phone number, never a key the caller supplies, because `place_order` is granted to `anon`
      and anything in the payload is something an attacker picks. It fails open per 0008. Note
      what it therefore counts: orders that *commit*, since a rejected attempt rolls back its own
-     increment. **The IP dimension is not built.** Postgres cannot see the client address, so it
-     belongs in the Server Action, and the action needs a service-role client to call
-     `rate_limit_hit` at all (0010). That is the one piece of spec section 22 item 6 still open.
+     increment. **The IP dimension is now built**, in `lib/rate-limit/`, and closes spec section 22
+     item 6. See the note under step 7 below.
    - **Guests can order, and that is a documented divergence from the spec, not an oversight.**
      Section 17 now carries the correction and the reasoning: counter is the only rail while
      PayMongo is dark, so requiring an account would close ordering rather than narrow it. It is
@@ -347,8 +346,52 @@ Spec section 27. In order:
      fit four columns at 375, and 12px is the floor, so the phone gets the four bars plus "Step 3
      of 4, Ready" and the full ladder returns at `sm`. Screen readers get every rung at every
      width.
+   **The address dimension of the rate limit landed after this**, in `lib/rate-limit/` and
+   `lib/supabase/admin-client.ts`, which closes spec section 22 item 6. It was buildable without a
+   project because 0010 had already granted `rate_limit_hit` to `service_role` and said in a comment
+   that it was for exactly this caller.
+
+   - **It is defence in depth, not a security boundary, and the comment says so at the top.** Every
+     header it can read is supplied by whatever spoke to the server last. Behind a proxy that
+     overwrites them, which Vercel does, that is worth something; served directly, an attacker
+     rotating `x-forwarded-for` evades it entirely. The real control stays the database limit, on an
+     identity Postgres verifies for itself. Never let this become the only thing guarding something
+     expensive.
+   - **It validates before it counts, and that is not tidiness.** `rate_limits` is keyed on a
+     primary key and nothing prunes it, so a caller who can invent keys adds a permanent row per
+     request. An unparseable header is treated as no address at all. `node:net`'s `isIP` does the
+     parsing, rather than a regex written here.
+   - **Three different bugs collapse unrelated people into one bucket, and each one is a
+     self-inflicted outage.** A missing address bucketed as "unknown", an IPv4-mapped IPv6 address
+     bucketed on its all-zero /64, and a forwarding chain read from the wrong end. In every case the
+     shared bucket fills and the site then refuses orders from people who never sent a request.
+     There is a test for each.
+   - **IPv6 counts by /64.** A residential customer is routinely handed one, so counting full
+     addresses would let a single connection present billions of identities.
+   - **The key is a hash and the honest limit of that is written down.** IPv4 is four billion
+     values, so a digest is reversible by anyone willing to enumerate it. It removes the casual
+     read, not a determined one; what protects the table is that it has no policy and the function
+     is granted to `service_role` alone.
+   - **20 per 600 seconds, and the figure is set by who shares an address rather than by what a
+     script can do.** `PRODUCT.md` has the customer ordering office lunch from IT Park, which is one
+     office NAT at a lunch peak, and Philippine carriers put very large numbers of subscribers
+     behind CGNAT. Guessing low refuses real orders. Revisit once there is traffic to look at.
+   - **`RATE_LIMITED_ADDRESS` needed its own sentence.** The existing `RATE_LIMITED` says "several
+     orders from this number", which is fair when the identity is the customer's own phone. This one
+     can refuse somebody on mall wifi who has done nothing, so it names the shared connection, does
+     not accuse them, and leaves the branch phone as a way to order now.
+   - It counts **requests**, where the database limit counts orders that **commit**. That is the
+     point of having both: a script hammering checkout with payloads that all get refused is
+     invisible to the database limit.
+   - **Untested against a real PostgREST**, like everything else here. What needs proving on the day
+     the project exists is that `service_role` may call `rate_limit_hit` and `anon` may not.
+
 8. **Customer email OTP**, the last step of Phase 1. **This one needs a Supabase project**, unlike
    everything before it.
+
+   - `lib/rate-limit/` is ready for the OTP limit: `withinAddressLimit` takes the action as a
+     namespace, so ordering too fast cannot also block asking for a sign-in code. Spec section 22
+     item 6 wants the franchise form covered too.
 
    - **Wire the access token through `placeOrder` at the same time.** Today every order is a guest
      order, because `app/actions/checkout.ts` calls the RPC with the cookie-free anon client. Spec
@@ -465,6 +508,17 @@ because each one costs a day if rediscovered.
   loop and it needs no project. **The old "do not apply the migrations" rule is retired**, and the
   procedure above replaces it: the moment the owner creates the project, applying 0001 to 0014 and
   the seed is the first thing to do.
+- Do not use `createAdminClient()` for anything a customer's identity matters to. It bypasses RLS
+  and has no `auth.uid()` at all, so using it for `place_order` would not make orders anonymous by
+  accident, it would make them anonymous by definition. Its one caller today is the rate limiter,
+  which is what 0010 granted `rate_limit_hit` to `service_role` for. Step 8 forwards the customer's
+  access token instead, per spec section 14.
+- Do not let a rate limiter fail closed. Spec section 22 item 6 and 0008's own comment both require
+  fail open, and `lib/rate-limit/limiter.ts` returns `true` on every error path for that reason. A
+  limiter that takes ordering down has done more damage than the abuse it stopped.
+- Do not bucket an unreadable address into a shared "unknown" key, and do not skip the `isIP`
+  validation. The first fills one bucket and refuses everybody in it; the second lets a caller add a
+  permanent row to `rate_limits` per request, since nothing prunes that table.
 - Do not draw the heat ramp twice on one page. A level keeps its swatch everywhere, but the *form*
   is once per page: the hero strip states the scale and the band prices it. The band owns the site's
   one authored animation because it is where somebody is choosing, and the hero strip is

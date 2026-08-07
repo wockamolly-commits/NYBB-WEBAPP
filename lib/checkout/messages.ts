@@ -194,6 +194,24 @@ export function checkoutFailure(raw: string): CheckoutFailure {
           "Please wait a minute before placing another.",
       };
 
+    // Raised by the Server Action rather than by 0013, and it needs its own
+    // wording because the identity is different. RATE_LIMITED above is the
+    // customer's own number or account, so "you have ordered a lot" is a fair
+    // thing to say. This one is a shared connection: an office, a mall, a
+    // mobile carrier putting thousands of subscribers behind one address. The
+    // person reading it may not have ordered anything at all today, so it must
+    // not accuse them, it should name why it happened, and it has to leave a
+    // way to order right now, because unlike the phone limit this can refuse
+    // somebody who has done nothing wrong.
+    case "RATE_LIMITED_ADDRESS":
+      return {
+        error:
+          "There have been a lot of orders from this internet connection in " +
+          "the last few minutes. On office or mall wifi that can be somebody " +
+          "else nearby. Please wait a few minutes, or call the branch and " +
+          "they will take this order now.",
+      };
+
     // The first request is still in flight. Retrying with the same attempt id
     // is exactly right, so this deliberately does not ask for a new one.
     case "CHECKOUT_ATTEMPT_INCOMPLETE":

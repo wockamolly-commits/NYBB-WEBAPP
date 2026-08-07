@@ -1,6 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { checkoutFailure } from "@/lib/checkout/messages";
+import { clientAddress } from "@/lib/rate-limit/address";
+import { withinPlaceOrderAddressLimit } from "@/lib/rate-limit/limiter";
 import {
   placeOrderInputSchema,
   placedOrderSchema,
@@ -29,6 +32,12 @@ import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-cl
  * `auth.uid()` inside `place_order` stamps `orders.user_id`. It must not switch
  * to a service-role client to achieve that: every order would become a guest
  * order with a key the storefront has no business holding.
+ *
+ * That warning is now load bearing rather than theoretical, because a
+ * service-role client does exist in the tree and this file reaches it, one
+ * layer down, through the address limiter. `createAdminClient` has no
+ * `auth.uid()` at all, so using it for the RPC below would not make orders
+ * anonymous by accident, it would make them anonymous by definition.
  *
  * A `"use server"` file may only export async functions. Types, schemas and the
  * message table live in `lib/checkout/` because exporting any of them from here
@@ -72,6 +81,24 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         "Online ordering is not connected yet. The branches page has the " +
         "phone numbers, and they can take this now.",
     };
+  }
+
+  // The address dimension of spec section 22 item 6, and the only part of the
+  // rate limit that cannot live in Postgres: the database is talking to
+  // PostgREST, not to the customer, so it never sees who connected.
+  //
+  // Placed here, after the parse and before the RPC, on purpose. A malformed
+  // request has already been refused above without touching the database, so
+  // spamming garbage costs a caller a zod parse and nothing else; there is no
+  // point spending a round trip to count something that was never going to
+  // reach an order. What this guards is the expensive call directly below it.
+  //
+  // It fails open in every direction, including "no service-role key
+  // configured", which is the state of every environment until the Supabase
+  // project exists. `lib/rate-limit/limiter.ts` has the reasoning and the
+  // figures.
+  if (!(await withinPlaceOrderAddressLimit(clientAddress(await headers())))) {
+    return { ok: false, ...checkoutFailure("RATE_LIMITED_ADDRESS") };
   }
 
   const supabase = createPublicClient();

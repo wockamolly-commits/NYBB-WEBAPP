@@ -287,11 +287,30 @@ describe("turning a refusal into something to do next", () => {
       "VOUCHERS_DISABLED",
       "SHORT_CODE_COLLISION",
       "PICKUP_CODE_COLLISION",
+      // Not from 0013. The Server Action raises this one, because the address
+      // dimension of the rate limit is the piece Postgres cannot see.
+      "RATE_LIMITED_ADDRESS",
     ];
 
     const generic = checkoutFailure("something we have never seen").error;
     for (const code of codes) {
       expect(checkoutFailure(code).error, code).not.toBe(generic);
     }
+  });
+
+  it("does not accuse a shared connection of being the customer's own traffic", () => {
+    // The two limits refuse different people. RATE_LIMITED is the customer's
+    // own number or account, so telling them they ordered a lot is fair.
+    // RATE_LIMITED_ADDRESS can refuse somebody on office or mall wifi who has
+    // done nothing at all, so it must not say "you", and it has to leave a way
+    // to order right now.
+    const address = checkoutFailure("RATE_LIMITED_ADDRESS");
+    expect(address.error).not.toMatch(/this number/i);
+    expect(address.error).toMatch(/connection/i);
+    expect(address.error).toMatch(/call the branch/i);
+    expect(address.error).not.toBe(checkoutFailure("RATE_LIMITED").error);
+    // Neither is a field error: no input on the form caused it, so nothing
+    // should be highlighted red for the customer to go and "fix".
+    expect(address.field).toBeUndefined();
   });
 });

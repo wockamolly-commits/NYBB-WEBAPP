@@ -142,6 +142,18 @@ Phase 1 so far:
   own snapshots rather than from a menu that has moved on. The link is a bearer
   credential, so the page is `noindex`, the referrer policy keeps the token off
   other hosts, and nothing logs it
+- `lib/rate-limit/` and `lib/supabase/admin-client.ts`: the address dimension
+  of rate limiting, which is the piece Postgres cannot supply because it is
+  talking to PostgREST rather than to the customer. This closes spec section 22
+  item 6. It is **defence in depth and not a security boundary**, since the
+  headers it reads are only worth what the proxy in front of them is worth, and
+  the real control remains the database limit on an identity Postgres verifies
+  for itself. It validates every candidate with `node:net`'s `isIP` before
+  counting it, because `rate_limits` is keyed on a primary key that nothing
+  prunes and an unvalidated header lets a caller grow that table forever. IPv6
+  counts by /64, the key is a hash rather than the address, and the limit is set
+  generously because office and carrier NAT put many unrelated customers behind
+  one address. It fails open in every direction, per the spec and per 0008
 - **The landing hero pass.** The Level of Hotness is in the first viewport now,
   as a strip beside the copy, so the hero shows its evidence instead of naming
   a quantity the reader has to take on trust. The band further down stopped
