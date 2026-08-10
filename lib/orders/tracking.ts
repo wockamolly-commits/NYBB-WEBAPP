@@ -27,6 +27,8 @@ export const TRACKING_TOKEN_PATTERN =
 
 /** The query key. Short, because this URL is read off phone screens. */
 export const TRACKING_TOKEN_PARAM = "t";
+export const ORDER_TRACKING_EVENT = "status_changed";
+const ORDER_TRACKING_TOPIC_PREFIX = "order-tracking:";
 
 /** "NY-" plus six characters from the alphabet in `generate_short_code`. */
 export const SHORT_CODE_PATTERN = /^NY-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/;
@@ -45,6 +47,11 @@ export function normalizeTrackingToken(value: unknown): string | null {
   return TRACKING_TOKEN_PATTERN.test(normalized) ? normalized : null;
 }
 
+export function orderTrackingTopic(trackingToken: unknown): string | null {
+  const token = normalizeTrackingToken(trackingToken);
+  return token ? `${ORDER_TRACKING_TOPIC_PREFIX}${token}` : null;
+}
+
 /** A short code from a URL, upper-cased, or null. */
 export function normalizeShortCode(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -52,7 +59,10 @@ export function normalizeShortCode(value: unknown): string | null {
   return SHORT_CODE_PATTERN.test(normalized) ? normalized : null;
 }
 
-export function orderTrackingHref(shortCode: string, trackingToken?: string | null): string {
+export function orderTrackingHref(
+  shortCode: string,
+  trackingToken?: string | null,
+): string {
   const path = `/order/${encodeURIComponent(shortCode.trim().toUpperCase())}`;
   const token = normalizeTrackingToken(trackingToken);
   return token ? `${path}?${TRACKING_TOKEN_PARAM}=${token}` : path;
@@ -97,7 +107,9 @@ export const trackedOrderSchema = z.object({
   ]),
   placedAt: z.string().min(1),
   pickupCode: z.string().regex(/^[0-9]{4}$/),
-  pickup: z.object({ startsAt: z.string().min(1), endsAt: z.string().min(1) }).nullable(),
+  pickup: z
+    .object({ startsAt: z.string().min(1), endsAt: z.string().min(1) })
+    .nullable(),
   branch: z.object({
     slug: z.string().min(1),
     name: z.string().min(1),

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { HeatScale, type HeatLevel } from "@/components/site/HeatScale";
-import { HeroHeat } from "@/components/site/HeroHeat";
 import { HeroVideo } from "@/components/site/HeroVideo";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
@@ -53,6 +52,31 @@ import { telHref } from "@/lib/phone";
  * MOTION. One authored moment, in one place: the five heat stops drawing
  * themselves in sequence as that section arrives. Nothing else on the page
  * animates except hover colour.
+ *
+ * WHAT THE FIRST SCREEN IS FOR, AND WHY IT NO LONGER PREVIEWS THE THIRD
+ * SECTION. The hero carried a compressed heat ramp beside the copy for a while,
+ * so heat was drawn twice within two screens: once as a strip stating the scale
+ * and once as the band pricing it. Splitting them by shape was an answer to the
+ * wrong question. Two drawings of one fact is a repeat whichever shapes they
+ * take, and the strip was spending the page's most valuable real estate on a
+ * table of contents for a section eight hundred pixels below it.
+ *
+ * The hero's job is to say what kind of place this is, which is the one thing
+ * no band further down does: the flavours, the heat and the counters each have
+ * a section that carries them in full. So the claim went back into the subhead,
+ * and the first screen is the film, the tagline and the type: one moving picture
+ * of the food rather than a second drawing of a fact stated below.
+ *
+ * VOICE. This page sells a restaurant, and the ordering platform is how you
+ * reach it rather than the thing on offer. The hero used to open on "Pickup
+ * only / Cebu" over "Skip the queue. Not the wings.", which is a fulfilment
+ * mode over a convenience promise: two lines about the software, and neither
+ * of them about food. Both are gone. The first line is now the store's own
+ * tagline in the store's own script, the headline is about heat, and every
+ * remaining sentence about pickup has been pushed to where it is a useful
+ * fact rather than a pitch: one status line under the buttons, and the
+ * numbered steps further down. If a new line here describes the website
+ * instead of the wings, it is in the wrong place on the page.
  *
  * WHAT IS TRUE TODAY. Online ordering is Phase 1 and is not built. The page
  * says so once, in the hero, under the buttons where it is read, and it hands
@@ -163,83 +187,108 @@ export default async function Home() {
             to lose: it is a disclosure, and the button it used to send people
             looking for is now the thing sitting above it. */}
         <div className="relative mx-auto w-full max-w-6xl px-5 pt-16 pb-16 sm:px-8 sm:pt-32 sm:pb-24 [@media(max-height:500px)]:pt-8 [@media(max-height:500px)]:pb-8">
-          {/* THE SCALE GOES BESIDE THE COPY, NOT UNDER IT.
+          {/* NO WIDTH CAP HERE, AND THAT IS DELIBERATE RATHER THAN AN OMISSION.
               ================================================================
-              Under it, the scale cost 154px of hero height and pushed the whole
-              first screen back to 96% of the viewport, which is the exact
-              problem the 78svh above was set to solve. Beside it, it costs
-              nothing vertically and lands in the part of this hero that was
-              genuinely empty: at 1440 the copy column ends around 545px and the
-              remaining 600 held nothing at all.
+              This column carried a `max-w-[58%]` gated on the viewport's shape,
+              which existed for one reason: a drawing of the storefront ran to
+              the right edge of the section and the copy had to stay off it. The
+              drawing is gone, so a cap keyed to it would now hold the copy
+              narrow with nothing beside it.
 
-              One element, two placements, no duplicate markup. Below lg it
-              flows in its natural order, between the subhead it replaced a
-              clause of and the buttons. At lg it moves to a second column and
-              the actions drop under the copy, both bottom aligned, so the
-              headline and the scale sit on the same baseline. */}
-          <div className="grid gap-y-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-end lg:gap-x-16 lg:gap-y-10 [@media(max-height:500px)]:gap-y-5">
-            <div className="lg:col-start-1 lg:row-start-1">
-              {/* The one kicker on the site, and it keeps its own wide tracking
-              rather than the shared label value: this is the hero, where a
-              display treatment is allowed to be a display treatment. The face
-              is Anton and not the mono, because there is not a digit in it and
-              mono here was only ever dressing the line up as technical.
+              Nothing replaces it because nothing needs to. Every child here
+              governs its own measure already: the subhead carries `max-w-[44ch]`,
+              the headline sets its own line break, and the button row wraps on
+              its own. A cap on the container would only constrain the one thing
+              that wants the room, which is the display headline. */}
+          <div className="flex flex-col gap-y-9 lg:gap-y-10 [@media(max-height:500px)]:gap-y-5">
+            <div>
+              {/* THE STORE'S OWN TAGLINE, IN THE SLOT THE KICKER HELD.
+              ================================================================
+              What was here was "Pickup only / Cebu": a fulfilment mode and a
+              city, which is a line about the software, set above a headline
+              that was also about the software. The store already has a tagline,
+              it is drawn in a brush script on the store's own artwork, and it
+              was appearing exactly once on this site, in the footer, four
+              thousand pixels below the first thing anybody reads. So it moves
+              up. The first line of the site is now the restaurant's line and
+              not the app's.
 
-              Bone rather than orange. This line sits at the very top of the
-              type block, which is the one place the scrim is thinnest, and 12px
-              of brand orange measured 2.2:1 there over the old video and would
-              not clear 4.5:1 over the photograph either. Orange is not what
-              identifies this line; the face and the tracking are, and both are
-              kept. The colour is spent on the headline below, where the text is
-              large enough to be held at 3:1 and low enough to sit on ink. */}
-              <p className="font-display text-nybb-bone/85 text-xs tracking-[0.28em]">
-                Pickup only / Cebu
+              It is a <p> and not a heading, the same as in the footer: this is
+              lettering that belongs to the lockup, it outranks nothing, and a
+              screen reader announcing it as a section title would be wrong
+              about what it is. Same size as the footer instance too, because a
+              lockup that changes size between two placements stops reading as
+              one object.
+
+              THE LOCKUP'S PAINT, ON THE HERO'S ONE LINE.
+              ================================================================
+              This carries the tagline's real treatment now, signage yellow in a
+              black keyline over a black offset shadow, rather than flat bone.
+              It is the class and not the raster, and that is forced rather than
+              preferred: the delivered artwork is three interlocking lines on a
+              diagonal with no blank row anywhere to cut on, so it cannot become
+              one line without slicing glyphs. The face here is the face the
+              artwork is drawn in, so what this loses against the raster is the
+              diagonal composition, not the lettering. The footer, which has
+              room for the real composition, uses the real composition.
+
+              The hero's one line format is kept exactly: same slot, same sizes,
+              same landscape single line, same drop to 1.25rem on a landscape
+              phone where the CTAs need the room back.
+
+              YELLOW HERE, WHERE BONE AND ORANGE BOTH HAD REASONS NOT TO BE.
+              This line sits at the very top of the type block, the one place
+              the scrim is thinnest, and brand orange measured 2.2:1 there. The
+              treatment survives that comfortably: signage yellow is the
+              lightest value in the palette and clears the ramp everywhere the
+              old bone did, and the keyline underneath it is doing a second job
+              this ground actually needs, which is holding the letterform
+              against whatever frame of the film is behind it. */}
+              <p className="font-script tagline-inked text-2xl sm:text-[1.75rem] [@media(max-height:500px)]:text-xl">
+                #Your All Time Favorite Chicken Wings
               </p>
 
               {/* Explicitly bone. The heading inherited --foreground, which the
               move to a light page ground turned into ink, so the first line
               of the hero was near black type on a near black wash. */}
               {/* The space before the break is load bearing and is not a typo.
-              Without it `h1.textContent` is "Skip the queue.Not the wings.",
-              and assistive tech that flattens an element to its text content
-              runs the two sentences together into one word. The break still
-              does the visual work; the space only exists in the string. */}
+              Without it `h1.textContent` is "Wings worththe burn.", and
+              assistive tech that flattens an element to its text content runs
+              the two halves together into one word. The break still does the
+              visual work; the space only exists in the string. */}
               <h1
                 id="hero-title"
                 className="font-display heading-hero text-nybb-bone mt-5 [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-[2.5rem]"
               >
-                Skip the queue. <br />
-                <span className="text-nybb-orange">Not the wings.</span>
+                Wings worth <br />
+                <span className="text-nybb-orange">the burn.</span>
               </h1>
 
-              {/* "Five levels of heat" came out of this sentence when the scale
-              below it went in. The claim did not leave the hero, it stopped
-              being a number the reader has to take on trust and became the
-              object they can see, named and measured. Prose that describes
-              something standing next to it is the flattest kind of copy. */}
+              {/* "Five levels of heat" is back in this sentence, and the round
+              trip is worth recording. It came out when the heat strip went in,
+              on the correct principle that prose describing an object standing
+              next to it is the flattest kind of copy. The object has gone, so
+              the claim returns to where a claim with no object belongs, which
+              is a sentence. Three facts, and each one is paid off by a section
+              further down: the flavour grid, the heat band, and the fryer.
+
+              "Fried to order" is last on purpose. It is the only one of the
+              three that no band on this page carries, so it is the line the
+              hero is actually adding rather than previewing. */}
               <p className="text-nybb-bone/75 mt-6 max-w-[44ch] text-base leading-relaxed sm:text-lg [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-base">
-                Nine flavours, fried to order and waiting when you walk in.
+                Nine flavours, five levels of heat, fried to order.
               </p>
             </div>
 
-            {/* Hidden on a landscape phone, and only there. That viewport has
-              under 300px below the header, the CTAs have to clear it, and this
-              is the one element in the hero whose job the band further down
-              does again in full. */}
-            <HeroHeat
-              levels={heatLevels}
-              className="lg:col-start-2 lg:row-span-2 lg:row-start-1 [@media(max-height:500px)]:hidden"
-            />
-
-            <div className="lg:col-start-1 lg:row-start-2">
+            <div>
               {/* THE SECOND BUTTON IS THE REMEDY, NOT A SECOND WAY TO BROWSE.
               ================================================================
               This row used to be "See the menu" and "Find a branch", and the
               disclosure underneath it said "Call your branch to order today"
               with nothing to call: no number, no tel:, no anchor, and the
               nearest dialable digit about 4,200px down the page. The headline
-              sold skipping the queue, the line below withdrew it, and the
-              remedy it named could not be executed. That is the deflation
+              of the day sold skipping the queue, the line below withdrew it,
+              and the remedy it named could not be executed. That is the deflation
               landing at the exact moment a motivated visitor is most likely to
               leave.
 
@@ -272,10 +321,17 @@ export default async function Home() {
               cannot support: the button above is the instruction now. The orange
               dot that used to prefix this is gone too. A small filled dot before
               a status sentence reads by universal convention as "live", and this
-              is the one sentence on the page saying the service is not. */}
+              is the one sentence on the page saying the service is not.
+
+              "Pickup only" is here rather than in a kicker because that is
+              where it belongs. It is a fact about how the service works, not a
+              brand line, and the kicker slot it used to occupy now holds the
+              store's tagline. This paragraph is already the one place on the
+              first screen that states what is and is not true today, so the
+              fulfilment mode joins it instead of getting a slot of its own. */}
               <p className="text-nybb-bone/60 mt-7 max-w-[46ch] text-sm leading-relaxed">
-                Online ordering opens soon. Until it does, the counter nearest
-                you takes the order on the phone.
+                Pickup only, and online ordering opens soon. Until it does, the
+                counter nearest you takes the order on the phone.
               </p>
             </div>
           </div>
@@ -347,12 +403,7 @@ export default async function Home() {
             </p>
           </header>
 
-          {/* Capped well inside the 6xl column. Left to fill it, the price
-              columns sat at the far right and the eye had to cross about 950px
-              of empty band to get from "Lite" to what Lite costs, which is the
-              oldest failure mode of a wide table. At 3xl the name, the measure
-              and the two numbers are one glance. */}
-          <HeatScale levels={heatLevels} className="mt-14 max-w-3xl sm:mt-16" />
+          <HeatScale levels={heatLevels} className="mt-14 sm:mt-16" />
 
           <p className="text-nybb-bone/55 mt-10 text-xs">
             Prices are the upcharge on top of any flavour, per order.
@@ -398,8 +449,8 @@ export default async function Home() {
               Not just wings
             </h2>
             <p className="text-nybb-ink/75 mt-4 max-w-[44ch] text-sm leading-relaxed">
-              Burgers, dogs, ribs and rice meals come off the same counter, so
-              nobody in the group has to compromise.
+              Burgers, hotdogs, ribs and rice meals come off the same counter,
+              so nobody in the group has to compromise.
             </p>
           </div>
           <TextLink href="/menu" tone="light">

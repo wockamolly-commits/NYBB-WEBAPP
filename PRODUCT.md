@@ -68,7 +68,9 @@ receives a short pickup code plus a separate unguessable tracking key.
 
 **The counter.** Pickup happens at a physical counter, verified by code. The customer may signal
 arrival with an "I'm here" action that pings the counter. No-shows are the main abuse vector for a
-pickup-only store, which is why pay-at-counter carries an account requirement at three layers.
+pickup-only store. A signed-in account is encouraged because it adds saved details and history, but
+pay at counter remains available to guests while online prepay is disabled. Requiring an account
+would otherwise close ordering entirely rather than narrow it.
 
 **The kitchen.** Orders move New to Preparing to Ready to Claimed. Staff re-key each ticket into
 ZenPOS by hand, because ZenPOS publishes no documented order-ingest path. The manual re-key panel
@@ -91,9 +93,12 @@ list based rather than a single price column.
 configurator with variation dependent option pricing; cart with server sync; capacity bounded
 pickup slots; server authoritative checkout via a `SECURITY DEFINER` `place_order` RPC with
 idempotency and Postgres rate limiting; order tracking by short code plus a private tracking key;
-customer email OTP; a realtime staff board with pickup code claim; web push for customer-ready and
-staff-new-order; a POS adapter with a manual re-key implementation; owner tools for menu, hours,
-settings, analytics and vouchers.
+customer email OTP and account profiles; isolated staff email OTP; cashier, kitchen and manager
+permission resolution; and a role-gated workspace shell with live order counts.
+
+**Planned in the remaining phases.** Web push for customer-ready and staff-new-order; the manual
+POS re-key workflow; menu, hours and availability management; analytics; vouchers; and the
+optional payment and loyalty work. The realtime staff board and pickup-code claim are built.
 
 **Hard constraints.**
 
@@ -107,8 +112,9 @@ settings, analytics and vouchers.
   order write goes through a `SECURITY DEFINER` Postgres function. Every table has RLS.
 - **No feature flag ships defaulted to on.** Settings fail closed. Both payment rails (pay at
   counter, and PayMongo online prepay) exist behind flags, off by default (D4).
-- **Guests may order only when paying online.** Pay at counter requires an account, enforced in the
-  UI, in `place_order`, and by a database constraint.
+- **Guests may use pay at counter.** Online prepay is flag-gated off until merchant approval, so an
+  account requirement on the counter rail would make ordering impossible for a guest. The database
+  still records an authenticated owner whenever a customer chooses to sign in.
 - **The Sports Lounge is closed** as of August 2026, and the Ayala Malls Central Bloc branch with
   it. Nothing in the app may reference either: not a branch row, not a menu item, not a footer
   social link. The `branches.brand` column keeps the concept expressible at zero cost, but nothing
@@ -130,11 +136,10 @@ settings, analytics and vouchers.
 is a separate, unguessable value). "Level of Hotness" is the customer facing name of the heat
 scale. Order statuses are New, Preparing, Ready, Claimed.
 
-**Explicitly undecided.** All seven owner-input items in spec section 28 are still open as of
-2026-08-06. Do not invent answers to any of them:
+**Owner input.** Two items in spec section 28 are resolved. Five remain open. Do not invent answers
+to the remaining items:
 
-1. Which single branch goes live first. Garden Bloc, IT Park, Lahug is the spec's recommendation on
-   fit; SM City Cebu Food Hall is the volume alternative.
+1. *(Resolved 2026-08-10: Garden Bloc, IT Park, Lahug is the pilot branch.)*
 2. *(Resolved: Hot Wings, the only trading brand.)*
 3. Real operating hours per weekday. The current site publishes none, and the reference project
    shipped a placeholder schedule that silently gated ordering.
@@ -183,8 +188,13 @@ scale. Order statuses are New, Preparing, Ready, Claimed.
 **Absences that must not be fabricated.** There are no testimonials, no customer counts, no review
 scores, no sales figures, no awards, and no press. Cheezy, Salted Egg and Smokey Barbecue exist
 only as 300x300 thumbnails. The coffee and waffle lines have no clean product shots. Operating
-hours are unknown. No Supabase project exists yet, so the migrations are verified against Postgres
-compiled to WebAssembly and applied nowhere.
+hours are unknown. A staging Supabase project exists, migrations `0001` to `0022` and the seed are
+applied, and customer plus Super Admin OTP flows have been verified end to end. Migration `0022`
+is locally verified and awaits its focused staging smoke test. The configured
+Super Admin has an active admin profile and matching bootstrap audit record.
+Migration `0018`, migration `0021`, and the four-column orders board are live in staging. Marked
+test orders have completed Start, Ready and pickup-code Claim through the real staff browser flow,
+including an already-open guest page following every transition.
 
 ## Product Principles
 

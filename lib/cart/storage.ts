@@ -19,6 +19,7 @@ import type { Cart } from "./types";
 
 /** Bumping this is how the shape changes: an old key is dropped, not migrated. */
 export const CART_STORAGE_KEY = "nybb.cart.v1";
+export const CART_UPDATED_EVENT = "nybb:cart-updated";
 
 const lineSchema = z.object({
   itemSlug: z.string().min(1),
@@ -75,6 +76,7 @@ export function writeCart(storage: Storage | null, cart: Cart): void {
   if (!storage) return;
   try {
     storage.setItem(CART_STORAGE_KEY, JSON.stringify({ version: 1, lines: cart.lines }));
+    window.dispatchEvent(new Event(CART_UPDATED_EVENT));
   } catch {
     // Quota, or private mode. The in-memory cart is still correct for this
     // tab, which is the part the customer can see.

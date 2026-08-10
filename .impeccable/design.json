@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-06T04:40:00Z",
+  "generatedAt": "2026-08-07T07:13:01Z",
   "title": "Design System: NYBB Order",
   "extensions": {
     "colorMeta": {
@@ -155,6 +155,10 @@
       "numeric": {
         "displayName": "Numeric",
         "purpose": "Every number the user reads, compares or says out loud. Prices, order codes, pickup codes, countdowns, quantities, heat percentages. Tabular figures so columns align and digits do not reflow."
+      },
+      "script": {
+        "displayName": "Script (lettering)",
+        "purpose": "The store's fixed tagline, '#Your All Time Favorite Chicken Wings', and nothing else on the site. Lettering rather than type: it is part of the lockup, never takes a variable string, never sets a heading, label, control or price, and is never uppercased because a brush script's joins are drawn for lowercase. Two placements (landing hero, one paragraph on About), both at 1.5rem below sm and 1.75rem from sm, the hero alone dropping to 1.25rem under max-height 500px. One content placement per page; the footer's mark is chrome and is exempt. Never Buffalo Orange: 1.8:1 on amber and 2.2:1 at the top of the hero scrim, and this face has the thinnest joins in the system. The tagline has two renderings and the shape of the space picks between them. Where a roughly 2:1 block fits, use the delivered artwork (components/brand/TaglineMark.tsx): three interlocking diagonal lines, floor w-[220px] sm:w-[260px], set by the keyline falling to 0.89px at 220 and dropping out below about 200. That artwork cannot become one line; the trimmed master has zero blank rows across 463 and no rotation separates the bands. Where the space is a single line, use .tagline-inked, which paints the lockup's own treatment (signage yellow, black keyline, black offset shadow, paint-order stroke fill) onto the face the artwork is set in. Hero uses the class; footer uses the artwork; About stays ink on amber."
       }
     },
     "shadows": [
@@ -178,7 +182,7 @@
       {
         "name": "heat-reveal",
         "value": "transform 640ms cubic-bezier(0.16, 1, 0.3, 1), staggered 70ms per stop, horizontal at every width",
-        "purpose": "The site only authored animation: the five priced heat rows extending their measure bars in sequence as the band arrives. Transform only, so nothing reflows. The drawn state is the default, so no-JS and reduced motion both keep it."
+        "purpose": "The site only authored animation: the five stops of the heat ramp drawing themselves in sequence as the band arrives, rightward as rows on a phone and upward as columns from sm. Transform only, so nothing reflows. The drawn state is the default, so no-JS and reduced motion both keep it."
       },
       {
         "name": "tile-photo",
@@ -395,14 +399,49 @@
         "section": "layout"
       },
       {
-        "name": "The Two Heat Surfaces Rule",
-        "body": "A level is the same swatch everywhere, but the same form may only appear once per page. If two surfaces would both draw the ramp, one of them changes job: state the scale, or price it, not both in the same shape.",
+        "name": "The One Heat Surface Per Page Rule",
+        "body": "A level is the same swatch everywhere, and that is the point of the fixed ramp. The ramp itself is drawn once per page, in the place where somebody is choosing a level. This replaces an earlier rule that permitted two surfaces provided they differed in shape: changing the shape of a restatement does not stop it being one, and the second surface is always the one further from the decision, which is the one to cut.",
         "section": "components"
       },
       {
         "name": "The Moment Belongs To The Band Rule",
-        "body": "The five bars extending in sequence is the site's only authored animation and it lives where somebody is choosing. The hero strip is deliberately still, which is what keeps the band's entrance worth having.",
+        "body": "The five bars extending in sequence is the site's only authored animation and it lives where somebody is choosing. Nothing else on the landing page draws the ramp at all, so the band's entrance is the first time a visitor sees the object move, which is what the rule was protecting all along.",
         "section": "components"
+      },
+      {
+        "name": "The Ink Layer Takes the Surface's Colour Rule",
+        "body": "A mural asset never carries a colour of its own. It is traced to currentColor and rendered through a CSS mask, so one file serves char on amber, bone on charcoal and orange as a graphic. A flattened black-on-white export is wrong twice over: on the amber ground it paints the white rectangle this system does not have, and on a charcoal card it draws black on black. An SVG loaded through <img> cannot do this either, because that document is isolated and currentColor resolves against nothing there.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The One Drawn Scene Per Page Rule",
+        "body": "The One Heat Surface Per Page Rule, generalised. A heat level keeps its swatch everywhere and a drawing keeps its lines everywhere, but the same form appears once per page. Two street scenes on one route is not a statement and its restatement, it is a repeat. The footer's skyline does not count as the second: it is a filled silhouette off the packaging doing a mark's job, chrome that brackets every page the way the heat rule does. Count scenes, not drawings.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The Landscape Crop Needs A Landscape Hole Rule",
+        "body": "A mural asset is a wide crop of a wall, and cover scales it by whichever dimension of its box demands more. On a portrait viewport that is always the height and it is not close: the landing hero's right-hand placement is 1600 by 1187 of artwork, and a 768x1024 tablet hands it a 399 by 800 hole, which renders the drawing 1078 wide and throws 679 of that away. So a placement like this is gated on min-aspect-ratio, not on a width breakpoint, which cannot tell a portrait tablet from a laptop. Below the gate there is no drawing at all, and that is correct rather than degraded: on a portrait viewport the copy is the full width of the section, so there is no region beside it for a wall to occupy.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The Hatching Stays Strokes Rule",
+        "body": "Facade hatching is discrete strokes and never a tone. It is about ten pixels wide against an eighteen thousand pixel source, so scaling a whole scene to a phone puts it under one device pixel and a sub-pixel ink line is a wash. There is no neutral grey in this system and no honest way to arrive at one. The fix is upstream every time: crop to a smaller subject, or export a variant with the fine strokes removed at the bitmap by a morphological opening. The full street canyon cannot be shown below roughly 1830px with its hatching intact, which is why no placement shows the full canyon.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The Drawing Runs Off The Page Rule",
+        "body": "A mural asset is a crop of a wall, so its own boundary is a straight line that means nothing. Sized to sit inside a column it reads as a framed picture laid on the page. Every large placement bleeds off the edges of whatever clips it, using cover rather than contain, because contain fits the whole drawing in the box and leaves bare ground around the remainder. Any edge left inside the page is faded to nothing rather than cut, by intersecting a gradient into the mask; that lowers the strokes' alpha without merging them into a tone. Two corollaries: write mask-* and -webkit-mask-* from one source, because the aliases are one property and a spread override silently keeps the prefixed default; and a skyline that must span a width it was not drawn for needs a second drawing, not a stretch and not a repeat.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The Drawing Darkens the Ground Rule",
+        "body": "Where the artwork sits behind content it darkens, as ink at low alpha, the way the buffalo does at 9%. That is what makes it read as printed into the page rather than pasted onto it. Where the artwork is the content it takes the surface's reading colour and may lighten, as it does in bone on a charcoal card. The test is whether anything must stay legible on top of it: behind type it darkens, and the alpha is whatever keeps that type above 4.5:1. On the no-photo tile that alpha is 14%, measuring 4.68:1 against char in the worst case, a solid marker stroke directly behind a letter.",
+        "section": "ink-layer"
+      },
+      {
+        "name": "The Fourth Face Letters, It Does Not Set Rule",
+        "body": "This system used to ban a fourth typeface outright, which was right about the risk and wrong about the shape. A brand script has one legitimate job here and it is a logo's job: lettering a fixed phrase the store already draws that way. The face is admitted for exactly that. If a string is variable, or is a heading, a label, a control or a number, it is Anton, Inter or JetBrains Mono, because the type scale was measured against Anton's metrics and none of that transfers. Three faces set the interface; the fourth only letters.",
+        "section": "typography"
       }
     ],
     "dos": [
@@ -416,7 +455,10 @@
       "Do use the heat ramp's five fixed swatches wherever a heat level appears.",
       "Do spend motion on the product's own mechanisms rather than on arrivals, and make the drawn or finished state the default so no-JS and reduced motion both keep it.",
       "Do let states differ structurally before reaching for a colour to distinguish them.",
-      "Do key short-viewport rules on max-height, never on width. A landscape phone at 844x390 is past every width breakpoint while having under 300px of usable height."
+      "Do key short-viewport rules on max-height, never on width. A landscape phone at 844x390 is past every width breakpoint while having under 300px of usable height.",
+      "Do let a mural asset inherit its colour from the surface, through a CSS mask over background-color: currentColor.",
+      "Do export a separate simplified variant when a hatched motif has to render small, rather than scaling the detailed one.",
+      "Do measure the alpha of any drawing that sits behind type, and keep the type above 4.5:1."
     ],
     "donts": [
       "Don't set Buffalo Orange as type on any light surface. It measures 1.8:1 on the amber ground and 2.6:1 on parchment. As a graphic it is fine.",
@@ -428,7 +470,13 @@
       "Don't set a form control below 16px on a phone.",
       "Don't set the display face below 0.75rem, or above 6rem.",
       "Don't apply a blanket entrance animation to sections as they scroll. Motion is earned by meaning here, and a fade applied to seven sections in turn says nothing about any of them. Motion that animates the product's own mechanism, the way the heat scale draws its five stops, is exactly what this system wants more of.",
-      "Don't introduce a second radius scale, a second accent colour, or a fourth typeface."
+      "Don't introduce a second radius scale or a second accent colour.",
+      "Don't widen the fourth typeface past the tagline. It is admitted to letter one fixed phrase and it sets nothing.",
+      "Don't ship a mural asset with a colour baked into it, and don't reach for <img> to load one. Both produce the same failure: a drawing that cannot take its surface's colour, which is a white box on the amber ground and an invisible one on a charcoal card.",
+      "Don't make a hatched drawing smaller by scaling it. Below about a pixel the strokes stop being strokes. Crop to a smaller subject or export a culled variant.",
+      "Don't put a drawn scene on the order tracker or the confirmation screen. The States Differ Structurally Rule already covers it.",
+      "Don't paper the site in mural. One drawn scene per page, on pages that have room for one, and the amber gradient keeps doing the structural work.",
+      "Don't size a mural asset to fit inside its column. It is a crop of a wall, so a visible boundary reads as a framed picture. Bleed it off the edges and fade any edge that still falls inside the page."
     ]
   }
 }

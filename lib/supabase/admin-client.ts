@@ -10,16 +10,29 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * customer, it is the database with the door taken off. Spec section 22 item 9
  * therefore requires that it live in explicitly named server modules and that
  * `createAdminClient` never be confused with a client that merely holds a
- * staff cookie, because the second one still runs as `anon` on customer pages
- * and the first one does not run as anything at all.
+ * staff cookie. The second remains an ordinary authenticated user governed by
+ * RLS, while the first bypasses RLS completely.
  *
- * WHAT IS ALLOWED TO USE IT TODAY, WHICH IS ONE THING.
+ * WHAT IS ALLOWED TO USE IT TODAY.
  * ================================================================
  * `rate_limit_hit`, from `lib/rate-limit/limiter.ts`. That function is revoked
  * from PUBLIC in 0010 and granted to `service_role` alone, with a comment in
  * that migration saying it is called from the service-role client, so this is
  * the caller the schema was written for rather than a new privilege being
  * claimed.
+ *
+ * `syncCustomerAuthIdentity`, from `lib/auth/customer-identity.ts`. The
+ * customer's own authenticated client commits the real customer_profiles write
+ * first. The service-role client then uses the Auth Admin API only to mirror
+ * the display name and valid phone into the fields shown by the Supabase Auth
+ * dashboard. It never writes customer_profiles and a mirror failure never
+ * rolls back or disguises the customer's successful save.
+ *
+ * Staff authentication uses it in `lib/staff/access.ts` for two operations
+ * that cannot run as a browser session: resolving an email against the private
+ * Auth directory through the service-role-only 0017 RPC, and provisioning the
+ * single Super Admin authorized by `SUPER_ADMIN_EMAIL`. Staff page reads do
+ * not use it. They use the isolated staff cookie and remain subject to RLS.
  *
  * WHAT MUST NOT USE IT, AND THE ONE THAT WILL BE TEMPTING.
  * ================================================================

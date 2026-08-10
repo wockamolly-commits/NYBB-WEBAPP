@@ -699,6 +699,24 @@ describe("place_order, rate limiting", () => {
 });
 
 describe("place_order, the grant", () => {
+  it("stamps the signed-in customer's id on the order", async () => {
+    const db = await freshDatabase({ seed: true });
+    await openBranch(db);
+    const slot = await firstSlot(db);
+    const userId = "4f1b4f7c-1f6a-4e37-9f0e-9b0c2b3f5a11";
+
+    await db.exec(`
+      insert into auth.users (id, email) values ('${userId}', 'customer@example.com');
+      create or replace function auth.uid()
+      returns uuid language sql stable as $$ select '${userId}'::uuid $$;
+    `);
+
+    const result = await place(db, order([WINGS], slot));
+    expect(
+      await scalar<string>(db, `select user_id::text from orders where id = '${result.orderId}'`),
+    ).toBe(userId);
+  });
+
   it("is reachable by a guest and by a signed-in customer", async () => {
     const db = await freshDatabase();
     for (const role of ["anon", "authenticated"]) {

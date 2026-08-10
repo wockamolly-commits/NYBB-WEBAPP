@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { LayoutDashboard, UserRound } from "lucide-react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { CartCount } from "@/components/cart/CartCount";
 import { HeatRule } from "@/components/site/HeatRule";
+import { storefrontIdentityLink } from "@/lib/auth/navigation";
+import { getStorefrontSession } from "@/lib/auth/session";
+import { getStaffProfile } from "@/lib/staff/session";
 
 /**
  * Server component, deliberately.
@@ -40,7 +44,16 @@ const links = [
   { href: "/contact", label: "Branches" },
 ];
 
-export function Header() {
+export async function Header() {
+  const [session, staffProfile] = await Promise.all([
+    getStorefrontSession(),
+    getStaffProfile(),
+  ]);
+  const identityLink = storefrontIdentityLink({
+    signedIn: Boolean(session),
+    hasWorkspaceAccess: Boolean(staffProfile),
+  });
+
   return (
     // The shadow is warm and offset, so the bar floats above the hero video
     // rather than being butted against it with a hard seam. A neutral grey
@@ -69,11 +82,11 @@ export function Header() {
             The cart is a client island: its count comes from localStorage, so
             the server cannot know it and this header stays a server component
             around it. */}
-        <div className="flex items-center gap-4 sm:gap-7">
-        <nav aria-label="Main">
-          <ul className="flex items-center gap-6 sm:gap-9">
-            {links.map((link) => (
-              <li key={link.href}>
+        <div className="flex items-center gap-1 sm:gap-5">
+          <nav aria-label="Main">
+            <ul className="flex items-center gap-2 sm:gap-7">
+              {links.map((link, index) => (
+              <li key={link.href} className={index === 0 ? undefined : "hidden sm:block"}>
                 {/* The hover is an orange rule drawing in from the left, not a
                     colour change on the text. Orange is unreadable as type on
                     this ground but perfectly legible as a graphic, so the
@@ -86,10 +99,24 @@ export function Header() {
                   {link.label}
                 </Link>
               </li>
-            ))}
-          </ul>
-        </nav>
+              ))}
+            </ul>
+          </nav>
 
+          <Link
+            href={identityLink.href}
+            aria-label={identityLink.accessibleLabel}
+            className="text-nybb-ink/70 hover:text-nybb-ink inline-flex min-h-11 min-w-11 items-center justify-center gap-2 transition-colors"
+          >
+            {staffProfile ? (
+              <LayoutDashboard aria-hidden className="size-5" strokeWidth={2} />
+            ) : (
+              <UserRound aria-hidden className="size-5" strokeWidth={2} />
+            )}
+            <span className="font-display hidden text-sm tracking-[0.06em] lg:inline">
+              {identityLink.label}
+            </span>
+          </Link>
           <CartCount />
         </div>
       </div>

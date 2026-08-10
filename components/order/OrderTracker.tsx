@@ -9,11 +9,10 @@ import { cn } from "@/lib/utils";
  * One order, on the customer's phone, somewhere between the car park and the
  * counter.
  *
- * A server component, and it should stay one until there is something on this
- * screen for a person to press. "I'm here" is spec section 27's Phase 3, and
- * live status arrives with the staff board in Phase 2; until then the honest
- * shape of this page is a render per request, which is what every route here
- * already does.
+ * A server component, and it stays one so customer data is always rendered
+ * from the authorized RPC. OrderTrackingLiveRefresh is the small client
+ * sibling that listens for a data-free change signal and refreshes this server
+ * tree. "I'm here" remains spec section 27's Phase 3.
  *
  * The pickup code is the largest thing on the screen while it is worth
  * anything, and stops being so the moment it is not. A four digit code shouted
@@ -61,13 +60,16 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
           aria-labelledby="order-status"
           className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-7"
         >
-          <p className="type-caps text-nybb-bone/55">
-            Order {order.shortCode}
-          </p>
-          <h2 id="order-status" className={cn("font-display heading-minor mt-2", accent)}>
+          <p className="type-caps text-nybb-bone/55">Order {order.shortCode}</p>
+          <h2
+            id="order-status"
+            className={cn("font-display heading-minor mt-2", accent)}
+          >
             {copy.title}
           </h2>
-          <p className="text-nybb-bone/75 mt-3 max-w-prose leading-relaxed">{copy.body}</p>
+          <p className="text-nybb-bone/75 mt-3 max-w-prose leading-relaxed">
+            {copy.body}
+          </p>
 
           {copy.codeIsLive ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
@@ -128,15 +130,23 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
                       </span>
                       <span className="sr-only">
                         {step.label}
-                        {index === reached ? ", current step" : done ? ", done" : ", to come"}
+                        {index === reached
+                          ? ", current step"
+                          : done
+                            ? ", done"
+                            : ", to come"}
                       </span>
                     </li>
                   );
                 })}
               </ol>
 
-              <p aria-hidden className="type-caps text-nybb-bone mt-3 sm:hidden">
-                Step {reached + 1} of {PICKUP_STEPS.length}, {PICKUP_STEPS[reached].label}
+              <p
+                aria-hidden
+                className="type-caps text-nybb-bone mt-3 sm:hidden"
+              >
+                Step {reached + 1} of {PICKUP_STEPS.length},{" "}
+                {PICKUP_STEPS[reached].label}
               </p>
             </div>
           ) : null}
@@ -170,7 +180,9 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
             </div>
             {order.branch.phones.length > 0 ? (
               <div className="sm:col-span-2">
-                <dt className="type-caps text-nybb-bone/55">If anything changes</dt>
+                <dt className="type-caps text-nybb-bone/55">
+                  If anything changes
+                </dt>
                 <dd className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
                   {/* A phone number is somewhere you go, so it stays a link
                       rather than becoming a button. */}
@@ -204,16 +216,20 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
               // The snapshot names, so this keeps describing what was actually
               // bought however the menu has been edited since. There is no id
               // to key on and no need for one: this list never reorders.
-              <li key={index} className="flex items-baseline justify-between gap-3">
+              <li
+                key={index}
+                className="flex items-baseline justify-between gap-3"
+              >
                 <span className="min-w-0">
                   <span className="font-mono-tabular text-nybb-bone/55 mr-2">
                     {item.quantity}x
                   </span>
                   <span className="font-display">{item.name}</span>
                   <span className="text-nybb-bone/55 block text-xs">
-                    {[item.variationLabel, ...item.options.map((option) => option.name)].join(
-                      " · ",
-                    )}
+                    {[
+                      item.variationLabel,
+                      ...item.options.map((option) => option.name),
+                    ].join(" · ")}
                   </span>
                 </span>
                 <span className="font-mono-tabular shrink-0">
@@ -226,7 +242,9 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
           {order.discountCents > 0 ? (
             <div className="mt-4 flex items-baseline justify-between gap-4 text-sm">
               <span className="text-nybb-bone/65">Discount</span>
-              <span className="font-mono-tabular">-{formatPeso(order.discountCents)}</span>
+              <span className="font-mono-tabular">
+                -{formatPeso(order.discountCents)}
+              </span>
             </div>
           ) : null}
 
@@ -247,7 +265,9 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
 
           {order.notes ? (
             <p className="border-nybb-bone/15 mt-4 border-t pt-4 leading-relaxed">
-              <span className="type-caps text-nybb-bone/55 block">Your note</span>
+              <span className="type-caps text-nybb-bone/55 block">
+                Your note
+              </span>
               <span className="mt-1 block text-sm">{order.notes}</span>
             </p>
           ) : null}

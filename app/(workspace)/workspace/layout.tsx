@@ -1,0 +1,90 @@
+import type { Metadata } from "next";
+import { ClipboardList, ExternalLink, History, LayoutDashboard, LogOut, ShieldCheck, UserRound, Users } from "lucide-react";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { HeatRule } from "@/components/site/HeatRule";
+import { STAFF_ROLES } from "@/lib/staff/roles";
+import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
+
+export const metadata: Metadata = {
+  title: { default: "Workspace", template: "%s · NYBB Workspace" },
+  robots: { index: false, follow: false },
+};
+
+export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+  const { profile } = await requireStaff();
+  const roleLabel =
+    profile.role === "admin"
+      ? "Super Admin"
+      : profile.staffRole
+        ? STAFF_ROLES[profile.staffRole].label
+        : "Staff";
+
+  return (
+    <div className="workspace-shell bg-nybb-ink text-nybb-bone min-h-dvh">
+      <a
+        href="#workspace-main"
+        className="focus:bg-nybb-orange focus:text-nybb-ink sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-[60] focus:rounded focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+      >
+        Skip to workspace
+      </a>
+      <header className="workspace-header bg-nybb-charcoal sticky top-0 z-40">
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="bg-nybb-orange text-nybb-ink grid size-10 shrink-0 place-items-center rounded-md">
+              <ShieldCheck aria-hidden className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-display text-lg leading-none tracking-[0.06em]">NYBB WORKSPACE</p>
+              <p className="text-nybb-bone/55 mt-1 truncate text-xs">
+                {profile.displayName} · {roleLabel}
+              </p>
+            </div>
+          </div>
+          <form action="/auth/signout?scope=staff" method="post">
+            <Button type="submit" tone="dark" variant="ghost" size="icon" className="size-11" aria-label="Sign out of staff workspace">
+              <LogOut aria-hidden className="size-4" />
+            </Button>
+          </form>
+        </div>
+        <nav aria-label="Workspace" className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8">
+          {hasStaffPermission(profile, "dashboard:view") ? (
+            <ButtonLink href="/workspace" tone="dark" variant="ghost" className="px-3">
+              <LayoutDashboard aria-hidden className="size-4" />
+              Dashboard
+            </ButtonLink>
+          ) : null}
+          {hasStaffPermission(profile, "orders:view") ? (
+            <>
+              <ButtonLink href="/workspace/orders" tone="dark" variant="ghost" className="px-3">
+                <ClipboardList aria-hidden className="size-4" />
+                Orders
+              </ButtonLink>
+              <ButtonLink href="/workspace/orders/history" tone="dark" variant="ghost" className="px-3">
+                <History aria-hidden className="size-4" />
+                History
+              </ButtonLink>
+            </>
+          ) : null}
+          {profile.role === "admin" ? (
+            <ButtonLink href="/workspace/team" tone="dark" variant="ghost" className="px-3">
+              <Users aria-hidden className="size-4" />
+              Team
+            </ButtonLink>
+          ) : null}
+          <ButtonLink href="/workspace/profile" tone="dark" variant="ghost" className="px-3">
+            <UserRound aria-hidden className="size-4" />
+            Profile
+          </ButtonLink>
+          <ButtonLink href="/" tone="dark" variant="ghost" className="ml-auto px-3" target="_blank" rel="noreferrer">
+            <ExternalLink aria-hidden className="size-4" />
+            Storefront
+          </ButtonLink>
+        </nav>
+        <HeatRule className="h-1" />
+      </header>
+      <main id="workspace-main" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        {children}
+      </main>
+    </div>
+  );
+}

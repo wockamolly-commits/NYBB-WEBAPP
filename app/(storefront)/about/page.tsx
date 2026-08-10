@@ -53,9 +53,13 @@ export default async function AboutPage() {
           page's one billboard line; using it here as well meant "Branches"
           and "A wing house" were set two steps larger than "The menu" and
           "Your cart", which is a hierarchy claim neither page is making. */}
+      {/* The space before the break is load bearing and is not a typo. Without
+          it `h1.textContent` is "A wing house,Cebu built", and assistive tech
+          that flattens an element to its text content runs the comma straight
+          into the next word. The landing hero carries the same note for the
+          same reason. */}
       <h1 className="font-display heading-page">
-        A wing house,
-        <br />
+        A wing house, <br />
         Cebu built
       </h1>
 
@@ -125,9 +129,27 @@ export default async function AboutPage() {
         </div>
       </div>
 
+      {/* THE CLAIM, THEN THE FOOD. WHAT WAS HERE WAS NEITHER.
+          ================================================================
+          This slot used to hold one section called "Why we are building this",
+          and it was three paragraphs about aggregator commission, order data
+          ownership and a pickup platform under construction. All of it true,
+          none of it about a restaurant: it read as the internal business case
+          for the website, printed on the website, on the page a hungry person
+          opens to find out whether these wings are any good.
+
+          It becomes two short sections instead, and the order is the argument.
+          First the store's own tagline treated as a claim that has to be paid
+          for, because a slogan nobody has to earn is decoration. Then how a
+          basket actually arrives, which is the paying.
+
+          The platform has not been deleted, it has been demoted to the last
+          two sentences of the second section, which is the size the honest
+          answer is: it does not exist yet, the menu does, and the phones
+          work. */}
       <section className="border-nybb-ink/20 mt-16 border-t pt-12">
         <h2 className="font-display heading-minor">
-          Why we are building this
+          All time favorite is a claim
         </h2>
         <div className="mt-6 grid gap-10 md:grid-cols-[1.4fr_1fr]">
           {/* max-w. The 1.4fr column runs about 650px inside a 1152px content
@@ -135,28 +157,38 @@ export default async function AboutPage() {
             where the eye reliably finds the start of the next line. 68ch holds
             the column at a readable measure on a desktop and never binds at
             the breakpoints below it. */}
-        <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
+          <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
             <p className="text-nybb-ink/75">
-              Ordering ahead currently means an aggregator app. That works, but
-              it means the queue, the customer and the order data all belong to
-              somebody else, and a commission comes off every ticket.
+              It is a large thing to write on a wing shop, and it is not a claim
+              about a website. It is a claim about one basket, handed across one
+              counter, to somebody who is hungry now. That is the only place it
+              can be won or lost, so that is where the argument gets settled.
             </p>
             <p className="text-nybb-ink/75">
-              So we are building pickup ourselves: order from your phone, choose
-              a collection window the kitchen has actually got room for, get a
-              notification the moment the food is up, and quote a four digit code
-              at the counter. No delivery, no aggregator, no queue.
+              Which is why picking a sauce never costs more than picking a
+              different one, why the heat is a number you choose rather than a
+              dare somebody sets for you, and why a half order is six wings and
+              a full order is ten with nothing else to work out. Fewer decisions,
+              and none of them are traps.
             </p>
-            <p className="text-nybb-ink/75">
-              It is being built branch by branch. In the meantime the{" "}
-              <Link href="/menu" className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink underline underline-offset-4 transition-colors">
-                menu
-              </Link>{" "}
-              is here and every{" "}
-              <Link href="/contact" className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink underline underline-offset-4 transition-colors">
-                branch number
-              </Link>{" "}
-              takes orders by phone.
+
+            {/* The tagline as the section's signature rather than its heading.
+                It is the line the section has just spent two paragraphs
+                justifying, so it lands underneath them, in the store's own
+                script, the way it is drawn on the store's own artwork.
+
+                Ink, not orange. Buffalo Orange measures 1.8:1 on the amber
+                ground and fails even the 3:1 that large text is allowed; solid
+                ink measures 7.7:1. A brush script has thin joins and is the
+                last thing in this system that should be spending a marginal
+                ratio.
+
+                A <p>, not a heading, and the same size as the footer instance.
+                This is lettering that belongs to the lockup: it outranks
+                nothing, and it stays one recognisable object by staying one
+                size wherever it appears. */}
+            <p className="font-script text-nybb-ink pt-1 text-2xl sm:text-[1.75rem]">
+              #Your All Time Favorite Chicken Wings
             </p>
           </div>
 
@@ -172,6 +204,57 @@ export default async function AboutPage() {
               className="h-fit aspect-[3/2] w-full rounded-md object-cover"
             />
           ) : null}
+        </div>
+      </section>
+
+      {/* No photograph on purpose. The section above carries the image, and
+          this one is the quiet close: a single column of text, which is the
+          right shape for the passage that ends on an admission rather than on
+          a sell.
+
+          It keeps the grid anyway, with the second cell empty. 68ch is a cap
+          that never binds on this page, because every other body column is
+          held narrower by the 1.4fr track first: about 648px against 68ch's
+          690. Dropped out of the grid, this section would have been the one
+          place on the page where 68ch actually bound, so the same body role
+          would have run at two different measures three inches apart. An empty
+          grid cell costs nothing and says "the same column as the one above"
+          in a way a hand-computed width cannot. */}
+      <section className="border-nybb-ink/20 mt-16 border-t pt-12">
+        <h2 className="font-display heading-minor">Fried to order</h2>
+        <div className="mt-6 grid gap-10 md:grid-cols-[1.4fr_1fr]">
+          <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
+            <p className="text-nybb-ink/75">
+              Wings go into the fryer when the order does. That is the reason
+              there is a wait, and it is the reason the wait is worth sitting
+              through. What comes out is hot, in the basket, sauced to the level
+              you asked for and not to the level somebody assumed you wanted.
+            </p>
+            <p className="text-nybb-ink/75">
+              Then you collect it. There is no delivery here and there is not
+              going to be, which is a decision rather than a gap: fried chicken
+              has a short window where the skin is still the point, and the
+              shortest trip between the fryer and you is the counter.
+            </p>
+            <p className="text-nybb-ink/75">
+              Ordering ahead from your phone is being built, branch by branch.
+              Until it lands the{" "}
+              <Link
+                href="/menu"
+                className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink underline underline-offset-4 transition-colors"
+              >
+                menu
+              </Link>{" "}
+              is here and every{" "}
+              <Link
+                href="/contact"
+                className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink underline underline-offset-4 transition-colors"
+              >
+                branch number
+              </Link>{" "}
+              takes an order.
+            </p>
+          </div>
         </div>
       </section>
     </div>

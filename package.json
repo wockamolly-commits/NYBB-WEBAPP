@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/link-worktree-env.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -12,7 +13,8 @@
     "test:e2e": "playwright test",
     "ingest:images": "tsx scripts/ingest-legacy-images.ts",
     "build:static-images": "tsx scripts/build-static-images.ts",
-    "build:seed": "tsx scripts/build-seed.ts"
+    "build:seed": "tsx scripts/build-seed.ts",
+    "build:mural": "tsx scripts/trace-mural.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

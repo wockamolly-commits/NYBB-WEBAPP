@@ -1174,9 +1174,11 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
   Link, Confirm Signup, and Invite templates to show `{{ .Token }}` and remove
   `{{ .ConfirmationURL }}`. See `docs/auth-otp-supabase-template.md` in the reference.
 - **Staff:** same OTP entry point at `/login`, redirected to `/workspace` after the role check.
-- **Two cookie namespaces.** Staff sessions and customer sessions do not share cookies. A staff
-  member signed into the workspace is a **guest** on the storefront. This surprised the reference
-  team and produced a false "cart sync is broken" bug report. Document it in your README.
+- **Two cookie namespaces, one continuous signed-in experience.** Staff sessions and customer
+  sessions do not share cookies. The storefront checks the customer session first, then recognizes
+  a valid staff session as the same signed-in account. Do not copy one refresh token into both
+  cookie families because concurrent refreshes can invalidate each other. The workspace still
+  accepts only the staff family and re-checks its role from the database on every request.
 - **Re-check the role on every workspace request**, from the database, not from the token.
 - **Staff invitations** expire in 48 hours and can only create non-admin accounts.
 - **Never read customer auth through a cookie-writing Supabase client inside a Server Action.** A
@@ -1481,7 +1483,7 @@ desktop be the enhancement.
    on every workspace request.
 9. The service-role key is used only in explicitly named server modules. Audit that
    `createAdminClient` (service role) is never confused with `createAdminSessionClient` (anon key
-   plus a staff cookie, which runs as `anon` on customer pages).
+   plus a staff cookie, which remains subject to RLS on every page).
 10. Zod validation at every boundary: server action inputs, route handler bodies, webhook payloads,
     form data.
 11. Webhook signature verification, constant-time comparison for cron secrets.
@@ -1667,14 +1669,15 @@ picker unhidden. k6 load scripts.
 
 Stop and ask before deciding these. Do not invent answers.
 
-1. **Which single branch goes live first?** With Ayala Central Bloc closed, the strongest candidate
-   is **Garden Bloc, IT Park, Lahug**: dense office lunch traffic, a customer base already
-   comfortable with app ordering, and the queue-skipping pain this platform solves. SM City Cebu
-   Food Hall is the alternative if raw volume matters more than fit. Needs a decision.
+1. ~~**Which single branch goes live first?**~~ **Resolved 2026-08-10.** The owner selected
+   **Garden Bloc, IT Park, Lahug** as the pilot branch. Keep it inactive until its real operating
+   hours and kitchen capacity are confirmed.
 2. ~~Hot Wings or Sports Lounge menu?~~ **Resolved.** Hot Wings, the only trading brand.
    Seed `hot-wings-standard` as the single price list.
-3. **Real operating hours per weekday.** The current site publishes none. Do not guess: the
-   reference shipped a placeholder schedule to production and it silently gated ordering.
+3. **Real operating hours per weekday.** The current site publishes none. Staging temporarily uses
+   11:00 to 22:00 daily for Garden Bloc so checkout can be tested, as authorized by the owner on
+   2026-08-10. This is not a confirmed production schedule. Do not promote it without confirmation:
+   the reference shipped a placeholder schedule to production and it silently gated ordering.
 4. **Prep time and slot capacity.** How many orders can the kitchen genuinely absorb per fifteen
    minutes at peak? Get a number from a manager, not an estimate.
 5. **ZenPOS technical contact**, so the section 16.2 checklist can be answered.

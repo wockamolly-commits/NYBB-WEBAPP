@@ -3,15 +3,15 @@
 // Next 16 renamed Middleware to Proxy. Same execution model, same file
 // position (project root, alongside `app`), different filename and export.
 //
-// Today this does one job: mint a per-request nonce and attach the CSP.
-// Supabase session refresh hooks in here in Phase 2, when auth lands. That
-// ordering is deliberate: the refresh must happen in the proxy and nowhere
-// else, because a rotated refresh token written inside a Server Component
-// cannot be persisted to the browser and silently signs the user out.
-import { NextResponse, type NextRequest } from "next/server";
+// This mints the per-request nonce and refreshes both Supabase cookie families.
+// Customer and staff tokens stay isolated, and refresh happens here because a
+// rotated token written inside a Server Component cannot be persisted to the
+// browser and silently signs the user out.
+import type { NextRequest } from "next/server";
 import { contentSecurityPolicy } from "@/lib/content-security-policy";
+import { updateSessions } from "@/lib/supabase/proxy";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = contentSecurityPolicy(nonce);
 
@@ -22,9 +22,9 @@ export function proxy(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set("Content-Security-Policy", csp);
-  return response;
+  return updateSessions(request, requestHeaders, {
+    "Content-Security-Policy": csp,
+  });
 }
 
 export const config = {
