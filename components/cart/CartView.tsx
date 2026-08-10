@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
+import { MuralArt } from "@/components/mural/MuralArt";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { cartQuantity, lineHref, resolveCart } from "@/lib/cart/lines";
@@ -144,18 +145,40 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
             </div>
           </div>
         ) : (
-          <>
-            <p className="text-nybb-ink/70 mt-6 max-w-prose leading-relaxed">
-              Nothing in the cart yet. Wings come in nine flavours and five
-              levels of heat, and every one of them is priced before you commit
-              to it.
-            </p>
-            <div className="mt-6">
-              <ButtonLink href="/menu" tone="light">
-                Browse the menu
-              </ButtonLink>
+          // The empty cart, and the only state on this screen that gets a
+          // drawing. The undo panel above is a live offer with a deadline on
+          // it, and hanging an illustration next to that would slow down the
+          // one state here somebody needs to act on quickly. The states already
+          // differ structurally, which is the point of the rule: this one is
+          // wide and drawn, that one is a bordered panel with a control in it.
+          //
+          // A signal at rest, because the whole message is that nothing has
+          // moved yet. Decoration, so it is hidden from screen readers: the
+          // sentence beside it is the content.
+          // Held to max-w-3xl and aligned to the top. Left to fill the page
+          // the drawing sat at the far left and the sentence at the far right
+          // with a void between them, which reads as two unrelated things
+          // rather than as one empty state. Top alignment rather than centred,
+          // so the first line of the message and the top of the drawing share a
+          // rail and the pair has an edge in common.
+          <div className="mt-8 flex max-w-3xl flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+            <MuralArt
+              motif="signal"
+              className="text-nybb-ink w-44 shrink-0 sm:w-52"
+            />
+            <div className="sm:pt-1">
+              <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
+                Nothing in the cart yet. Wings come in nine flavours and five
+                levels of heat, and every one of them is priced before you
+                commit to it.
+              </p>
+              <div className="mt-6">
+                <ButtonLink href="/menu" tone="light">
+                  Browse the menu
+                </ButtonLink>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     );
@@ -329,10 +352,10 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
             </span>
           </div>
 
-          {/* Checkout is a real screen now: the pickup window can be chosen
-              there. What it cannot do yet is place the order, and it says so
-              on arrival rather than here, because whether any window exists is
-              a question only the server can answer. */}
+          {/* Checkout is the whole screen now: it chooses the window, takes
+              the name and number, and places the order. Whether any window
+              exists is still a question only the server can answer, so that
+              answer stays there rather than being guessed at here. */}
           <ButtonLink
             href="/checkout"
             tone="dark"
@@ -342,21 +365,26 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           >
             Choose a pickup time
           </ButtonLink>
-          {/* 14px, not 12px. This is the sentence that tells a customer the
-              order cannot actually be placed yet and what to do instead, so it
-              is the last thing on the screen that should be set at footnote
-              size. bone/65 is the same secondary weight the rest of the dark
-              copy uses, which is a step up from the /55 it had. */}
+          {/* THIS SENTENCE USED TO SAY THE ORDER COULD NOT BE PLACED ONLINE
+              AND TO CALL THE BRANCH INSTEAD. It stopped being true the day
+              place_order landed, and nothing here noticed, because the cart
+              renders identically whether or not checkout works. The first
+              order driven through a real browser is what found it: the screen
+              was turning a customer away from a checkout that would have
+              served them.
+
+              What replaces it says only what this screen can know. Whether a
+              window exists is the server's answer and checkout gives it, along
+              with the branch phone numbers when the answer is none, so
+              repeating a remedy here would be guessing at a state this
+              component cannot see.
+
+              14px, not 12px, and bone/65: this is the sentence that sets the
+              expectation for the screen after it, so it is not footnote
+              material. */}
           <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
-            Pickup only. Placing the order online opens with the next release,
-            so to order today, call the branch on the{" "}
-            <Link
-              href="/contact"
-              className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
-            >
-              branches page
-            </Link>
-            .
+            Pickup only, and you pay at the counter when you collect. The next
+            screen shows the windows the kitchen has open.
           </p>
         </div>
       </div>

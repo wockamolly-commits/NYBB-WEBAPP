@@ -48,8 +48,21 @@ const SEED = path.join(process.cwd(), "supabase", "seed.sql");
  * passing, because a bare Postgres has no such default. The test was right the
  * whole time; the database it ran against was the thing that was wrong. Do not
  * remove this line to make something go green.
+ *
+ * **The pgcrypto line is the second one of these, and it was missing until
+ * 0016.** Supabase installs pgcrypto before the first migration runs, into the
+ * `extensions` schema, so 0001's `create extension if not exists pgcrypto` is a
+ * no-op there and gen_random_bytes is not on the `public` path that every
+ * function in these migrations is pinned to. Here the extension was created by
+ * that line, into `public`, so generate_pickup_code() resolved it and 38
+ * place-order tests generated pickup codes that production could not. Creating
+ * it into `extensions` first reproduces the real bootstrap and makes 0016 load
+ * bearing. Do not move it back to `public` to make something go green.
  */
 const SUPABASE_SHIM = `
+  create schema if not exists extensions;
+  create extension if not exists pgcrypto with schema extensions;
+
   create role anon nologin;
   create role authenticated nologin;
   create role service_role nologin;
@@ -57,16 +70,38 @@ const SUPABASE_SHIM = `
   create schema if not exists auth;
   create table auth.users (
     id uuid primary key default gen_random_uuid(),
-    email text
+    email varchar(255)
   );
   create or replace function auth.uid()
     returns uuid language sql stable as $$ select null::uuid $$;
+  grant usage on schema auth to anon, authenticated, service_role;
+  grant execute on function auth.uid() to anon, authenticated, service_role;
+
+  create schema if not exists realtime;
+  create table realtime.sent_messages (
+    payload jsonb not null,
+    event text not null,
+    topic text not null,
+    private boolean not null
+  );
+  create or replace function realtime.send(
+    payload jsonb,
+    event text,
+    topic text,
+    private boolean
+  ) returns void language sql as $$
+    insert into realtime.sent_messages (payload, event, topic, private)
+    values (payload, event, topic, private)
+  $$;
 
   alter default privileges in schema public
     grant all on tables to anon, authenticated, service_role;
 
   alter default privileges in schema public
     grant execute on functions to anon, authenticated, service_role;
+
+  alter default privileges in schema public
+    grant all on sequences to anon, authenticated, service_role;
 `;
 
 export async function migrationFiles(): Promise<string[]> {
@@ -74,7 +109,7 @@ export async function migrationFiles(): Promise<string[]> {
   return entries.filter((name) => name.endsWith(".sql")).sort();
 }
 
-/** A fresh database with 0001 to 0010 applied, and optionally the seed. */
+/** A fresh database with every checked-in migration applied, optionally seeded. */
 export async function freshDatabase({ seed = false } = {}): Promise<PGlite> {
   const db = await PGlite.create({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_SHIM);

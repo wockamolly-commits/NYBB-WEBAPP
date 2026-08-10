@@ -97,6 +97,12 @@ function commit(cart: Cart): void {
   emit();
 }
 
+/** Replace the local cart with a server-synchronized copy. */
+export function replaceCart(cart: Cart): void {
+  load();
+  commit(cart);
+}
+
 export function addToCart(line: CartLine): { ok: boolean } {
   load();
   const result = addLine(state.cart, line);

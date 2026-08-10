@@ -1,4 +1,5 @@
 import "server-only";
+import { getStorefrontSession } from "@/lib/auth/session";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
 import { normalizeShortCode, normalizeTrackingToken, trackedOrderSchema } from "./tracking";
 import type { TrackedOrder } from "./types";
@@ -36,13 +37,14 @@ export async function getOrderByTracking(
 ): Promise<OrderLookup> {
   const code = normalizeShortCode(shortCode);
   const token = normalizeTrackingToken(trackingToken);
-  // A malformed code or token cannot match anything, so it gets the same
-  // answer as a real one that does not match: no round trip, no difference.
-  if (!code || !token) return { state: "missing" };
+  if (!code) return { state: "missing" };
 
   if (!supabaseConfigured()) return { state: "unavailable" };
 
-  const supabase = createPublicClient();
+  // A token authorizes a guest. Without one, use whichever Storefront session
+  // is active so an account order-history link can open its owner's order.
+  const session = token ? null : await getStorefrontSession();
+  const supabase = token || !session ? createPublicClient() : session.supabase;
   const { data, error } = await supabase.rpc("get_order_by_tracking", {
     p_short_code: code,
     p_tracking_token: token,

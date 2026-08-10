@@ -12,6 +12,7 @@ import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
 import { formatSlotRange } from "@/lib/slots/format";
+import { storefrontAccessToken } from "@/lib/supabase/browser";
 import type { CheckoutDetails, CheckoutField, PlacedOrder } from "@/lib/checkout/types";
 import type { PickupSlots } from "@/lib/slots/types";
 import type { MenuCategory } from "@/lib/menu/types";
@@ -45,14 +46,18 @@ const EMPTY_DETAILS: CheckoutDetails = { name: "", phone: "", email: "", notes: 
 export function CheckoutView({
   categories,
   slots,
+  initialDetails = EMPTY_DETAILS,
+  signedIn = false,
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
+  initialDetails?: CheckoutDetails;
+  signedIn?: boolean;
 }) {
   const router = useRouter();
   const { cart, loaded } = useCart();
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [details, setDetails] = useState<CheckoutDetails>(EMPTY_DETAILS);
+  const [details, setDetails] = useState<CheckoutDetails>(initialDetails);
   const [failure, setFailure] = useState<{ message: string; field: CheckoutField | null } | null>(
     null,
   );
@@ -118,6 +123,15 @@ export function CheckoutView({
     if (!selectedSlot || submitting) return;
 
     startSubmitting(async () => {
+      let accessToken: string | null = null;
+      if (signedIn) {
+        try {
+          accessToken = await storefrontAccessToken();
+        } catch {
+          // The Server Action has a read-only cookie fallback.
+        }
+      }
+
       const result = await placeOrder({
         attemptId: attemptId(),
         branchSlug: slots.branch?.slug ?? null,
@@ -133,7 +147,7 @@ export function CheckoutView({
             optionSlugs.map((optionSlug) => ({ groupSlug, optionSlug })),
           ),
         })),
-      });
+      }, accessToken);
 
       if (result.ok) {
         // The order exists, so this attempt is spent and the cart it was built

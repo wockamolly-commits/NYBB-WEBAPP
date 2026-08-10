@@ -178,23 +178,41 @@ export function HeroVideo() {
       />
 
       {playable ? (
-        <Button
-          tone="dark"
-          variant="ghost"
-          size="icon"
-          onClick={toggle}
-          aria-label={playing ? "Pause the background video" : "Play the background video"}
-          // z-20 because the section's content column is a later sibling and
-          // spans the full width below the 6xl breakpoint, so without it this
-          // is painted behind a transparent box and stops taking clicks.
-          className="absolute right-4 bottom-4 z-20 sm:right-6 sm:bottom-6"
-        >
-          {playing ? (
-            <Pause aria-hidden className="size-4" />
-          ) : (
-            <Play aria-hidden className="size-4" />
-          )}
-        </Button>
+        // THE CONTROL BRINGS ITS OWN GROUND, BECAUSE IT CANNOT KNOW ITS OWN
+        // BACKGROUND.
+        // ================================================================
+        // The ghost tier is transparent at rest, which is correct for a control
+        // sitting on a surface the system chose. This one sits on whatever
+        // frame the film happens to be showing, which is a surface nothing can
+        // predict: measured against a bright frame, a bone/70 glyph is
+        // invisible, and the one control on the page that WCAG 2.2.2 makes
+        // non-optional was the thing that disappeared.
+        //
+        // The plinth is a sibling ground rather than a background utility on
+        // the button. Written as a class it would have to beat the ghost
+        // variant's own `hover:bg-*`, and two utilities setting one property
+        // under one variant are resolved by stylesheet order, which is not a
+        // thing to depend on. Underneath, the tint composites over ink and the
+        // hover still reads.
+        //
+        // z-20 because the section's content column is a later sibling and
+        // spans the full width below the 6xl breakpoint, so without it this is
+        // painted behind a transparent box and stops taking clicks.
+        <div className="bg-nybb-ink/70 absolute right-4 bottom-4 z-20 rounded-md sm:right-6 sm:bottom-6">
+          <Button
+            tone="dark"
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            aria-label={playing ? "Pause the background video" : "Play the background video"}
+          >
+            {playing ? (
+              <Pause aria-hidden className="size-4" />
+            ) : (
+              <Play aria-hidden className="size-4" />
+            )}
+          </Button>
+        </div>
       ) : null}
     </div>
   );

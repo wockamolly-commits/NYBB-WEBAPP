@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
- * Structural tests over migrations 0001 to 0011.
+ * Structural tests over every checked-in migration.
  *
  * These are the checks that would otherwise only fail after a Supabase project
  * exists, which is to say after it is expensive to be wrong.
@@ -18,10 +18,28 @@ describe("migrations", () => {
   it("are numbered contiguously from 0001", async () => {
     const files = await migrationFiles();
     expect(files.map((name) => name.slice(0, 4))).toEqual([
-      "0001", "0002", "0003", "0004", "0005",
-      "0006", "0007", "0008", "0009", "0010",
-      "0011", "0012", "0013", "0014",
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+      "0011",
+      "0012",
+      "0013",
+      "0014",
       "0015",
+      "0016",
+      "0017",
+      "0018",
+      "0019",
+      "0020",
+      "0021",
+      "0022",
     ]);
   });
 
@@ -40,7 +58,10 @@ describe("migrations", () => {
   // SECURITY DEFINER functions. A table privilege held by anon means somebody
   // opened a direct read path, and that is worth failing a build over.
   it("grant anon no privilege on any table", async () => {
-    const result = await db.query<{ tablename: string; privilege_type: string }>(`
+    const result = await db.query<{
+      tablename: string;
+      privilege_type: string;
+    }>(`
       select table_name as tablename, privilege_type
       from information_schema.role_table_grants
       where grantee = 'anon' and table_schema = 'public'
@@ -53,7 +74,10 @@ describe("migrations", () => {
   // section 22 point 3. A grant here would let a staff session change an order
   // status with a bare update and skip the audit trail entirely.
   it("grant authenticated no write on orders, payments or slots", async () => {
-    const result = await db.query<{ tablename: string; privilege_type: string }>(`
+    const result = await db.query<{
+      tablename: string;
+      privilege_type: string;
+    }>(`
       select table_name as tablename, privilege_type
       from information_schema.role_table_grants
       where grantee = 'authenticated'
@@ -71,6 +95,66 @@ describe("migrations", () => {
     expect(result.rows).toEqual([]);
   });
 
+  it("keep owner and catalog writes behind audited functions", async () => {
+    const result = await db.query<{
+      tablename: string;
+      privilege_type: string;
+    }>(`
+      select table_name as tablename, privilege_type
+      from information_schema.role_table_grants
+      where grantee = 'authenticated'
+        and table_schema = 'public'
+        and privilege_type in ('INSERT', 'UPDATE', 'DELETE')
+        and table_name in (
+          'price_lists', 'branches', 'store_hours', 'menu_categories',
+          'menu_items', 'item_variations', 'menu_option_groups',
+          'menu_options', 'menu_item_option_groups',
+          'item_variation_prices', 'menu_option_variation_prices',
+          'vouchers', 'staff_invitations', 'staff_permission_overrides',
+          'app_settings', 'franchise_inquiries'
+        )
+      order by 1, 2
+    `);
+    expect(result.rows).toEqual([]);
+  });
+
+  it("make future Data API exposure opt-in", async () => {
+    for (const role of ["anon", "authenticated"] as const) {
+      expect(
+        await scalar<boolean>(
+          db,
+          `select has_schema_privilege('${role}', 'public', 'create')`,
+        ),
+        `${role} schema create`,
+      ).toBe(false);
+    }
+
+    const defaults = await db.query<{ object_type: string; grantee: string }>(`
+      select
+        case d.defaclobjtype
+          when 'r' then 'table'
+          when 'S' then 'sequence'
+          when 'f' then 'function'
+        end as object_type,
+        coalesce(g.rolname, 'public') as grantee
+      from pg_default_acl d
+      cross join lateral aclexplode(d.defaclacl) a
+      left join pg_roles g on g.oid = a.grantee
+      join pg_namespace n on n.oid = d.defaclnamespace
+      where n.nspname = 'public'
+        and (
+          (d.defaclobjtype = 'r'
+            and a.privilege_type in ('SELECT', 'INSERT', 'UPDATE', 'DELETE'))
+          or (d.defaclobjtype = 'S'
+            and a.privilege_type in ('USAGE', 'SELECT'))
+          or (d.defaclobjtype = 'f' and a.privilege_type = 'EXECUTE')
+        )
+        and coalesce(g.rolname, 'public') in ('public', 'anon', 'authenticated')
+      order by 1, 2
+    `);
+    expect(defaults.rows).toEqual([]);
+  });
+
   // Postgres grants EXECUTE to PUBLIC on every new function. 0010 takes that
   // back by name. A rate limiter any anonymous visitor can drive is not a rate
   // limiter, so this one is not a style preference.
@@ -82,11 +166,59 @@ describe("migrations", () => {
     expect(canCall).toBe(false);
   });
 
+  it("keep staff email lookup server-only", async () => {
+    for (const role of ["anon", "authenticated"] as const) {
+      const canCall = await scalar<boolean>(
+        db,
+        `select has_function_privilege('${role}', 'resolve_active_staff_email(text)', 'execute')`,
+      );
+      expect(canCall, role).toBe(false);
+    }
+    expect(
+      await scalar<boolean>(
+        db,
+        `select has_function_privilege('service_role', 'resolve_active_staff_email(text)', 'execute')`,
+      ),
+    ).toBe(true);
+  });
+
+  it("resolve only active staff emails", async () => {
+    await db.exec(`
+      insert into auth.users (id, email)
+      values
+        ('71000000-0000-4000-8000-000000000001', 'active@example.com'),
+        ('71000000-0000-4000-8000-000000000002', 'inactive@example.com');
+      insert into profiles (id, role, staff_role, display_name, is_active)
+      values
+        ('71000000-0000-4000-8000-000000000001', 'staff', 'cashier', 'Active', true),
+        ('71000000-0000-4000-8000-000000000002', 'staff', 'kitchen', 'Inactive', false);
+    `);
+
+    expect(
+      await scalar<string>(
+        db,
+        `select profile_staff_role::text from resolve_active_staff_email(' ACTIVE@example.com ')`,
+      ),
+    ).toBe("cashier");
+    expect(
+      await scalar<number>(
+        db,
+        `select count(*)::int from resolve_active_staff_email('inactive@example.com')`,
+      ),
+    ).toBe(0);
+  });
+
   // A policy expression is evaluated as the querying role, so a staff read
   // fails on the FUNCTION rather than on the table if this is missed, which is
   // a genuinely confusing error to land on.
   it("let authenticated call the functions its own policies name", async () => {
-    for (const fn of ["current_role_kind()", "is_staff()", "is_admin()"]) {
+    for (const fn of [
+      "current_role_kind()",
+      "is_staff()",
+      "is_admin()",
+      "current_staff_has_permission(text)",
+      "current_staff_can_access_branch(uuid)",
+    ]) {
       const canCall = await scalar<boolean>(
         db,
         `select has_function_privilege('authenticated', '${fn}', 'execute')`,
@@ -230,14 +362,22 @@ describe("option pricing", () => {
     );
 
   it("path 1: a variation-specific row wins", async () => {
-    expect(await resolve(ids.optionPerVariation, ids.half, ids.listStandard)).toBe(3000);
-    expect(await resolve(ids.optionPerVariation, ids.full, ids.listStandard)).toBe(4000);
+    expect(
+      await resolve(ids.optionPerVariation, ids.half, ids.listStandard),
+    ).toBe(3000);
+    expect(
+      await resolve(ids.optionPerVariation, ids.full, ids.listStandard),
+    ).toBe(4000);
   });
 
   it("path 2: falls back to the option's flat price", async () => {
-    expect(await resolve(ids.optionFlat, ids.half, ids.listStandard)).toBe(1500);
+    expect(await resolve(ids.optionFlat, ids.half, ids.listStandard)).toBe(
+      1500,
+    );
     // Flat means flat: the variation makes no difference on this path.
-    expect(await resolve(ids.optionFlat, ids.full, ids.listStandard)).toBe(1500);
+    expect(await resolve(ids.optionFlat, ids.full, ids.listStandard)).toBe(
+      1500,
+    );
   });
 
   it("path 3: free when neither exists", async () => {
@@ -248,7 +388,9 @@ describe("option pricing", () => {
   // override rows are written for the first, and the new branch quietly gives
   // its heat away. Resolution is per price list, and this proves it.
   it("does not leak one price list's overrides into another", async () => {
-    expect(await resolve(ids.optionPerVariation, ids.half, ids.listOther)).toBe(0);
+    expect(await resolve(ids.optionPerVariation, ids.half, ids.listOther)).toBe(
+      0,
+    );
   });
 
   it("resolves a variation price from the list, then from the base row", async () => {
@@ -295,7 +437,10 @@ describe("pickup slots and hours", () => {
       select 'pilot', 'Pilot', 'Pilot', 'street', id, 'Somewhere', 'Cebu City', true, true
       from price_lists where slug = 'standard';
     `);
-    branchId = await scalar<string>(db, `select id from branches where slug = 'pilot'`);
+    branchId = await scalar<string>(
+      db,
+      `select id from branches where slug = 'pilot'`,
+    );
   }, 120_000);
 
   it("refuse to reserve past capacity", async () => {
@@ -345,7 +490,10 @@ describe("pickup slots and hours", () => {
       values ('${branchId}', 2, '10:00', '21:00')
     `);
     const at = (iso: string) =>
-      scalar<boolean>(db, `select branch_is_open_at('${branchId}', timestamptz '${iso}')`);
+      scalar<boolean>(
+        db,
+        `select branch_is_open_at('${branchId}', timestamptz '${iso}')`,
+      );
 
     expect(await at("2026-09-01 09:59+08")).toBe(false);
     expect(await at("2026-09-01 10:00+08")).toBe(true);
@@ -362,7 +510,10 @@ describe("pickup slots and hours", () => {
       values ('${branchId}', 3, '18:00', '02:00')
     `);
     const at = (iso: string) =>
-      scalar<boolean>(db, `select branch_is_open_at('${branchId}', timestamptz '${iso}')`);
+      scalar<boolean>(
+        db,
+        `select branch_is_open_at('${branchId}', timestamptz '${iso}')`,
+      );
 
     expect(await at("2026-09-02 17:59+08")).toBe(false);
     expect(await at("2026-09-02 23:30+08")).toBe(true);
@@ -372,13 +523,17 @@ describe("pickup slots and hours", () => {
   });
 
   it("stay closed while the branch is inactive", async () => {
-    await db.exec(`update branches set is_active = false where id = '${branchId}'`);
+    await db.exec(
+      `update branches set is_active = false where id = '${branchId}'`,
+    );
     const open = await scalar<boolean>(
       db,
       `select branch_is_open_at('${branchId}', timestamptz '2026-09-01 12:00+08')`,
     );
     expect(open).toBe(false);
-    await db.exec(`update branches set is_active = true where id = '${branchId}'`);
+    await db.exec(
+      `update branches set is_active = true where id = '${branchId}'`,
+    );
   });
 
   it("gate ordering on the global switch as well as the branch", async () => {
@@ -389,11 +544,17 @@ describe("pickup slots and hours", () => {
       );
     expect(await accepts()).toBe(true);
 
-    await db.exec(`update app_settings set accepting_orders = false where id = 1`);
+    await db.exec(
+      `update app_settings set accepting_orders = false where id = 1`,
+    );
     expect(await accepts()).toBe(false);
-    await db.exec(`update app_settings set accepting_orders = true where id = 1`);
+    await db.exec(
+      `update app_settings set accepting_orders = true where id = 1`,
+    );
 
-    await db.exec(`update branches set is_accepting_orders = false where id = '${branchId}'`);
+    await db.exec(
+      `update branches set is_accepting_orders = false where id = '${branchId}'`,
+    );
     expect(await accepts()).toBe(false);
   });
 });
@@ -443,9 +604,13 @@ describe("rate limiter", () => {
 
   it("rolls the window when it goes stale", async () => {
     await db.exec(`select rate_limit_hit('roll', 1, 60)`);
-    expect(await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`)).toBe(false);
+    expect(
+      await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`),
+    ).toBe(false);
     await db.exec(`update rate_limits set window_start = now() - interval '2 hours'
                    where key = 'roll'`);
-    expect(await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`)).toBe(true);
+    expect(
+      await scalar<boolean>(db, `select rate_limit_hit('roll', 1, 60)`),
+    ).toBe(true);
   });
 });

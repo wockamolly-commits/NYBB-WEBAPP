@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { OrderTracker } from "@/components/order/OrderTracker";
+import { OrderTrackingLiveRefresh } from "@/components/order/OrderTrackingLiveRefresh";
 import { ButtonLink } from "@/components/ui/Button";
 import { getOrderByTracking } from "@/lib/orders/reader";
-import { TRACKING_TOKEN_PARAM, normalizeShortCode } from "@/lib/orders/tracking";
+import {
+  TRACKING_TOKEN_PARAM,
+  normalizeShortCode,
+} from "@/lib/orders/tracking";
 
 /**
  * `/order/[code]?t=<tracking token>`, screen five of the four in spec section
@@ -28,7 +32,9 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
   const { code } = await params;
   const shortCode = normalizeShortCode(decodeURIComponent(code));
 
@@ -57,6 +63,10 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
 
       {lookup.state === "found" ? (
         <>
+          <OrderTrackingLiveRefresh
+            shortCode={lookup.order.shortCode}
+            trackingToken={typeof token === "string" ? token : null}
+          />
           <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
             Keep this page. It carries the code the counter asks for, and it is
             the only copy of it.

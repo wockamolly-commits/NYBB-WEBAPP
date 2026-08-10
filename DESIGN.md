@@ -3,6 +3,9 @@ name: NYBB Order
 description: A warm printed ground, black stamped type, and a five-stop heat scale, for a Cebu wing house that sells hotness by the percent.
 colors:
   griddle-amber: "#f7a70f"
+  ground-stop-1: "#f2860f"
+  ground-stop-3: "#f9c614"
+  ground-stop-4: "#fae51a"
   buffalo-orange: "#ef6212"
   buffalo-orange-lit: "#f47621"
   char: "#0b0b0c"
@@ -69,6 +72,12 @@ typography:
     fontWeight: 400
     lineHeight: 1.2
     fontFeature: "tabular-nums"
+  script:
+    fontFamily: "Daughter of Fortune, cursive"
+    fontSize: "1.75rem"
+    fontWeight: 400
+    lineHeight: 1.1
+    letterSpacing: "0.01em"
 rounded:
   sm: "0.3rem"
   md: "0.4rem"
@@ -151,11 +160,11 @@ components:
 
 The whole system is the branded greaseproof sheet the wings actually arrive on. A warm printed
 ground that runs hot at the top and cools to signage yellow at the bottom. Black type stamped onto
-it hard enough to read across a counter. A buffalo pressed into the paper rather than printed over
-it. And a five-stop heat scale printed along the edge, top and bottom, bracketing everything in
-between. Once that image is in mind, every rule in this document follows from it: why the ground is
-loud, why the chrome is parchment instead of white, why the mark darkens rather than lightens, and
-why nothing floats.
+it hard enough to read across a counter. The store's own wall drawing pressed into the paper rather
+than printed over it. And a five-stop heat scale printed along the edge, top and bottom, bracketing
+everything in between. Once that image is in mind, every rule in this document follows from it: why
+the ground is loud, why the chrome is parchment instead of white, why the drawing darkens rather
+than lightens, and why nothing floats.
 
 Hot, printed, engineered. The ground is genuinely saturated, and that is the brand: the live site
 samples at 237 instances of the orange against 183 of black, so a timid neutral page would be a
@@ -166,10 +175,10 @@ on dark because the ring's neighbours are the ground on both sides once it is of
 destructive red is two steps down its own hue because signage red cannot carry a label.
 
 Nothing in this system is decorative by accident. The grain exists because a gradient this smooth
-bands on an 8-bit panel. The buffalo is a single bold silhouette because a detailed engraving
-collapses into a smudge at watermark opacity. The one authored animation on the site is the heat
-scale drawing itself, which is the product's own mechanism moving, not a fade applied to seven
-sections in turn.
+bands on an 8-bit panel. The wall drawing sits at 10% rather than the 9% the filled silhouette
+before it used, because a line drawing puts far less ink on the page per square inch and reads
+fainter at the same alpha. The one authored animation on the site is the heat scale drawing itself,
+which is the product's own mechanism moving, not a fade applied to seven sections in turn.
 
 **Key Characteristics:**
 
@@ -202,7 +211,10 @@ are brown.
   interpolated in oklab, running `#f2860f` at the top through `#f9c614` to `#fae51a` at the
   bottom; the token value is the mid stop, which is what any flat `background` use resolves to.
   Fixed rather than scrolling, because a gradient that travels with a long menu page stops reading
-  as light and starts reading as a very tall image.
+  as light and starts reading as a very tall image. The other three stops are declared as
+  `ground-stop-1`, `ground-stop-3` and `ground-stop-4` (Griddle Amber itself is stop 2). They were
+  prose-only for a while, which meant anything that had to restate the gradient outside CSS, such as
+  the share image, was writing hex nobody could check against the palette.
 - **Signage Yellow** (`#f9ee18`): Extremely high contrast on ink, which is exactly why it is
   rationed. Badges, micro-labels, and the bottom stop of the heat scale. Never a paragraph.
 
@@ -258,6 +270,7 @@ card added next year gets a legible ring without anyone remembering to ask for o
 **Display Font:** Anton (with Impact, sans-serif)
 **Body Font:** Inter (with system-ui, sans-serif)
 **Numeric Font:** JetBrains Mono (with ui-monospace, monospace)
+**Lettering:** Daughter of Fortune, and only for the store's fixed tagline
 
 **Character:** A heavy condensed grotesque carrying the stadium-signage register, set against a
 neutral text face chosen because it holds at 14px on a phone, which is where most of this is read.
@@ -284,6 +297,60 @@ countdowns and heat percentages all have to align in a column and must not reflo
   all three faces depending on what it labels; only the metrics are shared.
 - **Numeric** (JetBrains Mono, tabular figures): Every number the user has to read, compare, or say
   out loud.
+- **Script** (Daughter of Fortune, `1.75rem`, `1.1`, `0.01em`): The store's taglines, and nothing
+  else on the site. There are two, and both are fixed brand strings rather than copy: "#Your All
+  Time Favorite Chicken Wings" is the primary, and "#Wing It! #Love It" is the second, which the
+  footer carries. It has no size tier in the heading scale
+  because it is not in that hierarchy: this is lettering, part of the lockup, and it behaves like the
+  wordmark rather than like a text style. It never takes a variable string, never sets a heading, a
+  label or a price, and is never uppercased, because a brush script's joins are drawn for lowercase
+  and caps break every one of them.
+
+  **Where it appears, and at what size.** The landing hero, once in the body of the About page, and
+  the footer. All three run the same pair, `1.5rem` below `sm` and `1.75rem` from `sm` up, with one
+  documented exception: the hero drops to `1.25rem` under `max-height: 500px`, where a landscape
+  phone has under 300px below the header and the CTAs have to clear it. Otherwise the size does not
+  vary by placement, and that is a rule rather than two authors happening to agree: a lockup that
+  resizes between placements stops reading as one object and starts reading as a font somebody
+  liked. More than one content placement per page is a repeat; the footer's tagline is chrome and
+  does not count against that, the same exemption the footer skyline holds under The One Drawn Scene
+  Per Page Rule.
+
+  **The tagline has two renderings, and the phrase decides which one, not the space.** The delivered
+  artwork (`components/brand/TaglineMark.tsx`) is three interlocking lines on a rising diagonal at
+  1.945:1. It cannot be made into one line: across 463 rows of the trimmed master there is not one
+  blank row to cut on, and no rotation from -30 to +6 degrees separates the bands, so extracting
+  three horizontal pieces would mean cutting through glyphs. It also letters exactly one phrase, the
+  primary, because the words are drawn into the pixels. **Use the artwork only for the primary
+  tagline, and only where a block roughly 2:1 fits.** The second tagline has no delivered artwork,
+  so it is always set as type. Relettering a drawn logo is the designer's job, not a transform's; if
+  a master for the second phrase ever arrives, `TaglineMark` is where it goes.
+
+  **Where the space is a single line, use `.tagline-inked`.** It puts the lockup's own paint,
+  signage yellow filled inside a black keyline over a black offset shadow, onto the lockup's own
+  typeface, so what a one-line placement gives up is the diagonal composition and not the lettering.
+  Daughter of Fortune was identified by rendering all four delivered faces against the delivered
+  artwork; it is the face the mark is set in, not a lookalike. `paint-order: stroke fill` is load
+  bearing, because a centred stroke eats half its width out of the inside of a script this fine and
+  closes the thin joins. Both stroke and shadow are in `em`, so the treatment holds at any size.
+
+  The landing hero and the footer both use the class, for different reasons: the hero because its
+  slot is a single line, the footer because it carries the second tagline and no artwork for that
+  phrase exists. The About page's instance is neither: it is a signature inside a body-copy column,
+  where the ink-on-amber setting is still right.
+
+  **The keyline sets the artwork's minimum size.** Signage yellow measures about 1.1:1 on the
+  chrome, so every bit of the mark's legibility there is the black keyline, exactly as it is for
+  BUFFALO and BRAD'S in the wordmark. Measured on the delivered file the median black run is 72px
+  against a 17,717px width, which lands at 1.06px rendered 260 wide and 0.89px at 220. Below about
+  200 the keyline drops out at 1x and the mark degrades to yellow on cream. `w-[220px]
+  sm:w-[260px]` is therefore a floor. Anything smaller needs a variant drawn with a heavier
+  keyline, not a transform, which is The Hatching Stays Strokes Rule arriving in a second costume.
+
+  **Colour is the surface's, and the margin is thin.** Ink on the amber ground at 7.7:1, bone on
+  ink. Never Buffalo Orange: 1.8:1 on amber and 2.2:1 at the top of the hero's scrim, both under
+  even the 3:1 large text is allowed. This face has the thinnest joins in the system and is the last
+  thing that should be spending a marginal ratio.
 
 ### Named Rules
 
@@ -303,6 +370,14 @@ own tracking keeps it.
 
 **The Sixteen Pixel Rule.** Form controls are `16px` below the `sm` breakpoint. Anything smaller
 makes iOS Safari zoom the viewport on focus, which on a checkout form reads as the page jumping.
+
+**The Fourth Face Letters, It Does Not Set Rule.** This document used to end on a flat ban against a
+fourth typeface, and the ban was right about the risk and wrong about the shape. A brand script has
+one legitimate job here and it is a logo's job: lettering a fixed phrase that the store already draws
+that way. So the face is admitted for exactly that and nothing widens it. If a new string is
+variable, or is a heading, a label, a control or a number, it is Anton, Inter or JetBrains Mono. The
+type scale was measured against Anton's metrics and none of that measurement transfers. Three faces
+still set the interface; the fourth only ever letters.
 
 ## Layout
 
@@ -352,9 +427,18 @@ redundant, and product tiles carry no border at all for exactly that reason. The
 token is ink at 16% alpha, which reads on the light ground and goes nearly invisible on dark cards.
 That is correct rather than a bug.
 
-Depth that does exist is pressed rather than stacked. The buffalo mark is a dark silhouette in the
-gradient's own hue at 9% opacity, so it darkens the ground rather than lightening it and reads as an
-emboss in the paper. The chrome gradient makes the bar read as the ground lit from the front.
+Depth that does exist is pressed rather than stacked. The wall drawing is ink at 10% opacity, so it
+darkens the ground rather than lightening it and reads as an emboss in the paper. The chrome
+gradient makes the bar read as the ground lit from the front.
+
+**The wall belongs to the storefront, not to the document.** It is rendered by
+`app/(storefront)/layout.tsx` as a `MuralArt` layer. The slot it occupies was `body::before` until
+that turned out to be a claim nobody had checked: that every route on the origin wants a marketing
+watermark behind it. The 404 does not: it carries a street scene of its own, and a second drawing
+pressed into the ground behind the first is two drawn scenes on one page, which The One Drawn Scene
+Per Page Rule exists to prevent. The staff workspace will not either, for the plainer reason that a
+drawing behind an order board is noise on a screen somebody watches for a whole shift. The grain
+stays on `body`, because it is dithering the page gradient and that gradient is document-level.
 
 ### Shadow Vocabulary
 
@@ -443,6 +527,21 @@ makes a control feel connected to the finger rather than animated.
   message.
 - **Labels:** the uppercase micro-label at 55% bone, above the field.
 
+The Workspace is the one denser operating surface. Its fields use Graphite fill so an editable
+region remains visible across a shift on Ink and Charcoal. The outside edge is bone at 40%, rising
+to 65% on hover and Buffalo Orange on focus. Placeholder copy is bone at 60%, which keeps it above
+4.5:1 on Graphite rather than making affordance copy faint for style.
+
+Workspace dropdowns are composite controls, never a native `<select>` popup. The trigger keeps the
+same `2.75rem` geometry and edge as an input, with an orange chevron in a separated end cap. The
+popup is Charcoal with the same real edge, selected rows carry a check and a faint structural fill,
+and the keyboard-highlighted row becomes Buffalo Orange with Char text. Base UI owns focus,
+keyboard navigation, dismissal and the hidden form value.
+
+The Workspace shell also themes the browser surfaces around those controls: caret and selection,
+scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin
+screens therefore inherit one control language even before they need a dedicated component.
+
 ### Selection controls
 
 A distinct family from buttons. Size chips, flavour tiles, option rows and pickup windows carry
@@ -504,27 +603,42 @@ in the wings configurator, on the order confirmation, on the staff ticket and on
 slip, with the same five swatches every time. It is the one thing in this interface that could not
 be lifted from a template, and it is treated accordingly.
 
-The landing page carries two more surfaces built from the same five swatches, and they are split by
-**job, not by size**. The **hero strip** is the ramp: five ascending columns, named and given their
-percentages, stating that heat here is sold on a scale. The **heat band** is the price list: five
-rows, each with the level, its percentage, a horizontal measure bar, and both upcharges in a column
-you can compare down. The strip makes the claim; the band answers the question the claim provokes,
-which is what each stop costs.
+The landing page carries **one** more surface built from the same five swatches, and the number
+matters enough to be the rule below. The **heat band** is the ramp itself: five bars ascending left
+to right from sm up, each carrying its name, its percentage and the two upcharges, rotating to five
+stacked rows with full width bars on a phone. It is the only place on that page where the ramp is
+drawn, and it owns the site's one authored animation because it is where somebody is choosing.
 
-They were the same object once, both drawn as ascending ramps, and that was wrong in a way worth
-recording. Two drawings of one ramp within two screens is not a statement and its restatement, it is
-a repeat, and it cost the band its reveal: five stops drawing themselves is only a moment if the
-object is new when it arrives.
+It got there in three corrections, and the third returned it to where the first left it, which is
+worth recording rather than hiding. The hero and the band were once the same object, both ascending
+ramps within two screens of each other, which is a repeat rather than a statement, so they were
+split by job: a **hero strip** that stated the scale, and a band flattened into a price list of
+rows. Different shapes, same five swatches, and the reveal was given back to the band.
+
+Splitting by job was the right fix to the wrong problem. Two drawings of one fact is a repeat
+whatever the shapes are, and the strip was spending the first screen on the third section: a
+visitor who has not decided they want wings is being shown a price list's table of contents. So the
+strip is gone rather than redrawn. The claim went back into the subhead, where a claim with no
+object belongs, and the hero spends its picture on the ink layer instead. See
+`components/site/HeroWall.tsx`.
+
+With the strip gone, the band had nothing left to differentiate itself from, and the flattened rows
+were a shape adopted to avoid a collision that no longer exists. The ramp is the better drawing of
+the product on its own merits: ascending columns say "a scale you move along" in one look, where
+rows say "a table you read". So the band is the ramp again, and the reveal ascends with it.
 
 ### Named Rules
 
-**The Two Heat Surfaces Rule.** A level is the same swatch everywhere, but the same *form* may only
-appear once per page. If two surfaces would both draw the ramp, one of them changes job: state the
-scale, or price it, not both in the same shape.
+**The One Heat Surface Per Page Rule.** A level is the same swatch everywhere, and that is the point
+of the fixed ramp. The ramp itself is drawn once per page, in the place where somebody is choosing a
+level. This replaces an earlier rule that permitted two surfaces provided they differed in shape:
+changing the shape of a restatement does not stop it being one, and the second surface is always the
+one further from the decision, which is the one to cut.
 
 **The Moment Belongs To The Band Rule.** The five bars extending in sequence is the site's only
-authored animation and it lives where somebody is choosing. The hero strip is deliberately still,
-which is what keeps the band's entrance worth having.
+authored animation and it lives where somebody is choosing. Nothing else on the landing page draws
+the ramp at all now, so the band's entrance is the first time a visitor sees the object move, which
+is what the rule was protecting all along.
 
 ### The heat rule (signature)
 
@@ -556,6 +670,113 @@ buttons, but they are pressable, and the feel has to agree.
 **The Full Thing Stays On Screen Rule.** A sold-out flavour, a taken pickup window and an
 out-of-stock item go flat, not away. Removing them makes the interface look broken and hides the
 information that the shop is busy.
+
+## The ink layer
+
+The physical store is a hand drawn New York street scene: black brush marker on white walls,
+wrapping the counter and the kiosk bay. Heavy marker outlines on the foreground objects, medium
+ruled lines on the building edges, fine dense hatching for the facade texture. The packaging carries
+a filled skyline and the logo lockup.
+
+None of that is a palette and none of it is a mood. It is a **material**, and the material is ink.
+The site has no white wall to put it on and is not getting one: what it has is a warm printed ground
+with dark surfaces on it, and the store's own wall drawing already pressed into that ground as ink
+at 10%. Every other motif is the same material at a different size, not a second one. The store
+draws in marker on white; the site prints the same drawing in char on the amber, in bone on the
+charcoal, and in orange where a graphic accent is wanted.
+
+Everything below follows from that single decision, and so does the fact that the incumbent world
+did not move an inch to accommodate it.
+
+The artwork arrived as raster only, at print resolution, with no editable original, so a tracing step
+sits between the delivered files and anything shipped. `scripts/trace-mural.ts` is that step and
+`public/mural/` is its output. The delivered files stay out of the repository.
+
+**Where it appears.** The 404, where the marquee corner is the whole page. The landing hero, where
+the same corner takes the right half of the dark band in bone at full strength, on a wash that puts
+the film out of its way (`components/site/HeroWall.tsx`). The empty cart, which gets the traffic
+signal, a subject chosen because a signal at rest is what a screen about nothing having moved yet
+should show. The no-photo tile, which gets one of three small motifs at 14% behind the item name.
+And the footer, which is chrome and carries the filled skyline rather than a line drawing. One scene
+per route, and the footer never counts against that.
+
+The landing hero is the placement that answers the obvious objection to using the marquee crop
+twice: it carries the shop's name, and the header draws the wordmark eighty pixels above it. The
+crop stays because lettering is the one subject that reads better the larger it gets, which is what
+a hero-sized bleed does to it, and because a logo doing chrome's job and a street scene with a sign
+in it are not the same object. The real duplicate on that screen is the wordmark burnt into the hero
+film, which `scripts/build-hero-video.sh` exists to crop off and which the files in `public/video/`
+predate.
+
+### Named Rules
+
+**The Ink Layer Takes the Surface's Colour Rule.** A mural asset never carries a colour of its own.
+It is traced to `currentColor` and rendered through a CSS mask, so one file serves char on amber,
+bone on charcoal and orange as a graphic. A flattened black-on-white export is wrong twice over: on
+the amber ground it paints the white rectangle this system does not have, and on a charcoal card it
+draws black on black. Note that an SVG loaded through `<img>` cannot do this, because that document
+is isolated and `currentColor` resolves against nothing there. The colour is decided at render time
+by the surface, because the surface is the only thing that knows what it is.
+
+**The One Drawn Scene Per Page Rule.** The One Heat Surface Per Page Rule, generalised. A heat level
+keeps its swatch everywhere and a drawing keeps its lines everywhere, but the same *form* appears
+once per page. Two street scenes on one route is not a statement and its restatement, it is a repeat. The
+footer's skyline does not count as the second one: it is a filled silhouette off the packaging doing
+a mark's job, chrome that brackets every page the way the heat rule does, and a filled emblem is a
+different form from a line drawing. Count scenes, not drawings.
+
+**The Hatching Stays Strokes Rule.** Facade hatching is discrete strokes and never a tone. It is
+about ten pixels wide against an eighteen thousand pixel source, so scaling a whole scene down to a
+phone puts it under one device pixel, and a sub-pixel ink line is a wash. There is no neutral grey
+in this system and there is no honest way to arrive at one. The fix is upstream every single time:
+crop to a smaller subject, or export a variant with the fine strokes removed at the bitmap by a
+morphological opening. A motif that reads at 400px and turns to mud at 64px needs a different
+drawing, not a transform. The full street canyon cannot be shown below roughly 1830px with its
+hatching intact, which is why no placement shows the full canyon.
+
+**The Drawing Runs Off The Page Rule.** A mural asset is a crop of a wall, so its own boundary is a
+straight line that means nothing. Sized to sit inside a column it reads as a framed picture laid on
+the page, which is the one thing this artwork must never do. Every large placement therefore bleeds
+off the edges of whatever clips it, using `cover` rather than `contain`: `contain` fits the whole
+drawing in the box and leaves bare ground around the remainder, which is the framed look arriving by
+another route. Any edge left inside the page is faded to nothing rather than cut, by intersecting a
+gradient into the mask. Fading lowers the strokes' alpha and never merges them into a tone, and ink
+thinning over the amber blends towards amber rather than towards a neutral, so this does not reopen
+the grey question.
+
+Two smaller things learned at the same time, both cheap to repeat and expensive to find. Write
+`mask-*` and `-webkit-mask-*` from one source: a component that spreads caller overrides over a style
+object holding both will silently keep the prefixed default, because the aliases are one property and
+the last declaration wins. And a skyline that has to span a width it was not drawn for needs a second
+drawing, not a stretch and not a repeat.
+
+**The Drawing Darkens the Ground Rule.** Where the artwork sits behind content it darkens, as ink at
+low alpha, the way the wall behind the storefront does at 10%. That is what makes it read as printed
+into the page rather than pasted onto it. Where the artwork *is* the content it takes the surface's
+reading colour and may therefore lighten, as it does in bone on a charcoal card. The test is whether
+anything has to
+stay legible on top of it: behind type it darkens, and the alpha is whatever keeps that type above
+4.5:1. On the no-photo tile that alpha is 14%, which measures 4.68:1 against char in the worst case,
+a solid marker stroke sitting directly behind a letter. Bare orange measures 6.02:1, so the drawing
+costs 1.34 of contrast and the budget is what set the number.
+
+The lightening half of that rule has one trap in it, and the landing hero walked into it first. On a
+near-black ground a drawing at a middling alpha is a neutral grey: bone at 55% over Char composites
+to about `rgb(141,136,130)`, which is the one colour this system does not have. There is no safe
+midpoint to tune towards, because the whole interval between the two ends is grey. Either something
+sits on top, in which case the drawing goes to a low alpha and darkens, or nothing does, in which
+case it runs at full strength in the surface's reading colour. A drawing that feels too loud at full
+strength is too large, not too opaque, and the fix is to give it less of the section.
+
+**The Landscape Crop Needs A Landscape Hole Rule.** A mural asset is a wide crop of a wall, and
+`cover` scales it by whichever dimension of its box demands more. On a portrait viewport that is
+always the height and it is not close: the landing hero's right-hand placement is 1600 by 1187 of
+artwork, and a 768x1024 tablet hands it a 399 by 800 hole, which renders the drawing 1078 wide and
+throws 679 of that away. What survives is two letterforms and no street. So a placement like this is
+gated on `min-aspect-ratio`, not on a width breakpoint, which cannot tell a portrait tablet from a
+laptop. Below the gate there is no drawing at all, and that is the correct outcome rather than a
+degraded one: on a portrait viewport the copy is the full width of the section, so there is no
+region beside it for a wall to occupy anyway.
 
 ## Do's and Don'ts
 
@@ -596,4 +817,16 @@ information that the shop is busy.
   meaning here, and a fade applied to seven sections in turn says nothing about any of them. Motion
   that animates the product's own mechanism, the way the heat scale draws its five stops, is exactly
   what this system wants more of.
-- **Don't** introduce a second radius scale, a second accent colour, or a fourth typeface.
+- **Don't** introduce a second radius scale or a second accent colour.
+- **Don't** widen the fourth typeface past the tagline. See The Fourth Face Letters, It Does Not Set
+  Rule: it is admitted to letter one fixed phrase and it sets nothing.
+- **Don't** ship a mural asset with a colour baked into it, and don't reach for `<img>` to load one.
+  Both produce the same failure: a drawing that cannot take its surface's colour, which is a white
+  box on the amber ground and an invisible one on a charcoal card.
+- **Don't** make a hatched drawing smaller by scaling it. Below about a pixel the strokes stop being
+  strokes. Crop to a smaller subject or export a culled variant.
+- **Don't** put a drawn scene on the order tracker or the confirmation screen. The States Differ
+  Structurally Rule already covers it: those screens say what they are twice over, and a decoration
+  on top is a third telling that adds nothing.
+- **Don't** paper the site in mural. One drawn scene per page, on pages that have room for one, and
+  the amber gradient keeps doing the structural work.

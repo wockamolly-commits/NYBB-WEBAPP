@@ -7,17 +7,20 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 
 ## Status
 
-**Phase 0 complete. Phase 1 in progress: the menu reads through one
-source-agnostic reader, the wings configurator is built, and the cart, the
-pickup slot picker, checkout and order tracking are live. A customer can place
-a real pickup order, gets a pickup code back, and can open the order again from
-its tracking link.** `npm run build`, `npm run lint` and `npm test` (310 tests)
+**Phase 0 and Phase 1 are complete, and Phase 2 has started.** The menu reads
+through one source-agnostic reader, the wings configurator is built, and the
+cart, pickup slot picker, checkout, order tracking and customer email OTP are
+implemented and smoke-tested against Supabase. Garden Bloc now has a temporary staging schedule
+for checkout testing. Once its production hours and capacity are confirmed, a customer can place a real
+pickup order, get a pickup code back, and open the order again from its
+tracking link or signed-in order history. `npm run
+build`, `npm run lint` and `npm test` (388 tests)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0014` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0022` apply cleanly against a real
 Postgres in the test suite.
 
-**The Supabase project now exists, and `0001` to `0015` plus the seed are
-applied to it.** The storefront reads the real database over PostgREST, proved
+**The Supabase project now exists, and `0001` to `0022` plus the seed are
+applied to it. Migration `0022` still needs its focused staging smoke test.** The storefront reads the real database over PostgREST, proved
 by writing a string into a category blurb that exists nowhere in `lib/catalog/`,
 finding it in the server-rendered HTML of the production build, and restoring it
 by re-running the seed. The static fallback renders an identical page, so seeing
@@ -37,8 +40,9 @@ privilege, so the assertions that were already written fail without it. The
 tests were right the whole time; the database they ran against was the thing
 that was wrong. See handoff trap 14.
 
-Nothing about the site's behaviour changed: `store_hours` is still empty and no
-branch is active, so every surface still says pickup is not open yet.
+That grant correction did not change customer behavior at the time. Garden Bloc
+now has a temporary staging schedule for testing, while the generated seed still
+fails closed with empty hours and inactive branches.
 
 **The storefront renders dynamically, and that is deliberate.** A nonce-based
 CSP and static generation are mutually exclusive in Next: the nonce is minted
@@ -81,7 +85,7 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 310 tests, 127 of which run the migrations and the seed against Postgres
+- 388 tests, 151 of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
@@ -164,29 +168,98 @@ Phase 1 so far:
   counts by /64, the key is a hash rather than the address, and the limit is set
   generously because office and carrier NAT put many unrelated customers behind
   one address. It fails open in every direction, per the spec and per 0008
-- **The landing hero pass.** The Level of Hotness is in the first viewport now,
-  as a strip beside the copy, so the hero shows its evidence instead of naming
-  a quantity the reader has to take on trust. The band further down stopped
-  being a second drawing of the same ramp and became what its own heading
-  always said it was: a price list, five rows, both upcharges in a column you
-  can compare down. The two surfaces are split by **job, not by size**, and the
-  band keeps the site's one authored animation because it is where somebody is
-  choosing. The hero's second button is "Call a branch", which makes the
-  disclosure's remedy reachable from where the disclosure is read and retires a
-  collision with the header's "Branches"
+- **The landing hero and mural pass.** The hero now carries one full-strength
+  crop of the store's hand-drawn New York wall rather than repeating the heat
+  scale before the visitor reaches the decision. The Level of Hotness ramp is
+  drawn once, in the priced band where somebody chooses, and it keeps the
+  site's one authored animation. The hero's second button is "Call a branch",
+  which makes the disclosure's remedy reachable from where it is read.
+
+Phase 2 so far:
+
+- `/login` is the one six-digit OTP entry point for customers and staff. After
+  verification, an active staff profile or the configured Super Admin is sent
+  to `/workspace`; everyone else stays on the customer side. `/workspace/login`
+  only redirects to the regular login page.
+- Customer and Workspace sessions still use separate cookie families. The
+  storefront recognizes either family as the same signed-in account, while the
+  Workspace accepts only its staff cookie and re-checks database access on
+  every request. Tokens are not copied between the families.
+- Staff and admins see a Workspace link in the storefront header instead of a
+  customer Account link. `/workspace/profile` shows their own email, role,
+  branch access, and resolved permissions inside the protected Workspace.
+- Workspace landing and navigation follow resolved permissions. Kitchen staff
+  land on Orders instead of entering a Dashboard redirect loop, and links to
+  unavailable sections are not rendered.
+- `lib/staff/roles.ts` defines cashier, kitchen and manager defaults plus
+  per-person permission overrides. Admin permission checks remain absolute.
+- Every workspace render validates the Auth user, then re-reads the active
+  `profiles` row and permission overrides through RLS. Deactivating a profile
+  therefore takes effect without waiting for a token to expire.
+- `/workspace` is a landscape-friendly operations shell with live counts for
+  New, Preparing, Ready and Claimed. The workspace has no storefront mural,
+  footer, cart or customer navigation.
+- Migration `0017` adds the exact email lookup needed before a staff code is
+  sent. It joins `profiles` to the private Auth directory and is executable by
+  `service_role` only. The Super Admin is provisioned from
+  `SUPER_ADMIN_EMAIL`, with no in-app path to create a second admin.
+- The staff login was browser-checked at 375 by 812 and 1024 by 768. The
+  protected redirect, controls, CSP hydration, overflow and console are clean.
+- Staging staff OTP is verified end to end. `stevenvillacampa@gmail.com` signs
+  in as the configured Super Admin, reaches `/workspace`, and has matching
+  active `admin` profile and `staff.super_admin_bootstrapped` audit rows.
+- `/workspace/orders` is the four-column operations board. Realtime order
+  changes refresh it immediately, with a 20-second polling fallback.
+- `/workspace/orders/history` lists up to 250 branch-scoped closed orders,
+  including today. Staff can filter by status and placed date or search by
+  code and customer details. Paid counts and sales exclude test orders.
+- Migration `0018` adds the locked Start, Ready, and Claim transitions. Claim
+  verifies the four-digit pickup code and captures a due counter payment in the
+  same transaction. Every change writes status events and an audit row.
+- Staging order `NY-VFY248` completed the real browser flow from New to Claimed.
+  All lifecycle stamps, five status events, three attributed staff audits and
+  counter payment capture were verified directly. Test orders carry a visible
+  badge on the board.
+- Migration `0019` adds Super Admin-only list, grant, role-change, revoke and
+  restore RPCs for Workspace access. Every change is audited, direct profile
+  writes from browser sessions are revoked, and a Super Admin cannot demote
+  themselves or change another admin.
+- `/workspace/team` exposes those controls only to the configured Super Admin.
+  Staff access is re-read from the database on every Workspace request, so a
+  revocation takes effect without waiting for the Auth token to expire.
+- Migration `0020` casts Supabase Auth's `varchar` email to the `text` promised
+  by the access-list RPC. The local Auth shim now uses Supabase's real email
+  type so this mismatch cannot hide behind the test harness again.
+- Migration `0021` broadcasts a data-free status signal on the guest order's
+  unguessable tracking-token topic. The tracking page refreshes its authorized
+  server payload immediately, with a 20-second fallback for dropped sockets.
+  Signed-in account links retain their RLS-protected Postgres Changes path.
+- Staging test order `NY-RTM234` moved from New to Cooking, Ready and Collected
+  through the Workspace controls. The already-open customer page followed all
+  three transitions in about two seconds without a manual refresh or browser
+  warning.
+- The unified regular login, Super Admin redirect, Team page and customer-cookie
+  isolation are verified in the staging-backed browser flow.
+- Migration `0022` makes the database enforce resolved staff permissions and
+  branch scope on direct Data API reads. It revokes unaudited catalog and owner
+  writes, makes future Data API grants opt-in, hardens the tracking trigger
+  search path, and rotates the configured Super Admin with its audit trail in
+  one transaction. It passes role-switched RLS tests locally and is applied to
+  staging. Its focused staging smoke test is still pending.
 
 Next:
 
-1. Customer email OTP, the last step of Phase 1, which is also when the Server
-   Action starts forwarding an access token so orders stop being anonymous.
-   The project it needed now exists.
-2. A second Supabase project for production, per spec section 25. The current
-   one should be treated as staging.
-
-Phase 1 is blocked on two answers from the owner: which branch is the pilot,
-and its real weekday hours. Nothing in the schema guesses either.
+1. Repeat the focused Workspace smoke test after migration `0022`.
+2. Add store availability and hours, and the audit log.
+3. Add a second Supabase project for production, per spec section 25. The
+   current one should be treated as staging.
 
 ## Start here
+
+`npm run dev` first links a missing, ignored `.env.local` from the primary Git
+worktree. This keeps Supabase sign-in configured in Codex worktrees without
+printing, tracking, or duplicating credentials. If the primary worktree has no
+`.env.local`, development still starts and reports that sign-in is unavailable.
 
 1. `AGENTS.md` for the standing rules.
 2. `docs/HANDOFF.md` for where things stand, the twelve traps earlier sessions
@@ -260,7 +333,7 @@ the badge scan cannot fix one and leave the other shipping a watermark.
 
 ```bash
 npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
-npm test              # applies 0001 to 0014 and the seed to a real Postgres
+npm test              # applies 0001 to 0022 and the seed to a real Postgres
 ```
 
 The migration tests run PGlite, which is Postgres compiled to WebAssembly, so
@@ -305,11 +378,11 @@ contradict or sharpen what spec section 5.6 assumed:
 
 ## Open questions
 
-Section 28 of the implementation prompt holds the seven that only the owner can
-answer. Two of them block Phase 1: the pilot branch with its real weekday
-hours, and the kitchen's genuine throughput per fifteen minutes at peak. No
-branch is marked as the pilot anywhere in the code, and `/contact` says plainly
-that hours are not published rather than guessing them.
+Section 28 of the implementation prompt holds the questions that only the owner can
+answer. Garden Bloc, IT Park, Lahug is now the selected pilot branch. Phase 1 remains blocked on
+its real weekday hours and the kitchen's genuine throughput per fifteen minutes at peak. The
+branch remains inactive until both are known, and `/contact` says plainly that hours are not
+published rather than guessing them.
 
 Phase 0 added four smaller ones, all marked in the code where they arise:
 

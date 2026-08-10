@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { checkoutFailure } from "@/lib/checkout/messages";
 import { clientAddress } from "@/lib/rate-limit/address";
 import { withinPlaceOrderAddressLimit } from "@/lib/rate-limit/limiter";
@@ -11,6 +12,7 @@ import {
 } from "@/lib/checkout/schema";
 import type { CheckoutField, PlaceOrderInput, PlaceOrderResult } from "@/lib/checkout/types";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
+import { getStorefrontSession } from "@/lib/auth/session";
 
 /**
  * Placing an order, from the browser's side.
@@ -23,15 +25,12 @@ import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-cl
  * opinions. Spec section 23 puts `place_order` in the third layer for exactly
  * that reason: anything that must be atomic or authorized lives in Postgres.
  *
- * Note which client it uses. `createPublicClient` holds the anon key and never
- * touches a cookie, so a failed token refresh cannot sign a customer out in the
- * middle of checkout, which is the failure spec section 14 warns about in as
- * many words. It also means every order placed today is a guest order, since
- * customer sign-in is the last step of Phase 1. When it lands, this function
- * takes the access token as an argument and builds the client with it, so that
- * `auth.uid()` inside `place_order` stamps `orders.user_id`. It must not switch
- * to a service-role client to achieve that: every order would become a guest
- * order with a key the storefront has no business holding.
+ * The browser forwards its short-lived access token when signed in, and the
+ * RPC verifies it through the normal authenticated role so `auth.uid()` stamps
+ * `orders.user_id`. A read-only cookie client is the fallback. Neither path can
+ * rotate or delete the browser's session during checkout. Guests still use the
+ * cookie-free public client. A service-role client is never valid here: it has
+ * no customer identity for `auth.uid()` to read.
  *
  * That warning is now load bearing rather than theoretical, because a
  * service-role client does exist in the tree and this file reaches it, one
@@ -53,7 +52,10 @@ function fieldFor(path: PropertyKey[]): CheckoutField | undefined {
   return detail === "name" || detail === "phone" || detail === "email" ? detail : undefined;
 }
 
-export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
+export async function placeOrder(
+  input: PlaceOrderInput,
+  customerAccessToken?: string | null,
+): Promise<PlaceOrderResult> {
   const parsed = placeOrderInputSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -101,7 +103,24 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { ok: false, ...checkoutFailure("RATE_LIMITED_ADDRESS") };
   }
 
-  const supabase = createPublicClient();
+  let supabase: SupabaseClient = createPublicClient();
+  if (
+    typeof customerAccessToken === "string" &&
+    customerAccessToken.length > 0 &&
+    customerAccessToken.length <= 4096
+  ) {
+    supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { accessToken: async () => customerAccessToken },
+    );
+  } else {
+    // A client that did not forward a token may still have a valid cookie.
+    // This fallback can read it but cannot rotate or clear it mid-checkout.
+    const session = await getStorefrontSession();
+    if (session) supabase = session.supabase;
+  }
+
   const { data, error } = await supabase.rpc("place_order", {
     p_payload: toPlaceOrderPayload(parsed.data),
     p_attempt_id: parsed.data.attemptId,

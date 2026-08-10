@@ -1,0 +1,49 @@
+-- 0016_pickup_code_search_path.sql
+-- Letting generate_pickup_code() find pgcrypto on Supabase.
+--
+-- THE BUG THIS FIXES, AND WHY EVERY TEST PASSED WHILE IT WAS THERE.
+-- ---------------------------------------------------------------------------
+-- The first order ever placed against a real Supabase project did not exist.
+-- place_order returned, over PostgREST, as anon:
+--
+--   42883  function gen_random_bytes(integer) does not exist
+--
+-- 0001 opens with `create extension if not exists pgcrypto`, and on a bare
+-- Postgres that installs pgcrypto into `public`, where every function pinned
+-- to `set search_path = public` can see it. On Supabase pgcrypto is already
+-- installed before the first migration runs, into the `extensions` schema, so
+-- that line is a no-op that quietly leaves gen_random_bytes somewhere nothing
+-- in these migrations is looking.
+--
+-- generate_pickup_code() is the only caller. It sets no search_path of its own
+-- and it is not SECURITY DEFINER, so it runs on whatever path its caller left
+-- behind, which is `public` alone whenever place_order calls it. That is why
+-- the failure surfaced at checkout rather than anywhere earlier: the pickup
+-- code is generated inside the one transaction that creates an order, so the
+-- whole order failed on it.
+--
+-- WHY A SEARCH PATH AND NOT A SCHEMA QUALIFIER.
+-- ---------------------------------------------------------------------------
+-- Writing `extensions.gen_random_bytes(2)` fixes Supabase and breaks everything
+-- else, because on a bare Postgres, on PGlite, and on a self-hosted install
+-- there is no `extensions` schema and pgcrypto is in `public`. A search path
+-- naming both is correct in both places: Postgres silently ignores an entry on
+-- the path that does not resolve to a schema, so the same function works
+-- wherever the extension happens to live.
+--
+-- ALTER rather than CREATE OR REPLACE, so the body stays stated once, in 0001,
+-- and so this file cannot drift from it. It also leaves the ACL alone, which
+-- matters after 0015: this function is not granted to anon and re-creating it
+-- is a chance to lose that by accident.
+--
+-- WHAT THE HARNESS WAS MISSING, WHICH IS THE SAME SHAPE AS 0015.
+-- ---------------------------------------------------------------------------
+-- tests/sql/harness.ts hands PGlite the pgcrypto module and lets 0001 create
+-- the extension, so it landed in `public` and 38 place-order tests generated
+-- pickup codes happily. The harness now installs pgcrypto into `extensions`
+-- before the migrations run, exactly as Supabase does, and those tests fail
+-- without this file. Every platform behaviour the harness does not reproduce
+-- is a class of bug it cannot see, and this is the second one found by
+-- applying the migrations to a real project rather than by running the suite.
+
+alter function generate_pickup_code() set search_path = public, extensions;

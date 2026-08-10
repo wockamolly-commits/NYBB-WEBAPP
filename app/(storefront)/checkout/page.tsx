@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CheckoutView } from "@/components/checkout/CheckoutView";
 import { getStorefrontMenu } from "@/lib/menu";
 import { getPickupSlots } from "@/lib/slots/reader";
+import { getCurrentCustomer, getCustomerProfile } from "@/lib/auth/session";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -22,9 +23,11 @@ export const metadata: Metadata = {
  * kitchen's time that somebody else has already taken.
  */
 export default async function CheckoutPage() {
-  const [{ categories }, slots] = await Promise.all([
+  const [{ categories }, slots, customer, profile] = await Promise.all([
     getStorefrontMenu(),
     getPickupSlots(),
+    getCurrentCustomer(),
+    getCustomerProfile(),
   ]);
 
   return (
@@ -35,7 +38,17 @@ export default async function CheckoutPage() {
         order, so the time you choose is the time your wings are ready.
       </p>
 
-      <CheckoutView categories={categories} slots={slots} />
+      <CheckoutView
+        categories={categories}
+        slots={slots}
+        signedIn={Boolean(customer)}
+        initialDetails={{
+          name: profile?.displayName ?? "",
+          phone: profile?.phone ?? "",
+          email: customer?.email ?? "",
+          notes: "",
+        }}
+      />
     </div>
   );
 }

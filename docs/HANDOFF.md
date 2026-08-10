@@ -1,4 +1,4 @@
-# Handoff, 2026-08-07 (updated for the Supabase project, and the grant hole applying it found)
+# Handoff, 2026-08-10 (Phase 2 Workspace RBAC and order operations)
 
 Continuation prompt for a fresh session on `C:\dev\nybb-order`.
 
@@ -20,8 +20,11 @@ ranking.
 
 ## Where things stand
 
-**Phase 0 is complete, and Phase 1 steps 1 to 7 have landed.** `npm run build`, `npm run lint` and
-`npm test` (327 tests in 17 files) are green.
+**Phase 0 and Phase 1 are complete, including the live customer OTP smoke test. Phase 2 has
+started.** `npm run build`, `npm run lint` and `npm test` (388 tests in 27 files) are green. The
+customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
+verified against staging. Garden Bloc, IT Park, Lahug is the owner-selected pilot branch. The
+remaining owner blockers are its real weekday hours and kitchen capacity.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -42,7 +45,9 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0015` are written and applied. Spec section 6 is the design and **section 6.6
+- `supabase/migrations/0001` to `0022` are written, pass the local migration suite, and are applied
+  to staging. `0022` still needs its focused staging smoke test.
+  Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
 - `lib/menu/` is the source-agnostic menu reader added in Phase 1. `getStorefrontMenu()` returns
@@ -52,7 +57,7 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  127 of the 327 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  151 of the 388 tests live there. **Read trap 14 before trusting a green run about grants:** the
   harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
@@ -79,6 +84,11 @@ browser pane about anything that waits for a frame.
     no prices. `components/site/HeatScale.tsx` is now a priced list of five rows, horizontal at
     every width, and it keeps the site's only authored animation because it is where somebody is
     choosing. Both rules are recorded in `DESIGN.md` under Named Rules.
+
+    **Superseded.** `HeroHeat.tsx` no longer exists. Splitting by job kept two heat surfaces on one
+    page, and a later pass cut the hero one entirely: the shape was not the problem, the
+    restatement was. The hero now carries the mural instead (`components/site/HeroWall.tsx`) and
+    `DESIGN.md` records The One Heat Surface Per Page Rule in place of The Two Heat Surfaces Rule.
   - **Short viewports key on height, never on width.** A landscape phone at 844x390 is past every
     width breakpoint while having under 300px below the header, so a width-keyed rule hands it the
     desktop treatment and put the primary CTA 113px below the fold. The hero's short-viewport rules
@@ -94,9 +104,16 @@ browser pane about anything that waits for a frame.
   - The hero poster is fetched once, not twice: the still stays mounted under the video instead of
     the video carrying a `poster` attribute of its own.
 
-**The Supabase project exists and 0001 to 0015 plus the seed are applied to it.** Project ref
+**The Supabase project exists and 0001 to 0022 plus the seed are applied to it. Migration 0022
+still needs its focused staging smoke test.** Project ref
 `ktltawglqblcqduavcre`, region `ap-southeast-1`. `.env.local` holds the URL, the anon key, the
 service role key and `SUPABASE_DB_URL`, and is gitignored.
+
+Codex worktrees do not inherit ignored files. `npm run dev` therefore runs
+`scripts/link-worktree-env.mjs` first. When `.env.local` is missing, it creates a hard link to the
+primary Git worktree's ignored file, with a copy fallback for filesystems that cannot hard-link.
+It never prints credential values. Keep using `npm run dev` rather than calling `next dev`
+directly, or sign-in can appear disconnected in a new worktree.
 
 **Applying it immediately found a real hole, which is the entire argument for doing it before step
 8.** See migration `0015` and trap 14. Summary: every function in `public` was executable by `anon`,
@@ -136,32 +153,20 @@ is generated; transform a copy. There is no `psql` on this machine.
   `lib/catalog/`, loading `/menu` from the production build, finding it in the server-rendered HTML,
   and then restoring it by re-running the seed. Both halves matter: the static fallback renders an
   identical page, so seeing a menu proves nothing by itself.
-- `get_pickup_slots` returns `unavailableReason: "no_branch"`. Correct, and the honest state.
+- On 2026-08-10 the owner selected Garden Bloc as the pilot and authorized a temporary staging
+  schedule. Garden Bloc is active and accepting orders from 11:00 to 22:00 daily, using the
+  existing defaults of 20 minutes preparation, 15-minute windows and six orders per window. An
+  anonymous PostgREST call returned 27 windows during the configured hours. This is a staging
+  assumption, not confirmed production hours or capacity.
 - `rate_limit_hit` returns **HTTP 401, `42501 permission denied`** to `anon`, and is callable by
   `service_role`. That is the fix in `0015` proven at the PostgREST layer rather than in `pg_proc`.
 
 Round trip latency to `ap-southeast-1` was 120ms to 530ms per RPC from here.
 
-**An agent still cannot create a project**, which matters for the second one (production, per
-section 25). Creating it needs one of three things, and none is available to a session running
-here:
-
-- the Supabase MCP connector, which is **not authorized** in this environment and cannot be
-  authorized from a non-interactive session, because the OAuth flow needs a browser and a human;
-- `npx supabase login`, which is interactive for the same reason. **The CLI itself is present
-  (2.111.0 via `npx`), so this is an authorization problem and not a tooling one**;
-- a `SUPABASE_ACCESS_TOKEN` in the environment, which is not set. There is no `.env.local`, only
-  `.env.example`.
-
-It should stay that way. The project lives in the owner's account, a database password has to be
-chosen and stored, and section 25 wants two projects, which is a billing decision. **This is the
-owner's action, and the handoff's job is to make it a five minute one rather than to work around
-it.** See "Creating the project" below for the exact steps and the exact commands that follow.
-
-**When the project should be created: now, before step 8.** Everything through the tracking page
-was buildable without one, because PGlite runs the real migrations and the storefront falls back to
-the static catalog. Customer email OTP is the first thing that cannot be: Supabase Auth is the
-thing being integrated, so there is nothing to write against.
+**The staging project and `.env.local` now exist.** Creating the second project for production is
+still the owner's action because it lives in the owner's Supabase account and is a billing choice.
+The procedure below remains useful for that second project. Customer OTP and browser-to-PostgREST
+smoke tests are complete on staging, including Super Admin staff sign-in.
 
 Two more reasons not to leave it later than that:
 
@@ -170,18 +175,19 @@ Two more reasons not to leave it later than that:
   because `anon`, `authenticated` and `auth.uid()` are shims there. Seven functions are now granted
   to `anon`, two of them (`place_order`, `get_order_by_tracking`) doing real work with real
   consequences, and none has ever run as a real anonymous role.
-- **The checkout round trip has never happened.** `place_order` is proven against Postgres and the
-  Server Action is proven at its boundary, but no request has gone browser to PostgREST to Postgres
-  and back. That is the seam where a wrong argument name or a missing grant hides.
+- **The authenticated checkout round trip has not been smoke-tested.** `place_order` is proven
+  against Postgres and the Server Action is proven at its boundary, but the full signed-in request
+  still needs the dashboard email template and an active test pickup window.
 
 **Creating the project does not need the section 28 answers.** Apply the migrations and the seed,
-and the site stays exactly as honest as it is now: `store_hours` is empty, all nine branches are
-`is_active = false`, and every surface says "Pickup times are not open yet". The owner's answers
-are what flip a branch on, not what create a database. **This retires "do not apply the
+and the default state stays honest: `store_hours` is empty, all nine branches are
+`is_active = false`, and every surface says "Pickup times are not open yet". Garden Bloc is the
+selected pilot. Staging now carries a temporary 11:00 to 22:00 daily override so checkout can be
+tested, but production must wait for confirmed hours and capacity. **This retires "do not apply the
 migrations" below**, which was written when there was nowhere to apply them to. Two projects
 (staging and production) if budget allows, per spec section 25.
 
-### Creating the project, and applying 0001 to 0014 plus the seed
+### Creating a project, and applying the migrations plus the seed
 
 **Steps 1 and 2 are the owner's and cannot be delegated to a session.** Everything from step 3 is a
 command an agent can run once the values in step 2 exist.
@@ -206,11 +212,11 @@ command an agent can run once the values in step 2 exist.
    ```
 
    Run it with `--dry-run` first. **`--include-all` is not optional here and this is the one open
-   risk in this procedure.** These migrations are numbered `0001` to `0014`, not in the CLI's usual
+   risk in this procedure.** These migrations are numbered `0001` to `0022`, not in the CLI's usual
    14-digit timestamp format, so the remote history table will contain none of them and the CLI's
    default is to push only what it recognises as new. This was not provable from here: it needs a
    reachable Postgres, Docker was not running and there is no `psql` on this machine. **Check the
-   dry run output names all fourteen files, in order, before running it for real.**
+   dry run output names all sixteen files, in order, before running it for real.**
 4. **Apply the seed.** There is no `psql` on this machine and `--include-seed` reads its path from a
    `config.toml` that this repo deliberately does not have, so the shortest honest route is to paste
    `supabase/seed.sql` into the dashboard SQL editor. It is 284 lines and it is an upsert
@@ -314,11 +320,11 @@ Spec section 27. In order:
    - **A window has to fit entirely inside opening hours**, tested at its start and one second
      before its end, and the horizon bounds when a customer may *collect*, so the last window ends
      at the horizon rather than starting there.
-   - **The empty state is the feature today.** `unavailableReason` is one of `no_branch`,
+   - **The empty state is deliberate.** `unavailableReason` is one of `no_branch`,
      `no_hours`, `not_accepting`, `closed_now` or `fully_booked`, and the screen says which. Two of
      those are the expected state of this project rather than faults, so the copy reads as "not
-     open for this yet" and points at the branch phone numbers. What renders right now is
-     "Pickup times are not open yet", because no branch is active.
+     open for this yet" and points at the branch phone numbers. Staging now returns Garden Bloc
+     windows under the temporary schedule described above.
    - **A full window stays on screen and goes flat**, per spec section 10 N1. A window that
      vanishes reads as a broken page; a window visibly taken reads as a busy shop.
    - `/checkout` is half a screen and says so. Name, phone and payment land with `place_order`,
@@ -384,10 +390,11 @@ Spec section 27. In order:
      reason, and the page says something different for each.
    - **It reads the snapshots, never the menu.** A rename cannot rewrite what a placed order says
      it was, which is what the `*_snapshot` columns in 0005 are for. Tested.
-   - **The whole status ladder is written, though only `pending` is reachable.** Nothing can move
-     an order until the staff board lands in Phase 2. The copy exists now because the copy is the
-     part that needs thinking about, and because a page handling only the status it can currently
-     reach would render an empty box on the first day the board works.
+   - **The whole status ladder updates live.** Migration `0021` emits a data-free public Broadcast
+     signal on the guest order's unguessable tracking-token topic. The signal refreshes the Server
+     Component, which reads the full payload again through `get_order_by_tracking()`. Signed-in
+     account links subscribe through their existing RLS-protected order row. Both keep a
+     20-second polling fallback for a dropped socket.
    - `/order/[code]` was measured at 375 and 1280 against the production build with a fixture in
      place of the reader. The step ladder needed a responsive pass: four labels in 12px caps do not
      fit four columns at 375, and 12px is the floor, so the phone gets the four bars plus "Step 3
@@ -433,23 +440,114 @@ Spec section 27. In order:
    - **Untested against a real PostgREST**, like everything else here. What needs proving on the day
      the project exists is that `service_role` may call `rate_limit_hit` and `anon` may not.
 
-8. **Customer email OTP**, the last step of Phase 1. **This one needs a Supabase project**, unlike
-   everything before it.
+8. ~~**Customer email OTP**, the last step of Phase 1.~~ **Done and smoke-tested.** The Supabase
+   email body uses `{{ .Token }}` and Mailtrap Sandbox delivered the six-digit code. Sign-in,
+   sign-out, redirects, account rows and profile rows all worked end to end.
 
-   - `lib/rate-limit/` is ready for the OTP limit: `withinAddressLimit` takes the action as a
-     namespace, so ordering too fast cannot also block asking for a sign-in code. Spec section 22
-     item 6 wants the franchise form covered too.
+   - OTP request and verification limits reuse `withinAddressLimit` under independent hashed
+     email namespaces, so ordering too fast cannot block asking for a sign-in code and one email
+     cannot fill another email's bucket.
 
-   - **Wire the access token through `placeOrder` at the same time.** Today every order is a guest
-     order, because `app/actions/checkout.ts` calls the RPC with the cookie-free anon client. Spec
-     section 14 is specific: the action takes the token as an argument and builds a client with it,
-     so `auth.uid()` inside `place_order` stamps `orders.user_id`. Do not reach for a service-role
-     client to solve it, or every order becomes a guest order placed with a key the storefront has
-     no business holding.
-   - `get_order_by_tracking` already accepts a signed-in owner without a token, so order history
-     works the moment sign-in does.
-   - Configure the Supabase Magic Link, Confirm Signup and Invite templates to show `{{ .Token }}`
-     and drop `{{ .ConfirmationURL }}`, per spec section 14.
+   - The browser forwards a fresh access token to `placeOrder`; the action builds a stateless
+     authenticated Supabase client, with a read-only cookie fallback. `auth.uid()` inside
+     `place_order` now stamps `orders.user_id`, and a SQL test proves it. No service-role client
+     ever performs the order RPC.
+   - `/account` carries saved pickup details and signed-in order history. History links omit the
+     guest tracking token because `get_order_by_tracking` accepts the signed-in owner.
+   - `CartSync` merges a carried-in guest cart once on sign-in, then keeps the account cart in
+     sync without resurrecting deleted lines or leaking one account's cart into another on a
+     shared phone.
+   - `proxy.ts` refreshes both customer and staff sessions while preserving the nonce-based CSP.
+     The cookie families remain distinct. Storefront session reads prefer the customer family and
+     fall back to the staff family, so Workspace users remain signed in without duplicating tokens.
+
+## Phase 2 started: staff boundary and workspace shell
+
+- `/login` is now the only OTP entry point. It checks the verified email against the configured
+  Super Admin and active staff profiles, then writes either the customer cookie family or the
+  isolated `nybb-staff-auth` family. Authorized accounts go to the Workspace. Unauthorized
+  accounts remain customers, and `/workspace/login` redirects to the regular login page.
+- A signed-in customer who manually enters `/workspace` passes through `/auth/workspace`. That
+  route verifies the Auth user, rechecks current database access, transfers only an authorized
+  session into the Workspace cookie family, and returns everyone else to `/account` with a denial
+  notice.
+- `lib/staff/roles.ts` defines cashier, kitchen and manager defaults. Effective permissions are
+  role defaults plus the existing per-person override rows.
+- `lib/staff/session.ts` is the staff data access layer. Every workspace request verifies the Auth
+  user and re-reads the active profile plus overrides through the staff session and RLS. The
+  service-role client is not used for workspace page data.
+- Migration `0017_staff_email_access.sql` joins `profiles` to `auth.users` for the pre-OTP email
+  check. It revokes Supabase's explicit default function grants from `anon` and `authenticated`,
+  then grants only `service_role`. The SQL suite proves those grants and the active-only behavior.
+- The one Super Admin is bootstrapped from `SUPER_ADMIN_EMAIL` after OTP verification. The profile
+  write records an audit row. There is still no in-app path to create another admin.
+- `stevenvillacampa@gmail.com` is configured as the staging Super Admin. On 2026-08-10 its OTP was
+  verified through the real staff form, `/workspace` rendered with no error overlay, the Auth email
+  was confirmed, and the active `admin` profile plus `staff.super_admin_bootstrapped` audit row were
+  verified directly in staging.
+- `/workspace` has its own dark, landscape-friendly chrome and live counts for New, Preparing,
+  Ready and Claimed. It deliberately inherits none of the storefront mural, footer, cart or
+  customer navigation.
+- Browser verification passed at 375 by 812 and 1024 by 768. `/workspace` redirects to staff login
+  without a staff cookie, the login has no horizontal overflow or framework overlay, the public
+  home still loads, and Chromium reported no console errors.
+- `/workspace/orders` now renders New, Preparing, Ready and Claimed today. It subscribes to order
+  changes through Supabase Realtime and retains a 20-second polling fallback.
+- `/workspace/orders/history` is protected by `orders:view` and reads through the staff session.
+  Migration `0022` independently limits direct reads to the staff member's allowed branch. The
+  page includes today's closed orders, date and status filters, bounded customer search, test
+  badges, item snapshots, closure details, and paid totals that exclude test orders. It never
+  selects pickup codes or tracking tokens.
+- Migration `0018_staff_order_ops.sql` adds one locked, idempotent transition RPC. Start records
+  accepted and preparing events together, Ready stamps the kitchen milestone, and Claim verifies
+  the pickup code while capturing a due counter payment. Branch scope, explicit permission denial,
+  online payment gating, status events and audit rows are all enforced inside the transaction.
+- Seven focused SQL tests cover the grant boundary, replay safety, payment gate, permission
+  override, branch scope, pickup-code failure and counter-payment claim.
+- Staging order `NY-VFY248` is an `is_test=true` counter order created without activating a branch.
+  The real staff form moved it through Start, Ready and Claim with no browser console errors. It is
+  now Claimed and Paid at Counter. Direct database verification found all four lifecycle stamps,
+  the initial placement plus four transition events, and the three attributed staff audit rows.
+  The browser review also caught that test rows lacked a visible badge; the board now renders one.
+- Migration `0021_order_tracking_realtime.sql` adds customer-safe status broadcasts. It sends no
+  order or customer data, only a change signal, and its trigger function is not executable by any
+  application role. Staging test order `NY-RTM234` moved through Start, Ready and Claim in the
+  Workspace while an already-open guest tracking page followed each transition in about two
+  seconds without a refresh. Both browser consoles stayed clean.
+- Migration `0022_staff_authorization_hardening.sql` closes the direct Data API bypass behind the
+  Workspace UI. RLS now enforces resolved permissions and branch scope, owner and catalog writes
+  stay closed until an audited RPC exists, legacy default privileges are revoked for future
+  objects, and configured Super Admin rotation is atomic with its audit rows. It also pins the
+  tracking trigger to `pg_catalog`. Role-switched PGlite tests prove the order and menu policies.
+  This migration is locally green and applied to staging. Its focused smoke test is still pending.
+- Migration `0019_workspace_access_admin.sql` adds audited list and change RPCs for Workspace
+  access. Only an active admin can execute their logic. Anonymous execution and direct
+  authenticated writes to `profiles` are denied. Self-demotion and changes to another admin are
+  rejected in the database.
+- `/workspace/team` is visible only to the configured Super Admin. It grants cashier, kitchen or
+  manager access to an existing Auth account, changes roles, revokes access and restores access.
+  A person without an Auth account must sign in once through the regular website before they can
+  be granted access.
+- Staging and local migration history now continue through `0022`. Direct database verification
+  confirms the two admin RPCs are executable by `authenticated`, not by `anon`, and that
+  `authenticated` no longer has direct `profiles` update privilege.
+- The first live Team-page load caught a Supabase-only type mismatch: `auth.users.email` is
+  `varchar`, while `admin_list_workspace_access()` promises `text`. Migration `0020` adds the
+  explicit cast, and the PGlite Auth shim now uses `varchar(255)` so the harness reproduces the
+  production type. The fixed Team page lists the configured Super Admin with no current overlay.
+- The regular `/login?next=/workspace` flow sends the configured Super Admin to the Workspace.
+  The storefront now recognizes that isolated staff session as the same signed-in account. It
+  does not copy the refresh token into the customer cookie family, and Workspace authorization
+  continues to use only the staff family plus a fresh database role check.
+- The storefront identity control says Workspace for active staff and admins, Account for regular
+  customers, and Sign in for guests. `/workspace/profile` gives staff and admins a protected view
+  of their own email, role, branch access, and resolved permissions.
+- Workspace landing and navigation now follow resolved permissions. Kitchen staff land on Orders,
+  staff with neither dashboard nor order visibility land on Profile, and the layout hides links a
+  role cannot open. This prevents the former `/workspace` self-redirect loop for Kitchen users.
+
+Next, repeat the focused Workspace smoke test after migration `0022`, then continue
+with store availability and hours, and the audit log.
 
 ## Things earlier sessions learned the hard way
 
@@ -572,11 +670,11 @@ because each one costs a day if rediscovered.
 
 ## Do not
 
-- Do not invent answers to spec section 28. The pilot branch and the real weekday hours are still
-  unanswered and they block Phase 1. `store_hours` is deliberately empty, `branch_is_open_at()`
-  fails closed, and all nine branches are seeded `is_active = false`. The slot picker is now the
-  loudest place this shows: it renders "Pickup times are not open yet" on every visit, and that is
-  it working, not it failing. Seed a branch in a test if you need windows, never in the seed.
+- Do not invent answers to spec section 28. Garden Bloc is the selected pilot branch, but its real
+  weekday hours and kitchen capacity remain unanswered. Staging has a temporary 11:00 to 22:00
+  daily override authorized by the owner for testing. Do not present that assumption as confirmed
+  or promote it to production. The seed deliberately keeps `store_hours` empty and all nine
+  branches inactive, so a fresh environment fails closed until it is explicitly configured.
 - Do not add a TypeScript implementation of the slot grid, for the same reason there is only one
   place that adds money up. `get_pickup_slots()` is the grid, `place_order` books against it, and
   `lib/slots/` only formats what it returns.
@@ -585,23 +683,26 @@ because each one costs a day if rediscovered.
 - Do not hand-edit `supabase/seed.sql`. Change `lib/catalog/` and run `npm run build:seed`.
 - Do not invent a Supabase project to get around a failing test: `npm test` is the verification
   loop and it needs no project. **The old "do not apply the migrations" rule is retired**, and the
-  procedure above replaces it: the moment the owner creates the project, applying 0001 to 0014 and
+  procedure above replaces it: the moment the owner creates the project, applying all migrations and
   the seed is the first thing to do.
 - Do not use `createAdminClient()` for anything a customer's identity matters to. It bypasses RLS
   and has no `auth.uid()` at all, so using it for `place_order` would not make orders anonymous by
-  accident, it would make them anonymous by definition. Its one caller today is the rate limiter,
-  which is what 0010 granted `rate_limit_hit` to `service_role` for. Step 8 forwards the customer's
-  access token instead, per spec section 14.
+  accident, it would make them anonymous by definition. Its callers are limited to server-only
+  rate limiting, staff access preparation and the best-effort Auth dashboard mirror. Checkout
+  forwards the customer's access token instead, per spec section 14.
 - Do not let a rate limiter fail closed. Spec section 22 item 6 and 0008's own comment both require
   fail open, and `lib/rate-limit/limiter.ts` returns `true` on every error path for that reason. A
   limiter that takes ordering down has done more damage than the abuse it stopped.
 - Do not bucket an unreadable address into a shared "unknown" key, and do not skip the `isIP`
   validation. The first fills one bucket and refuses everybody in it; the second lets a caller add a
   permanent row to `rate_limits` per request, since nothing prunes that table.
-- Do not draw the heat ramp twice on one page. A level keeps its swatch everywhere, but the *form*
-  is once per page: the hero strip states the scale and the band prices it. The band owns the site's
-  one authored animation because it is where somebody is choosing, and the hero strip is
-  deliberately still. Both rules are in `DESIGN.md`.
+- Do not draw the heat ramp twice on one page, and note that "twice in two different shapes" still
+  counts as twice. This gotcha used to say the opposite: that the hero strip states the scale and
+  the band prices it, so two surfaces were fine as long as their forms differed. The strip has since
+  been removed outright. Two drawings of one fact is a repeat whatever the shapes are, and the
+  second surface is always the one further from the decision, so it is the one to cut. The landing
+  page draws the ramp once, in the band, which is where somebody is choosing and which owns the
+  site's one authored animation. `DESIGN.md` carries this as The One Heat Surface Per Page Rule.
 - Do not key a short-viewport rule on width. A landscape phone at 844x390 is past every width
   breakpoint with under 300px of usable height, so width rules hand it the desktop treatment and
   push the CTAs off the screen. Use `max-height`.
