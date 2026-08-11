@@ -79,6 +79,44 @@ describe("audit detail redaction", () => {
     });
   });
 
+  /**
+   * The one value here that is written today rather than guarded against.
+   * The access-change and Super Admin provisioning RPCs record to_jsonb() of
+   * the profile row, so a staff member's number reached the screen on every
+   * entry about their account. Masking it was the owner's call: it is not a
+   * credential, and what the trail still says is that the change happened,
+   * who made it, and to whom.
+   */
+  it("masks a staff phone number in a real access-change diff", () => {
+    expect(
+      redactAuditDetail({
+        before: {
+          role: "staff",
+          staff_role: "cashier",
+          display_name: "Ana Reyes",
+          phone: "09170000001",
+          is_active: true,
+        },
+        after: { role: "staff", staff_role: "manager", is_active: true },
+      }),
+    ).toEqual({
+      before: {
+        role: "staff",
+        staff_role: "cashier",
+        display_name: "Ana Reyes",
+        phone: "[redacted]",
+        is_active: true,
+      },
+      after: { role: "staff", staff_role: "manager", is_active: true },
+    });
+  });
+
+  it("masks a phone number whatever the column is called", () => {
+    expect(
+      redactAuditDetail({ customer_phone: "09170000002", contact_phone: "09170000003" }),
+    ).toEqual({ customer_phone: "[redacted]", contact_phone: "[redacted]" });
+  });
+
   it("leaves the fields an auditor actually reads", () => {
     const diff = { from: "ready", to: "claimed", counterPaymentCaptured: true };
     expect(redactAuditDetail(diff)).toEqual(diff);

@@ -272,10 +272,13 @@ Phase 2 so far:
   allowed by the database. It now calls `current_staff_has_permission()`.
 - `/workspace/audit` is the protected trail, gated on `audit:view` and scoped
   again by RLS underneath. It filters by action, target id and recorded date,
-  pages by keyset, names the actor and the branch, and redacts any diff field
-  whose key names a credential before the page sees it. Nothing writes one
-  today; the redaction is there because `diff` is open-ended `jsonb` and the
-  next RPC to log a row it changed will carry whatever columns that row has.
+  pages by keyset, names the actor and the branch, and redacts sensitive diff
+  fields before the page sees them. Two kinds. No credential is written into a
+  diff today; that half of the rule exists because `diff` is open-ended `jsonb`
+  and the next RPC to log a row it changed will carry whatever columns that row
+  has. A staff phone number was written, because the access-change RPCs record
+  the whole profile row, and the owner chose on 2026-08-11 to mask it. The
+  entry still says the change happened, who made it, and to whom.
 
 Next:
 

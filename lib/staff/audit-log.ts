@@ -39,12 +39,27 @@ export type AuditLogPage = {
 };
 
 /**
- * Nothing writes a credential into a diff today. This is not a claim that
- * nothing ever will: `diff` is `jsonb` and a future RPC that logs a row it
- * changed will carry whatever columns that row has. The pickup code, the
+ * Values that never reach the audit screen, for two different reasons.
+ *
+ * **Credentials.** Nothing writes one into a diff today. That is not a claim
+ * that nothing ever will: `diff` is `jsonb` and a future RPC that logs a row
+ * it changed will carry whatever columns that row has. The pickup code, the
  * tracking token, the invitation token hash and the push keys are the values
- * in this schema that must never reach a screen, so they are named here and
- * the redaction runs before the page ever sees the object.
+ * in this schema that must never be readable, so they are named here and the
+ * redaction runs before the page sees the object.
+ *
+ * **A phone number.** This one is written today. The access-change and Super
+ * Admin provisioning RPCs record `to_jsonb()` of the profile row, which
+ * carries `phone`, so a staff member's number appeared in the detail of any
+ * entry about their account. It is not a credential and an audit trail that
+ * hides what changed is not one, so this was a judgement call rather than a
+ * defect, and the owner made it: mask it. What survives is that the change
+ * happened, who made it, and to whom, which is what the trail is for.
+ *
+ * Note what this does not cover. An email address is not masked, because no
+ * diff in this schema carries one; `profiles` has no email column and the
+ * address lives in the Auth directory. If a future RPC starts logging one,
+ * decide then rather than assuming the suffix rule below caught it.
  *
  * A denylist is the wrong default in general. It is the right one here because
  * the diff is deliberately open ended and an allowlist would quietly blank the
@@ -63,6 +78,7 @@ const REDACTED_KEYS = new Set([
   "p256dh",
   "auth_key",
   "authkey",
+  "phone",
 ]);
 
 const REDACTED = "[redacted]";
@@ -71,7 +87,8 @@ function isRedactedKey(key: string): boolean {
   const normalized = key.toLowerCase();
   return REDACTED_KEYS.has(normalized)
     || normalized.endsWith("_token")
-    || normalized.endsWith("_secret");
+    || normalized.endsWith("_secret")
+    || normalized.endsWith("_phone");
 }
 
 /** Walks the diff and blanks any value whose key names a credential. */
