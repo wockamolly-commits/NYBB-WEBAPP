@@ -11,7 +11,7 @@ export type WorkspaceOrder = {
   placedAt: string;
   pickupAt: string | null;
   customerArrived: boolean;
-  payment: { method: string; status: string } | null;
+  payment: { method: string; provider: string; status: string } | null;
   items: Array<{
     quantity: number;
     name: string;

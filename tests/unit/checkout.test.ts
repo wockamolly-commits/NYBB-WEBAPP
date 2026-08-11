@@ -24,6 +24,7 @@ const VALID: PlaceOrderInput = {
   branchSlug: "garden-bloc",
   pickupSlotStart: "2026-08-06T11:00:00+00:00",
   details: { name: "Steven Cruz", phone: "0906 440 5297", email: "", notes: "" },
+  paymentMethod: "counter",
   lines: [
     {
       itemSlug: "chicken-wings",
@@ -97,14 +98,14 @@ describe("what leaves the browser", () => {
     ]);
   });
 
-  it("pins the payment method rather than asking the caller for one", () => {
-    // Counter is the only rail the business runs. place_order refuses the rest
-    // while paymongo_enabled is false; this makes sure the question is never
-    // asked in the first place.
+  it("passes the requested payment method without accepting a price", () => {
+    // The database authorizes this against the current method flag. Keeping it
+    // in the payload makes the selected rail part of the same atomic order
+    // transaction as the price and pickup reservation.
     const payload = toPlaceOrderPayload(
       placeOrderInputSchema.parse({ ...VALID, paymentMethod: "gcash" }),
     );
-    expect(payload.payment_method).toBe("counter");
+    expect(payload.payment_method).toBe("gcash");
   });
 
   it("sends an omitted email and note as null rather than as an empty string", () => {

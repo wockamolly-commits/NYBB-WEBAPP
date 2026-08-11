@@ -57,6 +57,7 @@ export const placeOrderInputSchema = z.object({
     email: z.string().trim().max(160),
     notes: z.string().trim().max(500),
   }),
+  paymentMethod: z.enum(["counter", "qrph", "gcash", "maya", "card"]),
   lines: z.array(orderLineSchema).min(1).max(MAX_LINES),
 });
 
@@ -94,7 +95,7 @@ export type PlaceOrderPayload = {
   customer_phone: string;
   customer_email: string | null;
   notes: string | null;
-  payment_method: "counter";
+  payment_method: "counter" | "qrph" | "gcash" | "maya" | "card";
   pickup_slot_start: string;
   lines: {
     item_slug: string;
@@ -107,11 +108,9 @@ export type PlaceOrderPayload = {
 /**
  * The validated input, in the snake_case `place_order` reads.
  *
- * `payment_method` is pinned to counter here rather than taken from the
- * caller. Pay at the counter is the only rail the business is running, and
- * PayMongo stays dark behind its flag (spec section 17); the function refuses
- * anything else while the flag is off, and this makes sure the question is
- * never even asked.
+ * The client may name a payment rail, but it cannot authorize one. The
+ * `place_order` transaction and the payment trigger both check the enabled
+ * PayMongo method against the current database setting.
  */
 export function toPlaceOrderPayload(
   input: z.infer<typeof placeOrderInputSchema>,
@@ -122,7 +121,7 @@ export function toPlaceOrderPayload(
     customer_phone: input.details.phone,
     customer_email: input.details.email === "" ? null : input.details.email,
     notes: input.details.notes === "" ? null : input.details.notes,
-    payment_method: "counter",
+    payment_method: input.paymentMethod,
     pickup_slot_start: input.pickupSlotStart,
     lines: input.lines.map((line) => ({
       item_slug: line.itemSlug,

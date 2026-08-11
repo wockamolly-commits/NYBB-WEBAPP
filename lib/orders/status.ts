@@ -54,9 +54,19 @@ export type StatusCopy = {
   codeIsLive: boolean;
 };
 
-export function statusCopy(order: Pick<TrackedOrder, "status" | "timeline">): StatusCopy {
+export function statusCopy(
+  order: Pick<TrackedOrder, "status" | "timeline"> & Partial<Pick<TrackedOrder, "payment">>,
+): StatusCopy {
   switch (order.status) {
     case "pending":
+      if (order.payment?.method !== "counter" && order.payment?.status === "pending") {
+        return {
+          title: "Waiting for payment",
+          body: "Complete the online payment below. The kitchen receives this order after payment is confirmed.",
+          tone: "waiting",
+          codeIsLive: false,
+        };
+      }
       return {
         title: "Order received",
         body:
@@ -109,19 +119,28 @@ export function statusCopy(order: Pick<TrackedOrder, "status" | "timeline">): St
         title: "The branch could not take this order",
         body:
           order.timeline.rejectedReason ??
-          "The branch stopped this order. Nothing has been charged. Please " +
-            "call them and they will explain.",
+          "The branch stopped this order. Please call them and they will explain.",
         tone: "stopped",
         codeIsLive: false,
       };
 
     case "cancelled":
+      if (order.timeline.cancelledReason === "payment_timeout") {
+        return {
+          title: "Payment time ran out",
+          body:
+            order.payment?.status === "paid"
+              ? "Payment reached us after this order expired. Please call the branch with your order number."
+              : "Online payment was not completed in time, so this order was cancelled and the pickup slot was released.",
+          tone: "stopped",
+          codeIsLive: false,
+        };
+      }
       return {
         title: "Cancelled",
         body:
           order.timeline.cancelledReason ??
-          "This order was cancelled before it was cooked. Nothing has been " +
-            "charged.",
+          "This order was cancelled before it was cooked. Please call the branch if you need help.",
         tone: "stopped",
         codeIsLive: false,
       };
@@ -130,9 +149,7 @@ export function statusCopy(order: Pick<TrackedOrder, "status" | "timeline">): St
       return {
         title: "Not collected",
         body:
-          "This order sat at the counter past its window and was closed. " +
-          "Nothing has been charged. Please order again, or call the branch if " +
-          "you think this is wrong.",
+          "This order sat at the counter past its window and was closed. Please call the branch if you think this is wrong.",
         tone: "stopped",
         codeIsLive: false,
       };

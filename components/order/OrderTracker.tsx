@@ -5,6 +5,7 @@ import { dayLabel, formatSlotRange, localDateKey } from "@/lib/slots/format";
 import type { TrackedOrder } from "@/lib/orders/types";
 import { cn } from "@/lib/utils";
 import { CustomerArrivalButton } from "./CustomerArrivalButton";
+import { PaymentResume } from "./PaymentResume";
 
 /**
  * One order, on the customer's phone, somewhere between the car park and the
@@ -58,6 +59,10 @@ export function OrderTracker({
   const accent = ACCENT[copy.tone];
   const timezone = order.branch.timezone;
   const reached = stepIndex(order.status);
+  const awaitingOnlinePayment =
+    order.status === "pending" &&
+    order.payment?.method !== "counter" &&
+    order.payment?.status === "pending";
   const now = new Date().toISOString();
 
   return (
@@ -77,6 +82,14 @@ export function OrderTracker({
           <p className="text-nybb-bone/75 mt-3 max-w-prose leading-relaxed">
             {copy.body}
           </p>
+
+          {awaitingOnlinePayment ? (
+            <PaymentResume
+              shortCode={order.shortCode}
+              trackingToken={trackingToken}
+              totalCents={order.totalCents}
+            />
+          ) : null}
 
           {copy.codeIsLive ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
@@ -125,7 +138,7 @@ export function OrderTracker({
 
               Screen readers get every rung and its state at every width, from
               the sr-only labels, so the responsive part is purely visual. */}
-          {reached >= 0 ? (
+          {reached >= 0 && !awaitingOnlinePayment ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
               <ol className="grid grid-cols-4 gap-2">
                 {PICKUP_STEPS.map((step, index) => {
@@ -270,7 +283,7 @@ export function OrderTracker({
 
           <div className="mt-4 flex items-baseline justify-between gap-4">
             <span className="font-display heading-panel">
-              {order.payment?.status === "paid" ? "Paid" : "To pay"}
+              {order.payment?.status === "paid" ? "Paid" : awaitingOnlinePayment ? "Payment needed" : "To pay"}
             </span>
             <span className="font-mono-tabular text-nybb-orange text-2xl">
               {formatPeso(order.totalCents)}
@@ -280,6 +293,8 @@ export function OrderTracker({
           <p className="border-nybb-bone/15 text-nybb-bone/65 mt-4 border-t pt-4 text-sm leading-relaxed">
             {order.payment?.status === "paid"
               ? "Paid in full. Nothing to settle at the counter."
+              : awaitingOnlinePayment
+                ? "Complete QR Ph payment before the kitchen receives this order."
               : "Pay at the counter when you collect."}
           </p>
 

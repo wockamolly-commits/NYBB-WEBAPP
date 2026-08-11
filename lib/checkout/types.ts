@@ -29,6 +29,8 @@ export type CheckoutDetails = {
   notes: string;
 };
 
+export type CheckoutPaymentMethod = "counter" | "qrph" | "gcash" | "maya" | "card";
+
 export type PlaceOrderInput = {
   /**
    * A uuid minted once per checkout, in the browser, and sent again on every
@@ -40,6 +42,7 @@ export type PlaceOrderInput = {
   /** The `startsAt` of a window `get_pickup_slots` actually offered. */
   pickupSlotStart: string;
   details: CheckoutDetails;
+  paymentMethod: CheckoutPaymentMethod;
   lines: OrderLineInput[];
 };
 

@@ -111,10 +111,10 @@ describe("what the screen says at each step", () => {
     // And says something useful when staff gave none, rather than a blank.
     const bare = statusCopy({ status: "rejected", timeline: EMPTY_TIMELINE });
     expect(bare.body).toMatch(/call them/i);
-    expect(bare.body).toMatch(/nothing has been charged/i);
+    expect(bare.body).not.toMatch(/nothing has been charged/i);
   });
 
-  it("never leaves a stopped order sounding like a charge was taken", () => {
+  it("does not make payment claims for a stopped order", () => {
     for (const status of [
       "rejected",
       "cancelled",
@@ -122,8 +122,28 @@ describe("what the screen says at each step", () => {
     ] as OrderStatus[]) {
       const copy = statusCopy({ status, timeline: EMPTY_TIMELINE });
       expect(copy.tone, status).toBe("stopped");
-      expect(copy.body, status).toMatch(/nothing has been charged/i);
+      expect(copy.body, status).not.toMatch(/nothing has been charged/i);
     }
+  });
+
+  it("keeps an unpaid online order out of the kitchen story", () => {
+    const copy = statusCopy({
+      status: "pending",
+      timeline: EMPTY_TIMELINE,
+      payment: { method: "qrph", status: "pending", amountCents: 100, paidAt: null },
+    });
+    expect(copy.title).toMatch(/waiting for payment/i);
+    expect(copy.codeIsLive).toBe(false);
+  });
+
+  it("explains expiry without inventing the owner's refund policy", () => {
+    const copy = statusCopy({
+      status: "cancelled",
+      timeline: { ...EMPTY_TIMELINE, cancelledReason: "payment_timeout" },
+      payment: { method: "qrph", status: "paid", amountCents: 100, paidAt: "2026-08-11T00:00:00Z" },
+    });
+    expect(copy.body).toMatch(/after this order expired/i);
+    expect(copy.body).not.toMatch(/refund/i);
   });
 });
 

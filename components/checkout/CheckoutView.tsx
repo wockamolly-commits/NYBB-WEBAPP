@@ -5,6 +5,8 @@ import { useRef, useState, useTransition } from "react";
 import { placeOrder } from "@/app/actions/checkout";
 import { CustomerDetails, isDetailField } from "@/components/checkout/CustomerDetails";
 import { OrderPlaced } from "@/components/checkout/OrderPlaced";
+import { PendingPayment } from "@/components/checkout/PendingPayment";
+import { payOrder } from "@/app/actions/payment";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { clearCart } from "@/lib/cart/store";
@@ -16,6 +18,8 @@ import { storefrontAccessToken } from "@/lib/supabase/browser";
 import type { CheckoutDetails, CheckoutField, PlacedOrder } from "@/lib/checkout/types";
 import type { PickupSlots } from "@/lib/slots/types";
 import type { MenuCategory } from "@/lib/menu/types";
+import type { OnlineMethod } from "@/lib/paymongo/methods";
+import type { PayOrderResult } from "@/lib/paymongo/attach-result";
 
 /**
  * Checkout, screen four of the four in spec section 11.
@@ -48,11 +52,13 @@ export function CheckoutView({
   slots,
   initialDetails = EMPTY_DETAILS,
   signedIn = false,
+  paymentMethods,
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
   initialDetails?: CheckoutDetails;
   signedIn?: boolean;
+  paymentMethods: OnlineMethod[];
 }) {
   const router = useRouter();
   const { cart, loaded } = useCart();
@@ -62,6 +68,11 @@ export function CheckoutView({
     null,
   );
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{
+    order: PlacedOrder;
+    method: OnlineMethod;
+    result: PayOrderResult;
+  } | null>(null);
   const [submitting, startSubmitting] = useTransition();
 
   /**
@@ -85,6 +96,15 @@ export function CheckoutView({
   // The confirmation is checked before the cart is, and it has to be: placing
   // an order empties the cart, so the "nothing to check out" branch below would
   // otherwise replace the pickup code the moment it appeared.
+  if (pendingPayment) {
+    return (
+      <PendingPayment
+        order={pendingPayment.order}
+        method={pendingPayment.method}
+        initialResult={pendingPayment.result}
+      />
+    );
+  }
   if (placed) return <OrderPlaced order={placed} />;
 
   if (!loaded) {
@@ -112,6 +132,8 @@ export function CheckoutView({
   }
 
   const chosenSlot = slots.slots.find((slot) => slot.startsAt === selectedSlot);
+  const onlineMethod = paymentMethods.includes("qrph") ? "qrph" : null;
+  const paymentMethod = onlineMethod ?? "qrph";
   const timezone = slots.branch?.timezone ?? "Asia/Manila";
   const detailError =
     failure && isDetailField(failure.field)
@@ -137,6 +159,7 @@ export function CheckoutView({
         branchSlug: slots.branch?.slug ?? null,
         pickupSlotStart: selectedSlot,
         details,
+        paymentMethod,
         // Slugs and quantities. Not one price leaves this browser, because not
         // one price sent from a browser would be believed.
         lines: resolved.lines.map((line) => ({
@@ -155,7 +178,17 @@ export function CheckoutView({
         // a customer who navigates back finds a cart that was already sold.
         attempt.current = null;
         clearCart();
-        setPlaced(result.order);
+        if (onlineMethod) {
+          const payment = await payOrder({
+            shortCode: result.order.shortCode,
+            trackingToken: result.order.trackingToken,
+            paymentAttemptId: crypto.randomUUID(),
+            method: onlineMethod,
+          });
+          setPendingPayment({ order: result.order, method: onlineMethod, result: payment });
+        } else {
+          setPlaced(result.order);
+        }
         return;
       }
 
@@ -203,7 +236,12 @@ export function CheckoutView({
             details={details}
             onChange={setDetails}
             error={detailError}
-            disabled={submitting}
+            disabled={submitting || !onlineMethod}
+            paymentDescription={
+              onlineMethod
+                ? "Pay securely with QR Ph after you place the order. The kitchen receives it after payment is confirmed."
+                : "Online payment is not available yet. Orders cannot be placed until QR Ph is enabled."
+            }
           />
         </div>
       </div>
@@ -258,13 +296,15 @@ export function CheckoutView({
             tone="dark"
             size="lg"
             block
-            disabled={!selectedSlot || submitting}
+            disabled={!selectedSlot || !onlineMethod || submitting}
             className="mt-6"
           >
             {submitting
               ? "Placing the order"
               : selectedSlot
-                ? `Place order, ${formatPeso(resolved.subtotalCents)}`
+                ? onlineMethod
+                  ? `Continue to QR Ph, ${formatPeso(resolved.subtotalCents)}`
+                  : "QR Ph is not available yet"
                 : "Choose a pickup time"}
           </Button>
 
@@ -292,7 +332,7 @@ export function CheckoutView({
               What is worth saying here, next to a button carrying a peso
               figure, is only that pressing it does not charge anybody. */}
           <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
-            Nothing is charged now.
+            {onlineMethod ? "You will pay by QR Ph next." : "QR Ph must be enabled before checkout opens."}
           </p>
 
           {/* Full width and inset to the card's edges, so it reads as the

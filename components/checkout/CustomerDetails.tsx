@@ -45,12 +45,14 @@ export function CustomerDetails({
   onChange,
   error,
   disabled,
+  paymentDescription,
 }: {
   details: CheckoutDetails;
   onChange: (details: CheckoutDetails) => void;
   /** The last refusal, when it was about one of these fields. */
   error: { field: DetailField; message: string } | null;
   disabled: boolean;
+  paymentDescription: string;
 }) {
   function set<K extends keyof CheckoutDetails>(key: K, value: string) {
     onChange({ ...details, [key]: value });
@@ -171,16 +173,12 @@ export function CustomerDetails({
         </div>
       </div>
 
-      {/* Payment is stated rather than chosen, because there is exactly one
-          rail: pay at the counter on collection. Online prepay is built behind
-          paymongo_enabled and stays dark until the business is approved for it,
-          and a radio group with one option in it is a decision nobody is
-          making. */}
+      {/* A database flag selects the one live rail. There is no payment choice
+          until more than one approved method is actually offered. */}
       <p className="border-nybb-bone/15 mt-6 border-t pt-4">
         <span className="type-caps text-nybb-bone/55 block">Payment</span>
         <span className="text-nybb-bone/80 mt-1 block text-sm leading-relaxed">
-          Pay at the counter when you collect. Nothing is charged now, and
-          nothing is held on a card.
+          {paymentDescription}
         </span>
       </p>
     </section>

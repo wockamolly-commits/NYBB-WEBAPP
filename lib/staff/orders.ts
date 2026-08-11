@@ -9,7 +9,7 @@ const orderSelect = `
   id, short_code, status, is_test, customer_name, total_cents, notes, placed_at,
   customer_arrived_at, branch_id,
   pickup_slots ( slot_start ),
-  payments ( method, status ),
+  payments ( method, provider, status ),
   order_items (
     qty, item_name_snapshot, variation_label_snapshot,
     order_item_options ( name_snapshot, heat_percent_snapshot )
@@ -39,7 +39,7 @@ const rowSchema = z.object({
   placed_at: z.string(),
   customer_arrived_at: z.string().nullable(),
   pickup_slots: z.union([z.object({ slot_start: z.string() }), z.array(z.object({ slot_start: z.string() }))]).nullable(),
-  payments: z.union([z.object({ method: z.string(), status: z.string() }), z.array(z.object({ method: z.string(), status: z.string() }))]).nullable(),
+  payments: z.union([z.object({ method: z.string(), provider: z.string(), status: z.string() }), z.array(z.object({ method: z.string(), provider: z.string(), status: z.string() }))]).nullable(),
   order_items: z.array(itemSchema).nullable(),
 });
 
@@ -117,5 +117,8 @@ export async function getWorkspaceOrders(
 
   return [...(active.data ?? []), ...(claimed.data ?? [])]
     .map(toWorkspaceOrder)
-    .filter((order): order is WorkspaceOrder => order !== null);
+    .filter((order): order is WorkspaceOrder => order !== null)
+    // An online order is not work for the kitchen until the webhook confirms
+    // it. Counter orders retain the existing pending queue behaviour.
+    .filter((order) => order.payment?.provider !== "paymongo" || order.payment.status === "paid");
 }
