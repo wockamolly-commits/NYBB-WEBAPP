@@ -42,6 +42,10 @@ describe("migrations", () => {
       "0022",
       "0023",
       "0024",
+      "0025",
+      "0026",
+      "0027",
+      "0028",
     ]);
   });
 
@@ -522,6 +526,22 @@ describe("pickup slots and hours", () => {
     // Thursday 01:00 is still Wednesday's shift.
     expect(await at("2026-09-03 01:00+08")).toBe(true);
     expect(await at("2026-09-03 02:00+08")).toBe(false);
+  });
+
+  it("treats an equal open and close time as a real 24-hour day", async () => {
+    // Central Bloc is owner-confirmed 24/7. Equal times used to be rejected as
+    // a typo, which made every representation contain a fabricated closure.
+    await db.exec(`
+      insert into store_hours (branch_id, weekday, opens_at, closes_at)
+      values ('${branchId}', 4, '00:00', '00:00')
+    `);
+    const at = (iso: string) => scalar<boolean>(
+      db,
+      `select branch_is_open_at('${branchId}', timestamptz '${iso}')`,
+    );
+    expect(await at("2026-09-03 00:00+08")).toBe(true);
+    expect(await at("2026-09-03 12:34+08")).toBe(true);
+    expect(await at("2026-09-03 23:59+08")).toBe(true);
   });
 
   it("stay closed while the branch is inactive", async () => {

@@ -137,7 +137,7 @@ describe("reading an audit row", () => {
     target_table: "orders",
     target_id: "8f14e45f-ceea-4b7c-9c2f-2a1b3c4d5e6f",
     diff: { from: "ready", to: "claimed", pickup_code: "4821" },
-    branches: { short_name: "Garden Bloc" },
+    branches: { short_name: "Central Bloc" },
     actor: { display_name: "Ana Reyes", role: "staff" },
   };
 
@@ -148,7 +148,7 @@ describe("reading an audit row", () => {
       action: "order.claimed",
       targetTable: "orders",
       targetId: "8f14e45f-ceea-4b7c-9c2f-2a1b3c4d5e6f",
-      branchName: "Garden Bloc",
+      branchName: "Central Bloc",
       actorName: "Ana Reyes",
       actorRole: "staff",
       detail: { from: "ready", to: "claimed", pickup_code: "[redacted]" },
@@ -158,10 +158,10 @@ describe("reading an audit row", () => {
   it("reads an embedded relation whether it arrives as a row or an array", () => {
     const entry = toAuditLogEntry({
       ...row,
-      branches: [{ short_name: "Garden Bloc" }],
+      branches: [{ short_name: "Central Bloc" }],
       actor: [{ display_name: "Ana Reyes", role: "staff" }],
     });
-    expect(entry?.branchName).toBe("Garden Bloc");
+    expect(entry?.branchName).toBe("Central Bloc");
     expect(entry?.actorName).toBe("Ana Reyes");
   });
 

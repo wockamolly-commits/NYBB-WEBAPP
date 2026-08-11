@@ -28,9 +28,9 @@ export const branches: Branch[] = [
   },
   {
     slug: "garden-bloc",
-    name: "NYBB Hot Wings, Garden Bloc",
-    shortName: "Garden Bloc, IT Park",
-    addressLine: "Garden Bloc, Cebu IT Park, Lahug",
+    name: "NYBB Hot Wings, Central Bloc",
+    shortName: "Central Bloc, IT Park",
+    addressLine: "Central Bloc, Cebu IT Park, Lahug",
     city: "Cebu City",
     phones: ["0906-331-3631", "(032) 318-2405"],
     format: "street",

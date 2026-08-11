@@ -116,10 +116,18 @@ describe("branches", () => {
     }
   });
 
-  it("does not carry the closed Ayala Central Bloc location", () => {
+  it("does not carry the closed Ayala Sports Lounge location", () => {
     const haystack = JSON.stringify(branches).toLowerCase();
     expect(haystack).not.toContain("ayala");
-    expect(haystack).not.toContain("central bloc");
     expect(haystack).not.toContain("sports lounge");
+  });
+
+  it("uses the current Central Bloc branch name", () => {
+    const branch = branches.find((candidate) => candidate.slug === "garden-bloc");
+    expect(branch).toMatchObject({
+      name: "NYBB Hot Wings, Central Bloc",
+      shortName: "Central Bloc, IT Park",
+      addressLine: "Central Bloc, Cebu IT Park, Lahug",
+    });
   });
 });

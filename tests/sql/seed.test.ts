@@ -51,6 +51,24 @@ describe("seed", () => {
     expect(rows.rows.map((row) => row.slug)).toEqual(expected);
   });
 
+  it("uses the current Central Bloc branch name", async () => {
+    const result = await db.query<{
+      name: string;
+      short_name: string;
+      address_line: string;
+    }>(`
+      select name, short_name, address_line
+      from branches
+      where slug = 'garden-bloc'
+    `);
+
+    expect(result.rows[0]).toEqual({
+      name: "NYBB Hot Wings, Central Bloc",
+      short_name: "Central Bloc, IT Park",
+      address_line: "Central Bloc, Cebu IT Park, Lahug",
+    });
+  });
+
   // The pricing rule the spec calls the most likely place for a bug to hide,
   // checked end to end: every heat level, on every wing size, resolved by the
   // database, compared against what the storefront would show.

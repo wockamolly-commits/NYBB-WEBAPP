@@ -59,7 +59,7 @@ insert into branches (
   address_line, city, phones, sort_order
 ) values
   ('mango-avenue', 'NYBB Hot Wings, Mango Avenue', 'Mango Avenue', 'street', (select id from price_lists where slug = 'hot-wings-standard'), 'Gen. Maxilom Avenue (Mango Avenue)', 'Cebu City', array['0906-440-5297']::text[], 0),
-  ('garden-bloc', 'NYBB Hot Wings, Garden Bloc', 'Garden Bloc, IT Park', 'street', (select id from price_lists where slug = 'hot-wings-standard'), 'Garden Bloc, Cebu IT Park, Lahug', 'Cebu City', array['0906-331-3631', '(032) 318-2405']::text[], 1),
+  ('garden-bloc', 'NYBB Hot Wings, Central Bloc', 'Central Bloc, IT Park', 'street', (select id from price_lists where slug = 'hot-wings-standard'), 'Central Bloc, Cebu IT Park, Lahug', 'Cebu City', array['0906-331-3631', '(032) 318-2405']::text[], 1),
   ('shell-gorordo', 'NYBB Hot Wings, Shell Gorordo', 'Shell Gorordo', 'petrol', (select id from price_lists where slug = 'hot-wings-standard'), '839 Gorordo Avenue', 'Cebu City', array['0917-114-1392']::text[], 2),
   ('shell-cebu-country-club', 'NYBB Hot Wings, Shell Mobility Cebu Country Club', 'Shell Cebu Country Club', 'petrol', (select id from price_lists where slug = 'hot-wings-standard'), 'Gov. Cuenco Avenue, Kasambagan', 'Cebu City', array['0932-360-2916']::text[], 3),
   ('shell-north-gateway', 'NYBB Hot Wings, Shell North Gateway', 'Shell North Gateway', 'petrol', (select id from price_lists where slug = 'hot-wings-standard'), 'JP Rizal North Road, Labogon', 'Mandaue City', array['0906-538-1220']::text[], 4),
