@@ -4,6 +4,7 @@ import { PICKUP_STEPS, statusCopy, stepIndex } from "@/lib/orders/status";
 import { dayLabel, formatSlotRange, localDateKey } from "@/lib/slots/format";
 import type { TrackedOrder } from "@/lib/orders/types";
 import { cn } from "@/lib/utils";
+import { CustomerArrivalButton } from "./CustomerArrivalButton";
 
 /**
  * One order, on the customer's phone, somewhere between the car park and the
@@ -46,7 +47,13 @@ const ACCENT: Record<string, string> = {
   stopped: "text-nybb-bone",
 };
 
-export function OrderTracker({ order }: { order: TrackedOrder }) {
+export function OrderTracker({
+  order,
+  trackingToken,
+}: {
+  order: TrackedOrder;
+  trackingToken: string | null;
+}) {
   const copy = statusCopy(order);
   const accent = ACCENT[copy.tone];
   const timezone = order.branch.timezone;
@@ -84,6 +91,19 @@ export function OrderTracker({ order }: { order: TrackedOrder }) {
                 anywhere.
               </p>
             </div>
+          ) : null}
+
+          {order.status === "ready" && order.timeline.customerArrivedAt === null ? (
+            <CustomerArrivalButton
+              shortCode={order.shortCode}
+              trackingToken={trackingToken}
+            />
+          ) : null}
+
+          {order.status === "ready" && order.timeline.customerArrivedAt !== null ? (
+            <p className="bg-nybb-yellow text-nybb-ink mt-5 rounded-md px-4 py-3 text-sm leading-relaxed">
+              The counter knows you are here. Have your pickup code ready.
+            </p>
           ) : null}
 
           {/* The ladder is only drawn for an order that is still on it. A

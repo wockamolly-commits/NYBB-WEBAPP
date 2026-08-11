@@ -40,7 +40,13 @@ export default async function WorkspaceOrdersPage() {
       {orders ? (
       <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {columns.map((column) => {
-          const columnOrders = orders.filter(column.matches);
+          const columnOrders = orders
+            .filter(column.matches)
+            .sort((left, right) =>
+              column.key === "ready"
+                ? Number(right.customerArrived) - Number(left.customerArrived)
+                : 0,
+            );
           return (
             <section key={column.key} aria-labelledby={`orders-${column.key}`} className="min-w-0">
               <div className="mb-3 flex items-center justify-between">

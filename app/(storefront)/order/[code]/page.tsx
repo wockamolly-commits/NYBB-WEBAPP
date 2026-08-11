@@ -71,7 +71,10 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
             Keep this page. It carries the code the counter asks for, and it is
             the only copy of it.
           </p>
-          <OrderTracker order={lookup.order} />
+          <OrderTracker
+            order={lookup.order}
+            trackingToken={typeof token === "string" ? token : null}
+          />
         </>
       ) : null}
 

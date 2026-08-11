@@ -46,6 +46,7 @@ describe("migrations", () => {
       "0026",
       "0027",
       "0028",
+      "0029",
     ]);
   });
 
@@ -268,6 +269,7 @@ describe("migrations", () => {
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
+      "customer_mark_order_arrived",
       "get_order_by_tracking",
       "get_pickup_slots",
       "get_public_settings",
