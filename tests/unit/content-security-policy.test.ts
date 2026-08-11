@@ -66,10 +66,11 @@ describe("contentSecurityPolicy", () => {
     expect(csp).not.toContain("paymongo");
   });
 
-  it("admits PayMongo to connect-src and frame-src once enabled", () => {
+  it("admits PayMongo to the required browser directives once enabled", () => {
     const csp = contentSecurityPolicy("n", { ...PROD, paymentsEnabled: true });
     expect(directive(csp, "connect-src")).toContain("https://api.paymongo.com");
     expect(directive(csp, "frame-src")).toContain("https://*.paymongo.com");
+    expect(directive(csp, "img-src")).toContain("https://*.paymongo.com");
   });
 
   it("never admits Google Maps: this is a pickup-only platform", () => {

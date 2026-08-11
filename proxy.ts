@@ -13,7 +13,12 @@ import { updateSessions } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const csp = contentSecurityPolicy(nonce);
+  // The public key is safe to inspect in Proxy and is all this policy needs.
+  // Do not import server payment configuration here, because Proxy should not
+  // load the secret key merely to decide which browser origins are allowed.
+  const csp = contentSecurityPolicy(nonce, {
+    paymentsEnabled: Boolean(process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY),
+  });
 
   const requestHeaders = new Headers(request.headers);
   // Next reads x-nonce off the request and stamps it onto the script tags it

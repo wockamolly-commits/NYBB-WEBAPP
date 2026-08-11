@@ -12,6 +12,16 @@ if (supabaseHost) {
   });
 }
 
+// QR Ph images are short-lived payment instructions returned by PayMongo. They
+// are not part of the menu archive and must not use its long optimized cache.
+if (process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY) {
+  remotePatterns.push({
+    protocol: "https",
+    hostname: "*.paymongo.com",
+    pathname: "/**",
+  });
+}
+
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",

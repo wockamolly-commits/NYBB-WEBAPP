@@ -1,7 +1,7 @@
 type ContentSecurityPolicyOptions = {
   isDevelopment?: boolean;
   supabaseUrl?: string;
-  /** PayMongo is dark until Phase 5. See the note on `frame-src` below. */
+  /** PayMongo hosts QR images and future hosted payment screens. */
   paymentsEnabled?: boolean;
 };
 
@@ -45,6 +45,9 @@ export function contentSecurityPolicy(
   const paymentsFrame = options.paymentsEnabled
     ? " https://*.paymongo.com"
     : "";
+  const paymentsImg = options.paymentsEnabled
+    ? " https://*.paymongo.com"
+    : "";
 
   return [
     `default-src 'self'`,
@@ -57,7 +60,7 @@ export function contentSecurityPolicy(
     // attributes. It is a far smaller risk than inline script and there is no
     // nonce-based path for it that React supports today.
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-    `img-src 'self' data: blob:${supabaseImg}`,
+    `img-src 'self' data: blob:${supabaseImg}${paymentsImg}`,
     // The landing hero is a self-hosted loop. No third party serves video here,
     // and none should: an embed would drag in its own script origin.
     `media-src 'self'`,
