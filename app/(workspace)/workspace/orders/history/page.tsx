@@ -169,7 +169,11 @@ export default async function OrderHistoryPage({
             {orders.length === 0 ? (
               <div className="border-nybb-bone/25 rounded-md border border-dashed px-4 py-12 text-center">
                 <p className="font-display heading-panel">No matching orders</p>
-                <p className="text-nybb-bone/50 mt-2 text-sm">Try a wider date range or reset the filters.</p>
+                <p className="text-nybb-bone/50 mt-2 text-sm">
+                  Nothing closed matches these filters. A search runs across every closed
+                  order for this branch, so a code that finds nothing here was never placed
+                  at this counter.
+                </p>
               </div>
             ) : null}
           </div>

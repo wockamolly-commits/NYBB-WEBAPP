@@ -14,13 +14,15 @@ implemented and smoke-tested against Supabase. Garden Bloc now has a temporary s
 for checkout testing. Once its production hours and capacity are confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (388 tests)
+build`, `npm run lint` and `npm test` (418 tests)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0022` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0024` apply cleanly against a real
 Postgres in the test suite.
 
-**The Supabase project now exists, and `0001` to `0022` plus the seed are
-applied to it. Migration `0022` still needs its focused staging smoke test.** The storefront reads the real database over PostgREST, proved
+**The Supabase project now exists, and `0001` to `0024` plus the seed are
+applied to it.** `0022` had been applied through the dashboard SQL editor, which
+does not record it in the CLI's migration history, so the history was repaired
+before `0023` and `0024` were pushed. See handoff trap 15. The storefront reads the real database over PostgREST, proved
 by writing a string into a category blurb that exists nowhere in `lib/catalog/`,
 finding it in the server-rendered HTML of the production build, and restoring it
 by re-running the seed. The static fallback renders an identical page, so seeing
@@ -85,7 +87,7 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 388 tests, 151 of which run the migrations and the seed against Postgres
+- 418 tests, 165 of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
@@ -212,7 +214,10 @@ Phase 2 so far:
   changes refresh it immediately, with a 20-second polling fallback.
 - `/workspace/orders/history` lists up to 250 branch-scoped closed orders,
   including today. Staff can filter by status and placed date or search by
-  code and customer details. Paid counts and sales exclude test orders.
+  code and customer details. Paid counts and sales exclude test orders. The
+  search runs in the database rather than over the page that came back, so the
+  250-row cap applies to matches: an order older than the newest 250 is still
+  findable by its own code.
 - Migration `0018` adds the locked Start, Ready, and Claim transitions. Claim
   verifies the four-digit pickup code and captures a due counter payment in the
   same transaction. Every change writes status events and an audit row.
@@ -246,11 +251,39 @@ Phase 2 so far:
   search path, and rotates the configured Super Admin with its audit trail in
   one transaction. It passes role-switched RLS tests locally and is applied to
   staging. Its focused staging smoke test is still pending.
+- Migration `0023` gives `audit_logs` a branch dimension and scopes reading it.
+  `0022` had opened the trail from "admin only" to "anyone holding
+  `audit:view`", which by role default is every manager, without scoping it by
+  branch: a manager assigned to one site could read every site's staff activity
+  through the Data API, while the orders those entries describe were scoped one
+  policy above. The scope is now a stored column rather than a value derived at
+  read time, filled by a trigger so any future writer inherits it, and a null
+  branch means business wide (workspace access changes, Super Admin
+  provisioning) and is visible only to a profile that is not tied to a site.
+  The same widening had also opened `profiles`, so a branch manager could read
+  another site's staff and their phone numbers; that policy now carries the
+  identical branch test.
+- Migration `0024` makes the order transition RPC resolve permissions the way
+  every RLS policy does. `0018` predates `0022`, so it asked whether the staff
+  member had been explicitly denied `orders:manage` rather than whether they
+  have it. Those agree only while all three job roles carry the permission by
+  default, which they do, so nothing was reachable through it. The first role
+  added without `orders:manage` would have been refused by the application and
+  allowed by the database. It now calls `current_staff_has_permission()`.
+- `/workspace/audit` is the protected trail, gated on `audit:view` and scoped
+  again by RLS underneath. It filters by action, target id and recorded date,
+  pages by keyset, names the actor and the branch, and redacts any diff field
+  whose key names a credential before the page sees it. Nothing writes one
+  today; the redaction is there because `diff` is open-ended `jsonb` and the
+  next RPC to log a row it changed will carry whatever columns that row has.
 
 Next:
 
-1. Repeat the focused Workspace smoke test after migration `0022`.
-2. Add store availability and hours, and the audit log.
+1. Re-run the wider Workspace smoke test. The audit page is verified against
+   staging; the order board and Team page have not been re-checked since `0024`
+   replaced the transition function.
+2. Add store availability and hours, which stay blocked on the owner's real
+   weekday hours and kitchen capacity (spec section 28, items 3 and 4).
 3. Add a second Supabase project for production, per spec section 25. The
    current one should be treated as staging.
 
@@ -333,7 +366,7 @@ the badge scan cannot fix one and leave the other shipping a watermark.
 
 ```bash
 npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
-npm test              # applies 0001 to 0022 and the seed to a real Postgres
+npm test              # applies 0001 to 0024 and the seed to a real Postgres
 ```
 
 The migration tests run PGlite, which is Postgres compiled to WebAssembly, so

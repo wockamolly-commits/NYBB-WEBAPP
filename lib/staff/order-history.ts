@@ -3,6 +3,19 @@ import "server-only";
 import { z } from "zod";
 import type { OrderStatus } from "@/lib/orders/types";
 import { createReadOnlyStaffClient } from "@/lib/supabase/server";
+import {
+  firstSearchValue,
+  isValidWorkspaceDate,
+  manilaDateEndExclusiveIso,
+  manilaDateStartIso,
+} from "./manila-dates";
+import { ilikeOrFilter, ilikePattern } from "./search-pattern";
+
+export {
+  manilaDateEndExclusiveIso,
+  manilaDateStartIso,
+  isValidWorkspaceDate as isValidHistoryDate,
+};
 
 export const HISTORY_STATUSES = [
   "claimed",
@@ -108,30 +121,6 @@ function first<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
-function firstSearchValue(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
-export function isValidHistoryDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split("-").map(Number);
-  const parsed = new Date(Date.UTC(year, month - 1, day));
-  return parsed.getUTCFullYear() === year
-    && parsed.getUTCMonth() === month - 1
-    && parsed.getUTCDate() === day;
-}
-
-export function manilaDateStartIso(value: string): string | null {
-  if (!isValidHistoryDate(value)) return null;
-  return new Date(`${value}T00:00:00+08:00`).toISOString();
-}
-
-export function manilaDateEndExclusiveIso(value: string): string | null {
-  const start = manilaDateStartIso(value);
-  if (!start) return null;
-  return new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000).toISOString();
-}
-
 export function normalizeOrderHistoryFilters(
   values: Record<string, string | string[] | undefined>,
 ): OrderHistoryFilters {
@@ -142,8 +131,8 @@ export function normalizeOrderHistoryFilters(
 
   return {
     query,
-    from: isValidHistoryDate(fromValue) ? fromValue : "",
-    to: isValidHistoryDate(toValue) ? toValue : "",
+    from: isValidWorkspaceDate(fromValue) ? fromValue : "",
+    to: isValidWorkspaceDate(toValue) ? toValue : "",
     status: HISTORY_STATUSES.includes(statusValue as OrderHistoryStatus)
       ? statusValue as OrderHistoryStatus
       : "all",
@@ -246,6 +235,20 @@ export async function getOrderHistory(
   const to = manilaDateEndExclusiveIso(filters.to);
   if (from) query.gte("placed_at", from);
   if (to) query.lt("placed_at", to);
+
+  // The cap has to apply to matches, not to the newest rows that are then
+  // searched. Without this an order older than the page is unfindable by its
+  // own code. matchesOrderHistoryQuery below still decides the final answer,
+  // so a pattern widened by escaping cannot let a wrong row through.
+  const pattern = ilikePattern(filters.query);
+  if (pattern) {
+    query.or(
+      ilikeOrFilter(
+        ["short_code", "customer_name", "customer_phone", "customer_email"],
+        pattern,
+      ),
+    );
+  }
 
   const { data, error } = await query;
   if (error) {

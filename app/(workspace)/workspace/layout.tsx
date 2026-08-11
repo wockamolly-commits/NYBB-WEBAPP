@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClipboardList, ExternalLink, History, LayoutDashboard, LogOut, ShieldCheck, UserRound, Users } from "lucide-react";
+import { ClipboardList, ExternalLink, History, LayoutDashboard, LogOut, ScrollText, ShieldCheck, UserRound, Users } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { HeatRule } from "@/components/site/HeatRule";
 import { STAFF_ROLES } from "@/lib/staff/roles";
@@ -64,6 +64,12 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
                 History
               </ButtonLink>
             </>
+          ) : null}
+          {hasStaffPermission(profile, "audit:view") ? (
+            <ButtonLink href="/workspace/audit" tone="dark" variant="ghost" className="px-3">
+              <ScrollText aria-hidden className="size-4" />
+              Audit
+            </ButtonLink>
           ) : null}
           {profile.role === "admin" ? (
             <ButtonLink href="/workspace/team" tone="dark" variant="ghost" className="px-3">
