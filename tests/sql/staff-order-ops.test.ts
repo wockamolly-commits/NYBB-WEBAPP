@@ -32,17 +32,25 @@ async function setup() {
 async function addOrder(
   db: PGlite,
   code: string,
-  options: { status?: string; method?: string; paymentStatus?: string; branch?: string } = {},
+  options: {
+    status?: string;
+    method?: string;
+    paymentStatus?: string;
+    branch?: string;
+    /** Active orders are unique on this, so a test wanting two must say so. */
+    pickupCode?: string;
+  } = {},
 ) {
   const status = options.status ?? "pending";
   const method = options.method ?? "counter";
   const paymentStatus = options.paymentStatus ?? "due";
   const branch = options.branch ?? "pilot";
+  const pickupCode = options.pickupCode ?? "2468";
   await db.exec(`
     insert into orders
       (short_code, status, branch_id, price_list_id, pickup_code,
        customer_name, customer_phone, total_cents)
-    select '${code}', '${status}', b.id, b.price_list_id, '2468',
+    select '${code}', '${status}', b.id, b.price_list_id, '${pickupCode}',
            'Customer', '09170000000', 32900
     from branches b where b.slug = '${branch}';
     insert into payments (order_id, method, status, amount_cents)
@@ -135,6 +143,78 @@ describe("staff_set_order_status", () => {
     await expect(
       db.exec(`select staff_set_order_status('${id}', 'preparing', null)`),
     ).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  /**
+   * 0024 moved this function from "has this person been denied orders:manage"
+   * to "does this person have it", which is the question every RLS policy asks
+   * through current_staff_has_permission(). The two agree while all three job
+   * roles carry the permission by default, so the tests below lock down what
+   * has to keep being true rather than reproducing a break that is not
+   * reachable yet: every role that should be able to work the board still can,
+   * the resolver and the transition give the same answer for the same person,
+   * and the function is genuinely asking the resolver.
+   */
+  it("lets every job role that should work the board still work it", async () => {
+    const roles = ["cashier", "kitchen", "manager"];
+    for (const [index, role] of roles.entries()) {
+      const id = await addOrder(db, `NY-ROLE-${role.slice(0, 3).toUpperCase()}`, {
+        pickupCode: `100${index}`,
+      });
+      await db.exec(
+        `update profiles set staff_role = '${role}' where id = '${STAFF_ID}'`,
+      );
+      await db.exec(`select staff_set_order_status('${id}', 'preparing', null)`);
+      expect(
+        await scalar<string>(db, `select status::text from orders where id = '${id}'`),
+      ).toBe("preparing");
+    }
+  });
+
+  it("gives the same answer as the resolver every policy reads", async () => {
+    const id = await addOrder(db, "NY-AGREE1");
+
+    const allowedBefore = await scalar<boolean>(
+      db,
+      `select current_staff_has_permission('orders:manage')`,
+    );
+    expect(allowedBefore).toBe(true);
+    await db.exec(`select staff_set_order_status('${id}', 'preparing', null)`);
+
+    await db.exec(`
+      insert into staff_permission_overrides (profile_id, permission, granted)
+      values ('${STAFF_ID}', 'orders:manage', false)
+    `);
+    expect(
+      await scalar<boolean>(db, `select current_staff_has_permission('orders:manage')`),
+    ).toBe(false);
+    await expect(
+      db.exec(`select staff_set_order_status('${id}', 'ready', null)`),
+    ).rejects.toThrow(/FORBIDDEN/);
+
+    // Restoring the permission restores the transition, so the refusal above
+    // was the resolver's answer and not a one-way latch.
+    await db.exec(`
+      update staff_permission_overrides set granted = true
+      where profile_id = '${STAFF_ID}' and permission = 'orders:manage'
+    `);
+    await db.exec(`select staff_set_order_status('${id}', 'ready', null)`);
+    expect(
+      await scalar<string>(db, `select status::text from orders where id = '${id}'`),
+    ).toBe("ready");
+  });
+
+  it("asks the shared resolver rather than hand-rolling the lookup again", async () => {
+    // A source-level tripwire, deliberately. Reintroducing the old check would
+    // pass every behavioural test above until a role without orders:manage is
+    // added, and by then the database and the application would already
+    // disagree about who may touch a live order.
+    const source = await scalar<string>(
+      db,
+      `select prosrc from pg_proc where proname = 'staff_set_order_status'`,
+    );
+    expect(source).toContain("current_staff_has_permission('orders:manage')");
+    expect(source).not.toContain("from staff_permission_overrides");
   });
 
   it("keeps branch-scoped staff inside their branch", async () => {

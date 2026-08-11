@@ -21,7 +21,7 @@ ranking.
 ## Where things stand
 
 **Phase 0 and Phase 1 are complete, including the live customer OTP smoke test. Phase 2 has
-started.** `npm run build`, `npm run lint` and `npm test` (388 tests in 27 files) are green. The
+started.** `npm run build`, `npm run lint` and `npm test` (418 tests in 29 files) are green. The
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
 verified against staging. Garden Bloc, IT Park, Lahug is the owner-selected pilot branch. The
 remaining owner blockers are its real weekday hours and kitchen capacity.
@@ -45,8 +45,8 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0022` are written, pass the local migration suite, and are applied
-  to staging. `0022` still needs its focused staging smoke test.
+- `supabase/migrations/0001` to `0024` are written, pass the local migration suite, and are all
+  applied to staging as of 2026-08-11. `0022` needed a history repair first, see trap 15.
   Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
@@ -57,7 +57,7 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  151 of the 388 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  165 of the 418 tests live there. **Read trap 14 before trusting a green run about grants:** the
   harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
@@ -546,8 +546,113 @@ Spec section 27. In order:
   staff with neither dashboard nor order visibility land on Profile, and the layout hides links a
   role cannot open. This prevents the former `/workspace` self-redirect loop for Kitchen users.
 
-Next, repeat the focused Workspace smoke test after migration `0022`, then continue
-with store availability and hours, and the audit log.
+**Staging now carries `0001` to `0024`, and the audit page is verified against it in a browser.**
+`0023` and `0024` were applied on 2026-08-11 after repairing the migration history for `0022` (see
+trap 15). Direct queries confirm the checklist reads 24 of 24, both new policies read back exactly
+as written, `staff_set_order_status` now resolves permissions through
+`current_staff_has_permission` and no longer reads `staff_permission_overrides` itself, and the
+grants survived the replace (`authenticated` yes, `anon` no). The backfill attributed 15 of the 20
+existing audit rows to a branch and left 0 order-targeted rows unattributed; the 5 without a branch
+are the company records, which is the intended split. `/workspace/audit` was then loaded as the
+configured Super Admin and shows the two `NY-` order transitions with their actor, the Super Admin
+badge, "Garden Bloc, IT Park", and a change detail carrying only `from`, `to` and
+`counterPaymentCaptured`.
+
+**One thing the redaction deliberately does not hide: a staff phone number.** The access-change and
+Super Admin provisioning RPCs record `to_jsonb()` of the profile row, which carries `phone`. That is
+PII rather than a credential, and an audit trail that hides what changed is not one, so it is shown.
+Those rows are business wide, so only an admin or an unassigned staff member can read them at all.
+If the owner wants it masked, add `phone` to `REDACTED_KEYS` in `lib/staff/audit-log.ts`.
+
+- Migration `0023_audit_log_branch_scope.sql` closes the gap `0022` opened in the
+  audit trail. `0022` widened `audit_logs` from "admin only" to "anyone holding
+  `audit:view`", which by role default is every manager, and left the read
+  unscoped by branch. So a manager assigned to one site could read every site's
+  staff activity through the Data API, while the orders those entries described
+  were branch scoped one policy above. The same widening had opened `profiles`
+  on `audit:view` alone, so that manager could also read another site's staff
+  rows, phone numbers included.
+
+  What it does, and the two decisions worth knowing:
+
+  - **The scope is stored, not derived.** `audit_logs.branch_id` is a real
+    column. Deriving it at read time would mean casting `target_id` and joining
+    `orders` inside an RLS policy, evaluated per row on every query, and it
+    would only ever answer for the one target table somebody had remembered to
+    handle. A `before insert` trigger fills it from the order when the target is
+    one, so the existing transition RPC needed no restatement and no future
+    writer has to remember. The regex guard on `target_id` is load bearing:
+    Postgres has no cast that returns null instead of raising, and there is a
+    row in the tests whose target is not a uuid.
+  - **A null branch means business wide, not unknown.** Workspace access grants
+    and Super Admin provisioning are company records. The policy is the same
+    expression the orders policy uses,
+    `current_staff_can_access_branch(branch_id)`, and that function already
+    returns false for a branch-assigned profile asked about a null branch and
+    true for an unassigned one. So one expression scopes a site's rows and keeps
+    company rows to the people who are not tied to a site. That is the intended
+    reading rather than a lucky null, and `tests/sql/audit-log.test.ts` asserts
+    both halves as the real `authenticated` role.
+
+- `/workspace/audit` is the protected trail. Gated on `audit:view` at the page,
+  scoped again by RLS underneath, filtered by action, target id and recorded
+  date, paged by keyset on the bigserial id, and it names the actor and the
+  branch. **The diff is redacted before the page sees it**
+  (`redactAuditDetail` in `lib/staff/audit-log.ts`). Nothing writes a credential
+  into a diff today; the redaction exists because `diff` is open-ended `jsonb`
+  and the next RPC that logs a row it changed will carry whatever columns that
+  row has. A denylist is the wrong default in general and the right one here,
+  because an allowlist would quietly blank the next useful field somebody logs.
+
+- **The order history search was reaching only into the page it had already
+  fetched.** It filtered in memory after `.limit(250)`, so the cap applied to
+  the newest closed orders and the search then looked inside them: an order
+  older than the newest 250 was unfindable by its own code, and the empty state
+  told the reader to widen a date range, which would have made it worse. The
+  filter now runs in the database through `lib/staff/search-pattern.ts`, so the
+  cap applies to matches. That helper wildcards every character outside
+  `[\w@.-]` rather than dropping it, because `or=(a.ilike.*x*,b.ilike.*x*)` is
+  parsed on commas, dots and parentheses: a customer name with a comma in it
+  would not merely fail to match, it would change which columns were filtered.
+  Widening is safe because `matchesOrderHistoryQuery` still decides the final
+  answer in memory; dropping would not have been.
+
+- Migration `0024_order_ops_resolved_permission.sql` makes
+  `staff_set_order_status` ask the same permission question as everything else.
+  `0018` shipped before `0022` existed, so it hand-rolled its own check: an
+  active admin or staff profile, then one lookup for an override row that
+  explicitly sets `orders:manage` to false. That answers "has this person been
+  denied" rather than "does this person have it", and the two agree only while
+  every job role carries the permission by default. All three currently do, so
+  nothing was reachable through the gap, but the first role added without
+  `orders:manage` would have been refused by the application and allowed by the
+  database, which is the exact direction of disagreement `0022` was written to
+  end. It now calls `current_staff_has_permission('orders:manage')`, the same
+  resolver the RLS policies read, so the rows a staff member can see and the
+  transitions they can perform cannot part company.
+
+  Nothing else in the function changed, but the whole body is restated, because
+  `create or replace function` cannot amend one in place. **If you touch it,
+  diff `0024` against `0018` rather than reading it fresh**, or a transcription
+  slip in the payment gate or the pickup code will read as intentional.
+
+  The tests for it are honest about what they can prove. The behavioural cases
+  cannot fail today, since no role lacks the permission, so what they lock down
+  is that every job role which should work the board still can (getting the
+  resolver wrong would lock kitchen staff out mid-shift), and that the resolver
+  and the transition give the same answer for the same person in both
+  directions. The one that would catch a regression is a source-level tripwire
+  asserting the function no longer reads `staff_permission_overrides` itself.
+
+- `chk.mts` was a one-off scratch script that reached the repository root in
+  `26bd68e`. Deleted. It was inside the tsconfig `include` and the lint scope,
+  so it was not inert.
+
+Next, repeat the focused Workspace smoke test after migrations `0022`, `0023`
+and `0024`, then continue with store availability and hours. **That one is still
+blocked on the owner**, per spec section 28 items 3 and 4: Garden Bloc's real
+weekday hours and the kitchen's genuine throughput per fifteen minutes at peak.
+The temporary staging schedule is not an answer to either.
 
 ## Things earlier sessions learned the hard way
 
@@ -667,6 +772,63 @@ because each one costs a day if rediscovered.
     cannot see: the tables line was there because somebody hit this before, and the functions line
     was not.
 
+
+15. **A migration applied through the dashboard SQL editor leaves the CLI's history behind, and the
+    next `db push` tries to run it again.** `0022` was applied to staging that way. Every one of its
+    effects was present, sampled from the revokes at the top of the file to the
+    `provision_configured_super_admin` function at the bottom, but
+    `supabase_migrations.schema_migrations` stopped at `0021`, so the CLI listed `0022` as pending.
+
+    Re-running it would not have been harmless. Almost every statement in `0022` is idempotent
+    (`create or replace`, `drop policy if exists` then `create policy`, `revoke`), but
+    `create unique index profiles_one_active_admin_idx` is not, and it would have raised "relation
+    already exists" and aborted the push before `0023` and `0024` ran.
+
+    The fix is `supabase migration repair --status applied 0022 --db-url ...`, which writes the
+    history row without executing the SQL. **Do not fix it by editing the migration to add
+    `if not exists`**: section 25 makes migrations forward-only and that file is already applied to
+    a real database.
+
+    Two general lessons. Verify a claim of "applied" against the schema rather than against the
+    history table or a previous handoff, because the two can disagree and only one of them is the
+    database. And when a dry run names more files than you expected, that is the signal to stop:
+    the surprise was a real divergence, not a quirk.
+
+16. **The preview tool starts servers in the primary worktree, so it cannot verify work that lives
+    in a Codex worktree.** `preview_start` runs in the session's working directory, which is
+    `C:\dev\nybb-order`. Point it at the `prod` configuration while the work is in
+    `C:\Users\Steven\.codex\worktrees\<id>\nybb-order` and it serves `main`'s build instead, which
+    does not contain the feature under review.
+
+    It fails twice over, and the second failure hides the first. `.claude/launch.json` runs
+    `npx next start`, and because `node_modules` in a Codex worktree is a symlink to another
+    worktree, `npx` does not resolve the local binary and downloads a different Next (16.3.0 against
+    a build made by 16.2.9). The result is a bare "Internal Server Error" on every route including
+    the home page, which reads like a broken feature and is actually a broken server.
+
+    **The tell is the home page.** A defect in one new route cannot break `/`. If the root 500s,
+    stop debugging the feature and check what is actually serving.
+
+    To verify a Codex worktree, start it from that directory with the project's own binary,
+    `npm run start -- -p 3001`, then drive the Browser pane at `http://localhost:3001`. Confirm the
+    banner says **16.2.9**; a different version means `npx` fetched its own copy again.
+
+17. **`preview_stop` can report success while the process keeps running and keeps the port.** It
+    said "stopped", the Node process survived, and it held 3001 for long enough that the next server
+    started in its place failed to bind and exited, having already printed its version banner and
+    `Ready`. Every request then went to the zombie, so a working build looked broken.
+
+    Check the port, not the tool's answer: `netstat -ano | grep LISTENING | grep :3001`, and
+    `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*next*' }` for the
+    process. A `next start` whose command line points into `AppData\Local\npm-cache\_npx\` is the
+    downloaded copy from trap 16, not the project's.
+
+18. **A sign-in in the user's own browser is invisible to the Browser pane, and vice versa.** They
+    keep separate cookies. A page verified by eye in Chrome still redirects the pane to `/login`,
+    which is correct behaviour and not a session bug. Anything an agent has to inspect while signed
+    in has to be signed in inside the pane. Note also that the pane cannot take a screenshot unless
+    it is displayed on screen, so prefer `get_page_text` and `read_network_requests`, which work
+    either way.
 
 ## Do not
 
