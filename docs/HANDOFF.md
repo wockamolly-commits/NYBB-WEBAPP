@@ -20,11 +20,22 @@ ranking.
 
 ## Where things stand
 
-**Phase 0 and Phase 1 are complete, including the live customer OTP smoke test. Phase 2 has
-started.** `npm run build`, `npm run lint` and `npm test` (418 tests in 29 files) are green. The
+**Phase 0 and Phase 1a are complete, including the live customer OTP smoke test. Phase 2a has
+started.** `npm run build`, `npm run lint` and `npm test` (445 tests in 34 files) are green. The
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
-verified against staging. Garden Bloc, IT Park, Lahug is the owner-selected pilot branch. The
-remaining owner blockers are its real weekday hours and kitchen capacity.
+verified against staging. Central Bloc, IT Park, Lahug is the owner-selected pilot branch.
+
+**The payment-first ruling of 2026-08-11 replanned section 27, and Phase 1 is no longer complete.**
+Pickup orders must be paid online before processing, so the shipped counter checkout is disallowed,
+online prepay became Phase 1b (a launch blocker, not a Phase 5 option), and refunds became Phase 2b
+(also a launch blocker, because the business now holds money before the food is made). Nothing
+shipped needs unwinding, but do not read "Phase 1 complete" anywhere in this file as meaning
+customers can order. They cannot, until 1b lands. Read section 17 before touching checkout or
+payments.
+
+Owner blockers now: the pilot branch's kitchen capacity, the no-show and refund policy under
+payment first, PayMongo merchant approval (start this early, it is the long pole), and a ZenPOS
+technical contact for `docs/zenpos-questions.md`.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking
@@ -45,7 +56,8 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0024` are written, pass the local migration suite, and are all
+- `supabase/migrations/0001` to `0029` are written and pass the local migration suite. `0001`
+  to `0025` are applied to staging; `0026` through `0029` are pending there.
   applied to staging as of 2026-08-11. `0022` needed a history repair first, see trap 15.
   Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
@@ -57,7 +69,7 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  165 of the 418 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  178 of the 445 tests live there. **Read trap 14 before trusting a green run about grants:** the
   harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
@@ -153,11 +165,11 @@ is generated; transform a copy. There is no `psql` on this machine.
   `lib/catalog/`, loading `/menu` from the production build, finding it in the server-rendered HTML,
   and then restoring it by re-running the seed. Both halves matter: the static fallback renders an
   identical page, so seeing a menu proves nothing by itself.
-- On 2026-08-10 the owner selected Garden Bloc as the pilot and authorized a temporary staging
-  schedule. Garden Bloc is active and accepting orders from 11:00 to 22:00 daily, using the
-  existing defaults of 20 minutes preparation, 15-minute windows and six orders per window. An
-  anonymous PostgREST call returned 27 windows during the configured hours. This is a staging
-  assumption, not confirmed production hours or capacity.
+- On 2026-08-10 the owner selected Central Bloc as the pilot and authorized a temporary staging
+  schedule. The then-current 11:00 to 22:00 schedule was only a staging assumption. On 2026-08-11
+  the owner confirmed Central Bloc is open 24/7. Migration `0026` must be applied before storing
+  that fact exactly. Kitchen capacity is still unconfirmed; do not treat the current defaults of
+  20 minutes preparation, 15-minute windows and six orders per window as production values.
 - `rate_limit_hit` returns **HTTP 401, `42501 permission denied`** to `anon`, and is callable by
   `service_role`. That is the fix in `0015` proven at the PostgREST layer rather than in `pg_proc`.
 
@@ -181,9 +193,10 @@ Two more reasons not to leave it later than that:
 
 **Creating the project does not need the section 28 answers.** Apply the migrations and the seed,
 and the default state stays honest: `store_hours` is empty, all nine branches are
-`is_active = false`, and every surface says "Pickup times are not open yet". Garden Bloc is the
-selected pilot. Staging now carries a temporary 11:00 to 22:00 daily override so checkout can be
-tested, but production must wait for confirmed hours and capacity. **This retires "do not apply the
+`is_active = false`, and every surface says "Pickup times are not open yet". Central Bloc is the
+selected pilot. Staging currently carries a temporary 11:00 to 22:00 daily override so checkout
+can be tested, and migration `0026` is required before replacing it with the confirmed 24/7
+schedule. Production must still wait for confirmed capacity. **This retires "do not apply the
 migrations" below**, which was written when there was nowhere to apply them to. Two projects
 (staging and production) if budget allows, per spec section 25.
 
@@ -323,7 +336,7 @@ Spec section 27. In order:
    - **The empty state is deliberate.** `unavailableReason` is one of `no_branch`,
      `no_hours`, `not_accepting`, `closed_now` or `fully_booked`, and the screen says which. Two of
      those are the expected state of this project rather than faults, so the copy reads as "not
-     open for this yet" and points at the branch phone numbers. Staging now returns Garden Bloc
+     open for this yet" and points at the branch phone numbers. Staging now returns Central Bloc
      windows under the temporary schedule described above.
    - **A full window stays on screen and goes flat**, per spec section 10 N1. A window that
      vanishes reads as a broken page; a window visibly taken reads as a busy shop.
@@ -546,7 +559,7 @@ Spec section 27. In order:
   staff with neither dashboard nor order visibility land on Profile, and the layout hides links a
   role cannot open. This prevents the former `/workspace` self-redirect loop for Kitchen users.
 
-**Staging now carries `0001` to `0024`, and the audit page is verified against it in a browser.**
+**Staging now carries `0001` to `0025`, and the audit page is verified against it in a browser.**
 `0023` and `0024` were applied on 2026-08-11 after repairing the migration history for `0022` (see
 trap 15). Direct queries confirm the checklist reads 24 of 24, both new policies read back exactly
 as written, `staff_set_order_status` now resolves permissions through
@@ -555,7 +568,7 @@ grants survived the replace (`authenticated` yes, `anon` no). The backfill attri
 existing audit rows to a branch and left 0 order-targeted rows unattributed; the 5 without a branch
 are the company records, which is the intended split. `/workspace/audit` was then loaded as the
 configured Super Admin and shows the two `NY-` order transitions with their actor, the Super Admin
-badge, "Garden Bloc, IT Park", and a change detail carrying only `from`, `to` and
+badge, "Central Bloc, IT Park", and a change detail carrying only `from`, `to` and
 `counterPaymentCaptured`.
 
 **The redaction masks a staff phone number, and that was a decision rather than a default.** The
@@ -654,11 +667,16 @@ starts logging one, decide then rather than assuming the suffix rule caught it.
   `26bd68e`. Deleted. It was inside the tsconfig `include` and the lint scope,
   so it was not inert.
 
-Next, repeat the focused Workspace smoke test after migrations `0022`, `0023`
-and `0024`, then continue with store availability and hours. **That one is still
-blocked on the owner**, per spec section 28 items 3 and 4: Garden Bloc's real
-weekday hours and the kitchen's genuine throughput per fifteen minutes at peak.
-The temporary staging schedule is not an answer to either.
+Store availability and hours are implemented as migrations `0025` to `0027`,
+with `/workspace/availability` for the counter pause/resume control and
+`/workspace/settings` for branch settings, weekly hours and business-wide
+intake. `0025` is applied to staging. `0026` adds an explicit 24-hour schedule
+representation, required for Central Bloc's owner-confirmed 24/7 hours, and
+still needs to be applied. `0027` keeps an existing time window when a weekday
+is marked closed, so reopening it does not replace the manager's values. Both
+pending migrations must land before the routes receive their browser smoke test.
+**Production capacity remains blocked on the owner**, per spec section 28 item
+4: Central Bloc's genuine throughput per fifteen minutes at peak.
 
 ## Things earlier sessions learned the hard way
 
@@ -838,10 +856,10 @@ because each one costs a day if rediscovered.
 
 ## Do not
 
-- Do not invent answers to spec section 28. Garden Bloc is the selected pilot branch, but its real
-  weekday hours and kitchen capacity remain unanswered. Staging has a temporary 11:00 to 22:00
-  daily override authorized by the owner for testing. Do not present that assumption as confirmed
-  or promote it to production. The seed deliberately keeps `store_hours` empty and all nine
+- Do not invent answers to spec section 28. Central Bloc is the selected pilot branch and its 24/7
+  schedule is now confirmed, but the kitchen capacity remains unanswered. Staging has a temporary
+  11:00 to 22:00 daily override until migration `0026` is applied. The seed deliberately keeps
+  `store_hours` empty and all nine
   branches inactive, so a fresh environment fails closed until it is explicitly configured.
 - Do not add a TypeScript implementation of the slot grid, for the same reason there is only one
   place that adds money up. `get_pickup_slots()` is the grid, `place_order` books against it, and

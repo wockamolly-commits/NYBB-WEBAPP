@@ -10,16 +10,16 @@ Built by inheriting the architecture of the ZOMBEANS ordering platform
 **Phase 0 and Phase 1 are complete, and Phase 2 has started.** The menu reads
 through one source-agnostic reader, the wings configurator is built, and the
 cart, pickup slot picker, checkout, order tracking and customer email OTP are
-implemented and smoke-tested against Supabase. Garden Bloc now has a temporary staging schedule
-for checkout testing. Once its production hours and capacity are confirmed, a customer can place a real
+implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is now owner-confirmed;
+its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (418 tests)
+build`, `npm run lint` and `npm test` (445 tests)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0024` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0029` apply cleanly against a real
 Postgres in the test suite.
 
-**The Supabase project now exists, and `0001` to `0024` plus the seed are
+**The Supabase project now exists, and `0001` to `0025` plus the seed are
 applied to it.** `0022` had been applied through the dashboard SQL editor, which
 does not record it in the CLI's migration history, so the history was repaired
 before `0023` and `0024` were pushed. See handoff trap 15. The storefront reads the real database over PostgREST, proved
@@ -42,9 +42,9 @@ privilege, so the assertions that were already written fail without it. The
 tests were right the whole time; the database they ran against was the thing
 that was wrong. See handoff trap 14.
 
-That grant correction did not change customer behavior at the time. Garden Bloc
-now has a temporary staging schedule for testing, while the generated seed still
-fails closed with empty hours and inactive branches.
+That grant correction did not change customer behavior at the time. Central Bloc
+now has owner-confirmed 24/7 hours, represented by migration `0026`, while the
+generated seed still fails closed with empty hours and inactive branches.
 
 **The storefront renders dynamically, and that is deliberate.** A nonce-based
 CSP and static generation are mutually exclusive in Next: the nonce is minted
@@ -87,7 +87,9 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 418 tests, 165 of which run the migrations and the seed against Postgres
+- 445 tests, including focused coverage for the store availability and customer
+  arrival RPCs, 178
+  of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at
 
@@ -279,14 +281,25 @@ Phase 2 so far:
   has. A staff phone number was written, because the access-change RPCs record
   the whole profile row, and the owner chose on 2026-08-11 to mask it. The
   entry still says the change happened, who made it, and to whom.
+- Migration `0025` and the new `/workspace/availability` and
+  `/workspace/settings` screens finish Phase 2's store availability and hours
+  controls. A cashier can pause or resume only their own counter. A settings
+  manager can set the branch's live flag, prep minutes, pickup-slot width and
+  capacity, and its full weekly schedule. An unassigned manager can also pause
+  order intake for the whole business. Every mutation is a permission-checked,
+  branch-scoped `SECURITY DEFINER` RPC with an audit row. The screens preserve
+  the honest starting state: no hours or capacity was invented, and no branch
+  is made live by the migration.
 
 Next:
 
 1. Re-run the wider Workspace smoke test. The audit page is verified against
    staging; the order board and Team page have not been re-checked since `0024`
    replaced the transition function.
-2. Add store availability and hours, which stay blocked on the owner's real
-   weekday hours and kitchen capacity (spec section 28, items 3 and 4).
+2. Apply migrations `0026` through `0029` on staging, then configure Central Bloc's confirmed
+   24/7 schedule as 12:00 AM to 12:00 AM every day and browser-smoke-test the
+   availability and settings controls.
+   Kitchen capacity remains blocked on spec section 28, item 4.
 3. Add a second Supabase project for production, per spec section 25. The
    current one should be treated as staging.
 
@@ -330,8 +343,11 @@ pays aggregator commission on every ticket. This platform makes the pickup chann
 - **Pickup only.** No delivery, no dine-in.
 - **Single branch at launch**, multi-branch-ready schema (`branch_id` from migration one).
 - **ZenPOS** integration via an adapter, with a working manual re-key fallback from day one.
-- **Two payment rails** (pay at counter, PayMongo online prepay), both flag-gated, both off by
-  default.
+- **Payment first** (owner ruling, 2026-08-11). Pickup orders are paid online before they are
+  processed. There is no pay at counter and no pay later. PayMongo online prepay is therefore a
+  launch blocker (Phase 1b), not the optional second rail it was planned as, and it is not built
+  yet: what ships today is a counter checkout that the ruling disallows. See section 17 of
+  `docs/IMPLEMENTATION-PROMPT.md`.
 
 ## Assets
 
@@ -369,7 +385,7 @@ the badge scan cannot fix one and leave the other shipping a watermark.
 
 ```bash
 npm run build:seed    # regenerate supabase/seed.sql from lib/catalog/
-npm test              # applies 0001 to 0024 and the seed to a real Postgres
+npm test              # applies 0001 to 0029 and the seed to a real Postgres
 ```
 
 The migration tests run PGlite, which is Postgres compiled to WebAssembly, so
@@ -415,7 +431,7 @@ contradict or sharpen what spec section 5.6 assumed:
 ## Open questions
 
 Section 28 of the implementation prompt holds the questions that only the owner can
-answer. Garden Bloc, IT Park, Lahug is now the selected pilot branch. Phase 1 remains blocked on
+answer. Central Bloc, IT Park, Lahug is now the selected pilot branch. Phase 1 remains blocked on
 its real weekday hours and the kitchen's genuine throughput per fifteen minutes at peak. The
 branch remains inactive until both are known, and `/contact` says plainly that hours are not
 published rather than guessing them.

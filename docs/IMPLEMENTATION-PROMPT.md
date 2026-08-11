@@ -131,7 +131,7 @@ chosen pilot:
 | Location | Phone | Note |
 |---|---|---|
 | Mango Avenue, Cebu City | 0906-440-5297 | |
-| Garden Bloc, IT Park, Lahug | 0906-331-3631 / (032) 318-2405 | Strong pilot candidate |
+| Central Bloc, IT Park, Lahug | 0906-331-3631 / (032) 318-2405 | Strong pilot candidate |
 | Shell Gorordo, 839 Gorordo Ave | 0917-114-1392 | Newest opening |
 | Shell Mobility, Uling Road, Naga | 0946-352-0538 | |
 | Shell Mobility, Cebu Country Club, Gov. Cuenco Ave., Kasambagan | 0932-360-2916 | |
@@ -224,7 +224,7 @@ These were settled with the project owner. Do not relitigate them.
 | D1 | **Pickup only.** No delivery, no dine-in, no take-out-vs-dine-in distinction. | Delete the entire delivery subsystem and the rider app. See section 8. |
 | D2 | **Single branch at launch, multi-branch-ready schema.** This is a proposal to the CEO. It must demo as one clean store while provably scaling to ten. | Every menu, pricing, hours, stock, order, and settings table carries `branch_id` from migration one. The branch picker is fully built and hidden behind a flag. Never hardcode a branch. |
 | D3 | **ZenPOS integration via an adapter, with a discovery phase.** ZenPOS (zenpos.co, CodeLikeUs Technologies, Cebu) publishes no public API reference, no webhook spec, and no developer portal. Their marketing lists a Kitchen Display System, QR Ordering, and a Remote Terminal, which implies an internal order-ingest path exists, but nothing is documented. | Build `POSAdapter` as an interface. Ship a `ManualRekeyAdapter` that works on day one with zero ZenPOS cooperation. Stub `ZenPosAdapter` behind the same interface. Run the discovery checklist in section 16.2 before writing a line of ZenPOS HTTP code. |
-| D4 | **Both payment rails, owner-configurable.** Pay at counter and online prepay (PayMongo: GCash, Maya, QR Ph, card) both exist, each behind an `app_settings` flag, both off by default. | Port the ZOMBEANS PayMongo layer, keep it dark until merchant approval lands. |
+| D4 | ~~**Both payment rails, owner-configurable.**~~ **Superseded 2026-08-11: payment first only.** The owner ruled that pickup orders must be paid online before processing, so pay at counter is not offered. The counter rail stays in the schema (the `payment_method` enum keeps `'counter'`) but is unreachable from pickup checkout. See section 17. | Port the ZOMBEANS PayMongo layer as a **Phase 1 launch blocker**, not a Phase 5 option. Ordering cannot open until it works and merchant approval lands. |
 | D5 | **This is an internship deliverable and a CEO pitch, not a production launch.** | Prioritize the visible, demonstrable flow and visual quality. Include a defensible security baseline (section 22, Tier 1). Clearly label the production hardening (Tier 2) as documented-but-deferred so nothing needs re-architecting. |
 | D6 | **The design must read premium, modern, and restaurant-focused.** No zombie theming, no doodle backgrounds, no cartoon mascot styling. | See section 5. |
 
@@ -663,7 +663,7 @@ and change the accrual rule.
 ```
 id uuid pk
 slug text unique                    -- 'garden-bloc', 'ayala-central-bloc'
-name text                           -- 'NYBB Hot Wings, Garden Bloc IT Park'
+name text                           -- 'NYBB Hot Wings, Central Bloc IT Park'
 brand text                          -- 'hot_wings' | 'sports_lounge'
 price_list_id uuid fk -> price_lists
 address_line text
@@ -1145,8 +1145,9 @@ a rush, and cashiers stop using it. Collapse aggressively:
 
 - **Start** sets `accepted` and `preparing` together and stamps acceptance.
 - **Ready** sets `ready` and fires the customer push.
-- **Claim** opens the pickup-code prompt, verifies, sets `claimed`, and for a counter-payment order
-  records payment in the same action.
+- **Claim** opens the pickup-code prompt, verifies, and sets `claimed`. ~~and for a counter-payment
+  order records payment in the same action.~~ Under the payment-first ruling (section 17) every
+  order arrives paid, so claim is verification only and collects nothing.
 
 Three taps per order, total.
 
@@ -1313,9 +1314,41 @@ showed as "Unmapped" with truncated dropdowns. Assume ZenPOS paginates too.
 
 ## 17. Payment flow
 
-**Pay at counter (default on).** Order is placed `pending` with a `payments` row in `due` state.
-~~Requires a signed-in account.~~ Payment is recorded at the moment of claim, in the same action
-that verifies the pickup code. No-show after the window releases the slot and cancels.
+**Owner ruling, 2026-08-11: pickup is strictly payment first.** The customer pays online before the
+order is processed. There is no pay at counter and no pay later. An order is not sent to the branch,
+and does not consume kitchen capacity, until payment has cleared.
+
+This inverts D4 and moves PayMongo from Phase 5 optional to a Phase 1 launch blocker. **As written
+today the platform cannot satisfy this ruling**, and the gap is not a flag: `lib/paymongo` was never
+ported, `app_settings.paymongo_enabled` defaults false, `place_order` rejects every non-counter
+method while that flag is off (`0013_place_order.sql:260`), and `lib/checkout/schema.ts` pins
+`payment_method` to `'counter'` on purpose. Turning counter off before online prepay works and is
+merchant-approved closes ordering completely. Sequencing, and the consequences below, are the
+owner's to accept.
+
+Consequences that follow from the ruling and are not yet built:
+
+- **Refunds become mandatory rather than optional.** Money is taken before the food is made, so
+  every sold-out item, kitchen failure, or branch closure now creates a refund obligation. Port the
+  reference's staff refund workflow.
+- **The claim tap simplifies.** Claim becomes pickup-code verification only. The counter-payment
+  capture inside the same action (`0018_staff_order_ops.sql:99`, `0024_...:114`) becomes dead code
+  for pickup and should be left in place but unreachable, not deleted, since `payment_method` still
+  carries `'counter'` for any future in-store use.
+- **No-show changes meaning and needs an owner answer.** Previously a no-show cost the business
+  nothing. Now the customer has paid and not collected. Hold, remake, refund, or forfeit is a
+  business decision, not a technical one. Added to section 28.
+- **Guest ordering survives**, because guests can prepay. The correction below therefore loses its
+  first and strongest premise but not its conclusion.
+- **The refund policy page stops being card-only paperwork** and becomes genuinely required, since
+  money is now always taken online.
+- **Analytics loses the paid versus counter no-show split**, which was the stated business case for
+  enabling prepay. The ruling settles that question by fiat instead.
+
+**Superseded by the ruling above, retained for its reasoning.** ~~Pay at counter (default on).~~
+Order is placed `pending` with a `payments` row in `due` state. ~~Requires a signed-in account.~~
+Payment is recorded at the moment of claim, in the same action that verifies the pickup code.
+No-show after the window releases the slot and cancels.
 
 **Correction, written while building `place_order`.** Pay at the counter does not require a
 signed-in account, and section 11's "Sign in to pay at the counter" affordance is therefore not
@@ -1433,7 +1466,7 @@ collapse to one representative paid payment per order so multi-row payments cann
 | Slot utilization (reserved vs capacity) | Shows whether the throttle is too tight or too loose. |
 | Median and p90 prep time, from `preparing_at` to `ready_at` | The promise the platform makes to customers. Track whether it is kept. |
 | Wait time from `ready_at` to `claimed_at` | How long food sits. Directly a quality metric. |
-| No-show rate, split by paid vs pay-at-counter | The business case for turning online prepay on. |
+| No-show rate against refund cost | ~~The business case for turning online prepay on.~~ The split by paid versus counter died with the payment-first ruling, since every order is now paid. What the owner needs instead is what no-shows cost in refunds. |
 | Flavor and heat mix | Prep and inventory planning, and it is the most brand-specific chart on the page. |
 | Top items and top pairings | Menu engineering. |
 | New vs returning customers | The reason to own the channel instead of renting Foodpanda. |
@@ -1553,9 +1586,11 @@ the owner agreeing to trade away a Tier 1 control.
   capacity math, status transitions, permission resolution, voucher validation, loyalty accrual,
   store-hours windows, peso formatting. Target the reference's density, roughly ninety-five test
   files for a codebase of this size.
-- **Playwright** for five specs: guest online-prepay order end to end, signed-in pay-at-counter
-  order, staff fulfillment through to claim, menu availability and sold-out states, pickup-slot
-  exhaustion.
+- **Playwright** for five specs: guest online-prepay order end to end, ~~signed-in pay-at-counter
+  order~~ **a signed-in prepay order plus an abandoned payment that expires and releases its slot**,
+  staff fulfillment through to claim, menu availability and sold-out states, pickup-slot
+  exhaustion. The counter spec is retired by the payment-first ruling, and the expiry path replaces
+  it because it is the new way an order can fail silently.
 - **A known trap:** Playwright WebKit cannot load the dev server, because
   `upgrade-insecure-requests` upgrades `localhost` and the page silently renders unstyled and
   unhydrated, testing nothing. Run WebKit against a deployed HTTPS preview, not localhost.
@@ -1641,27 +1676,84 @@ Static landing, menu, about, contact rendering from a static catalog.
 *Deliverable: a beautiful, fast brochure site with real food photography that already reads as
 NYBB.*
 
-**Phase 1, ordering.** Menu from the database. Product detail with the wings configurator and the
-heat meter. Variation-dependent option pricing. Cart. Pickup slots. Checkout with pay-at-counter.
-`place_order` RPC with idempotency and rate limiting. Order tracking page with the pickup code.
-Customer email OTP.
-*Deliverable: a customer can place a real pickup order.*
+**Replanned 2026-08-11 for the payment-first ruling (section 17).** The old plan treated online
+payment as an optional Phase 5 extra sitting behind a flag, because pay at counter carried the
+launch. It cannot any more. Payment moved from the end of the plan to the middle of the critical
+path, and holding customer money before the food is made created a second body of work (refunds)
+that did not previously exist. The phases below replace the original six.
 
-**Phase 2, staff.** Workspace shell, auth, roles and permission overrides. Realtime orders board
-with the three-tap flow. Pickup-code claim. Order history. Store availability and hours. Audit log.
-*Deliverable: a full order, placed on a phone and fulfilled on a tablet.*
+**Phase 1a, ordering. Shipped.** Menu from the database. Product detail with the wings configurator
+and the heat meter. Variation-dependent option pricing. Cart. Pickup slots. `place_order` RPC with
+idempotency and rate limiting. Order tracking page with the pickup code. Customer email OTP.
+
+Its checkout collects nothing and marks the order due at the counter, which the ruling disallows.
+Nothing here was wasted, and none of it needs unwinding. The payment step is the part that changes.
+
+**Phase 1b, payment. New, and the launch blocker.** Port the ZOMBEANS PayMongo layer whole
+(section 17): client, config, intents, methods, webhook, confirmation, attach-result, the
+`paymongo_payments` migrations, and the webhook route. Then:
+
+- QR Ph first, since it is the rail proven live in the reference. GCash and Maya through the same
+  intent flow. Card stays off, it needs separate merchant approval and the legal pages.
+- Checkout switches to prepay. `place_order` accepts online methods, and counter becomes
+  unreachable from pickup checkout without being removed from the schema.
+- Order stays `pending` until the webhook confirms. Signature verification is mandatory.
+- A `pg_cron` job expires unpaid intents and releases the pickup slot they were holding.
+- One payment row per order, enforced by a unique constraint.
+
+*Deliverable: a customer can place and pay for a real pickup order.*
+
+**This phase has an external dependency the repo cannot resolve: PayMongo merchant approval.**
+Build and test against PayMongo's test mode meanwhile. Approval gates going live, not building.
+Start the application now rather than when the code is ready, because it is the long pole.
+
+**Phase 2a, staff. Shipped.** Workspace shell, auth, roles and permission overrides. Realtime orders
+board with the three-tap flow. Pickup-code claim. Order history. Store availability and hours.
+Audit log.
+
+Two corrections fall out of the ruling, both small: claim verifies the pickup code and collects
+nothing, and the board's "Collect at counter" badge goes, because there is no such order any more.
+The counter-capture branches in the claim RPCs stay in place and become unreachable.
+
+**Phase 2b, money out. New, and also a launch blocker.** We now take payment before the food is
+made, so the business can owe a customer money, which was never true under pay at counter. Required
+before the first real order, not after:
+
+- A staff refund workflow, full and partial, permission-gated and audit-logged. Port the reference
+  project's version.
+- The `refunded` payment status wired through the board, order history, and the customer tracking
+  page.
+- The refund policy page published, and reachable from checkout.
+- No-show handling rebuilt around the owner's policy answer (section 28). The current sweep assumes
+  a no-show costs nobody anything. That assumption is now false.
+
+*Deliverable: a staff member can make a customer whole when the kitchen cannot deliver.*
 
 **Phase 3, notifications and POS.** Web Push for customer-ready and staff-new-order. "I'm here".
-No-show sweep. The `PosAdapter` interface, `ManualRekeyAdapter`, the ticket panel, the In-POS
-guard, and the `/workspace/pos` mapping UI. Run the discovery checklist.
+The `PosAdapter` interface, `ManualRekeyAdapter`, the ticket panel, the In-POS guard, and the
+`/workspace/pos` mapping UI. Send `docs/zenpos-questions.md` to ZenPOS and record the answers in
+`docs/zenpos-discovery.md`.
 *Deliverable: the pickup loop closes. This is the demo.*
 
 **Phase 4, owner tools.** Menu management CRUD with availability holds. Settings form. Analytics.
-Vouchers. Reorder.
+Vouchers. Reorder. Note that the analytics no-show split by paid versus counter is gone, since
+every order is now paid. Replace it with no-show rate against refund cost, which is the number the
+owner will actually want.
 *Deliverable: the owner can run the platform without a developer.*
 
-**Phase 5, optional.** PayMongo online prepay. Loyalty points. Email. Recommendations. The branch
-picker unhidden. k6 load scripts.
+**Phase 5, optional.** Loyalty points. Email. Recommendations. The branch picker unhidden. k6 load
+scripts. PayMongo card, if the business ever wants it, with the legal pages and separate approval
+it requires.
+
+### What the reordering costs
+
+Launch now depends on two things the build does not control: PayMongo merchant approval, and the
+owner's no-show and refund policy. Neither can be worked around in code, and both should be started
+today rather than when their phase comes up.
+
+Everything not in Phase 1b or 2b can proceed in parallel while approval is pending. The menu, the
+board, availability, the POS ticket panel, and the owner tools are all independent of which payment
+rail is live. Do not idle the build waiting on a payment processor.
 
 ---
 
@@ -1670,17 +1762,26 @@ picker unhidden. k6 load scripts.
 Stop and ask before deciding these. Do not invent answers.
 
 1. ~~**Which single branch goes live first?**~~ **Resolved 2026-08-10.** The owner selected
-   **Garden Bloc, IT Park, Lahug** as the pilot branch. Keep it inactive until its real operating
+   **Central Bloc, IT Park, Lahug** as the pilot branch. Keep it inactive until its real operating
    hours and kitchen capacity are confirmed.
 2. ~~Hot Wings or Sports Lounge menu?~~ **Resolved.** Hot Wings, the only trading brand.
    Seed `hot-wings-standard` as the single price list.
-3. **Real operating hours per weekday.** The current site publishes none. Staging temporarily uses
-   11:00 to 22:00 daily for Garden Bloc so checkout can be tested, as authorized by the owner on
-   2026-08-10. This is not a confirmed production schedule. Do not promote it without confirmation:
-   the reference shipped a placeholder schedule to production and it silently gated ordering.
+3. ~~**Real operating hours per weekday.**~~ **Resolved 2026-08-11.** Central Bloc, IT Park is
+   open 24 hours, seven days a week. Migration `0026` represents this explicitly as an equal
+   open and close time on every open day, rather than inventing a one-minute closure. The generated
+   seed remains empty so a new production database still fails closed until its confirmed settings
+   are entered through the owner controls.
 4. **Prep time and slot capacity.** How many orders can the kitchen genuinely absorb per fifteen
    minutes at peak? Get a number from a manager, not an estimate.
-5. **ZenPOS technical contact**, so the section 16.2 checklist can be answered.
+5. **ZenPOS technical contact**, so the section 16.2 checklist can be answered. The sendable
+   version of that checklist is `docs/zenpos-questions.md`; internal reasoning, which is not for
+   the vendor, is in `docs/zenpos-discovery.md`.
+5b. **No-show policy under payment first.** The customer has paid and did not collect. Is the food
+   held for a stated period, remade on a later visit, refunded in full, refunded in part, or
+   forfeited? This did not need an answer while orders were unpaid. It does now, and it needs to
+   be published to customers before the first order, since it is a money question.
+5c. **Who reconciles online sales at branch cash up**, and in what form they need them, so the
+   ZenPOS tender-type answer can be judged against a real process rather than a guess.
 6. **The original shoot deliverables.** Per 5.6, ask specifically for: (a) the cutout source files
    **with alpha**, not the orange-flattened JPEGs, and (b) full-resolution wing photos for Cheezy,
    Salted Egg, and Smokey Barbecue, which exist only as 300x300 thumbnails. Clean product shots for
@@ -1695,11 +1796,19 @@ Stop and ask before deciding these. Do not invent answers.
 
 The build is done when all of these are true:
 
-- [ ] A customer on a 375px phone can go from landing to a placed pickup order in under ninety
-      seconds, including choosing a wing flavor and heat level.
-- [ ] The order appears on the staff board in under two seconds without a refresh.
+- [ ] A customer on a 375px phone can go from landing to a **paid** pickup order in under ninety
+      seconds, including choosing a wing flavor and heat level and completing payment.
+- [ ] The order reaches the staff board only after payment clears, and appears in under two seconds
+      without a refresh.
+- [ ] An abandoned payment expires on its own and releases the pickup slot it was holding, verified
+      by a test rather than by watching it.
 - [ ] Staff move it to Ready in one tap and the customer's phone buzzes on a locked screen.
-- [ ] The pickup code verifies at the counter and closes the order with payment recorded.
+- [ ] The pickup code verifies at the counter and closes the order. It collects no money, because
+      there is none left to collect.
+- [ ] A staff member can refund an order, in full and in part, and the customer's tracking page and
+      the audit log both reflect it.
+- [ ] The published refund policy matches what the software actually does when the kitchen cannot
+      deliver.
 - [ ] A full pickup slot is genuinely unbookable, verified by an e2e test.
 - [ ] Heat-level pricing is correct for both HALF and FULL, verified by unit tests on all three
       price-resolution paths.
@@ -1707,7 +1816,8 @@ The build is done when all of these are true:
       no deploy, and every customer-facing surface reflects it.
 - [ ] `npm run build`, `npm run lint`, `npm test`, and `npm run test:e2e` are all green.
 - [ ] Every table has RLS. No client request can influence a price.
-- [ ] `docs/security.md`, `docs/zenpos-discovery.md`, and `README.md` exist and are accurate.
+- [ ] `docs/security.md`, `docs/zenpos-questions.md`, `docs/zenpos-discovery.md`, and `README.md`
+      exist and are accurate.
 - [ ] Nothing in the codebase mentions delivery, riders, dine-in tables, Loyverse, or zombies.
 - [ ] Nothing in the app references the closed Ayala Central Bloc location or the Sports Lounge
       brand: not a branch row, not a menu item, not a footer social link.

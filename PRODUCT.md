@@ -69,8 +69,9 @@ receives a short pickup code plus a separate unguessable tracking key.
 **The counter.** Pickup happens at a physical counter, verified by code. The customer may signal
 arrival with an "I'm here" action that pings the counter. No-shows are the main abuse vector for a
 pickup-only store. A signed-in account is encouraged because it adds saved details and history, but
-pay at counter remains available to guests while online prepay is disabled. Requiring an account
-would otherwise close ordering entirely rather than narrow it.
+guests may order, because they can prepay. **Payment first (owner ruling, 2026-08-11) changes what a
+no-show costs**: the customer has already paid, so a no-show is now a refund question rather than a
+lost sale, and the policy is an open owner decision.
 
 **The kitchen.** Orders move New to Preparing to Ready to Claimed. Staff re-key each ticket into
 ZenPOS by hand, because ZenPOS publishes no documented order-ingest path. The manual re-key panel
@@ -110,11 +111,13 @@ optional payment and loyalty work. The realtime staff board and pickup-code clai
   Never hardcode a branch.
 - **The client never sends a price.** No total, discount, or fee originates on the client. Every
   order write goes through a `SECURITY DEFINER` Postgres function. Every table has RLS.
-- **No feature flag ships defaulted to on.** Settings fail closed. Both payment rails (pay at
-  counter, and PayMongo online prepay) exist behind flags, off by default (D4).
-- **Guests may use pay at counter.** Online prepay is flag-gated off until merchant approval, so an
-  account requirement on the counter rail would make ordering impossible for a guest. The database
-  still records an authenticated owner whenever a customer chooses to sign in.
+- **No feature flag ships defaulted to on.** Settings fail closed. ~~Both payment rails (pay at
+  counter, and PayMongo online prepay) exist behind flags, off by default (D4).~~ **Superseded
+  2026-08-11: pickup is payment first.** Online prepay is the only rail offered to customers, and
+  it must be live before ordering opens. The counter rail stays in the schema but is unreachable
+  from pickup checkout.
+- **Guests may order, and they prepay like everyone else.** No account is required to pay online.
+  The database still records an authenticated owner whenever a customer chooses to sign in.
 - **The Sports Lounge is closed** as of August 2026, and the Ayala Malls Central Bloc branch with
   it. Nothing in the app may reference either: not a branch row, not a menu item, not a footer
   social link. The `branches.brand` column keeps the concept expressible at zero cost, but nothing
@@ -132,17 +135,18 @@ optional payment and loyalty work. The realtime staff board and pickup-code clai
 - **No em dashes** anywhere: not in code comments, commit messages, documentation, or shipped UI
   copy.
 
-**Terminology.** "Pay at counter", not "cash". "Pickup code", not "order number" (the tracking key
+**Terminology.** ~~"Pay at counter", not "cash".~~ Retired by the payment-first ruling; the customer
+facing word is "Paid", and no screen offers to take money at the counter. "Pickup code", not
+"order number" (the tracking key
 is a separate, unguessable value). "Level of Hotness" is the customer facing name of the heat
 scale. Order statuses are New, Preparing, Ready, Claimed.
 
 **Owner input.** Two items in spec section 28 are resolved. Five remain open. Do not invent answers
 to the remaining items:
 
-1. *(Resolved 2026-08-10: Garden Bloc, IT Park, Lahug is the pilot branch.)*
+1. *(Resolved 2026-08-10: Central Bloc, IT Park, Lahug is the pilot branch.)*
 2. *(Resolved: Hot Wings, the only trading brand.)*
-3. Real operating hours per weekday. The current site publishes none, and the reference project
-   shipped a placeholder schedule that silently gated ordering.
+3. *(Resolved 2026-08-11: Central Bloc, IT Park is open 24 hours, seven days a week.)*
 4. Prep time and slot capacity per branch, as a real number from a manager.
 5. A ZenPOS technical contact, so the integration discovery checklist can be answered.
 6. The original shoot deliverables: cutout sources with alpha rather than orange flattened JPEGs,
