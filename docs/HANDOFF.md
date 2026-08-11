@@ -558,11 +558,17 @@ configured Super Admin and shows the two `NY-` order transitions with their acto
 badge, "Garden Bloc, IT Park", and a change detail carrying only `from`, `to` and
 `counterPaymentCaptured`.
 
-**One thing the redaction deliberately does not hide: a staff phone number.** The access-change and
-Super Admin provisioning RPCs record `to_jsonb()` of the profile row, which carries `phone`. That is
-PII rather than a credential, and an audit trail that hides what changed is not one, so it is shown.
-Those rows are business wide, so only an admin or an unassigned staff member can read them at all.
-If the owner wants it masked, add `phone` to `REDACTED_KEYS` in `lib/staff/audit-log.ts`.
+**The redaction masks a staff phone number, and that was a decision rather than a default.** The
+access-change and Super Admin provisioning RPCs record `to_jsonb()` of the profile row, which carries
+`phone`, so a staff member's number appeared in the detail of every entry about their account. It is
+not a credential, and an audit trail that hides what changed is not one, so it shipped visible with
+the trade written down. The owner reviewed it on 2026-08-11 and chose to mask it. What the entry
+still says is that the change happened, who made it, and to whom, which is what the trail is for.
+
+The rule now covers `phone` and any key ending `_phone`, so a future `customer_phone` in a diff is
+caught too. **An email address is deliberately not covered**: no diff in this schema carries one,
+because `profiles` has no email column and the address lives in the Auth directory. If an RPC ever
+starts logging one, decide then rather than assuming the suffix rule caught it.
 
 - Migration `0023_audit_log_branch_scope.sql` closes the gap `0022` opened in the
   audit trail. `0022` widened `audit_logs` from "admin only" to "anyone holding
