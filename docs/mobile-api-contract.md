@@ -64,6 +64,17 @@ was about to end.
 | --- | --- | --- |
 | Supabase access token | `Authorization: Bearer <token>` | The signed-in customer's own orders, and stamps `orders.user_id` on a new one. |
 | Order tracking token | `x-nybb-tracking-token` | One guest order. |
+| Supabase refresh token | The body of `/auth/refresh`, and nowhere else | Minting the next access token. |
+
+The refresh token is deliberately not carried in `Authorization`. That header
+holds access tokens on every other route, and `mobileCaller()` reads it there to
+build a caller's identity, so one header holding two kinds of credential would
+be distinguished only by which route happened to receive it. The first handler
+that read it with the wrong assumption would forward a refresh token to
+PostgREST.
+
+All three are bearer credentials and the app keeps them in platform secure
+storage (`apps/customer/src/session/store.ts`), never in ordinary app storage.
 
 Cookies are ignored completely. The mobile API has no cookie surface, and
 `tests/unit/mobile-contract.test.ts` asserts it: a caller that could
@@ -80,6 +91,57 @@ able to paste a link; the app has no such need, it holds the token itself.
 All responses are `no-store`. There are no CORS headers, deliberately: a native
 client does not need them, and their absence keeps a page on another origin from
 reading these responses out of a visitor's browser.
+
+### `POST /api/mobile/v1/auth/otp`
+
+Asks for a six-digit sign-in code. Body is `{ "email": "…" }`. The answer carries
+`expiresAt` and `resendAvailableAt` and nothing secret, so the sign-in screen can
+pace its resend button against the server's real limit rather than a constant
+that drifts from it.
+
+**The answer is identical whether or not the address has an account.** This
+endpoint is unauthenticated by necessity, and a response that differed would turn
+it into a way to test whether somebody has ordered from NYBB, one address at a
+time. The only refusals visible from outside are a malformed address and the rate
+limit, neither of which says anything about who exists.
+
+The limiter runs before Supabase is called, on the same hashed-email namespaces
+`lib/auth/rate-limit.ts` gives the web login, so a phone and a browser share one
+budget. The email is trimmed and lowercased before the limiter sees it, so one
+address is one bucket.
+
+### `POST /api/mobile/v1/auth/session`
+
+Exchanges `{ "email": "…", "token": "123456" }` for a session: an access token, a
+refresh token, an expiry in epoch milliseconds, and the address. This is the one
+response in the contract that hands the caller a credential rather than reading
+one, which is why `no-store` and the absent CORS headers are load bearing here
+rather than merely tidy.
+
+Three verification types are tried, because Supabase types the same six digits
+differently depending on whether the address was already registered. Every way a
+code can fail gives one message, so the response says nothing about whether the
+address has an account.
+
+Staff addresses get a customer session like anybody else. The workspace is
+browser-only by decision, and a staff member using the customer app is a
+customer; RLS scopes what they read to their own orders either way.
+
+### `POST /api/mobile/v1/auth/refresh`
+
+Takes `{ "refreshToken": "…" }` and returns a fresh session. Both tokens rotate,
+because Supabase rotates the refresh token on every use, and an app that stores
+only the new access token presents a spent credential on the next refresh.
+
+**A `401` here means sign in again; a `503` means retry later.** The app acts on
+that difference: the first clears the keychain, the second keeps the session.
+Reporting a revoked token as an outage leaves a device retrying a credential that
+will never work again.
+
+There is no rate limit on this route, deliberately. It is authorized by a
+credential this server issued, so it is not reachable by a stranger, and a
+limiter would refuse a legitimate app reopening after a long sleep, which is
+exactly when a refresh is needed.
 
 ### `GET /api/mobile/v1/menu?branch=<slug>`
 
@@ -153,9 +215,13 @@ a retry harmless.
 
 ## Not in v1
 
-- **Account history and profile.** The API accepts a bearer token today and the
-  database already scopes orders by `auth.uid()`, but the app has no sign-in
-  screen and no token store, so the endpoints wait for that slice.
+- **Account history and profile.** Sign-in and the token store now exist, and
+  the database already scopes orders by `auth.uid()`, so these endpoints are
+  unblocked rather than waiting. They are still not built.
+- **Sign-out as a server-side revoke.** The app deletes both tokens from the
+  keychain, which is the only place it stored them, but nothing revokes the
+  refresh token at Supabase, so a copy captured beforehand keeps working until
+  it rotates or expires. A `/auth/signout` route is the fix and is not here.
 - **Staff endpoints.** The workspace remains browser-only until the customer
   contract has run in a pilot. It becomes a separate tablet-focused API.
 - **Push registration.** The app polls while an order is live. Native device
@@ -171,7 +237,15 @@ a retry harmless.
   body limits, the return-URL builder, and the drift check between the server's
   contract file and the app's copy of it.
 - `tests/unit/mobile-api.test.ts` runs every route with no database configured
-  and asserts each degrades into a specific honest answer rather than a 500.
+  and asserts each degrades into a specific honest answer rather than a 500,
+  including that an unconfigured server answers `/auth/otp` with 503 rather than
+  401, which is what keeps the unconfigured case from leaking the same signal
+  the endpoint is designed not to give.
+- `tests/unit/mobile-auth.test.ts` covers the sign-in service: that the limiter
+  runs before Supabase is asked for anything, that a wrong code and a spent
+  refresh token are `rejected` while an outage is `unavailable`, that both
+  tokens rotate on refresh, and that a failed profile write still signs the
+  customer in.
 - The services behind the routes are covered by the existing checkout, tracking,
   arrival and PayMongo suites, which did not change: the Server Actions and the
   mobile routes now call the same code.

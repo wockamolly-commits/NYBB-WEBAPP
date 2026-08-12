@@ -3,8 +3,10 @@ import {
   MOBILE_API_BASE_PATH,
   TRACKING_TOKEN_HEADER,
   type MobileError,
+  type MobileOtpRequested,
   type MobilePaymentStart,
   type MobileResponse,
+  type MobileSession,
 } from "./contract";
 import type {
   PickupSlots,
@@ -176,4 +178,29 @@ export function markArrived(
     method: "POST",
     credentials,
   });
+}
+
+/**
+ * Asks NYBB to email a six-digit sign-in code.
+ *
+ * None of the three sign-in calls takes `Credentials`. Two of them are how a
+ * credential is obtained in the first place, and the third authorizes itself
+ * with the refresh token in its body rather than with the bearer header, because
+ * that header carries access tokens everywhere else in this file and one header
+ * holding two kinds of credential is how a refresh token ends up forwarded to
+ * the database.
+ */
+export function requestSignInCode(email: string): Promise<ApiResult<MobileOtpRequested>> {
+  return call("/auth/otp", { method: "POST", body: { email } });
+}
+
+export function verifySignInCode(
+  email: string,
+  token: string,
+): Promise<ApiResult<MobileSession>> {
+  return call("/auth/session", { method: "POST", body: { email, token } });
+}
+
+export function refreshSession(refreshToken: string): Promise<ApiResult<MobileSession>> {
+  return call("/auth/refresh", { method: "POST", body: { refreshToken } });
 }

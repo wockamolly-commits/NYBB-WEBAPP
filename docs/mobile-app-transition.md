@@ -125,8 +125,15 @@ the app now uses it. `docs/mobile-api-contract.md` is the reference.
 - The local sample menu and the disabled checkout button are gone. What replaced
   them sends no price, no total and no payment state, and reads every piece of
   order state back from the server.
-- Not yet built, and listed in the inventory: native sign-in, a persisted order
-  session, account history, push registration, and deep-link handling.
+- Native sign-in and the persisted order session are built. Email OTP is proxied
+  through `/api/mobile/v1/auth/`, which keeps the Supabase SDK out of the app
+  bundle and keeps one hashed-email rate limit across the phone and the browser,
+  and `expo-secure-store` holds the session alongside the order's short code and
+  tracking token. A terminated app returns to an unpaid order rather than
+  stranding the customer with the branch's phone number. Guests still order
+  without an account: the sign-in screen is reachable, not imposed.
+- Not yet built, and listed in the inventory: account history, push
+  registration, deep-link handling, and a server-side sign-out revoke.
 
 ### Phase M0, decide and protect the boundary
 

@@ -20,7 +20,7 @@ treated and what is still outstanding.
 | `app/actions/payment.ts::payOrder` | `POST /api/mobile/v1/orders/{code}/payment` | Shipped through `lib/customer/payment.ts`. The server keeps the PayMongo credentials and builds the return URL. The channel is pinned by the route, never read from the client. |
 | `get_order_by_tracking()` | `GET /api/mobile/v1/orders/{code}` | Shipped. Bearer-token handling preserved, and the missing-order response is still identical to a wrong token. |
 | `app/actions/order-arrival.ts::markCustomerArrived` | `POST /api/mobile/v1/orders/{code}/arrival` | Shipped through `lib/customer/arrival.ts`. Authorization and eligibility stay in the RPC. |
-| Storefront OTP actions | Native Supabase Auth flow | Not built. The API already accepts a bearer token; the app needs a sign-in screen and platform secure storage, which is the same slice that persists the order session. |
+| Storefront OTP actions | `POST /api/mobile/v1/auth/otp`, `/auth/session`, `/auth/refresh` | Shipped through `lib/customer/auth.ts`. Server-proxied rather than the Supabase SDK in the app bundle, so the hashed-email OTP limit in `lib/auth/rate-limit.ts` counts a phone and a browser against one budget and the refusal copy stays in one table. The workspace paths (staff email lookup, Super Admin provisioning, cookie families) are deliberately absent: this is the customer path only. |
 | Account profile action and history readers | Authenticated account commands and queries | Not built, as planned. Defined after the ordering contract, which is now the thing to build against. |
 
 ## Outside the first mobile contract
@@ -47,10 +47,27 @@ additions were made to shared types:
 
 ## Still to do
 
-1. Native sign-in, a secure token store, and persistence of the order session.
-   The tracking token currently lives in memory only, so a terminated app loses
-   its way back to an unpaid order.
-2. Account history and profile endpoints, once sign-in exists.
+1. ~~Native sign-in, a secure token store, and persistence of the order
+   session.~~ **Done.** `apps/customer/src/session/store.ts` keeps the Supabase
+   session and the order's short code and tracking token in `expo-secure-store`,
+   and `useCustomerSession` is the only accessor for an access token, so a token
+   inside its expiry margin is refreshed before it is used rather than after it
+   fails. A terminated app now comes back to an unpaid order.
+
+   Two things this slice did **not** do, written down rather than assumed:
+
+   - **Sign-out is local.** The tokens are deleted from the keychain, which is
+     the only place they were stored, but the refresh token is not revoked at
+     Supabase and a copy captured beforehand would work until it rotates or
+     expires. Closing that needs a revoke endpoint.
+   - **The mobile email schema normalizes before it validates**, which the web
+     login action does not: `z.email().trim().toLowerCase()` applies its
+     transforms after validation, so a trailing space fails as a malformed
+     address. A software keyboard's autocomplete appends exactly that space. The
+     web action has the same construction and the same latent defect; it was
+     left alone because it is shipped and smoke-tested, and it is worth fixing
+     the next time somebody is in that file.
+2. Account history and profile endpoints, now unblocked by sign-in.
 3. Push registration, replacing the order screen's six-second poll.
 4. Deep-link handling for redirect payments. The scheme and the server-side
    return URL exist; the app has no `Linking` listener yet.

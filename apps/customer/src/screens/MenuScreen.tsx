@@ -19,16 +19,21 @@ export function MenuScreen({
   loading,
   error,
   cartCount,
+  signedInEmail,
   onRetry,
   onOpenCart,
+  onOpenAccount,
   onSelectItem,
 }: {
   menu: StorefrontMenu | null;
   loading: boolean;
   error: string | null;
   cartCount: number;
+  /** The signed-in address, or null for a guest. Guests can order. */
+  signedInEmail: string | null;
   onRetry: () => void;
   onOpenCart: () => void;
+  onOpenAccount: () => void;
   onSelectItem: (item: MenuItem) => void;
 }) {
   const [category, setCategory] = useState<string>("all");
@@ -52,15 +57,30 @@ export function MenuScreen({
           <Text style={styles.brand}>NYBB HOT WINGS</Text>
           <Text style={shared.title}>Pick your heat.</Text>
         </View>
-        <Pressable
-          accessibilityLabel={`Open cart, ${cartCount} items`}
-          accessibilityRole="button"
-          onPress={onOpenCart}
-          style={styles.cartButton}
-        >
-          <Text style={styles.cartButtonText}>CART</Text>
-          <Text style={styles.cartBadge}>{cartCount}</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          {/*
+            An account is an offer, not a gate. The label says which of the two
+            states this is, because "Account" on its own leaves a customer
+            tapping through to find out whether they are signed in.
+          */}
+          <Pressable
+            accessibilityLabel={signedInEmail ? `Account, signed in as ${signedInEmail}` : "Sign in"}
+            accessibilityRole="button"
+            onPress={onOpenAccount}
+            style={styles.accountButton}
+          >
+            <Text style={styles.accountButtonText}>{signedInEmail ? "ACCOUNT" : "SIGN IN"}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`Open cart, ${cartCount} items`}
+            accessibilityRole="button"
+            onPress={onOpenCart}
+            style={styles.cartButton}
+          >
+            <Text style={styles.cartButtonText}>CART</Text>
+            <Text style={styles.cartBadge}>{cartCount}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {loading && !menu ? (
@@ -184,6 +204,22 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   headerCopy: { flex: 1, paddingRight: 12 },
+  headerActions: { alignItems: "center", flexDirection: "row", gap: 8 },
+  accountButton: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: RADIUS_FULL,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: TAP_TARGET,
+    paddingHorizontal: 12,
+  },
+  accountButtonText: {
+    color: colors.bone,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
   brand: {
     color: colors.signageYellow,
     fontSize: 11,

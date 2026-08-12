@@ -16,11 +16,15 @@ import {
 import type { MenuItem, PickupSlots, StorefrontMenu, TrackedOrder } from "./src/api/types";
 import { addLine, buildCartLine, cartCount, changeQuantity, toOrderLines, type CartLine } from "./src/cart";
 import type { LineSelection } from "./src/menu/pricing";
+import { AccountScreen } from "./src/screens/AccountScreen";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CheckoutScreen, type CheckoutDetails } from "./src/screens/CheckoutScreen";
 import { ItemSheet } from "./src/screens/ItemSheet";
 import { MenuScreen } from "./src/screens/MenuScreen";
 import { OrderScreen } from "./src/screens/OrderScreen";
+import { SignInScreen } from "./src/screens/SignInScreen";
+import { clearOrder, loadOrder as loadStoredOrder, saveOrder } from "./src/session/store";
+import { useCustomerSession } from "./src/session/useCustomerSession";
 import { colors } from "./src/theme";
 
 /**
@@ -35,20 +39,27 @@ import { colors } from "./src/theme";
  * whatever the last read said it was. There is no code path here that writes
  * any of those, and adding one would be the bug.
  *
- * THE ORDER SESSION LIVES IN MEMORY ONLY, FOR NOW.
+ * THE ORDER SESSION AND THE ACCOUNT BOTH SURVIVE A TERMINATION.
  * ================================================================
- * The tracking token is the credential that reads a guest's order, and it is
- * held in React state rather than in secure storage, because this slice does
- * not have a secure-storage dependency yet. The consequence is honest and worth
- * knowing: if the operating system terminates the app between placing an order
- * and paying for it, the app loses its way back to that order, and the customer
- * needs the branch. Persisting it belongs in the same slice as native sign-in,
- * where the Supabase session also has to be stored properly.
+ * `src/session/store.ts` keeps the tracking token, the short code and the
+ * Supabase session in platform secure storage, so an app the operating system
+ * reclaims between placing an order and paying for it comes back to that order
+ * rather than stranding the customer with only the branch's phone number. All
+ * three are bearer credentials, which is why they are in the keychain and not in
+ * ordinary app storage, and why nothing in this file logs them.
+ *
+ * NOTHING HERE READS AN ACCESS TOKEN OUT OF STATE.
+ * ================================================================
+ * `auth.accessToken()` is async because it refreshes an expiring token before
+ * handing it over. Every authenticated call in this file awaits it at the moment
+ * of the call rather than closing over a token from an earlier render, which is
+ * what stops a long-lived screen from sending a credential that died while it
+ * was open.
  */
 
 const PAYMENT_METHOD = "qrph";
 
-type Screen = "menu" | "cart" | "checkout" | "order";
+type Screen = "menu" | "cart" | "checkout" | "order" | "signin" | "account";
 
 const EMPTY_DETAILS: CheckoutDetails = { name: "", phone: "", email: "", notes: "" };
 
@@ -57,6 +68,7 @@ type OrderSession = Credentials & { shortCode: string };
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("menu");
+  const auth = useCustomerSession();
 
   const [menu, setMenu] = useState<StorefrontMenu | null>(null);
   const [menuLoading, setMenuLoading] = useState(true);
@@ -76,7 +88,7 @@ export default function App() {
   const [placing, setPlacing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<MobileError | null>(null);
 
-  const [session, setSession] = useState<OrderSession | null>(null);
+  const [orderSession, setOrderSession] = useState<OrderSession | null>(null);
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderError, setOrderError] = useState<MobileError | null>(null);
@@ -150,24 +162,64 @@ export default function App() {
    * state change it just caused is a render loop waiting for one bad
    * dependency.
    */
-  const loadOrder = useCallback(async (target: OrderSession) => {
-    setOrderLoading(true);
-    const result = await fetchOrder(target.shortCode, target);
-    if (result.ok) {
-      setOrder(result.data);
-      setOrderError(null);
-      // Once the payment has cleared there is nothing left to scan, and leaving
-      // a stale QR code on screen invites a second payment.
-      if (result.data.payment?.status === "paid") setPayment(null);
-    } else {
-      setOrderError(result.error);
-    }
-    setOrderLoading(false);
-  }, []);
+  const loadOrder = useCallback(
+    async (target: OrderSession) => {
+      setOrderLoading(true);
+      const result = await fetchOrder(target.shortCode, {
+        ...target,
+        accessToken: await auth.accessToken(),
+      });
+      if (result.ok) {
+        setOrder(result.data);
+        setOrderError(null);
+        // Once the payment has cleared there is nothing left to scan, and
+        // leaving a stale QR code on screen invites a second payment.
+        if (result.data.payment?.status === "paid") setPayment(null);
+      } else {
+        setOrderError(result.error);
+      }
+      setOrderLoading(false);
+    },
+    [auth],
+  );
 
   const refreshOrder = useCallback(async () => {
-    if (session) await loadOrder(session);
-  }, [session, loadOrder]);
+    if (orderSession) await loadOrder(orderSession);
+  }, [orderSession, loadOrder]);
+
+  /**
+   * Restore the order this app was tracking when it was last closed.
+   *
+   * Runs once, and only takes over the screen when there is something to show.
+   * A customer who left the app on the menu and comes back to a stored order
+   * they already collected should not be dropped onto a tracking screen, so the
+   * read below decides: `leaveOrder` clears the store, and an order the server
+   * no longer recognises clears it too.
+   */
+  useEffect(() => {
+    let live = true;
+
+    void (async () => {
+      const stored = await loadStoredOrder();
+      if (!live || !stored) return;
+
+      const restored: OrderSession = {
+        shortCode: stored.shortCode,
+        trackingToken: stored.trackingToken,
+      };
+      setOrderSession(restored);
+      setScreen("order");
+      await loadOrder(restored);
+    })();
+
+    return () => {
+      live = false;
+    };
+    // Deliberately once, on launch. `loadOrder` changes identity whenever the
+    // session hook re-renders, and restoring on every one of those would fetch
+    // the order in a loop and drag the customer back to the order screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openCheckout() {
     setCheckoutError(null);
@@ -187,21 +239,32 @@ export default function App() {
     setPlacing(true);
     setCheckoutError(null);
 
-    const result = await placeOrder({
-      attemptId,
-      branchSlug: slots?.branch?.slug ?? null,
-      pickupSlotStart: selectedSlotStart,
-      details,
-      paymentMethod: PAYMENT_METHOD,
-      lines: toOrderLines(cart),
-    });
+    const result = await placeOrder(
+      {
+        attemptId,
+        branchSlug: slots?.branch?.slug ?? null,
+        pickupSlotStart: selectedSlotStart,
+        details,
+        paymentMethod: PAYMENT_METHOD,
+        lines: toOrderLines(cart),
+      },
+      // Signed in or not, the order goes through the same call. The token is
+      // what lets `place_order` stamp `orders.user_id`, which is the whole
+      // difference between an order that appears in an account later and one
+      // that only the tracking token can ever reach.
+      { accessToken: await auth.accessToken() },
+    );
 
     if (result.ok) {
       const placed: OrderSession = {
         shortCode: result.data.shortCode,
         trackingToken: result.data.trackingToken,
       };
-      setSession(placed);
+      setOrderSession(placed);
+      // Written before the first read, not after. The read can fail on a bad
+      // connection, and the one moment this token must not be lost is the
+      // moment it is the only way back to an order that has just been paid for.
+      await saveOrder({ shortCode: placed.shortCode, trackingToken: placed.trackingToken ?? null });
       setOrder(null);
       setPayment(null);
       setPaymentError(null);
@@ -226,15 +289,15 @@ export default function App() {
   }
 
   async function pay() {
-    if (!session) return;
+    if (!orderSession) return;
 
     setPaymentBusy(true);
     setPaymentError(null);
 
     const result = await startPayment(
-      session.shortCode,
+      orderSession.shortCode,
       { method: PAYMENT_METHOD, paymentAttemptId },
-      session,
+      { ...orderSession, accessToken: await auth.accessToken() },
     );
 
     if (result.ok) {
@@ -255,14 +318,14 @@ export default function App() {
   }
 
   async function settleMock(outcome: "paid" | "failed") {
-    if (!session) return;
+    if (!orderSession) return;
 
     setPaymentBusy(true);
     setPaymentError(null);
     const result = await settleMockPayment(
-      session.shortCode,
+      orderSession.shortCode,
       { method: PAYMENT_METHOD, paymentAttemptId, outcome },
-      session,
+      { ...orderSession, accessToken: await auth.accessToken() },
     );
     if (!result.ok) setPaymentError(result.error);
     else setPayment(null);
@@ -271,17 +334,20 @@ export default function App() {
   }
 
   async function announceArrival() {
-    if (!session) return;
+    if (!orderSession) return;
 
     setArrivalBusy(true);
-    const result = await markArrived(session.shortCode, session);
+    const result = await markArrived(orderSession.shortCode, {
+      ...orderSession,
+      accessToken: await auth.accessToken(),
+    });
     if (!result.ok) setOrderError(result.error);
     await refreshOrder();
     setArrivalBusy(false);
   }
 
-  function leaveOrder() {
-    setSession(null);
+  async function leaveOrder() {
+    setOrderSession(null);
     setOrder(null);
     setPayment(null);
     setPaymentError(null);
@@ -289,6 +355,19 @@ export default function App() {
     setDetails(EMPTY_DETAILS);
     setScreen("menu");
     reloadMenu();
+    // The stored copy goes with it, or the next launch restores an order the
+    // customer has explicitly finished with.
+    await clearOrder();
+  }
+
+  async function completeSignIn() {
+    const signedIn = await auth.verifyCode();
+    if (signedIn) setScreen("menu");
+  }
+
+  async function signOut() {
+    await auth.signOut();
+    setScreen("menu");
   }
 
   return (
@@ -301,9 +380,40 @@ export default function App() {
           error={menuError}
           loading={menuLoading}
           menu={menu}
+          onOpenAccount={() => {
+            if (auth.session) {
+              setScreen("account");
+              return;
+            }
+            auth.openSignIn();
+            setScreen("signin");
+          }}
           onOpenCart={() => setScreen("cart")}
           onRetry={reloadMenu}
           onSelectItem={setActiveItem}
+          signedInEmail={auth.session?.email ?? null}
+        />
+      ) : screen === "signin" ? (
+        <SignInScreen
+          busy={auth.signInBusy}
+          code={auth.signInCode}
+          email={auth.signInEmail}
+          error={auth.signInError}
+          notice={auth.signInNotice}
+          onCodeChange={auth.setSignInCode}
+          onDismiss={() => setScreen("menu")}
+          onEmailChange={auth.setSignInEmail}
+          onRequestCode={() => void auth.requestCode()}
+          onUseAnotherAddress={auth.useAnotherAddress}
+          onVerifyCode={() => void completeSignIn()}
+          resendAvailableAt={auth.resendAvailableAt}
+          step={auth.signInStep}
+        />
+      ) : screen === "account" ? (
+        <AccountScreen
+          email={auth.session?.email ?? null}
+          onDismiss={() => setScreen("menu")}
+          onSignOut={() => void signOut()}
         />
       ) : screen === "cart" ? (
         <CartScreen
@@ -336,7 +446,7 @@ export default function App() {
           error={orderError}
           loading={orderLoading}
           onArrived={() => void announceArrival()}
-          onDone={leaveOrder}
+          onDone={() => void leaveOrder()}
           onPay={() => void pay()}
           onRefresh={() => void refreshOrder()}
           onSettleMock={(outcome) => void settleMock(outcome)}

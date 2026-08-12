@@ -34,7 +34,7 @@ export type MobileErrorCode = (typeof MOBILE_ERROR_CODES)[number];
 export type MobileError = {
   code: MobileErrorCode;
   message: string;
-  field?: "name" | "phone" | "email" | "slot" | "cart";
+  field?: "name" | "phone" | "email" | "slot" | "cart" | "code";
   staleSlots?: true;
   newAttempt?: true;
 };
@@ -58,5 +58,26 @@ export type MobilePaymentStart =
   | { action: "redirect"; redirectUrl: string }
   | { action: "mock" }
   | { action: "done" };
+
+/** Carries nothing secret. It only paces the sign-in screen's resend button. */
+export type MobileOtpRequested = {
+  email: string;
+  expiresAt: number;
+  resendAvailableAt: number;
+};
+
+/**
+ * A signed-in session, as this device stores it.
+ *
+ * Both tokens are bearer credentials and the refresh token is the stronger one.
+ * `src/session/store.ts` is the only module that writes them, and it writes them
+ * to platform secure storage. Never log either, and never put them in a URL.
+ */
+export type MobileSession = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  email: string | null;
+};
 
 export const MAX_MOBILE_BODY_BYTES = 32 * 1024;

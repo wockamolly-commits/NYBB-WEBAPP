@@ -84,7 +84,7 @@ export type MobileError = {
   /** Customer copy. Safe to put on a screen as it is. */
   message: string;
   /** Which input to point at, when a form caused it. */
-  field?: "name" | "phone" | "email" | "slot" | "cart";
+  field?: "name" | "phone" | "email" | "slot" | "cart" | "code";
   /** The pickup windows on screen are stale. Reload them before retrying. */
   staleSlots?: true;
   /** Mint a new attempt id. Anything else is safe to retry with the old one. */
@@ -125,6 +125,39 @@ export type MobilePaymentStart =
   | { action: "mock" }
   /** Nothing left to do at the provider. Read the order back. */
   | { action: "done" };
+
+/**
+ * What the app is told once a sign-in code is on its way.
+ *
+ * Deliberately carries nothing secret. It exists so the sign-in screen can
+ * disable "Send another code" for the right length of time and say when the
+ * code stops working, both of which it would otherwise have to guess at with a
+ * hardcoded number that drifts from the server's real limit.
+ */
+export type MobileOtpRequested = {
+  email: string;
+  /** Epoch milliseconds after which the code will not verify. */
+  expiresAt: number;
+  /** Epoch milliseconds before which a resend will be refused anyway. */
+  resendAvailableAt: number;
+};
+
+/**
+ * A signed-in session, as the device stores it.
+ *
+ * Both tokens are bearer credentials and the refresh token is the stronger of
+ * the two: it mints access tokens until it is rotated or revoked. It belongs in
+ * platform secure storage (Keychain, Keystore) and nowhere else. Never log
+ * either one, never put them in a URL, and never write them to ordinary app
+ * storage on the grounds that the device is the customer's own.
+ */
+export type MobileSession = {
+  accessToken: string;
+  refreshToken: string;
+  /** Epoch milliseconds. Refresh before this, not after. */
+  expiresAt: number;
+  email: string | null;
+};
 
 /**
  * A hard ceiling on a request body, well above the largest real order.

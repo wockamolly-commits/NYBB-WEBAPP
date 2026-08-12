@@ -6,6 +6,9 @@ import { GET as getOrder } from "@/app/api/mobile/v1/orders/[shortCode]/route";
 import { POST as postArrival } from "@/app/api/mobile/v1/orders/[shortCode]/arrival/route";
 import { POST as postPayment } from "@/app/api/mobile/v1/orders/[shortCode]/payment/route";
 import { POST as postMockPayment } from "@/app/api/mobile/v1/orders/[shortCode]/payment/mock/route";
+import { POST as postOtp } from "@/app/api/mobile/v1/auth/otp/route";
+import { POST as postSession } from "@/app/api/mobile/v1/auth/session/route";
+import { POST as postRefresh } from "@/app/api/mobile/v1/auth/refresh/route";
 import { TRACKING_TOKEN_HEADER } from "@/lib/mobile/contract";
 
 /**
@@ -207,5 +210,71 @@ describe("starting a payment", () => {
       params(ORDER),
     );
     expect(response.status).toBe(409);
+  });
+});
+
+describe("signing in", () => {
+  it("refuses an address that is not an address, and points at the field", async () => {
+    const response = await postOtp(post("/api/mobile/v1/auth/otp", { email: "not-an-address" }));
+    expect(response.status).toBe(400);
+
+    const body = await response.json();
+    expect(body.error.code).toBe("invalid_request");
+    expect(body.error.field).toBe("email");
+  });
+
+  it("refuses a request with no address at all before it reaches a limiter", async () => {
+    const response = await postOtp(post("/api/mobile/v1/auth/otp", {}));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.field).toBe("email");
+  });
+
+  it("says sign-in is unreachable rather than that the address was rejected", async () => {
+    const response = await postOtp(post("/api/mobile/v1/auth/otp", { email: "sam@example.com" }));
+    // 503 and not 401. With no project configured this says nothing about
+    // whether the address has an account, which is the property that keeps this
+    // unauthenticated endpoint from being an account prober.
+    expect(response.status).toBe(503);
+    expect((await response.json()).error.code).toBe("unavailable");
+  });
+
+  it("refuses a code that is not six digits without asking Supabase", async () => {
+    const response = await postSession(
+      post("/api/mobile/v1/auth/session", { email: "sam@example.com", token: "12ab" }),
+    );
+    expect(response.status).toBe(400);
+
+    const body = await response.json();
+    expect(body.error.code).toBe("invalid_request");
+    expect(body.error.field).toBe("code");
+  });
+
+  it("treats a missing refresh token as a finished session, not as a bad request", async () => {
+    const response = await postRefresh(post("/api/mobile/v1/auth/refresh", {}));
+    // 401, because the app's rule is "sign in again" on 401 and "retry later" on
+    // 503. A 400 here would leave a device with an unusable token retrying it.
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.code).toBe("unauthorized");
+  });
+
+  it("does not hand back a session, or anything else, from an unconfigured server", async () => {
+    const response = await postSession(
+      post("/api/mobile/v1/auth/session", { email: "sam@example.com", token: "123456" }),
+    );
+    expect(response.status).toBe(503);
+
+    const body = await response.json();
+    expect(body.ok).toBe(false);
+    expect(body.data).toBeUndefined();
+  });
+
+  it("never lets a sign-in response be cached", async () => {
+    const response = await postSession(
+      post("/api/mobile/v1/auth/session", { email: "sam@example.com", token: "123456" }),
+    );
+    // The one response in this API that would hand a caller a credential. A
+    // shared cache holding it would serve one customer's session to the next
+    // request for the same URL.
+    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });
