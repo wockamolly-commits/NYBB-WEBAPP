@@ -68,3 +68,53 @@ export function parsePaymongoEvent(payload: unknown): {
     paymentId: typeof resource?.id === "string" ? resource.id : null,
   };
 }
+
+export const PAYMONGO_REFUND_EVENT_TYPES = [
+  "payment.refunded",
+  "payment.refund.updated",
+] as const;
+
+export type PaymongoRefundEvent = {
+  refundId: string | null;
+  providerRefundId: string | null;
+  status: "succeeded" | "failed" | "pending" | null;
+};
+
+function refundStatus(value: unknown): PaymongoRefundEvent["status"] {
+  return value === "succeeded" || value === "failed" || value === "pending" ? value : null;
+}
+
+/** Reads both documented refund delivery shapes without trusting webhook data. */
+export function parsePaymongoRefundEvent(payload: unknown): PaymongoRefundEvent {
+  const resource = payload && typeof payload === "object"
+    ? (payload as { data?: { attributes?: { data?: unknown } } }).data?.attributes?.data
+    : null;
+  if (!resource || typeof resource !== "object") {
+    return { refundId: null, providerRefundId: null, status: null };
+  }
+  const item = resource as {
+    id?: unknown;
+    attributes?: { status?: unknown; metadata?: { refund_id?: unknown }; refunds?: unknown };
+  };
+  const metadataId = typeof item.attributes?.metadata?.refund_id === "string"
+    ? item.attributes.metadata.refund_id
+    : null;
+  const directStatus = refundStatus(item.attributes?.status);
+  if (directStatus || metadataId) {
+    return {
+      refundId: metadataId,
+      providerRefundId: typeof item.id === "string" ? item.id : null,
+      status: directStatus,
+    };
+  }
+  const nested = Array.isArray(item.attributes?.refunds) ? item.attributes.refunds[0] : null;
+  if (!nested || typeof nested !== "object") {
+    return { refundId: null, providerRefundId: null, status: null };
+  }
+  const refund = nested as { id?: unknown; status?: unknown };
+  return {
+    refundId: null,
+    providerRefundId: typeof refund.id === "string" ? refund.id : null,
+    status: refundStatus(refund.status),
+  };
+}

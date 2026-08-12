@@ -1,3 +1,4 @@
+import { rejectedOrderCopy } from "./reject-reasons";
 import type { OrderStatus, TrackedOrder } from "./types";
 
 /**
@@ -57,6 +58,14 @@ export type StatusCopy = {
 export function statusCopy(
   order: Pick<TrackedOrder, "status" | "timeline"> & Partial<Pick<TrackedOrder, "payment">>,
 ): StatusCopy {
+  if (order.payment?.status === "refunded") {
+    return {
+      title: "Payment refunded",
+      body: "A refund was issued for this payment. Please call the branch if you need help.",
+      tone: "stopped",
+      codeIsLive: false,
+    };
+  }
   switch (order.status) {
     case "pending":
       if (order.payment?.method !== "counter" && order.payment?.status === "pending") {
@@ -114,12 +123,19 @@ export function statusCopy(
     // The two refusals carry a reason from staff, and the reason is the whole
     // message. Falling back to a generic line is what makes a rejected order
     // feel like a system failure rather than a shop that ran out of something.
+    //
+    // What staff choose is a code, not a sentence, for the reason
+    // `lib/orders/reject-reasons.ts` gives at length: this line is read by a
+    // customer, and a text box a counter fills in under pressure is not a safe
+    // way to write to a stranger's phone. A code from before that list existed,
+    // or one this build does not know, still lands on the generic sentence.
     case "rejected":
       return {
         title: "The branch could not take this order",
-        body:
-          order.timeline.rejectedReason ??
-          "The branch stopped this order. Please call them and they will explain.",
+        body: rejectedOrderCopy(
+          order.timeline.rejectedReason,
+          order.payment?.status === "paid",
+        ),
         tone: "stopped",
         codeIsLive: false,
       };
@@ -130,8 +146,16 @@ export function statusCopy(
           title: "Payment time ran out",
           body:
             order.payment?.status === "paid"
-              ? "Payment reached us after this order expired. Please call the branch with your order number."
+                ? "Payment reached us after this order expired. Please call the branch with your order number."
               : "Online payment was not completed in time, so this order was cancelled and the pickup slot was released.",
+          tone: "stopped",
+          codeIsLive: false,
+        };
+      }
+      if (order.timeline.cancelledReason === "payment_failed") {
+        return {
+          title: "Payment was not completed",
+          body: "This order was cancelled and its pickup slot was released. Please place a new order when you are ready to pay.",
           tone: "stopped",
           codeIsLive: false,
         };

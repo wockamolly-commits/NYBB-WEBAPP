@@ -5,8 +5,15 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { formatPeso } from "@/lib/format";
+import {
+  REJECT_REASON_CODES,
+  REJECT_REASON_LABELS,
+  type RejectReasonCode,
+} from "@/lib/orders/reject-reasons";
+import { boardAction, paymentLabel } from "@/lib/staff/board";
 import type { StaffOrderActionResult, WorkspaceOrder } from "@/lib/staff/order-types";
-import { claimOrder, markOrderReady, startOrder } from "./actions";
+import { claimOrder, markOrderReady, rejectOrder, startOrder } from "./actions";
+import { RefundControl } from "./RefundControl";
 
 function manilaTime(value: string): string {
   return new Date(value).toLocaleTimeString("en-PH", {
@@ -16,9 +23,11 @@ function manilaTime(value: string): string {
   });
 }
 
-export function OrderCard({ order }: { order: WorkspaceOrder }) {
+export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefund: boolean }) {
   const [pending, startTransition] = useTransition();
   const [claiming, setClaiming] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState<RejectReasonCode>("sold_out");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -30,14 +39,7 @@ export function OrderCard({ order }: { order: WorkspaceOrder }) {
     });
   }
 
-  const paymentLabel =
-    order.payment?.method === "counter"
-      ? order.payment.status === "paid"
-        ? "Paid at counter"
-        : "Collect at counter"
-      : order.payment?.status === "paid"
-        ? "Paid online"
-        : "Awaiting payment";
+  const action = boardAction(order);
 
   return (
     <article className="bg-nybb-charcoal rounded-md p-4">
@@ -91,7 +93,7 @@ export function OrderCard({ order }: { order: WorkspaceOrder }) {
       <div className="border-nybb-bone/15 mt-3 flex items-end justify-between gap-3 border-t pt-3">
         <div>
           <p className="font-mono text-lg font-bold">{formatPeso(order.totalCents)}</p>
-          <p className="text-nybb-bone/45 mt-1 text-xs uppercase tracking-wider">{paymentLabel}</p>
+          <p className="text-nybb-bone/45 mt-1 text-xs uppercase tracking-wider">{paymentLabel(order)}</p>
         </div>
         <span className="text-nybb-bone/45 inline-flex items-center gap-1 text-xs">
           <Clock3 aria-hidden className="size-3" /> {manilaTime(order.placedAt)}
@@ -100,24 +102,35 @@ export function OrderCard({ order }: { order: WorkspaceOrder }) {
 
       {error ? <p role="alert" className="bg-nybb-red-deep/20 mt-3 rounded p-2 text-sm">{error}</p> : null}
 
-      {order.status === "pending" || order.status === "accepted" ? (
+      {action.kind === "awaiting_payment" ? (
+        // Not an error, and not a button that would fail. staff_set_order_status
+        // raises PAYMENT_REQUIRED for this order, so offering Start here would
+        // hand a counter a control whose only outcome is a red message during a
+        // rush. The customer may be holding a QR code right now, and the expiry
+        // sweep clears the window if they never pay.
+        <p className="border-nybb-bone/20 text-nybb-bone/55 mt-4 flex items-center justify-center gap-2 rounded-md border border-dashed px-3 py-3 text-sm">
+          <Clock3 aria-hidden className="size-4" />
+          Waiting for the customer to pay
+        </p>
+      ) : null}
+      {action.kind === "start" ? (
         <Button tone="dark" block className="mt-4" disabled={pending} onClick={() => run(() => startOrder(order.id))}>
           {pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Play aria-hidden className="size-4" />}
           Start
         </Button>
       ) : null}
-      {order.status === "preparing" ? (
+      {action.kind === "ready" ? (
         <Button tone="dark" block className="mt-4" disabled={pending} onClick={() => run(() => markOrderReady(order.id))}>
           {pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Check aria-hidden className="size-4" />}
           Ready
         </Button>
       ) : null}
-      {order.status === "ready" && !claiming ? (
+      {action.kind === "claim" && !claiming ? (
         <Button tone="dark" block className="mt-4" disabled={pending} onClick={() => setClaiming(true)}>
           <PackageCheck aria-hidden className="size-4" /> Claim
         </Button>
       ) : null}
-      {order.status === "ready" && claiming ? (
+      {action.kind === "claim" && claiming ? (
         <div className="mt-4 space-y-2">
           <WorkspaceFieldLabel htmlFor={`claim-${order.id}`}>Pickup code</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -134,6 +147,66 @@ export function OrderCard({ order }: { order: WorkspaceOrder }) {
             <Button tone="dark" variant="ghost" disabled={pending} onClick={() => { setClaiming(false); setCode(""); setError(null); }}>Keep ready</Button>
           </div>
         </div>
+      ) : null}
+      {action.kind === "done" ? null : rejecting ? (
+        <div className="border-nybb-bone/15 mt-4 space-y-2 border-t pt-4">
+          <WorkspaceFieldLabel htmlFor={`reject-${order.id}`}>
+            Why can the branch not make this?
+          </WorkspaceFieldLabel>
+          <select
+            id={`reject-${order.id}`}
+            className="border-nybb-bone/25 focus:border-nybb-bone/60 h-11 w-full rounded-md border bg-transparent px-2 text-sm"
+            value={reason}
+            onChange={(event) => setReason(event.target.value as RejectReasonCode)}
+          >
+            {REJECT_REASON_CODES.map((option) => (
+              <option key={option} value={option} className="bg-nybb-graphite">
+                {REJECT_REASON_LABELS[option]}
+              </option>
+            ))}
+          </select>
+          <p className="text-nybb-bone/50 text-xs leading-snug">
+            {order.payment?.status === "paid"
+              ? "The customer is told the branch will return the payment. Issue the refund from History afterwards."
+              : "The pickup window goes back on sale straight away."}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              tone="dark"
+              variant="danger"
+              disabled={pending}
+              onClick={() => run(() => rejectOrder(order.id, reason))}
+            >
+              Refuse order
+            </Button>
+            <Button
+              tone="dark"
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                setRejecting(false);
+                setError(null);
+              }}
+            >
+              Keep it
+            </Button>
+          </div>
+        </div>
+      ) : (
+        // Quiet, and never beside the button it undoes. Refusing an order is
+        // the one control here a branch cannot take back, and a counter tapping
+        // it by accident during a rush has told a customer their food is off.
+        <button
+          type="button"
+          className="text-nybb-bone/40 hover:text-nybb-bone/70 mt-3 w-full text-center text-xs underline underline-offset-4"
+          onClick={() => setRejecting(true)}
+        >
+          Cannot make this order
+        </button>
+      )}
+
+      {mayRefund && order.payment?.isMock && order.payment.status === "paid" ? (
+        <RefundControl orderId={order.id} amountCents={order.totalCents} />
       ) : null}
     </article>
   );

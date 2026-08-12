@@ -23,6 +23,15 @@ storefront guidance in that prompt, this document takes precedence. Pickup-only 
 server-authoritative pricing, RLS, atomic Postgres writes, payment-first ordering, ZenPOS's manual
 fallback, and the existing owner-input items remain in force.
 
+> **Staff-platform ruling, 2026-08-12.** The staff workspace stays in the browser. There is no
+> native staff app in this plan any more, and the orders board is the first staff surface to finish.
+> This reverses the recommendation immediately below, which is kept for its reasoning rather than as
+> instruction. What it does not change: the board must still receive a paid order in under two
+> seconds without a refresh, and it must still support the three-tap fulfillment path, the
+> pickup-code claim, refunds, and availability. Those move from "build natively" to "finish in the
+> workspace". Section 7's decisions 1, 2 and 5 covered the customer app; they are not authority for a
+> staff app that is no longer being built.
+
 ## Recommendation
 
 Build native iOS and Android apps with Expo and React Native for both customer ordering and staff

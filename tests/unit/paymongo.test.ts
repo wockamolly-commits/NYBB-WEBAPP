@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { mapAttachResult } from "@/lib/paymongo/attach-result";
 import { buildPaymentIntentPayload, paymongoIdempotencyKey } from "@/lib/paymongo/intents";
 import { canPayOnline, enabledOnlineMethods } from "@/lib/paymongo/methods";
-import { parsePaymongoEvent, verifyPaymongoSignature } from "@/lib/paymongo/webhook";
+import { classifyRefundFailure } from "@/lib/paymongo/refund-outcome";
+import { buildRefundPayload } from "@/lib/paymongo/refunds";
+import { parsePaymongoEvent, parsePaymongoRefundEvent, verifyPaymongoSignature } from "@/lib/paymongo/webhook";
 
 describe("PayMongo payment helpers", () => {
   it("shows only enabled methods, in the payment provider's intended order", () => {
@@ -50,5 +52,41 @@ describe("PayMongo payment helpers", () => {
     expect(parsePaymongoEvent({
       data: { attributes: { type: "payment.paid", data: { id: "pay_1", attributes: { payment_intent_id: "pi_1" } } } },
     })).toEqual({ type: "payment.paid", paymentIntentId: "pi_1", paymentId: "pay_1" });
+  });
+
+  it("creates a refund payload that connects its webhook back to the reservation", () => {
+    expect(buildRefundPayload({
+      paymentId: "pay_1",
+      amountCents: 1200,
+      reason: "requested_by_customer",
+      note: "Please return this payment",
+      refundId: "00000000-0000-4000-8000-000000000001",
+      orderId: "00000000-0000-4000-8000-000000000002",
+    }).data.attributes).toMatchObject({
+      payment_id: "pay_1",
+      amount: 1200,
+      metadata: { refund_id: "00000000-0000-4000-8000-000000000001" },
+    });
+  });
+
+  it("recognizes direct and payment-contained refund events", () => {
+    expect(parsePaymongoRefundEvent({
+      data: { attributes: { data: {
+        id: "ref_1",
+        attributes: { status: "succeeded", metadata: { refund_id: "local_1" } },
+      } } },
+    })).toEqual({ refundId: "local_1", providerRefundId: "ref_1", status: "succeeded" });
+    expect(parsePaymongoRefundEvent({
+      data: { attributes: { data: {
+        id: "pay_1",
+        attributes: { refunds: [{ id: "ref_2", status: "pending" }] },
+      } } },
+    })).toEqual({ refundId: null, providerRefundId: "ref_2", status: "pending" });
+  });
+
+  it("keeps a reservation for any outcome that may have reached PayMongo", () => {
+    expect(classifyRefundFailure({ name: "PaymongoError", status: 422 })).toBe("rejected");
+    expect(classifyRefundFailure({ name: "PaymongoError", status: 429 })).toBe("indeterminate");
+    expect(classifyRefundFailure({ name: "PaymongoError", status: 503 })).toBe("indeterminate");
   });
 });

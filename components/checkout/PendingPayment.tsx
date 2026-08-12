@@ -9,6 +9,7 @@ import { orderTrackingHref } from "@/lib/orders/tracking";
 import type { PayOrderResult } from "@/lib/paymongo/attach-result";
 import type { OnlineMethod } from "@/lib/paymongo/methods";
 import type { PlacedOrder } from "@/lib/checkout/types";
+import { MockPayment } from "./MockPayment";
 
 export function PendingPayment({
   order,
@@ -42,6 +43,27 @@ export function PendingPayment({
 
   if (result.ok && "redirectUrl" in result) {
     return <p className="mt-8 text-nybb-ink/70">Opening your payment provider.</p>;
+  }
+
+  if (result.ok && "mock" in result) {
+    return (
+      <div className="mt-8 max-w-2xl">
+        <section className="bg-nybb-charcoal text-nybb-bone rounded-md p-6 sm:p-8">
+          <p className="type-caps text-nybb-orange">Payment needed</p>
+          <h2 className="font-display heading-minor mt-3">Mock QR Ph payment</h2>
+          <MockPayment
+            shortCode={order.shortCode}
+            trackingToken={order.trackingToken}
+            totalCents={order.totalCents}
+          />
+        </section>
+        <div className="mt-6">
+          <ButtonLink href={tracking} tone="light" size="lg">
+            Track this order
+          </ButtonLink>
+        </div>
+      </div>
+    );
   }
 
   return (

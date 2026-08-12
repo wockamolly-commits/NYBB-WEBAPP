@@ -22,6 +22,7 @@ const PERMISSION_LABELS: Record<StaffPermission, string> = {
   "settings:manage": "Manage settings",
   "audit:view": "View audit log",
   "team:manage": "Manage team access",
+  "refunds:manage": "Issue refunds",
 };
 
 export default async function WorkspaceProfilePage() {

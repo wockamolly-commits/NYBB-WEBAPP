@@ -5,6 +5,7 @@ import Image from "next/image";
 import { payOrder } from "@/app/actions/payment";
 import { Button } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
+import { MockPayment } from "@/components/checkout/MockPayment";
 
 export function PaymentResume({
   shortCode,
@@ -16,6 +17,7 @@ export function PaymentResume({
   totalCents: number;
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [mock, setMock] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -29,6 +31,9 @@ export function PaymentResume({
       });
       if (result.ok && "qr" in result) {
         setImageUrl(result.qr.imageUrl);
+        setError(null);
+      } else if (result.ok && "mock" in result) {
+        setMock(true);
         setError(null);
       } else if (!result.ok) {
         setError(result.error);
@@ -62,6 +67,13 @@ export function PaymentResume({
             Open QR image to save it
           </a>
         </div>
+      ) : mock ? (
+        <MockPayment
+          shortCode={shortCode}
+          trackingToken={trackingToken}
+          totalCents={totalCents}
+          compact
+        />
       ) : (
         <Button type="button" tone="dark" onClick={resume} disabled={pending} className="mt-4">
           {pending ? "Opening payment" : "Open QR Ph payment"}

@@ -283,7 +283,7 @@ export function OrderTracker({
 
           <div className="mt-4 flex items-baseline justify-between gap-4">
             <span className="font-display heading-panel">
-              {order.payment?.status === "paid" ? "Paid" : awaitingOnlinePayment ? "Payment needed" : "To pay"}
+            {order.payment?.status === "refunded" ? "Refunded" : order.payment?.status === "paid" ? "Paid" : awaitingOnlinePayment ? "Payment needed" : "To pay"}
             </span>
             <span className="font-mono-tabular text-nybb-orange text-2xl">
               {formatPeso(order.totalCents)}
@@ -291,7 +291,9 @@ export function OrderTracker({
           </div>
 
           <p className="border-nybb-bone/15 text-nybb-bone/65 mt-4 border-t pt-4 text-sm leading-relaxed">
-            {order.payment?.status === "paid"
+            {order.payment?.status === "refunded"
+              ? "A refund was issued for this payment."
+              : order.payment?.status === "paid"
               ? "Paid in full. Nothing to settle at the counter."
               : awaitingOnlinePayment
                 ? "Complete QR Ph payment before the kitchen receives this order."

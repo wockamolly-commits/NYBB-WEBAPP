@@ -75,6 +75,16 @@ describe("PayMongo payment lifecycle", () => {
     expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("paid");
   });
 
+  it("cancels an order and releases its slot when PayMongo reports a payment failure", async () => {
+    const { orderId, slotId } = await addOnlineOrder(db, "NY-FAIL01", "pi_failed");
+    await db.exec(`select apply_paymongo_payment('pi_failed', 'failed', '', '{"event":"failed"}'::jsonb)`);
+    expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("failed");
+    expect(await scalar<string>(db, `select status::text from orders where id = '${orderId}'`)).toBe("cancelled");
+    expect(await scalar<string>(db, `select cancelled_reason from orders where id = '${orderId}'`)).toBe("payment_failed");
+    expect(await scalar<number>(db, `select reserved from pickup_slots where id = '${slotId}'`)).toBe(0);
+    expect(await scalar<number>(db, `select count(*)::int from order_status_events where order_id = '${orderId}' and reason = 'payment_failed'`)).toBe(1);
+  });
+
   it("expires unpaid orders and releases their provisional slot", async () => {
     const { orderId, slotId } = await addOnlineOrder(db, "NY-EXPIRE", "pi_expire");
     expect(await scalar<number>(db, "select expire_unpaid_online_orders()")).toBe(1);

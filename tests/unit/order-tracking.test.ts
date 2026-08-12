@@ -98,15 +98,20 @@ describe("what the screen says at each step", () => {
     }
   });
 
-  it("uses the reason staff gave, which is the whole message on a refusal", () => {
+  it("builds the refusal from the reason staff chose, which is the whole message", () => {
+    // This used to assert that `rejectedReason` was shown verbatim. It is now a
+    // code, because 0036 gave staff a way to write this field for the first
+    // time and the value lands unedited on a customer's screen: a text box
+    // filled in at a counter during a bad shift is not a safe way to write to a
+    // stranger's phone. `lib/orders/reject-reasons.ts` holds the four codes and
+    // their copy, and `tests/unit/reject-reasons.test.ts` covers the mapping.
     const rejected = statusCopy({
       status: "rejected",
-      timeline: {
-        ...EMPTY_TIMELINE,
-        rejectedReason: "We have run out of wings tonight.",
-      },
+      timeline: { ...EMPTY_TIMELINE, rejectedReason: "sold_out" },
     });
-    expect(rejected.body).toBe("We have run out of wings tonight.");
+    expect(rejected.body).toMatch(/sold out/i);
+    // Never the code itself, which means nothing to the person reading it.
+    expect(rejected.body).not.toMatch(/sold_out/);
 
     // And says something useful when staff gave none, rather than a blank.
     const bare = statusCopy({ status: "rejected", timeline: EMPTY_TIMELINE });
@@ -136,6 +141,16 @@ describe("what the screen says at each step", () => {
     expect(copy.codeIsLive).toBe(false);
   });
 
+  it("stops pickup instructions when the payment has been refunded", () => {
+    const copy = statusCopy({
+      status: "pending",
+      timeline: EMPTY_TIMELINE,
+      payment: { method: "qrph", status: "refunded", amountCents: 100, paidAt: null },
+    });
+    expect(copy.title).toBe("Payment refunded");
+    expect(copy.codeIsLive).toBe(false);
+  });
+
   it("explains expiry without inventing the owner's refund policy", () => {
     const copy = statusCopy({
       status: "cancelled",
@@ -144,6 +159,17 @@ describe("what the screen says at each step", () => {
     });
     expect(copy.body).toMatch(/after this order expired/i);
     expect(copy.body).not.toMatch(/refund/i);
+  });
+
+  it("explains a failed online payment without leaving an order open", () => {
+    const copy = statusCopy({
+      status: "cancelled",
+      timeline: { ...EMPTY_TIMELINE, cancelledReason: "payment_failed" },
+      payment: { method: "qrph", status: "failed", amountCents: 100, paidAt: null },
+    });
+    expect(copy.title).toMatch(/payment was not completed/i);
+    expect(copy.body).toMatch(/slot was released/i);
+    expect(copy.codeIsLive).toBe(false);
   });
 });
 

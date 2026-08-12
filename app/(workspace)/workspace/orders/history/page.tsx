@@ -10,7 +10,8 @@ import {
   type OrderHistoryEntry,
   type OrderHistoryStatus,
 } from "@/lib/staff/order-history";
-import { requireStaffPermission } from "@/lib/staff/session";
+import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
+import { RefundControl } from "../RefundControl";
 
 export const metadata: Metadata = { title: "Order history" };
 
@@ -45,6 +46,17 @@ function paymentLabel(order: OrderHistoryEntry): string {
   return `${order.payment.method} · ${order.payment.status}`;
 }
 
+function refundLabel(order: OrderHistoryEntry): string | null {
+  if (!order.payment?.refunds.length) return null;
+  const refunded = order.payment.refunds
+    .filter((refund) => refund.status === "succeeded")
+    .reduce((sum, refund) => sum + refund.amountCents, 0);
+  if (order.payment.refunds.some((refund) => refund.status === "pending")) {
+    return "Refund awaiting confirmation";
+  }
+  return refunded > 0 ? `Refunded ${formatPeso(refunded)}` : "Refund not completed";
+}
+
 export default async function OrderHistoryPage({
   searchParams,
 }: {
@@ -57,6 +69,7 @@ export default async function OrderHistoryPage({
   const filters = normalizeOrderHistoryFilters(values);
   const orders = await getOrderHistory(profile.branchId, filters);
   const summary = summarizeOrderHistory(orders ?? []);
+  const mayRefund = hasStaffPermission(profile, "refunds:manage");
 
   return (
     <div>
@@ -164,6 +177,10 @@ export default async function OrderHistoryPage({
                 </div>
                 {order.reason ? <p className="bg-nybb-graphite text-nybb-bone/70 mt-4 rounded p-3 text-sm"><span className="text-nybb-bone/40">Reason:</span> {order.reason}</p> : null}
                 {order.notes ? <p className="text-nybb-bone/55 mt-3 text-sm"><span className="text-nybb-bone/35">Order note:</span> {order.notes}</p> : null}
+                {refundLabel(order) ? <p className="text-nybb-bone/55 mt-3 text-sm">{refundLabel(order)}</p> : null}
+                {mayRefund && order.payment?.provider === "paymongo" && order.payment.status === "paid" ? (
+                  <RefundControl orderId={order.id} amountCents={order.payment.amountCents} />
+                ) : null}
               </article>
             ))}
             {orders.length === 0 ? (

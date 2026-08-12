@@ -12,6 +12,12 @@ describe("staff roles", () => {
     expect(roleDefaultPermissions("kitchen")).toEqual(["orders:view", "orders:manage"]);
   });
 
+  it("gives refund authority to managers only by default", () => {
+    expect(roleDefaultPermissions("manager")).toContain("refunds:manage");
+    expect(roleDefaultPermissions("cashier")).not.toContain("refunds:manage");
+    expect(isStaffPermission("refunds:manage")).toBe(true);
+  });
+
   it("lets an override grant and revoke one capability", () => {
     const resolved = resolvePermissions("cashier", [
       { permission: "analytics:view", granted: true },

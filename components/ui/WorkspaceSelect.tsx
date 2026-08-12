@@ -17,6 +17,7 @@ export function WorkspaceSelect<Value extends string>({
   label,
   options,
   defaultValue,
+  onValueChange,
   disabled,
   className,
 }: {
@@ -25,6 +26,7 @@ export function WorkspaceSelect<Value extends string>({
   label: string;
   options: readonly WorkspaceSelectOption<Value>[];
   defaultValue: Value;
+  onValueChange?: (value: Value | null) => void;
   disabled?: boolean;
   className?: string;
 }) {
@@ -34,6 +36,7 @@ export function WorkspaceSelect<Value extends string>({
       name={name}
       items={options}
       defaultValue={defaultValue}
+      onValueChange={onValueChange}
       disabled={disabled}
     >
       <div className={cn("min-w-0", className)}>

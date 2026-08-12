@@ -3,7 +3,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { OrderCard } from "./OrderCard";
 import { OrdersPoller } from "./OrdersPoller";
 import { getWorkspaceOrders } from "@/lib/staff/orders";
-import { requireStaffPermission } from "@/lib/staff/session";
+import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
 import type { WorkspaceOrder } from "@/lib/staff/order-types";
 
 export const metadata: Metadata = { title: "Orders" };
@@ -22,6 +22,7 @@ const columns: Array<{
 export default async function WorkspaceOrdersPage() {
   const { profile } = await requireStaffPermission("orders:view", "/workspace/orders");
   const orders = await getWorkspaceOrders(profile.branchId);
+  const mayRefund = hasStaffPermission(profile, "refunds:manage");
 
   return (
     <div>
@@ -54,7 +55,7 @@ export default async function WorkspaceOrdersPage() {
                 <span className="bg-nybb-charcoal rounded px-2 py-1 font-mono text-sm">{columnOrders.length}</span>
               </div>
               <div className="space-y-3">
-                {columnOrders.map((order) => <OrderCard key={order.id} order={order} />)}
+                {columnOrders.map((order) => <OrderCard key={order.id} order={order} mayRefund={mayRefund} />)}
                 {columnOrders.length === 0 ? (
                   <p className="border-nybb-bone/20 text-nybb-bone/35 rounded-md border border-dashed px-3 py-8 text-center text-sm">No orders here</p>
                 ) : null}

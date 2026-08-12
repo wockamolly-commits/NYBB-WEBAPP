@@ -9,7 +9,7 @@ const orderSelect = `
   id, short_code, status, is_test, customer_name, total_cents, notes, placed_at,
   customer_arrived_at, branch_id,
   pickup_slots ( slot_start ),
-  payments ( method, provider, status ),
+  payments ( method, provider, status, provider_payment_id ),
   order_items (
     qty, item_name_snapshot, variation_label_snapshot,
     order_item_options ( name_snapshot, heat_percent_snapshot )
@@ -39,7 +39,7 @@ const rowSchema = z.object({
   placed_at: z.string(),
   customer_arrived_at: z.string().nullable(),
   pickup_slots: z.union([z.object({ slot_start: z.string() }), z.array(z.object({ slot_start: z.string() }))]).nullable(),
-  payments: z.union([z.object({ method: z.string(), provider: z.string(), status: z.string() }), z.array(z.object({ method: z.string(), provider: z.string(), status: z.string() }))]).nullable(),
+  payments: z.union([z.object({ method: z.string(), provider: z.string(), status: z.string(), provider_payment_id: z.string().nullable() }), z.array(z.object({ method: z.string(), provider: z.string(), status: z.string(), provider_payment_id: z.string().nullable() }))]).nullable(),
   order_items: z.array(itemSchema).nullable(),
 });
 
@@ -75,7 +75,12 @@ function toWorkspaceOrder(value: unknown): WorkspaceOrder | null {
     placedAt: row.placed_at,
     pickupAt: pickup?.slot_start ?? null,
     customerArrived: row.customer_arrived_at !== null,
-    payment,
+    payment: payment ? {
+      method: payment.method,
+      provider: payment.provider,
+      status: payment.status,
+      isMock: payment.provider_payment_id?.startsWith("mock_pay_") ?? false,
+    } : null,
     items: items.map((item) => ({
       quantity: item.qty,
       name: item.item_name_snapshot,

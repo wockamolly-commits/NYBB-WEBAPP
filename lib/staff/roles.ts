@@ -28,7 +28,8 @@ export type StaffPermission =
   | "store:availability"
   | "settings:manage"
   | "audit:view"
-  | "team:manage";
+  | "team:manage"
+  | "refunds:manage";
 
 const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
   cashier: [
@@ -54,6 +55,7 @@ const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
     "store:availability",
     "settings:manage",
     "audit:view",
+    "refunds:manage",
   ],
 };
 
@@ -71,6 +73,7 @@ const PERMISSION_KEYS: Record<StaffPermission, true> = {
   "settings:manage": true,
   "audit:view": true,
   "team:manage": true,
+  "refunds:manage": true,
 };
 
 const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS) as StaffPermission[];

@@ -51,9 +51,11 @@ export type OrderHistoryEntry = {
   reason: string | null;
   payment: {
     method: string;
+    provider: string;
     status: string;
     amountCents: number;
     paidAt: string | null;
+    refunds: Array<{ amountCents: number; status: string }>;
   } | null;
   items: Array<{
     quantity: number;
@@ -74,9 +76,14 @@ const itemSchema = z.object({
 
 const paymentSchema = z.object({
   method: z.string(),
+  provider: z.string().default("unknown"),
   status: z.string(),
   amount_cents: z.coerce.number().int().nonnegative(),
   paid_at: z.string().nullable(),
+  refunds: z.array(z.object({
+    amount_cents: z.coerce.number().int().positive(),
+    status: z.string(),
+  })).nullable().default(null),
 });
 
 const pickupSchema = z.object({ slot_start: z.string() });
@@ -110,7 +117,7 @@ const historySelect = `
   claimed_at, rejected_at, rejected_reason,
   cancelled_at, cancelled_reason, no_show_at,
   pickup_slots ( slot_start ),
-  payments ( method, status, amount_cents, paid_at ),
+  payments ( method, provider, status, amount_cents, paid_at, refunds ( amount_cents, status ) ),
   order_items (
     qty, item_name_snapshot, variation_label_snapshot,
     order_item_options ( name_snapshot )
@@ -177,9 +184,14 @@ export function toOrderHistoryEntry(value: unknown): OrderHistoryEntry | null {
     reason,
     payment: payment ? {
       method: payment.method,
+      provider: payment.provider,
       status: payment.status,
       amountCents: payment.amount_cents,
       paidAt: payment.paid_at,
+      refunds: (payment.refunds ?? []).map((refund) => ({
+        amountCents: refund.amount_cents,
+        status: refund.status,
+      })),
     } : null,
     items: (row.order_items ?? []).map((item) => ({
       quantity: item.qty,
