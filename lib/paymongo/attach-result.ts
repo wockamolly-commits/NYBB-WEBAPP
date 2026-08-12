@@ -1,6 +1,7 @@
 export type PayOrderResult =
   | { ok: true; qr: { imageUrl: string } }
   | { ok: true; redirectUrl: string }
+  | { ok: true; mock: true }
   | { ok: true; done: true }
   | { ok: false; error: string };
 

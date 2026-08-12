@@ -42,8 +42,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * customer's access token and build a client with it, per spec section 14. It
  * is not this. A service-role client has no `auth.uid()` at all, so reaching
  * for it would silently turn every order into a guest order, placed with a key
- * the storefront has no business holding. `app/actions/checkout.ts` says the
- * same thing at the point of temptation.
+ * the storefront has no business holding. `lib/customer/orders.ts` says the
+ * same thing at the point of temptation, and `lib/customer/caller.ts` repeats
+ * it where the mobile API decides which client a request gets.
  *
  * It is also deliberately cookie-free, for the reason `public-client.ts` gives:
  * a client that writes cookies inside a Server Action can sign a customer out

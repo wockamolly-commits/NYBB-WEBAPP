@@ -1,51 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  customerArrivalInputSchema,
-  normalizeCustomerArrivalInput,
-  type CustomerArrivalInput,
-  type CustomerArrivalResult,
-} from "@/lib/orders/arrival";
-import { getStorefrontSession } from "@/lib/auth/session";
-import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
-
-const unavailable = "We could not tell the counter you are here. Please try again.";
+import { signalArrival } from "@/lib/customer/arrival";
+import { sessionCaller } from "@/lib/customer/cookie-caller";
+import type { CustomerArrivalInput, CustomerArrivalResult } from "@/lib/orders/arrival";
+import { normalizeShortCode } from "@/lib/orders/tracking";
 
 /**
- * Customer-side counterpart to the arrival badge on the orders board.
+ * The browser's way of telling the counter a customer is here.
  *
- * The input is a reference, never customer or order data. The database locks
- * the order, repeats tracking-token or owner authorization, limits the signal
- * to Ready, and makes a retry harmless. A bearer token is never logged.
+ * The decision and the authorization live in `lib/customer/arrival.ts`, which
+ * the mobile API calls too. What is left here is the one thing only a browser
+ * needs: the rendered tracking page has to be rebuilt, because it is what the
+ * customer is looking at when they press the button.
  */
 export async function markCustomerArrived(
   input: CustomerArrivalInput,
 ): Promise<CustomerArrivalResult> {
-  const parsed = customerArrivalInputSchema.safeParse(input);
-  if (!parsed.success || !supabaseConfigured()) {
-    return { ok: false, error: unavailable };
-  }
+  const result = await signalArrival(input, sessionCaller());
+  if (!result.ok) return result;
 
-  const { shortCode, trackingToken } = normalizeCustomerArrivalInput(parsed.data);
-  if (!shortCode) return { ok: false, error: unavailable };
-
-  // A tracking token authorizes a guest. Without one, preserve the customer's
-  // existing authenticated identity through the read-only Storefront client.
-  // It must not refresh or clear a cookie in the middle of this mutation.
-  const session = trackingToken ? null : await getStorefrontSession();
-  const supabase = session?.supabase ?? createPublicClient();
-  const { data, error } = await supabase.rpc("customer_mark_order_arrived", {
-    p_short_code: shortCode,
-    p_tracking_token: trackingToken,
-  });
-
-  if (error) {
-    console.error(`[order] customer arrival failed for ${shortCode}: ${error.message}`);
-    return { ok: false, error: unavailable };
-  }
-  if (data !== true) return { ok: false, error: unavailable };
-
-  revalidatePath(`/order/${shortCode}`);
-  return { ok: true };
+  const shortCode = normalizeShortCode(input.shortCode);
+  if (shortCode) revalidatePath(`/order/${shortCode}`);
+  return result;
 }

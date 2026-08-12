@@ -95,9 +95,12 @@ describe("workspace order history", () => {
   it("excludes test orders from paid counts and sales", () => {
     const real = order();
     const test = order({ id: "22222222-2222-4222-8222-222222222222", isTest: true });
+    // Derived from the mapped payment rather than restated, so a field added to
+    // the payment shape does not break a test that is only varying three of
+    // them. What this order is is "the same payment, not yet paid".
     const unpaid = order({
       id: "33333333-3333-4333-8333-333333333333",
-      payment: { method: "counter", status: "due", amountCents: 30000, paidAt: null },
+      payment: { ...order().payment!, status: "due", amountCents: 30000, paidAt: null },
     });
     expect(summarizeOrderHistory([real, test, unpaid])).toEqual({
       orderCount: 3,

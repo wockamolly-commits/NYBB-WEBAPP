@@ -1,5 +1,6 @@
 import "server-only";
-import { getStorefrontSession } from "@/lib/auth/session";
+import { callerClient, type CustomerCaller } from "@/lib/customer/caller";
+import { sessionCaller } from "@/lib/customer/cookie-caller";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
 import { normalizeShortCode, normalizeTrackingToken, trackedOrderSchema } from "./tracking";
 import type { TrackedOrder } from "./types";
@@ -31,7 +32,17 @@ export type OrderLookup =
   /** The order may well exist. We cannot currently say. */
   | { state: "unavailable" };
 
-export async function getOrderByTracking(
+/**
+ * The read itself, for any caller.
+ *
+ * A tracking token authorizes on its own, so when one is present this uses the
+ * anonymous client and never resolves the caller's identity. That is not a
+ * detail: on the web it avoids a cookie round trip on the busiest page in the
+ * product, and it keeps the answer identical whether or not the person holding
+ * the link happens to be signed in as somebody else.
+ */
+export async function readOrderByTracking(
+  caller: CustomerCaller,
   shortCode: string,
   trackingToken: string | null,
 ): Promise<OrderLookup> {
@@ -41,10 +52,7 @@ export async function getOrderByTracking(
 
   if (!supabaseConfigured()) return { state: "unavailable" };
 
-  // A token authorizes a guest. Without one, use whichever Storefront session
-  // is active so an account order-history link can open its owner's order.
-  const session = token ? null : await getStorefrontSession();
-  const supabase = token || !session ? createPublicClient() : session.supabase;
+  const supabase = token ? createPublicClient() : await callerClient(caller);
   const { data, error } = await supabase.rpc("get_order_by_tracking", {
     p_short_code: code,
     p_tracking_token: token,
@@ -71,4 +79,12 @@ export async function getOrderByTracking(
   }
 
   return { state: "found", order: parsed.data };
+}
+
+/** The same read, for a browser, where the identity is a cookie. */
+export async function getOrderByTracking(
+  shortCode: string,
+  trackingToken: string | null,
+): Promise<OrderLookup> {
+  return readOrderByTracking(sessionCaller(), shortCode, trackingToken);
 }

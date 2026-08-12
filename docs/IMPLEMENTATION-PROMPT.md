@@ -1552,6 +1552,27 @@ GET  /api/store/hours             public, cached, for the footer and the closed 
 GET  /api/branches/[slug]/slots   available pickup slots with remaining capacity
 ```
 
+**Added while building Phase M1.** The native customer app is exactly the
+non-browser caller this section reserves Route Handlers for, and it needs more
+than a slot read:
+
+```
+GET  /api/mobile/v1/menu                            published catalog
+GET  /api/mobile/v1/slots                           pickup windows
+POST /api/mobile/v1/orders                          checkout
+GET  /api/mobile/v1/orders/[shortCode]              order read, bearer or tracking token
+POST /api/mobile/v1/orders/[shortCode]/payment      start a payment
+POST /api/mobile/v1/orders/[shortCode]/payment/mock development simulator, 404 in production
+POST /api/mobile/v1/orders/[shortCode]/arrival      customer arrival signal
+```
+
+These are not a second implementation of checkout. The customer Server Actions
+were reduced to adapters over the services in `lib/customer/`, and the routes
+call the same code with a bearer token where the browser has a cookie. The path
+carries a version because an installed app cannot be redeployed alongside the
+server. `docs/mobile-api-contract.md` is the contract; the default in the
+paragraph above still holds for the web workspace.
+
 **Postgres RPCs are the third layer**, and they own anything that must be atomic or authorized in
 the database: `place_order`, `staff_set_order_status`, `cashier_advance_order`,
 `claim_order_with_code`, `award_loyalty_points`, `get_storefront_menu`, `get_order_by_tracking`,
