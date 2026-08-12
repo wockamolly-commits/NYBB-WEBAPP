@@ -1,10 +1,16 @@
 # ZenPOS discovery, internal notes
 
 **Internal. Do not send this file to CodeLikeUs or to anyone outside the team.**
-The version to send is `docs/zenpos-questions.md`, which carries the same ten questions with the
-reasoning stripped out.
 
-**Status:** Unanswered. No question below has a confirmed answer yet.
+**`docs/zenpos-questions.md` is the version to send.** It carries the same ten questions with the
+reasoning stripped out, written as a letter so it can go straight into an email. It deliberately
+contains no reference to this file, no internal notes, and no mention of the earlier project, so
+nothing needs stripping before it goes out. If you edit the questions there, mirror the change
+here, and keep it clean of anything a vendor should not read.
+
+**Status:** Deferred. Customer orders originate in the NYBB app, then staff manually enter accepted
+orders in ZenPOS. Do not pursue ZenPOS API, export, event, kitchen, inventory, or reporting
+integration work until the core NYBB pickup system is ready.
 **Owner:** the IT head.
 **Who answers it:** a technical contact at CodeLikeUs Technologies (ZenPOS), Cebu City.
 Published contact number: +63 917 639 7020.
@@ -12,21 +18,32 @@ Published contact number: +63 917 639 7020.
 
 ---
 
+## Superseding operational decision
+
+The earlier reasoning in this file assumed a pickup-only customer ordering website. The active
+model is a customer pickup app. Staff review its orders, manually enter accepted orders in ZenPOS,
+and attach the ZenPOS ticket reference to the NYBB order before preparation. Delivery is deferred.
+Retain the older notes as background only. The current sendable questionnaire is
+`docs/zenpos-questions.md`, and the active design is `docs/service-model-and-zenpos-options.md`.
+
+**Hard boundary:** NYBB will not create, update, or synchronize customer orders in ZenPOS. The
+integration scope is ZenPOS information flowing into NYBB, not NYBB order data flowing into ZenPOS.
+
 ## Why this exists
 
-The ordering website takes pickup orders. ZenPOS is the till at each branch. The two do not talk,
-so a staff member reads each website order off a screen and types it into ZenPOS by hand.
-
-We want to remove that typing. To do it we need to know what ZenPOS can accept from outside
-software, and ZenPOS publishes nothing about this in public. No instructions, no technical
-documentation, no developer site. So we ask them directly.
+The NYBB app receives customer pickup orders. ZenPOS is the till where staff manually create the
+accepted sale. The NYBB app needs to record that ZenPOS reference, then use kitchen, availability,
+and reporting information without duplicating official sales entry. ZenPOS publishes no public
+technical documentation, so we ask them directly.
 
 Every answer changes what we build. Two of them can change it completely.
 
-## Nothing here blocks the launch
+## Nothing here blocks the manual-entry pilot
 
-The website already works without ZenPOS cooperating. If CodeLikeUs never replies, staff keep
-typing orders in and the branch runs fine. This is about removing work, not unblocking it.
+The branch can run without an integration: staff receive orders in the NYBB app, manually enter
+them in ZenPOS, then attach the ticket reference. This discovery improves speed, data quality,
+delivery visibility, and reporting. It does not authorize automatic POS posting until the vendor
+proves it is safe.
 
 That should shape the conversation. We are not asking for a favour under time pressure, and we
 should not accept a vague yes just to close the topic. A wrong answer costs more than no answer,
@@ -116,8 +133,52 @@ a price that varies by parent item, heat has to be sent as its own separate line
 but changes how a ticket reads at the counter. We need to know before we build the ticket, not
 after.
 
-**7. Multiple branches.** Decides whether adding branch eleven is a settings change or a developer
-job, and whether credentials management is one account or many.
+**7. Multiple branches. Partly answered already, and it changed the design.**
+
+**Owner report, 2026-08-11: each branch runs its own ZenPOS account.** The reference project ran a
+single POS account for the whole business, and section 16.4 inherited that assumption without
+anyone noticing. It is wrong here.
+
+What follows if it holds:
+
+- **Item IDs are per account**, so the same wing has a different POS id at every branch. The single
+  `menu_items.pos_item_id` column in 16.4 can only ever be correct for one branch. It becomes a
+  join table keyed by `(branch_id, menu entity)`. Section 16.4 has been corrected.
+- **Credentials are per branch**, so `ZENPOS_API_KEY` as one environment variable is wrong. Removed
+  from section 26.
+- **Mapping is per branch too**, which is an operational cost nobody has priced yet. Somebody has
+  to sit down and map every item at every branch, by hand, once per branch. Ten branches means ten
+  passes. Worth telling the owner before they picture a single afternoon's work.
+- **Discovery may need repeating.** If accounts are provisioned separately, one branch's answers
+  about API access may not hold for another, particularly if branches were onboarded years apart or
+  sit on different plans.
+
+Still unknown, and now asked in the sent version: whether a head office or franchise level login
+exists that reaches several branches at once. Their public material mentions multi-branch purchasing
+controlled from headquarters and franchise support with branch restrictions, so some head office
+layer probably exists. If it does, it may collapse this back to one integration instead of ten,
+which is the single most valuable thing question 7 could come back with.
+
+**Verify this before building.** It came from the owner rather than from ZenPOS, and it describes
+how the accounts were sold to NYBB, which is not necessarily how the software models them.
+
+**Web research, 2026-08-11, so nobody repeats it.** Their public site describes four ordering
+surfaces in one line each: Self-Ordering Kiosk, QR Ordering ("customers order directly from their
+phones"), Remote Terminal (staff phones and tablets as extra tills), and a Kitchen Display System.
+There is no API documentation, no webhook specification, no developer portal, and no statement of
+how payment is handled in any ordering mode. Their merchant iPad app lists QR ordering and KDS as
+shipped features, so these are real products rather than roadmap items.
+
+One thing worth knowing before the call: the app store listing states ZenPOS is **BIR accredited**,
+so its sales recording is regulated. Creating sales and voiding them are tax-relevant events, which
+means answers to questions 3 and 10 may be constrained by regulation rather than by engineering.
+
+Two shapes a QR ordering module usually takes, and we do not know which this is: order only, where
+payment happens at the counter afterwards, or order and pay, where their own payment partner
+collects first. The second would very likely have no way to represent an order that arrives already
+settled. There is also a real chance the QR path is table-bound (dine-in), since nothing in their
+material mentions takeout, pickup, or ordering ahead for a later time. If so it may not model a
+scheduled pickup order at all, which would rule out the route regardless of payment.
 
 **8. Kitchen Display System.** Sometimes the kitchen screen is the easier surface to send to, and
 sometimes it is the only one open. Worth asking even if question 2 came back discouraging.

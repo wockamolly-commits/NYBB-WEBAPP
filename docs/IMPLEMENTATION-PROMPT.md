@@ -1,5 +1,29 @@
 # Master Implementation Prompt: New York Buffalo Brad's Pickup Ordering Platform
 
+> **Superseding service-model amendment, 2026-08-12.** NYBB will support pickup and delivery,
+> with customers placing orders in the NYBB app, then staff manually entering each accepted order
+> in ZenPOS. ZenPOS is the official sale record. The pickup-only portions of this historical prompt
+> are no longer authority for new work. Follow `docs/service-model-and-zenpos-options.md` and
+> `docs/transition-inventory.md` for the active transition direction. Do not delete the existing
+> implementation while the customer-order and manual-ZenPOS-entry replacement is being designed and
+> tested.
+>
+> **Hard integration boundary, 2026-08-12.** Do not automatically send, create, update, or
+> synchronize NYBB customer orders in ZenPOS. Staff enter accepted orders manually in ZenPOS. A
+> future ZenPOS connection may read or import information into NYBB, but it must not write customer
+> order data to ZenPOS.
+>
+> **Delivery deferral, 2026-08-12.** Delivery is deferred and out of scope for the current build.
+> Focus on customer pickup ordering, staff acceptance, and manual ZenPOS entry. Keep the future
+> delivery design in the transition documents, but do not add delivery fields, screens, rider
+> workflows, fees, or integrations until the owner reopens that phase.
+>
+> **ZenPOS integration deferral, 2026-08-12.** Keep manual ZenPOS entry as a staff operating step,
+> but do not build a system connection to ZenPOS in the current phase. This includes no API work,
+> ticket import, stock or price reads, kitchen-status reads, report import, webhooks, mapping, or
+> automated synchronization. Build and polish the NYBB pickup experience first. Reopen the ZenPOS
+> discovery and integration work only after the core system is ready.
+
 > **How to use this file.** This is the specification for the project it lives in. Read it in full
 > before starting work, and re-read the relevant section before starting each phase. Do not paste
 > it into chat: at roughly 1,500 lines it would dominate the context window and it would be lost
@@ -1295,7 +1319,22 @@ deploy.
 
 ### 16.4 Mapping layer
 
-Carry over the ZOMBEANS mapping tables in renamed form: `menu_items.pos_item_id` and
+**Corrected 2026-08-11, on the owner's report that each branch runs its own ZenPOS account.** The
+design below inherited a single-account assumption from the reference project, which ran one
+Loyverse account across the whole business. That does not hold here.
+
+If every branch is a separate account, then every branch has its own item catalog, and the same
+wing on the menu carries a **different POS id at every branch**. A single `pos_item_id` column on
+`menu_items` can only ever be right for one branch. It has to become a join table keyed by
+`(branch_id, menu entity)`, something like `pos_item_mappings (branch_id, menu_item_id,
+pos_item_id, pos_item_name)`, and the same for variations and options. Credentials follow the same
+rule: one set per branch, stored per branch, never a single pair of environment variables.
+
+This is cheap to get right before the mapping tables exist and expensive afterwards, since fixing
+it later means a migration plus re-mapping every item by hand at every branch. Treat the columns
+below as the shape the reference used, not the shape to build.
+
+~~Carry over the ZOMBEANS mapping tables in renamed form:~~ `menu_items.pos_item_id` and
 `pos_item_name`, `item_variations.pos_variant_id` and name, `menu_options.pos_modifier_id` /
 `pos_line_item_id` and name. **Persist the POS-side display names at mapping time**, not just the
 IDs, so the ticket panel renders offline and fast. Where a mapping is missing, fall back to the
@@ -1384,8 +1423,9 @@ want accounts compulsory, `place_order` raises `AUTH_REQUIRED` when `auth.uid()`
   build the pages, leave card off.
 - The QR is presented in a centered modal with save and download, plus a resume banner if the
   customer navigates away.
-- Order stays `pending` until the webhook confirms. A `pg_cron` job expires unpaid online orders
-  and releases their pickup slot.
+- Order stays `pending` until PayMongo confirms it. A definitive `payment.failed` webhook cancels
+  the order and releases its pickup slot immediately. A `pg_cron` job handles abandoned intents
+  that never return a result.
 - One payment row per order, enforced by a unique constraint.
 - Webhook signature verification is mandatory. Note again: PayMongo webhooks cannot be deleted,
   only disabled, and Vercel "Sensitive" environment values are write-only, so record which endpoint
@@ -1642,9 +1682,14 @@ the owner agreeing to trade away a Tier 1 control.
   NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
   PAYMONGO_SECRET_KEY, NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY, PAYMONGO_WEBHOOK_SECRET
   RESEND_API_KEY, RESEND_FROM
-  ZENPOS_BASE_URL, ZENPOS_API_KEY            (unset until discovery completes)
+  ZENPOS_BASE_URL                            (unset until discovery completes)
   CRON_SECRET
   ```
+  **`ZENPOS_API_KEY` was removed on 2026-08-11.** Each branch runs its own ZenPOS account, so
+  credentials are per branch and cannot live in a single environment variable. They belong in a
+  per-branch secret store that the adapter reads by `branch_id`, with the workspace showing only
+  whether a branch's credentials are present, never their value. Adding branch eleven must not
+  require a deploy. See section 16.4.
   Note the build-time trap: `/menu` reads Supabase during `next build`, so the Preview environment
   scope needs `NEXT_PUBLIC_SUPABASE_*` or the build fails. Readers must fall back to a static
   catalog anyway.
@@ -1718,8 +1763,9 @@ Nothing here was wasted, and none of it needs unwinding. The payment step is the
   intent flow. Card stays off, it needs separate merchant approval and the legal pages.
 - Checkout switches to prepay. `place_order` accepts online methods, and counter becomes
   unreachable from pickup checkout without being removed from the schema.
-- Order stays `pending` until the webhook confirms. Signature verification is mandatory.
-- A `pg_cron` job expires unpaid intents and releases the pickup slot they were holding.
+- Order stays `pending` until PayMongo confirms it. A definitive failure cancels the order and
+  releases its pickup slot immediately. Signature verification is mandatory.
+- A `pg_cron` job expires abandoned unpaid intents and releases the pickup slot they were holding.
 - One payment row per order, enforced by a unique constraint.
 
 *Deliverable: a customer can place and pay for a real pickup order.*
@@ -1740,10 +1786,10 @@ The counter-capture branches in the claim RPCs stay in place and become unreacha
 made, so the business can owe a customer money, which was never true under pay at counter. Required
 before the first real order, not after:
 
-- A staff refund workflow, full and partial, permission-gated and audit-logged. Port the reference
-  project's version.
-- The `refunded` payment status wired through the board, order history, and the customer tracking
-  page.
+- A staff refund workflow, full and partial, permission-gated and audit-logged. The implementation
+  is in progress: order history and customer tracking are wired, while the active board remains
+  limited to food preparation states.
+- The `refunded` payment status wired through order history and the customer tracking page.
 - The refund policy page published, and reachable from checkout.
 - No-show handling rebuilt around the owner's policy answer (section 28). The current sweep assumes
   a no-show costs nobody anything. That assumption is now false.
