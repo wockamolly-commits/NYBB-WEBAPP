@@ -75,18 +75,25 @@ function makeSubscriptionsBuilder(
 
 describe("notifyCustomer", () => {
   it("resolves rather than throwing when the lookup fails", async () => {
+    // This deliberately drives the error-logging path, so stub console.error
+    // the same way the token-logging test does: test output should be
+    // pristine, not a stray "order lookup failed" line in the middle of a run.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     from.mockReturnValue(
       makeSelectBuilder({ data: null, error: new Error("down") }),
     );
     const { notifyCustomer } = await import("@/lib/push/dispatch");
     await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
     expect(sendExpo).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("resolves rather than throwing when the transport throws", async () => {
     // sendExpo itself never rejects in production (Task 5's contract), but
     // this proves the dispatcher does not depend on that: if it somehow did,
     // the surrounding try/catch still has to keep the promise from rejecting.
+    // The outer catch logs, so stub console.error to keep test output clean.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const orderRow = {
       data: {
         short_code: "NY-ABC234",
@@ -121,6 +128,7 @@ describe("notifyCustomer", () => {
     const { notifyCustomer } = await import("@/lib/push/dispatch");
     await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
     expect(sendExpo).toHaveBeenCalledTimes(1);
+    errorSpy.mockRestore();
   });
 
   it("does not touch the database when the admin client is unavailable", async () => {
@@ -235,7 +243,13 @@ describe("notifyCustomer", () => {
     // it would have logged.
     expect(errorSpy).toHaveBeenCalled();
     for (const call of errorSpy.mock.calls) {
-      const joined = call.map(String).join(" ");
+      // Object arguments (a payload, an order row, a zod issue list) render as
+      // "[object Object]" under String(), which would hide a token nested in
+      // one. JSON.stringify actually surfaces the content of anything that
+      // isn't already a plain string.
+      const joined = call
+        .map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg)))
+        .join(" ");
       expect(joined).not.toContain("33333333-3333-4333-8333-333333333333");
     }
     errorSpy.mockRestore();
@@ -244,21 +258,38 @@ describe("notifyCustomer", () => {
 
 describe("notifyStaffOfNewOrder", () => {
   it("resolves rather than throwing when staff_push_targets fails", async () => {
-    from.mockReturnValue(
-      makeSelectBuilder({
-        data: {
-          short_code: "NY-ABC234",
-          branch_id: "44444444-4444-4444-8444-444444444444",
-          branches: { short_name: "Katipunan" },
-          pickup_slots: null,
-        },
-        error: null,
-      }),
-    );
+    // Reaching staff_push_targets is the whole point of this test, so give
+    // every table its own real shape (order_items included) instead of one
+    // from.mockReturnValue() standing in for all of them. Before this fix the
+    // order_items select got the order row's shape, failed to parse as an
+    // array, and the function returned before rpc was ever called: the test
+    // passed for a reason unrelated to its name.
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation((table: string) => {
+      if (table === "orders") {
+        return makeSelectBuilder({
+          data: {
+            short_code: "NY-ABC234",
+            branch_id: "44444444-4444-4444-8444-444444444444",
+            branches: { short_name: "Katipunan" },
+            pickup_slots: null,
+          },
+          error: null,
+        });
+      }
+      if (table === "order_items") {
+        return makeSelectBuilder({ data: [{ qty: 1 }], error: null });
+      }
+      throw new Error(`unexpected table ${table}`);
+    });
     rpc.mockResolvedValue({ data: null, error: new Error("denied") });
     const { notifyStaffOfNewOrder } = await import("@/lib/push/dispatch");
     await expect(notifyStaffOfNewOrder(orderId)).resolves.toBeUndefined();
+    // Proves the targetsError branch (dispatch.ts:319-325) was actually
+    // reached, not skipped on the way there.
+    expect(rpc).toHaveBeenCalled();
     expect(sendWeb).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
   });
 
   it("does not touch the database when the admin client is unavailable", async () => {
@@ -311,6 +342,11 @@ describe("notifyStaffOfNewOrder", () => {
       { endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" },
     ]);
     expect(payload.title).toContain("NY-ABC234");
+    // itemCount is the sole derived value notifyStaffOfNewOrder computes (a
+    // sum of qty across the two order_items rows, 2 + 3 = 5), and it lands in
+    // body, not title. Asserting only the title, as this test previously did,
+    // never checks the summing at all.
+    expect(payload.body).toContain("5 items");
     expect(deleteSpy).toHaveBeenCalledWith(["https://web.push/live"]);
   });
 });
