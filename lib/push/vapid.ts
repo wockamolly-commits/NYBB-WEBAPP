@@ -7,12 +7,16 @@
  * startup instead, where somebody is looking.
  *
  * An absent key is not an error: it means push is not configured in this
- * environment, which is the correct state for a test run.
+ * environment, which is the correct state for a test run. An empty string is
+ * treated the same way, because `.env.example` ships
+ * `NEXT_PUBLIC_VAPID_PUBLIC_KEY=` with no value, and that is the documented
+ * way to set this project up. Empty means unconfigured, not misconfigured.
+ * Only a key that is present and the wrong length is worth shouting about.
  */
 const VAPID_PUBLIC_KEY_LENGTH = 87;
 
 export function assertVapidKey(key: string | undefined): void {
-  if (key === undefined) return;
+  if (key === undefined || key === "") return;
   if (key.length !== VAPID_PUBLIC_KEY_LENGTH) {
     throw new Error(
       `NEXT_PUBLIC_VAPID_PUBLIC_KEY must be ${VAPID_PUBLIC_KEY_LENGTH} characters, ` +
