@@ -14,7 +14,11 @@ vi.mock("@/lib/supabase/admin-client", () => ({
 }));
 
 afterEach(() => {
-  vi.clearAllMocks();
+  // restoreAllMocks (not clearAllMocks) so a console.error spy from a failed
+  // assertion earlier in the file cannot outlive its test: clearAllMocks
+  // resets call history but leaves an installed spy's implementation in
+  // place, which would silence every console.error after the first failure.
+  vi.restoreAllMocks();
   adminConfiguredMock.mockReturnValue(true);
 });
 
@@ -78,14 +82,14 @@ describe("notifyCustomer", () => {
     // This deliberately drives the error-logging path, so stub console.error
     // the same way the token-logging test does: test output should be
     // pristine, not a stray "order lookup failed" line in the middle of a run.
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // afterEach restores it, so no assignment or restore call is needed here.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     from.mockReturnValue(
       makeSelectBuilder({ data: null, error: new Error("down") }),
     );
     const { notifyCustomer } = await import("@/lib/push/dispatch");
     await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
     expect(sendExpo).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
   });
 
   it("resolves rather than throwing when the transport throws", async () => {
@@ -93,7 +97,8 @@ describe("notifyCustomer", () => {
     // this proves the dispatcher does not depend on that: if it somehow did,
     // the surrounding try/catch still has to keep the promise from rejecting.
     // The outer catch logs, so stub console.error to keep test output clean.
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // afterEach restores it, so no assignment or restore call is needed here.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const orderRow = {
       data: {
         short_code: "NY-ABC234",
@@ -128,7 +133,6 @@ describe("notifyCustomer", () => {
     const { notifyCustomer } = await import("@/lib/push/dispatch");
     await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
     expect(sendExpo).toHaveBeenCalledTimes(1);
-    errorSpy.mockRestore();
   });
 
   it("does not touch the database when the admin client is unavailable", async () => {
@@ -252,7 +256,6 @@ describe("notifyCustomer", () => {
         .join(" ");
       expect(joined).not.toContain("33333333-3333-4333-8333-333333333333");
     }
-    errorSpy.mockRestore();
   });
 });
 
@@ -264,7 +267,9 @@ describe("notifyStaffOfNewOrder", () => {
     // order_items select got the order row's shape, failed to parse as an
     // array, and the function returned before rpc was ever called: the test
     // passed for a reason unrelated to its name.
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // afterEach restores the spy, so no assignment or restore call is needed
+    // here; only failing to reach the rpc call would be a real regression.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     from.mockImplementation((table: string) => {
       if (table === "orders") {
         return makeSelectBuilder({
@@ -289,7 +294,6 @@ describe("notifyStaffOfNewOrder", () => {
     // reached, not skipped on the way there.
     expect(rpc).toHaveBeenCalled();
     expect(sendWeb).not.toHaveBeenCalled();
-    errorSpy.mockRestore();
   });
 
   it("does not touch the database when the admin client is unavailable", async () => {
@@ -336,7 +340,7 @@ describe("notifyStaffOfNewOrder", () => {
     expect(sendWeb).toHaveBeenCalledTimes(1);
     const [targets, payload] = sendWeb.mock.calls[0] as [
       unknown,
-      { title: string },
+      { title: string; body: string },
     ];
     expect(targets).toEqual([
       { endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" },
