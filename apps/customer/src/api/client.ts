@@ -180,6 +180,18 @@ export function markArrived(
   });
 }
 
+export function registerPushToken(
+  shortCode: string,
+  request: { expoToken: string; platform: "ios" | "android" },
+  credentials: Credentials,
+): Promise<ApiResult<{ registered: true }>> {
+  return call(`/orders/${encodeURIComponent(shortCode)}/push`, {
+    method: "POST",
+    body: request,
+    credentials,
+  });
+}
+
 /**
  * Asks NYBB to email a six-digit sign-in code.
  *

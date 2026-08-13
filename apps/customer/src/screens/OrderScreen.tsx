@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "re
 import type { MobileError, MobilePaymentStart } from "../api/contract";
 import type { TrackedOrder } from "../api/types";
 import { formatPeso, formatPickupWindow } from "../format";
+import { registerForOrder } from "../push/register";
 import { RADIUS, colors } from "../theme";
 import { Button, Card, Label, Notice, shared } from "../ui";
 
@@ -26,6 +27,8 @@ export function OrderScreen({
   paymentError,
   paymentBusy,
   arrivalBusy,
+  shortCode,
+  trackingToken,
   onRefresh,
   onPay,
   onSettleMock,
@@ -39,6 +42,9 @@ export function OrderScreen({
   paymentError: MobileError | null;
   paymentBusy: boolean;
   arrivalBusy: boolean;
+  /** The order this screen is tracking, known before the first read answers. */
+  shortCode: string;
+  trackingToken: string;
   onRefresh: () => void;
   onPay: () => void;
   onSettleMock: (outcome: "paid" | "failed") => void;
@@ -56,6 +62,17 @@ export function OrderScreen({
     const timer = setInterval(onRefresh, 6000);
     return () => clearInterval(timer);
   }, [settled, onRefresh]);
+
+  useEffect(() => {
+    // Deliberately the only place in the app that asks for notification
+    // permission: the order screen, showing an order that already exists. Never
+    // on launch, so the one prompt a customer will ever read is spent on
+    // something they just did rather than burned on first open. Runs again on
+    // every mount and short code change, not once, which is what keeps a
+    // returning device registered for whichever order is on screen now.
+    if (!shortCode || !trackingToken) return;
+    void registerForOrder(shortCode, trackingToken);
+  }, [shortCode, trackingToken]);
 
   if (!order) {
     return (

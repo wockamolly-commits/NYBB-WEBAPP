@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
 import { Linking, SafeAreaView, StyleSheet } from "react-native";
@@ -16,6 +17,7 @@ import {
 import type { MenuItem, PickupSlots, StorefrontMenu, TrackedOrder } from "./src/api/types";
 import { addLine, buildCartLine, cartCount, changeQuantity, toOrderLines, type CartLine } from "./src/cart";
 import type { LineSelection } from "./src/menu/pricing";
+import { parseOrderDeepLink } from "./src/push/register";
 import { AccountScreen } from "./src/screens/AccountScreen";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CheckoutScreen, type CheckoutDetails } from "./src/screens/CheckoutScreen";
@@ -220,6 +222,62 @@ export default function App() {
     // the order in a loop and drag the customer back to the order screen.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * Switch the tracking screen to whichever order a push notification named.
+   *
+   * Always overwrites the current order session rather than checking whether
+   * it already matches: a tap for the order already on screen becomes a
+   * harmless reload, and a tap for a different one is exactly the case this
+   * exists for. `data.url` on the notification is the only source for the
+   * short code and token, so there is nothing here for the customer to
+   * confirm first.
+   */
+  const openOrderFromNotification = useCallback(
+    async (shortCode: string, trackingToken: string) => {
+      const target: OrderSession = { shortCode, trackingToken };
+      setOrderSession(target);
+      await saveOrder({ shortCode, trackingToken });
+      setOrder(null);
+      setOrderError(null);
+      setPayment(null);
+      setPaymentError(null);
+      setScreen("order");
+      await loadOrder(target);
+    },
+    [loadOrder],
+  );
+
+  /**
+   * Tapping a notification opens the order it is about.
+   *
+   * `getLastNotificationResponse` covers the tap that launched the app from
+   * fully closed, which never reaches a listener registered after the fact.
+   * The listener covers every tap after that, while the app is already
+   * running in the foreground or background.
+   *
+   * WHY THE RESPONSE IS CLEARED ONCE HANDLED.
+   * ================================================================
+   * `getLastNotificationResponse` keeps returning the same tap until it is
+   * cleared, and this effect resubscribes on more renders than just the first
+   * (`openOrderFromNotification` is not referentially stable). Without the
+   * clear, a customer who tapped a notification and then navigated away would
+   * be dragged back to that order on the next unrelated re-render.
+   */
+  useEffect(() => {
+    function openFrom(response: Notifications.NotificationResponse | null | undefined) {
+      const url = response?.notification.request.content.data.url;
+      if (typeof url !== "string") return;
+      const target = parseOrderDeepLink(url);
+      if (!target) return;
+      Notifications.clearLastNotificationResponse();
+      void openOrderFromNotification(target.shortCode, target.trackingToken);
+    }
+
+    openFrom(Notifications.getLastNotificationResponse());
+    const subscription = Notifications.addNotificationResponseReceivedListener(openFrom);
+    return () => subscription.remove();
+  }, [openOrderFromNotification]);
 
   function openCheckout() {
     setCheckoutError(null);
@@ -454,6 +512,8 @@ export default function App() {
           payment={payment}
           paymentBusy={paymentBusy}
           paymentError={paymentError}
+          shortCode={orderSession?.shortCode ?? ""}
+          trackingToken={orderSession?.trackingToken ?? ""}
         />
       )}
 
