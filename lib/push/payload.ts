@@ -46,7 +46,11 @@ export function customerPayload(order: CustomerPayloadOrder): PushPayload {
     title: copy.title,
     body: copy.body,
     url: `/order/${order.shortCode}?t=${order.trackingToken}`,
+    // The short code, so a second notification about one order replaces the
+    // first rather than stacking under it.
     tag: order.shortCode,
+    // Ready is the only one the customer has to act on. Everything else is
+    // information, and information that survives a swipe is a nuisance.
     requireInteraction: isReady,
     renotify: isReady,
     vibrate: isReady ? [120, 60, 120] : null,

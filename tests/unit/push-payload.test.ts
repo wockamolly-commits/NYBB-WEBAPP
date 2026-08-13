@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { customerPayload, staffPayload } from "@/lib/push/payload";
+import * as statusModule from "@/lib/orders/status";
 import { statusCopy } from "@/lib/orders/status";
 
 const base = {
@@ -17,6 +18,14 @@ describe("customerPayload", () => {
     const copy = statusCopy(order);
     expect(payload.title).toBe(copy.title);
     expect(payload.body).toBe(copy.body);
+  });
+
+  it("asks the tracking screen for the words rather than reproducing them", () => {
+    const order = { ...base, status: "ready" as const };
+    const spy = vi.spyOn(statusModule, "statusCopy");
+    customerPayload(order);
+    expect(spy).toHaveBeenCalledWith(order);
+    spy.mockRestore();
   });
 
   it("carries the branch's own refusal reason rather than a generic line", () => {
