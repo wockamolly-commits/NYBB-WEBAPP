@@ -134,4 +134,18 @@ describe("sendWeb", () => {
     expect(await sendWeb([], payload)).toEqual([]);
     expect(webpush.sendNotification).not.toHaveBeenCalled();
   });
+
+  it("sends nothing and calls nothing when VAPID is unconfigured, even for a non-empty target list", async () => {
+    // A non-empty target list is the point: an empty list already short-circuits
+    // before the configure() guard, so it cannot prove this branch on its own.
+    // vapidConfigured() re-reads process.env on every call, so overriding the
+    // beforeEach's valid stubs here reaches the guard regardless of whether an
+    // earlier test in this file already flipped the module-level `configured`
+    // singleton to true.
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "");
+    vi.stubEnv("VAPID_PRIVATE_KEY", "");
+    vi.stubEnv("VAPID_SUBJECT", "");
+    expect(await sendWeb([target], payload)).toEqual([]);
+    expect(webpush.sendNotification).not.toHaveBeenCalled();
+  });
 });
