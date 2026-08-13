@@ -55,6 +55,7 @@ describe("migrations", () => {
       "0035",
       "0036",
       "0037",
+      "0038",
     ]);
   });
 
@@ -242,7 +243,7 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly seven functions to anon", async () => {
+  it("expose exactly eight functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -274,6 +275,11 @@ describe("migrations", () => {
     // short code identifies the order; the tracking token authorizes reading
     // it, and a wrong token is given the same answer as a code that never
     // existed so the code space is not worth scraping.
+    //
+    // register_customer_push_device (0038) is checked the same way as
+    // get_order_by_tracking: the short code and tracking token together decide
+    // whether the caller may speak for the order, this time to attach a device
+    // to it rather than to read it.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -283,6 +289,7 @@ describe("migrations", () => {
       "get_public_settings",
       "get_storefront_menu",
       "place_order",
+      "register_customer_push_device",
     ]);
   });
 
