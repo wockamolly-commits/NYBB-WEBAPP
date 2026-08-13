@@ -94,6 +94,27 @@ describe("claim_queued_push_notifications", () => {
     ).toBe(1);
   });
 
+  it("hands a second call the rows left over, not the first call's rows again", async () => {
+    const a = await queueRow(db, "NY-GGG777");
+    const b = await queueRow(db, "NY-HHH888");
+    const c = await queueRow(db, "NY-III999");
+    const d = await queueRow(db, "NY-JJJ000");
+
+    const firstBatch = (
+      await db.query<{ id: number }>(`select id from claim_queued_push_notifications(2) order by id`)
+    ).rows.map((r) => r.id);
+    expect(firstBatch).toEqual([a, b]);
+
+    const secondBatch = (
+      await db.query<{ id: number }>(`select id from claim_queued_push_notifications(2) order by id`)
+    ).rows.map((r) => r.id);
+    // The rows left over after the first claim, and none of the first
+    // batch's ids: a caller that claims twice must never see the same row
+    // land in both batches.
+    expect(secondBatch).toEqual([c, d]);
+    expect(secondBatch.some((id) => firstBatch.includes(id))).toBe(false);
+  });
+
   it("defaults the limit to 50 when none is given", async () => {
     for (let i = 0; i < 3; i += 1) {
       await queueRow(db, `NY-DEF${i}`);
