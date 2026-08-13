@@ -191,7 +191,12 @@ describe("notifyCustomer", () => {
     expect(deleteSpy).toHaveBeenCalledWith(["ExponentPushToken[dead]"]);
   });
 
-  it("never logs the tracking token", async () => {
+  it("never logs the tracking token, even when it has to log an error after reading the order", async () => {
+    // The order read succeeds first, so the token is genuinely in hand (it is
+    // part of the CustomerPayloadOrder built from this row) by the time the
+    // next query fails and something gets logged. A scenario that fails
+    // before the order is ever read would pass this assertion by proving
+    // nothing, the same way the first version of this test did.
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const orderRow = {
       data: {
@@ -214,14 +219,21 @@ describe("notifyCustomer", () => {
     };
     from.mockImplementation((table: string) => {
       if (table === "orders") return makeSelectBuilder(orderRow);
-      if (table === "push_subscriptions")
-        return makeSubscriptionsBuilder([], vi.fn());
+      if (table === "push_subscriptions") {
+        return makeSelectBuilder({
+          data: null,
+          error: new Error("subscriptions down"),
+        });
+      }
       throw new Error(`unexpected table ${table}`);
     });
 
     const { notifyCustomer } = await import("@/lib/push/dispatch");
     await notifyCustomer(orderId);
 
+    // Vacuous otherwise: a spy nothing ever calls proves nothing about what
+    // it would have logged.
+    expect(errorSpy).toHaveBeenCalled();
     for (const call of errorSpy.mock.calls) {
       const joined = call.map(String).join(" ");
       expect(joined).not.toContain("33333333-3333-4333-8333-333333333333");

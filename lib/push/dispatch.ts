@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import {
   customerPayload,
   staffPayload,
@@ -64,6 +65,69 @@ const ORDER_TIMELINE_SELECT = `
 `;
 
 /**
+ * The row `ORDER_TIMELINE_SELECT` asks for, checked rather than trusted.
+ *
+ * Shaped like `lib/staff/orders.ts`'s `rowSchema`: a service-role select
+ * embedding a related table is still a boundary, and a column that drifts out
+ * from under this file should be a logged skip, not a wrong sentence quietly
+ * pushed to a stranger's lock screen or a raw exception swallowed by the
+ * try/catch with nothing to say why.
+ */
+const paymentRowSchema = z.object({
+  method: z.string(),
+  status: z.string(),
+  // bigint columns come back as strings, the same reason
+  // lib/customer/payment.ts coerces amount_cents before using it.
+  amount_cents: z.coerce.number().int().nonnegative(),
+  paid_at: z.string().nullable(),
+});
+
+const customerOrderRowSchema = z.object({
+  short_code: z.string().min(1),
+  tracking_token: z.uuid(),
+  status: z.enum([
+    "pending",
+    "accepted",
+    "preparing",
+    "ready",
+    "claimed",
+    "rejected",
+    "cancelled",
+    "no_show",
+  ]),
+  accepted_at: z.string().nullable(),
+  preparing_at: z.string().nullable(),
+  ready_at: z.string().nullable(),
+  claimed_at: z.string().nullable(),
+  rejected_at: z.string().nullable(),
+  rejected_reason: z.string().nullable(),
+  cancelled_at: z.string().nullable(),
+  cancelled_reason: z.string().nullable(),
+  customer_arrived_at: z.string().nullable(),
+  no_show_at: z.string().nullable(),
+  payments: z.union([paymentRowSchema, z.array(paymentRowSchema)]).nullable(),
+});
+
+const staffOrderRowSchema = z.object({
+  short_code: z.string().min(1),
+  branch_id: z.uuid(),
+  branches: z
+    .union([
+      z.object({ short_name: z.string() }),
+      z.array(z.object({ short_name: z.string() })),
+    ])
+    .nullable(),
+  pickup_slots: z
+    .union([
+      z.object({ slot_start: z.string() }),
+      z.array(z.object({ slot_start: z.string() })),
+    ])
+    .nullable(),
+});
+
+const orderItemRowSchema = z.object({ qty: z.number().int().positive() });
+
+/**
  * Tells the customer holding the tracking link what just happened.
  *
  * `customerPayload` needs the full timeline and the full payment, not just the
@@ -91,35 +155,41 @@ export async function notifyCustomer(orderId: string): Promise<void> {
       return;
     }
 
-    const payment = first(
-      data.payments as
-        Record<string, unknown> | Record<string, unknown>[] | null,
-    );
+    const parsed = customerOrderRowSchema.safeParse(data);
+    if (!parsed.success) {
+      // Never the row itself: it carries the tracking token, and the issue
+      // list only names which fields and constraints did not match.
+      console.error(
+        "[push] notifyCustomer unreadable order row",
+        parsed.error.issues,
+      );
+      return;
+    }
+    const row = parsed.data;
+    const payment = first(row.payments);
 
     const order: CustomerPayloadOrder = {
-      shortCode: data.short_code,
-      trackingToken: data.tracking_token,
-      status: data.status,
+      shortCode: row.short_code,
+      trackingToken: row.tracking_token,
+      status: row.status,
       timeline: {
-        acceptedAt: data.accepted_at,
-        preparingAt: data.preparing_at,
-        readyAt: data.ready_at,
-        claimedAt: data.claimed_at,
-        rejectedAt: data.rejected_at,
-        rejectedReason: data.rejected_reason,
-        cancelledAt: data.cancelled_at,
-        cancelledReason: data.cancelled_reason,
-        customerArrivedAt: data.customer_arrived_at,
-        noShowAt: data.no_show_at,
+        acceptedAt: row.accepted_at,
+        preparingAt: row.preparing_at,
+        readyAt: row.ready_at,
+        claimedAt: row.claimed_at,
+        rejectedAt: row.rejected_at,
+        rejectedReason: row.rejected_reason,
+        cancelledAt: row.cancelled_at,
+        cancelledReason: row.cancelled_reason,
+        customerArrivedAt: row.customer_arrived_at,
+        noShowAt: row.no_show_at,
       },
       payment: payment
         ? {
-            method: payment.method as string,
-            status: payment.status as string,
-            // bigint columns come back as strings, the same reason
-            // lib/customer/payment.ts coerces amount_cents before using it.
-            amountCents: Number(payment.amount_cents),
-            paidAt: payment.paid_at as string | null,
+            method: payment.method,
+            status: payment.status,
+            amountCents: payment.amount_cents,
+            paidAt: payment.paid_at,
           }
         : null,
     };
@@ -191,6 +261,16 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
       return;
     }
 
+    const parsedOrder = staffOrderRowSchema.safeParse(data);
+    if (!parsedOrder.success) {
+      console.error(
+        "[push] notifyStaffOfNewOrder unreadable order row",
+        parsedOrder.error.issues,
+      );
+      return;
+    }
+    const orderRow = parsedOrder.data;
+
     const { data: items, error: itemsError } = await admin
       .from("order_items")
       .select("qty")
@@ -204,20 +284,24 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
       return;
     }
 
-    const itemCount = ((items ?? []) as { qty: number }[]).reduce(
+    const parsedItems = z.array(orderItemRowSchema).safeParse(items ?? []);
+    if (!parsedItems.success) {
+      console.error(
+        "[push] notifyStaffOfNewOrder unreadable order_items rows",
+        parsedItems.error.issues,
+      );
+      return;
+    }
+
+    const itemCount = parsedItems.data.reduce(
       (total, item) => total + item.qty,
       0,
     );
-    const branch = first(
-      data.branches as { short_name: string } | { short_name: string }[] | null,
-    );
-    const pickupSlot = first(
-      data.pickup_slots as
-        { slot_start: string } | { slot_start: string }[] | null,
-    );
+    const branch = first(orderRow.branches);
+    const pickupSlot = first(orderRow.pickup_slots);
 
     const order: StaffPayloadOrder = {
-      shortCode: data.short_code,
+      shortCode: orderRow.short_code,
       branchShortName: branch?.short_name ?? "",
       itemCount,
       pickupStartsAt: pickupSlot?.slot_start ?? null,
@@ -228,7 +312,7 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
     const { data: targets, error: targetsError } = await admin.rpc(
       "staff_push_targets",
       {
-        p_branch_id: data.branch_id,
+        p_branch_id: orderRow.branch_id,
       },
     );
 
