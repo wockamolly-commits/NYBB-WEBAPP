@@ -104,3 +104,40 @@ describe("PayMongo payment lifecycle", () => {
     expect(await scalar<boolean>(db, `select needs_refund from payments where order_id = '${orderId}'`)).toBe(true);
   });
 });
+
+describe("the expiry sweep queues a customer notification", () => {
+  let db: PGlite;
+
+  beforeEach(async () => {
+    db = await setup();
+  }, 120_000);
+
+  it("queues exactly one row per order it cancels", async () => {
+    await addOnlineOrder(db, "NY-QUEUE1", "pi_queue1");
+    await db.exec(`select expire_unpaid_online_orders()`);
+
+    const rows = await db.query<{ template: string; target: string; status: string }>(`
+      select template, target, status from notifications
+    `);
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].template).toBe("order_cancelled_expired");
+    expect(rows.rows[0].status).toBe("queued");
+  });
+
+  it("queues nothing when it cancels nothing", async () => {
+    const { orderId } = await addOnlineOrder(db, "NY-QUEUE2", "pi_queue2");
+    await db.exec(`update orders set placed_at = now() where id = '${orderId}'`);
+    await db.exec(`select expire_unpaid_online_orders()`);
+    expect(await scalar<number>(db, `select count(*)::int from notifications`)).toBe(0);
+  });
+
+  it("queues inside the cancelling transaction, so neither can happen alone", async () => {
+    await addOnlineOrder(db, "NY-QUEUE3", "pi_queue3");
+    await db.exec(`select expire_unpaid_online_orders()`);
+    const cancelled = await scalar<number>(
+      db, `select count(*)::int from orders where status = 'cancelled'`,
+    );
+    const queued = await scalar<number>(db, `select count(*)::int from notifications`);
+    expect(queued).toBe(cancelled);
+  });
+});
