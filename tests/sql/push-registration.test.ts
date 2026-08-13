@@ -4,13 +4,17 @@ import { freshDatabase, scalar } from "./harness";
 
 const MANAGER = "75000000-0000-4000-8000-000000000001";
 const OTHER_BRANCH_STAFF = "75000000-0000-4000-8000-000000000002";
+const CUSTOMER = "75000000-0000-4000-8000-000000000003";
+const OTHER_CUSTOMER = "75000000-0000-4000-8000-000000000004";
 
 async function setup() {
   const db = await freshDatabase();
   await db.exec(`
     insert into auth.users (id, email) values
       ('${MANAGER}', 'manager@example.com'),
-      ('${OTHER_BRANCH_STAFF}', 'other@example.com');
+      ('${OTHER_BRANCH_STAFF}', 'other@example.com'),
+      ('${CUSTOMER}', 'customer@example.com'),
+      ('${OTHER_CUSTOMER}', 'other-customer@example.com');
     insert into price_lists (slug, name) values ('standard', 'Standard');
     insert into branches (slug, name, short_name, format, price_list_id, address_line, city)
     select 'pilot', 'Pilot', 'Pilot', 'street', id, 'Road', 'Cebu City'
@@ -43,6 +47,27 @@ async function addOrder(db: PGlite, code: string, branch = "pilot", status = "re
     )
     select '${code}', '${status}', b.id, b.price_list_id, '${pickupCode}',
            'Customer', '09170000000', 32900
+    from branches b where b.slug = '${branch}'
+    returning id::text
+  `);
+}
+
+async function addOrderForUser(
+  db: PGlite,
+  code: string,
+  userId: string,
+  branch = "pilot",
+  status = "ready",
+) {
+  pickupCodeCounter += 1;
+  const pickupCode = String(pickupCodeCounter);
+  return scalar<string>(db, `
+    insert into orders (
+      short_code, status, branch_id, price_list_id, pickup_code,
+      customer_name, customer_phone, total_cents, user_id
+    )
+    select '${code}', '${status}', b.id, b.price_list_id, '${pickupCode}',
+           'Customer', '09170000000', 32900, '${userId}'
     from branches b where b.slug = '${branch}'
     returning id::text
   `);
@@ -177,6 +202,36 @@ describe("register_customer_push_device", () => {
       `);
     }
     expect(await scalar<number>(db, `select count(*)::int from push_subscription_orders`)).toBe(1);
+  });
+
+  // 0042: the same owner fallback get_order_by_tracking (0014) and
+  // customer_mark_order_arrived (0029) already carry, so a signed-in customer
+  // with no tracking token in hand (account history, once it exists) is not
+  // stuck behind a credential they were never given.
+  it("registers a signed-in owner with no tracking token", async () => {
+    await addOrderForUser(db, "NY-HHH888", CUSTOMER);
+    await actAs(db, CUSTOMER);
+    const ok = await scalar<boolean>(db, `
+      select register_customer_push_device(
+        'NY-HHH888', null, 'ExponentPushToken[owner]', 'ios'
+      )
+    `);
+    expect(ok).toBe(true);
+    expect(await scalar<number>(db, `
+      select count(*)::int from push_subscription_orders where order_code = 'NY-HHH888'
+    `)).toBe(1);
+  });
+
+  it("refuses a signed-in caller who does not own the order and holds no token", async () => {
+    await addOrderForUser(db, "NY-III999", CUSTOMER);
+    await actAs(db, OTHER_CUSTOMER);
+    const ok = await scalar<boolean>(db, `
+      select register_customer_push_device(
+        'NY-III999', null, 'ExponentPushToken[intruder]', 'ios'
+      )
+    `);
+    expect(ok).toBe(false);
+    expect(await scalar<number>(db, `select count(*)::int from push_subscriptions`)).toBe(0);
   });
 });
 
