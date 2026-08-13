@@ -103,6 +103,21 @@ describe("PayMongo payment lifecycle", () => {
     expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("paid");
     expect(await scalar<boolean>(db, `select needs_refund from payments where order_id = '${orderId}'`)).toBe(true);
   });
+
+  it("says which order it reconciled, so the counter can be told about it", async () => {
+    const { orderId } = await addOnlineOrder(db, "NY-RETID1", "pi_test");
+    const returned = await scalar<string>(db, `
+      select apply_paymongo_payment('pi_test', 'paid', 'pay_test', '{}'::jsonb)::text
+    `);
+    expect(returned).toBe(orderId);
+  });
+
+  it("returns null when the intent matches nothing", async () => {
+    const returned = await scalar<string | null>(db, `
+      select apply_paymongo_payment('pi_missing', 'paid', 'pay_x', '{}'::jsonb)::text
+    `);
+    expect(returned).toBeNull();
+  });
 });
 
 describe("the expiry sweep queues a customer notification", () => {

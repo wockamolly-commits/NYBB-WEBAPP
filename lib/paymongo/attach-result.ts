@@ -2,7 +2,10 @@ export type PayOrderResult =
   | { ok: true; qr: { imageUrl: string } }
   | { ok: true; redirectUrl: string }
   | { ok: true; mock: true }
-  | { ok: true; done: true }
+  // orderId is set only when a caller with a request in flight needs to hand
+  // a staff notification to after(): lib/customer/payment.ts's settleMockPayment
+  // is the only source of this variant that fills it in.
+  | { ok: true; done: true; orderId?: string }
   | { ok: false; error: string };
 
 export function mapAttachResult(

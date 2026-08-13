@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { cookieCaller } from "@/lib/customer/cookie-caller";
 import { settleMockPayment, startPayment } from "@/lib/customer/payment";
 import type { PayOrderResult } from "@/lib/paymongo/attach-result";
+import { notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 
 /**
  * Payment, from the browser's side.
@@ -21,5 +23,9 @@ export async function payOrder(input: unknown): Promise<PayOrderResult> {
 /** Applies an intentional development payment result through the webhook RPC. */
 export async function completeMockPayment(input: unknown): Promise<PayOrderResult> {
   const request = typeof input === "object" && input !== null ? input : {};
-  return settleMockPayment({ ...request, channel: "web" }, await cookieCaller());
+  const result = await settleMockPayment({ ...request, channel: "web" }, await cookieCaller());
+  if (result.ok && "orderId" in result && result.orderId) {
+    after(notifyStaffOfNewOrder(result.orderId));
+  }
+  return result;
 }

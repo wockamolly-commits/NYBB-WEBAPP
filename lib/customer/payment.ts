@@ -277,7 +277,7 @@ export async function settleMockPayment(
     return unavailable();
   }
 
-  const { error } = await admin.rpc("apply_paymongo_payment", {
+  const { data: orderId, error } = await admin.rpc("apply_paymongo_payment", {
     p_intent_id: payment.provider_intent_id,
     p_status: parsed.data.outcome,
     p_payment_id: `mock_pay_${payment.id}`,
@@ -287,7 +287,10 @@ export async function settleMockPayment(
     console.error("[payment] mock reconciliation failed", error.message);
     return unavailable();
   }
+  // The order id travels back to the caller rather than being acted on here:
+  // this module is framework-neutral and has no request to hand after() to.
+  // Both callers have one, and call notifyStaffOfNewOrder(orderId) themselves.
   return parsed.data.outcome === "paid"
-    ? { ok: true, done: true }
+    ? { ok: true, done: true, orderId: orderId ?? undefined }
     : { ok: false, error: "Mock payment failed. This order was cancelled." };
 }

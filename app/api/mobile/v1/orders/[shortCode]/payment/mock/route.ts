@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { settleMockPayment } from "@/lib/customer/payment";
 import {
   mobileCaller,
@@ -7,6 +8,7 @@ import {
   trackingToken,
 } from "@/lib/mobile/http";
 import { mockPaymentsEnabled } from "@/lib/paymongo/mock";
+import { notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +46,10 @@ export async function POST(request: Request, context: { params: Promise<{ shortC
     },
     mobileCaller(request),
   );
+
+  if (result.ok && "orderId" in result && result.orderId) {
+    after(notifyStaffOfNewOrder(result.orderId));
+  }
 
   return result.ok
     ? mobileOk({ action: "done" as const })

@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { getPaymongoWebhookSecret } from "@/lib/paymongo/config";
 import {
   PAYMONGO_REFUND_EVENT_TYPES,
@@ -6,6 +7,7 @@ import {
   readWebhookBody,
   verifyPaymongoSignature,
 } from "@/lib/paymongo/webhook";
+import { notifyCustomer, notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 
 export const runtime = "nodejs";
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
     return Response.json({ received: true });
   }
 
-  const { error } = await createAdminClient().rpc("apply_paymongo_payment", {
+  const { data: orderId, error } = await createAdminClient().rpc("apply_paymongo_payment", {
     p_intent_id: event.paymentIntentId,
     p_status: status,
     p_payment_id: event.paymentId ?? "",
@@ -65,6 +67,12 @@ export async function POST(request: Request) {
     console.error("[payment] webhook reconciliation failed", error.message);
     return Response.json({ error: "reconciliation failed" }, { status: 500 });
   }
+
+  // The counter hears about an order when it is paid for, not when it is
+  // placed. Under payment first an unpaid order is not on the board at all, so
+  // pinging at place_order would ring the tablet for orders that never arrive.
+  if (status === "paid" && orderId) after(notifyStaffOfNewOrder(orderId));
+  if (status === "failed" && orderId) after(notifyCustomer(orderId));
 
   return Response.json({ received: true });
 }
