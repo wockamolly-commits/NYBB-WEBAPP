@@ -213,6 +213,24 @@ Tells the counter a customer is outside. `customer_mark_order_arrived` locks the
 order, repeats the authorization, refuses anything that is not Ready, and makes
 a retry harmless.
 
+### `POST /api/mobile/v1/orders/<shortCode>/push`
+
+Registers a device to be told about one order. Body is
+`{ "expoToken": "…", "platform": "ios" | "android" }`, sent with the tracking
+token header or the owner's bearer token. `register_customer_push_device`
+repeats the tracking-token check `get_order_by_tracking` uses, refuses a
+terminal order, and folds a repeat registration into the same device row, so
+a returning customer with a device already registered against one order gains
+a second followed order rather than a second row. A refusal is always
+`conflict`, whether it is a platform that is neither `ios` nor `android`
+(refused before the RPC is called) or a wrong token or a terminal order
+(refused by the RPC's single `false`), the same collapsing the arrival
+endpoint does.
+
+Neither the tracking token nor the Expo token is ever logged. The Expo token is
+a device credential, not an order reference, and it never travels anywhere
+this contract does not name.
+
 ## Not in v1
 
 - **Account history and profile.** Sign-in and the token store now exist, and
@@ -224,8 +242,6 @@ a retry harmless.
   it rotates or expires. A `/auth/signout` route is the fix and is not here.
 - **Staff endpoints.** The workspace remains browser-only until the customer
   contract has run in a pilot. It becomes a separate tablet-focused API.
-- **Push registration.** The app polls while an order is live. Native device
-  registration is Phase M3.
 - **Delivery.** Deferred by the owner. No delivery field or endpoint exists.
 - **ZenPOS.** Deferred completely. There is no ZenPOS endpoint, credential,
   import, mapping, ticket lookup, stock read or synchronization anywhere in this
@@ -249,3 +265,10 @@ a retry harmless.
 - The services behind the routes are covered by the existing checkout, tracking,
   arrival and PayMongo suites, which did not change: the Server Actions and the
   mobile routes now call the same code.
+- `tests/unit/push-registration-route.test.ts` covers the push endpoint: a
+  valid registration, a refused missing tracking token, a platform rejected
+  before the RPC, an oversized body, and that neither credential reaches a
+  `console.error` call. `tests/sql/push-registration.test.ts` covers
+  `register_customer_push_device` itself: the tracking-token check, the
+  terminal-order refusal, and the join-row upsert that keeps one device row
+  while it follows more than one order.
