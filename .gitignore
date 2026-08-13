@@ -39,6 +39,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# build tooling: per-plan scratch for subagent-driven execution (ledgers, task
+# briefs, review packages). The plans and specs under docs/superpowers/ are
+# tracked; this is the machine's working record of executing one, and the git
+# history is the durable version of the same thing.
+/.superpowers/
+
 # design tooling: DESIGN.md, .impeccable/design.json and .impeccable/live/config.json
 # are the design system and are tracked. Everything else under .impeccable/ is a
 # generated run artifact (critique reports, the detector cache, live session
