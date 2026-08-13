@@ -25,17 +25,17 @@
 -- statement.
 
 create or replace function claim_queued_push_notifications(p_limit integer default 50)
-returns setof notifications
+returns setof public.notifications
 language sql
 security definer
-set search_path = public
+set search_path = pg_catalog
 as $$
-  update notifications
+  update public.notifications
   set status = 'sending',
       sending_started_at = now(),
       attempts = attempts + 1
   where id in (
-    select id from notifications
+    select id from public.notifications
     where status = 'queued' and channel = 'push'
     order by id
     limit p_limit

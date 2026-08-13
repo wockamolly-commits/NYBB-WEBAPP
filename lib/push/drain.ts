@@ -85,6 +85,17 @@ export async function drainPushQueue(
 
     const rows = (data ?? []) as ClaimedNotification[];
 
+    // If markSent or markFailed itself throws (a DB write failing, not just
+    // returning an error), the outer catch below ends this loop for the
+    // whole batch: any row after the one that threw stays 'sending' with no
+    // reclaim path in this function. That is deliberate, not an oversight.
+    // It cannot double-send (a 'sending' row is never reclaimed by
+    // claim_queued_push_notifications) and it cannot make this promise
+    // reject, so it does not violate this function's contract. Recovering a
+    // row stranded in 'sending' is deferred: 0007's own comment on
+    // `sending_started_at` says that column exists so a later sweep can
+    // tell "in flight" from "stuck" without a second table, and that sweep,
+    // not this loop, is where retry-with-backoff belongs.
     for (const row of rows) {
       const orderId = orderIdFromPayload(row.payload);
       if (!orderId) {
