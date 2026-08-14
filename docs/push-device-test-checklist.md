@@ -71,6 +71,28 @@ and the queue only fills on a real status change.
       Force a `cancelled` by leaving a payment to time out. That path is the only thing that tells
       somebody their order was dropped for non-payment, and it is the one nobody remembers to test.
 
+## Before concluding anything is broken
+
+Two settings outside this project can swallow every alert while leaving no trace
+anywhere in it. Both cost real time on 2026-08-14. Check them first.
+
+- **The operating system's own notification switch.** On Windows: Settings,
+  System, Notifications, and Chrome has to be switched on there as well as
+  having permission on the site. With it off, the alert is delivered, accepted,
+  and discarded before anyone sees it. Every log in this project says success,
+  because as far as this project is concerned it was. Windows Do Not Disturb
+  does the same thing.
+- **Chrome's "Continue running background apps when Google Chrome is closed"**
+  (Settings, System). A desktop Chrome that fully quits is not listening, so no
+  alert can reach it while closed. Confirm by closing every Chrome window and
+  looking for a Chrome icon in the notification area beside the clock: no icon
+  means no delivery, whatever the setting says.
+
+  **This is a desktop quirk and does not apply to the Android counter tablet**,
+  where the operating system receives the message and wakes the browser. A
+  laptop failing this test predicts nothing about the tablet, which is why the
+  tablet test below cannot be substituted with a laptop.
+
 ## Staff, on the counter tablet
 
 - [ ] **The workspace closed entirely.** Close the browser, not just the tab, then place an order.
