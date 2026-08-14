@@ -71,6 +71,13 @@ export async function POST(request: Request) {
   // The counter hears about an order when it is paid for, not when it is
   // placed. Under payment first an unpaid order is not on the board at all, so
   // pinging at place_order would ring the tablet for orders that never arrive.
+  //
+  // A null order id is not only "no such intent". Since 0043 it also means the
+  // call changed nothing: a redelivered paid event, or a failure arriving after
+  // the payment succeeded. Both are ordinary traffic here, because this handler
+  // answers 500 on a reconciliation error and PayMongo retries on any non-2xx.
+  // So these two guards are what stop a retry ringing the tablet twice and a
+  // late failure telling a customer their paid order was not paid.
   if (status === "paid" && orderId) after(notifyStaffOfNewOrder(orderId));
   if (status === "failed" && orderId) after(notifyCustomer(orderId));
 

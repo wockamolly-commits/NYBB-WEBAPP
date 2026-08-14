@@ -1991,7 +1991,7 @@ Per `AGENTS.md` rule 3, this is a correction to the spec rather than a silent di
 
 - [ ] **Step 4: Update the status documents**
 
-`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0042` (the plan said `0040`, before `0041` and `0042` were written), and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
+`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0043` (the plan said `0040`, before `0041`, `0042` and `0043` were written), and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
 
 - [ ] **Step 5: Run the full loop one last time**
 

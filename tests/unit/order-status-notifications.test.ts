@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CustomerNotifyResult } from "@/lib/push/dispatch";
 
 /**
  * Behavioural cover for the condition, not just the import.
@@ -14,9 +15,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const after = vi.fn((promise: Promise<unknown>) => promise);
 const revalidatePath = vi.fn();
-const notifyCustomer = vi.fn(async () => {});
-const rpc = vi.fn(async () => ({ data: null, error: null }));
-const hasStaffPermission = vi.fn(() => true);
+/**
+ * These three carry their call signature as a type parameter rather than as
+ * named parameters on the implementation. `vi.fn(async () => {})` types the
+ * mock as taking no arguments, so the factories below that forward arguments
+ * to it did not typecheck, and nothing in the test loop was running `tsc` to
+ * say so.
+ */
+const notifyCustomer = vi.fn<(orderId: string) => Promise<CustomerNotifyResult>>(
+  async () => ({ ok: true, delivered: 1 }),
+);
+const rpc = vi.fn<(...args: unknown[]) => Promise<{ data: unknown; error: unknown }>>(
+  async () => ({ data: null, error: null }),
+);
+const hasStaffPermission = vi.fn<(...args: unknown[]) => boolean>(() => true);
 const getStaffProfile = vi.fn(async () => ({
   id: "22222222-2222-4222-8222-222222222222",
   role: "staff" as const,

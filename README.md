@@ -14,9 +14,9 @@ implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is n
 its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (665 tests in 58 files)
+build`, `npm run lint` and `npm test` (670 tests in 58 files)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0042` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0043` apply cleanly against a real
 Postgres in the test suite.
 
 **Phase 3's notifications are built, on the branch `feat/order-notifications`.**
@@ -105,8 +105,8 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 665 tests, including focused coverage for the store availability and customer
-  arrival RPCs, 239
+- 670 tests, including focused coverage for the store availability and customer
+  arrival RPCs, 241
   of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at

@@ -118,6 +118,39 @@ describe("PayMongo payment lifecycle", () => {
     `);
     expect(returned).toBeNull();
   });
+
+  it("says nothing happened when the same paid event is delivered twice", async () => {
+    // PayMongo retries on any non-2xx or timeout, and the webhook route answers
+    // 500 when reconciliation fails, so this is expected traffic. The caller
+    // rings the counter tablet on a non-null answer, and an order already on
+    // the board must not ring it again.
+    const { orderId } = await addOnlineOrder(db, "NY-DUPE01", "pi_dupe");
+    const first = await scalar<string | null>(db, `
+      select apply_paymongo_payment('pi_dupe', 'paid', 'pay_dupe', '{}'::jsonb)::text
+    `);
+    const second = await scalar<string | null>(db, `
+      select apply_paymongo_payment('pi_dupe', 'paid', 'pay_dupe', '{}'::jsonb)::text
+    `);
+    expect(first).toBe(orderId);
+    expect(second).toBeNull();
+    // And the redelivery changed nothing, which is the other half of the claim.
+    expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("paid");
+    expect(await scalar<string>(db, `select provider_payment_id from payments where order_id = '${orderId}'`)).toBe("pay_dupe");
+  });
+
+  it("says nothing happened when a failure arrives after the payment succeeded", async () => {
+    // The caller notifies the customer that their payment failed on a non-null
+    // answer here. Nothing was written on this path, so a notification would be
+    // about a database change that did not happen.
+    const { orderId } = await addOnlineOrder(db, "NY-LATEF1", "pi_latefail");
+    await db.exec(`select apply_paymongo_payment('pi_latefail', 'paid', 'pay_ok', '{}'::jsonb)`);
+    const returned = await scalar<string | null>(db, `
+      select apply_paymongo_payment('pi_latefail', 'failed', 'pay_late_fail', '{}'::jsonb)::text
+    `);
+    expect(returned).toBeNull();
+    expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("paid");
+    expect(await scalar<string>(db, `select status::text from orders where id = '${orderId}'`)).toBe("pending");
+  });
 });
 
 describe("the expiry sweep queues a customer notification", () => {

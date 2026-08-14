@@ -128,6 +128,38 @@ const staffOrderRowSchema = z.object({
 const orderItemRowSchema = z.object({ qty: z.number().int().positive() });
 
 /**
+ * Why this reports back at all, given that it never throws.
+ *
+ * It has to be fire and forget: a notification send must never fail the order
+ * mutation that triggered it, which is a hard rule in spec section 15. So every
+ * failure inside is caught and logged, and for most callers (`after(...)` on a
+ * status change) the answer is genuinely of no use.
+ *
+ * `drainPushQueue` is the exception, and the reason this type exists. It writes
+ * a row's outcome to `notifications.status`, and without an answer here it wrote
+ * `sent` for a row whose order could not be read, whose subscription lookup
+ * failed, or whose customer has no device registered. That made `failed: 0` in
+ * the cron response and `status = 'sent'` in the table mean nothing at all,
+ * which matters most on the one path that tells somebody their order was
+ * cancelled for non-payment.
+ *
+ * `delivered` counts endpoints actually handed to Expo, so `{ ok: true,
+ * delivered: 0 }` is a real and common answer: the customer never registered a
+ * device. That is not a failure and retrying it would never help, which is why
+ * it is not one.
+ */
+export type CustomerNotifyFailure =
+  | "admin_unconfigured"
+  | "order_lookup_failed"
+  | "order_unreadable"
+  | "subscription_lookup_failed"
+  | "unexpected_error";
+
+export type CustomerNotifyResult =
+  | { ok: true; delivered: number }
+  | { ok: false; reason: CustomerNotifyFailure };
+
+/**
  * Tells the customer holding the tracking link what just happened.
  *
  * `customerPayload` needs the full timeline and the full payment, not just the
@@ -135,10 +167,13 @@ const orderItemRowSchema = z.object({ qty: z.number().int().positive() });
  * reads the refund status and both cancellation reasons regardless of which
  * status triggered the notification. Selecting anything narrower here is a
  * shape that compiles today and breaks the next time a status is added.
+ *
+ * Resolves in every case and rejects in none. See the note on
+ * `CustomerNotifyResult` for what the answer is for.
  */
-export async function notifyCustomer(orderId: string): Promise<void> {
+export async function notifyCustomer(orderId: string): Promise<CustomerNotifyResult> {
   try {
-    if (!adminConfigured()) return;
+    if (!adminConfigured()) return { ok: false, reason: "admin_unconfigured" };
     const admin = createAdminClient();
 
     const { data, error } = await admin
@@ -152,7 +187,7 @@ export async function notifyCustomer(orderId: string): Promise<void> {
         "[push] notifyCustomer order lookup failed",
         error?.message ?? "order not found",
       );
-      return;
+      return { ok: false, reason: "order_lookup_failed" };
     }
 
     const parsed = customerOrderRowSchema.safeParse(data);
@@ -163,7 +198,7 @@ export async function notifyCustomer(orderId: string): Promise<void> {
         "[push] notifyCustomer unreadable order row",
         parsed.error.issues,
       );
-      return;
+      return { ok: false, reason: "order_unreadable" };
     }
     const row = parsed.data;
     const payment = first(row.payments);
@@ -211,7 +246,7 @@ export async function notifyCustomer(orderId: string): Promise<void> {
         "[push] notifyCustomer subscription lookup failed",
         subscriptionsError.message,
       );
-      return;
+      return { ok: false, reason: "subscription_lookup_failed" };
     }
 
     const targets = ((subscriptions ?? []) as { endpoint: string }[]).map(
@@ -221,6 +256,11 @@ export async function notifyCustomer(orderId: string): Promise<void> {
     );
     const dead = await sendExpo(targets, payload);
     await deleteDeadEndpoints(admin, dead);
+
+    // Endpoints Expo did not reject. `sendExpo` resolves to the ones that are
+    // gone for good, so this is the count that was genuinely handed over, not
+    // the count that was attempted.
+    return { ok: true, delivered: Math.max(0, targets.length - dead.length) };
   } catch (error) {
     // Deliberately no payload and no url in this line: the payload's url
     // carries the tracking token, and this is the last line that could leak
@@ -229,6 +269,7 @@ export async function notifyCustomer(orderId: string): Promise<void> {
       "[push] notifyCustomer failed",
       error instanceof Error ? error.message : "unknown",
     );
+    return { ok: false, reason: "unexpected_error" };
   }
 }
 

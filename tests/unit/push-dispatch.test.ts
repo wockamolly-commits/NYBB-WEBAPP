@@ -1,7 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ExpoTarget } from "@/lib/push/expo";
+import type { PushPayload } from "@/lib/push/payload";
+import type { WebTarget } from "@/lib/push/web";
 
-const sendExpo = vi.fn(async () => [] as string[]);
-const sendWeb = vi.fn(async () => [] as string[]);
+/**
+ * Both carry the real signature as a type parameter. Without it the mock types
+ * as taking no arguments, `mock.calls[0]` types as `[]`, and reading what the
+ * dispatcher actually sent needs a cast that TypeScript rejects outright.
+ */
+const sendExpo = vi.fn<(targets: ExpoTarget[], payload: PushPayload) => Promise<string[]>>(
+  async () => [],
+);
+const sendWeb = vi.fn<(targets: WebTarget[], payload: PushPayload) => Promise<string[]>>(
+  async () => [],
+);
 const rpc = vi.fn();
 const from = vi.fn();
 const adminConfiguredMock = vi.fn(() => true);
@@ -88,7 +100,12 @@ describe("notifyCustomer", () => {
       makeSelectBuilder({ data: null, error: new Error("down") }),
     );
     const { notifyCustomer } = await import("@/lib/push/dispatch");
-    await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
+    // Resolves, and says which failure it was. The drain writes that reason
+    // into notifications.last_error, so "resolved" alone is not the contract.
+    await expect(notifyCustomer(orderId)).resolves.toEqual({
+      ok: false,
+      reason: "order_lookup_failed",
+    });
     expect(sendExpo).not.toHaveBeenCalled();
   });
 
@@ -131,14 +148,20 @@ describe("notifyCustomer", () => {
     sendExpo.mockRejectedValueOnce(new Error("boom"));
 
     const { notifyCustomer } = await import("@/lib/push/dispatch");
-    await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
+    await expect(notifyCustomer(orderId)).resolves.toEqual({
+      ok: false,
+      reason: "unexpected_error",
+    });
     expect(sendExpo).toHaveBeenCalledTimes(1);
   });
 
   it("does not touch the database when the admin client is unavailable", async () => {
     adminConfiguredMock.mockReturnValue(false);
     const { notifyCustomer } = await import("@/lib/push/dispatch");
-    await expect(notifyCustomer(orderId)).resolves.toBeUndefined();
+    await expect(notifyCustomer(orderId)).resolves.toEqual({
+      ok: false,
+      reason: "admin_unconfigured",
+    });
     expect(from).not.toHaveBeenCalled();
     expect(sendExpo).not.toHaveBeenCalled();
   });
@@ -185,13 +208,13 @@ describe("notifyCustomer", () => {
     sendExpo.mockResolvedValueOnce(["ExponentPushToken[dead]"]);
 
     const { notifyCustomer } = await import("@/lib/push/dispatch");
-    await notifyCustomer(orderId);
+    // Two endpoints registered, one of them dead, so one device was actually
+    // reached. `delivered` counting targets rather than survivors would report
+    // 2 here and tell the drain a phone was rung that was not.
+    await expect(notifyCustomer(orderId)).resolves.toEqual({ ok: true, delivered: 1 });
 
     expect(sendExpo).toHaveBeenCalledTimes(1);
-    const [targets, payload] = sendExpo.mock.calls[0] as [
-      { endpoint: string }[],
-      { url: string },
-    ];
+    const [targets, payload] = sendExpo.mock.calls[0];
     expect(targets).toEqual([
       { endpoint: "ExponentPushToken[live]" },
       { endpoint: "ExponentPushToken[dead]" },
@@ -338,10 +361,7 @@ describe("notifyStaffOfNewOrder", () => {
       p_branch_id: "44444444-4444-4444-8444-444444444444",
     });
     expect(sendWeb).toHaveBeenCalledTimes(1);
-    const [targets, payload] = sendWeb.mock.calls[0] as [
-      unknown,
-      { title: string; body: string },
-    ];
+    const [targets, payload] = sendWeb.mock.calls[0];
     expect(targets).toEqual([
       { endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" },
     ]);

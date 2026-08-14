@@ -290,6 +290,12 @@ export async function settleMockPayment(
   // The order id travels back to the caller rather than being acted on here:
   // this module is framework-neutral and has no request to hand after() to.
   // Both callers have one, and call notifyStaffOfNewOrder(orderId) themselves.
+  //
+  // Since 0043 a null id can also mean the call was a no-op. This path cannot
+  // produce one: the guard above refuses anything whose payment is not still
+  // `pending`, so the already-paid early return is unreachable from here. The
+  // `?? undefined` below is for the no-matching-intent case, which a race
+  // against the expiry sweep could still produce.
   return parsed.data.outcome === "paid"
     ? { ok: true, done: true, orderId: orderId ?? undefined }
     : { ok: false, error: "Mock payment failed. This order was cancelled." };

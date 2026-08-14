@@ -1,14 +1,36 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { customerPayload, staffPayload } from "@/lib/push/payload";
+import { customerPayload, staffPayload, type CustomerPayloadOrder } from "@/lib/push/payload";
 import * as statusModule from "@/lib/orders/status";
 import { statusCopy } from "@/lib/orders/status";
+
+/**
+ * The full timeline, not the two fields these assertions read.
+ *
+ * `statusCopy()` is handed the whole object and is free to read any stamp on
+ * it, so a fixture carrying only `rejectedReason` and `cancelledReason` is one
+ * that stops representing a real order the moment somebody uses another stamp
+ * to decide what a notification says. It also did not typecheck, which nothing
+ * in the test loop was running `tsc` to notice.
+ */
+const emptyTimeline: CustomerPayloadOrder["timeline"] = {
+  acceptedAt: null,
+  preparingAt: null,
+  readyAt: null,
+  claimedAt: null,
+  rejectedAt: null,
+  rejectedReason: null,
+  cancelledAt: null,
+  cancelledReason: null,
+  customerArrivedAt: null,
+  noShowAt: null,
+};
 
 const base = {
   shortCode: "NY-ABC234",
   trackingToken: "11111111-1111-4111-8111-111111111111",
-  timeline: { rejectedReason: null, cancelledReason: null },
-  payment: { method: "qrph", status: "paid" },
+  timeline: emptyTimeline,
+  payment: { method: "qrph", status: "paid", amountCents: 45000, paidAt: null },
 };
 
 describe("customerPayload", () => {
@@ -32,7 +54,7 @@ describe("customerPayload", () => {
     const order = {
       ...base,
       status: "rejected" as const,
-      timeline: { rejectedReason: "out_of_stock", cancelledReason: null },
+      timeline: { ...emptyTimeline, rejectedReason: "out_of_stock" },
     };
     const payload = customerPayload(order);
     expect(payload.body).toBe(statusCopy(order).body);
@@ -43,14 +65,14 @@ describe("customerPayload", () => {
     const timedOut = {
       ...base,
       status: "cancelled" as const,
-      timeline: { rejectedReason: null, cancelledReason: "payment_timeout" },
-      payment: { method: "qrph", status: "pending" },
+      timeline: { ...emptyTimeline, cancelledReason: "payment_timeout" },
+      payment: { method: "qrph", status: "pending", amountCents: 45000, paidAt: null },
     };
     const failed = {
       ...base,
       status: "cancelled" as const,
-      timeline: { rejectedReason: null, cancelledReason: "payment_failed" },
-      payment: { method: "qrph", status: "failed" },
+      timeline: { ...emptyTimeline, cancelledReason: "payment_failed" },
+      payment: { method: "qrph", status: "failed", amountCents: 45000, paidAt: null },
     };
     expect(customerPayload(timedOut).body).not.toBe(customerPayload(failed).body);
   });
@@ -69,7 +91,7 @@ describe("customerPayload", () => {
     const rejected = customerPayload({
       ...base,
       status: "rejected" as const,
-      timeline: { rejectedReason: "out_of_stock", cancelledReason: null },
+      timeline: { ...emptyTimeline, rejectedReason: "out_of_stock" },
     });
     expect(ready.requireInteraction).toBe(true);
     expect(ready.renotify).toBe(true);

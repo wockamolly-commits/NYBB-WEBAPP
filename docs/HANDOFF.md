@@ -21,10 +21,16 @@ ranking.
 ## Where things stand
 
 **Phase 0 and Phase 1a are complete, including the live customer OTP smoke test. Phase 2a has
-started.** `npm run build`, `npm run lint` and `npm test` (665 tests in 58 files, 239 of them
-against a real Postgres, and migrations now run to `0042`) are green. The
+started.** `npm run build`, `npm run lint`, `npm run typecheck` and `npm test` (670 tests in 58
+files, 241 of them against a real Postgres, and migrations now run to `0043`) are green. The
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
 verified against staging. Central Bloc, IT Park, Lahug is the owner-selected pilot branch.
+
+**`npm run typecheck` is new, and it is the only thing that reads `tests/`.** `next build`
+typechecks the application and nothing else, so fourteen type errors accumulated in the test suite
+over a fortnight without one red run, and two of them were mocks whose call signatures no longer
+matched the functions they stood in for. That is the shape of error a test file can hold while
+still passing every assertion. Run it alongside the other three.
 
 **The payment-first ruling of 2026-08-11 replanned section 27, and Phase 1 is no longer complete.**
 Pickup orders must be paid online before processing, so the shipped counter checkout is disallowed,
@@ -95,7 +101,7 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  178 of the 445 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  241 of the 670 tests live there. **Read trap 14 before trusting a green run about grants:** the
   harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine

@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CustomerNotifyResult } from "@/lib/push/dispatch";
 
-const notifyCustomer = vi.fn(async () => undefined as void);
+const delivered = (count: number): CustomerNotifyResult => ({ ok: true, delivered: count });
+
+const notifyCustomer = vi.fn<(orderId: string) => Promise<CustomerNotifyResult>>(
+  async () => delivered(1),
+);
 const rpc = vi.fn();
 const from = vi.fn();
 const adminConfiguredMock = vi.fn(() => true);
@@ -43,7 +48,7 @@ describe("drainPushQueue", () => {
   it("does not touch the database when the admin client is unavailable", async () => {
     adminConfiguredMock.mockReturnValue(false);
     const { drainPushQueue } = await import("@/lib/push/drain");
-    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0 });
+    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0, delivered: 0 });
     expect(rpc).not.toHaveBeenCalled();
     expect(from).not.toHaveBeenCalled();
   });
@@ -52,7 +57,7 @@ describe("drainPushQueue", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     rpc.mockRejectedValueOnce(new Error("connection refused"));
     const { drainPushQueue } = await import("@/lib/push/drain");
-    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0 });
+    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0, delivered: 0 });
     expect(notifyCustomer).not.toHaveBeenCalled();
   });
 
@@ -60,7 +65,7 @@ describe("drainPushQueue", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     rpc.mockResolvedValueOnce({ data: null, error: new Error("denied") });
     const { drainPushQueue } = await import("@/lib/push/drain");
-    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0 });
+    await expect(drainPushQueue()).resolves.toEqual({ sent: 0, failed: 0, delivered: 0 });
     expect(notifyCustomer).not.toHaveBeenCalled();
   });
 
@@ -78,7 +83,7 @@ describe("drainPushQueue", () => {
     const { drainPushQueue } = await import("@/lib/push/drain");
     const result = await drainPushQueue();
 
-    expect(result).toEqual({ sent: 1, failed: 0 });
+    expect(result).toEqual({ sent: 1, failed: 0, delivered: 1 });
     expect(notifyCustomer).toHaveBeenCalledWith("order-7");
     expect(updateSpy).toHaveBeenCalledTimes(1);
     const [values, id] = updateSpy.mock.calls[0] as [Record<string, unknown>, number];
@@ -108,12 +113,85 @@ describe("drainPushQueue", () => {
     const { drainPushQueue } = await import("@/lib/push/drain");
     const result = await drainPushQueue();
 
-    expect(result).toEqual({ sent: 0, failed: 1 });
+    expect(result).toEqual({ sent: 0, failed: 1, delivered: 0 });
     expect(updateSpy).toHaveBeenCalledTimes(1);
     const [values, id] = updateSpy.mock.calls[0] as [Record<string, unknown>, number];
     expect(id).toBe(9);
     expect(values.status).toBe("failed");
     expect(values.last_error).toBe("boom");
+  });
+
+  it("marks a row failed when notifyCustomer says it could not send, without any throw", async () => {
+    // The case the whole result type exists for, and the one that used to be
+    // counted `sent`. notifyCustomer resolves here, as it always does; the only
+    // thing saying nobody was told is its answer. If drain.ts stops reading
+    // that answer, this test fails and the one below it does not.
+    rpc.mockResolvedValueOnce({
+      data: [{ id: 21, payload: { order_id: "order-21" } }],
+      error: null,
+    });
+    notifyCustomer.mockResolvedValueOnce({ ok: false, reason: "subscription_lookup_failed" });
+    const updateSpy = vi.fn();
+    from.mockImplementation((table: string) => {
+      if (table === "notifications") return makeUpdateBuilder(updateSpy);
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { drainPushQueue } = await import("@/lib/push/drain");
+    const result = await drainPushQueue();
+
+    expect(result).toEqual({ sent: 0, failed: 1, delivered: 0 });
+    const [values, id] = updateSpy.mock.calls[0] as [Record<string, unknown>, number];
+    expect(id).toBe(21);
+    expect(values.status).toBe("failed");
+    // The reason, not a generic string: it is what somebody reading
+    // notifications.last_error has to work from a week later.
+    expect(values.last_error).toBe("subscription_lookup_failed");
+  });
+
+  it("counts a row with no registered device as sent, and as nobody reached", async () => {
+    // A customer who never turned notifications on. Not a failure, because no
+    // retry could ever fix it, and not a delivery either. Reporting it as
+    // `sent: 1, delivered: 0` is the distinction that makes "failed: 0" in the
+    // cron response stop meaning "everybody was told".
+    rpc.mockResolvedValueOnce({
+      data: [{ id: 23, payload: { order_id: "order-23" } }],
+      error: null,
+    });
+    notifyCustomer.mockResolvedValueOnce(delivered(0));
+    const updateSpy = vi.fn();
+    from.mockImplementation((table: string) => {
+      if (table === "notifications") return makeUpdateBuilder(updateSpy);
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { drainPushQueue } = await import("@/lib/push/drain");
+    const result = await drainPushQueue();
+
+    expect(result).toEqual({ sent: 1, failed: 0, delivered: 0 });
+    const [values] = updateSpy.mock.calls[0] as [Record<string, unknown>, number];
+    expect(values.status).toBe("sent");
+  });
+
+  it("sums delivered across a batch rather than counting rows", async () => {
+    rpc.mockResolvedValueOnce({
+      data: [
+        { id: 31, payload: { order_id: "a" } },
+        { id: 32, payload: { order_id: "b" } },
+      ],
+      error: null,
+    });
+    notifyCustomer.mockResolvedValueOnce(delivered(2));
+    notifyCustomer.mockResolvedValueOnce(delivered(1));
+    from.mockImplementation((table: string) => {
+      if (table === "notifications") return makeUpdateBuilder(() => {});
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    const { drainPushQueue } = await import("@/lib/push/drain");
+    // Two orders, three phones. Somebody is tracking one of these on two
+    // devices, which push_subscription_orders exists to allow.
+    expect(await drainPushQueue()).toEqual({ sent: 2, failed: 0, delivered: 3 });
   });
 
   it("marks a row failed without calling notifyCustomer when the payload has no order_id", async () => {
@@ -130,7 +208,7 @@ describe("drainPushQueue", () => {
     const { drainPushQueue } = await import("@/lib/push/drain");
     const result = await drainPushQueue();
 
-    expect(result).toEqual({ sent: 0, failed: 1 });
+    expect(result).toEqual({ sent: 0, failed: 1, delivered: 0 });
     expect(notifyCustomer).not.toHaveBeenCalled();
     const [values] = updateSpy.mock.calls[0] as [Record<string, unknown>, number];
     expect(values.status).toBe("failed");
@@ -161,7 +239,7 @@ describe("drainPushQueue", () => {
       if (table === "notifications") return makeUpdateBuilder(updateSpy);
       throw new Error(`unexpected table ${table}`);
     });
-    notifyCustomer.mockImplementationOnce(async () => undefined);
+    notifyCustomer.mockImplementationOnce(async () => delivered(1));
     notifyCustomer.mockImplementationOnce(async () => {
       throw new Error("transport down");
     });
@@ -170,7 +248,7 @@ describe("drainPushQueue", () => {
     const { drainPushQueue } = await import("@/lib/push/drain");
     const result = await drainPushQueue();
 
-    expect(result).toEqual({ sent: 1, failed: 1 });
+    expect(result).toEqual({ sent: 1, failed: 1, delivered: 1 });
   });
 
   it("never logs the notification payload, only static error messages", async () => {
