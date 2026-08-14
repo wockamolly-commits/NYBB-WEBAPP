@@ -31,6 +31,28 @@ Staff Web Push has its own prerequisite, and it is cheap: a VAPID key pair
 generate-vapid-keys` produces one in a second. Without it the opt-in on the orders board says the
 feature is not configured on this deployment, which is the intended behaviour and not a fault.
 
+### Installing the production pair
+
+1. Set all three on the host. The private key is a secret and belongs nowhere else; the public one
+   is not, and ships inside the site's own JavaScript by design.
+2. **Redeploy.** `NEXT_PUBLIC_` values are inlined when the site is built, not read per request, so
+   setting the variable without rebuilding changes nothing at all.
+3. Open `/workspace/orders` on the deployed site. The opt-in reading "Order alerts are not
+   configured on this deployment" means the public key did not reach the build, which is the
+   distinction step 2 exists for.
+4. Tap it, then confirm a row in `push_subscriptions` with `audience = 'staff'` and
+   `transport = 'web'`.
+
+**Generate the pair once and keep it.** A browser binds its subscription to the public key that
+created it, so replacing the pair does not rotate a credential, it orphans every device already
+registered: each keeps a subscription the server can no longer reach, silently, until somebody taps
+the opt-in again. If you ever must replace it, plan on re-registering every tablet the same day.
+
+Use a different pair for local development, so a laptop can never send to a real counter tablet.
+
+As of 2026-08-14 there is no deployment: the Vercel account holds no NYBB project. A production
+pair has been generated and is waiting for one.
+
 ---
 
 ## Customer, on the phone
