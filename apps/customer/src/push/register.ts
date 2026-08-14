@@ -69,22 +69,3 @@ export async function registerForOrder(shortCode: string, trackingToken: string)
     // it up without a single push notification ever landing.
   }
 }
-
-/**
- * The order a tapped notification's `data.url` points to, or null when the
- * string is not one `customerPayload()` in `lib/push/payload.ts` wrote.
- *
- * That function is the only place this shape gets produced:
- * `/order/<shortCode>?t=<trackingToken>`. A stray or malformed value should be
- * ignored rather than crash the app that just came to the foreground.
- */
-export function parseOrderDeepLink(url: string): { shortCode: string; trackingToken: string } | null {
-  const match = /^\/order\/([^/?]+)\?t=(.+)$/.exec(url);
-  if (!match) return null;
-
-  const shortCode = decodeURIComponent(match[1]);
-  const trackingToken = decodeURIComponent(match[2]);
-  if (!shortCode || !trackingToken) return null;
-
-  return { shortCode, trackingToken };
-}

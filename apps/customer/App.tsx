@@ -17,7 +17,7 @@ import {
 import type { MenuItem, PickupSlots, StorefrontMenu, TrackedOrder } from "./src/api/types";
 import { addLine, buildCartLine, cartCount, changeQuantity, toOrderLines, type CartLine } from "./src/cart";
 import type { LineSelection } from "./src/menu/pricing";
-import { parseOrderDeepLink } from "./src/push/register";
+import { parseOrderDeepLink } from "./src/push/deep-link";
 import { AccountScreen } from "./src/screens/AccountScreen";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CheckoutScreen, type CheckoutDetails } from "./src/screens/CheckoutScreen";
@@ -58,6 +58,28 @@ import { colors } from "./src/theme";
  * what stops a long-lived screen from sending a credential that died while it
  * was open.
  */
+
+/**
+ * Show an order alert even when the app is the thing on screen.
+ *
+ * `expo-notifications` discards an incoming notification when no handler is
+ * set, and says so plainly in `setNotificationHandler`'s own documentation.
+ * Without this, a customer who placed an order and then went back to browsing
+ * the menu is told nothing when it goes ready: the order screen polls, but the
+ * menu, cart and account screens do not, and the operating system was going to
+ * be the thing that told them.
+ *
+ * No badge. Nothing in this app ever clears one, so setting it would leave a
+ * dot on the icon that outlives the order it was about.
+ */
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const PAYMENT_METHOD = "qrph";
 
