@@ -95,6 +95,34 @@ describe("PayMongo payment lifecycle", () => {
     expect(await scalar<number>(db, `select count(*)::int from order_status_events where order_id = '${orderId}' and reason = 'payment_timeout'`)).toBe(1);
   });
 
+  it("does not rewrite a refunded payment as failed when it expires the order", async () => {
+    // The window is real, and it is the reason this guard exists. Paying does
+    // not move an order out of `pending` (the test above asserts exactly that),
+    // so an order can be pending with a paid payment until a staff member
+    // accepts it. Refund it in that window and the payment is `refunded`, which
+    // is not `paid`, so the sweep's own paid-race guard stops firing.
+    const { orderId } = await addOnlineOrder(db, "NY-REFEXP", "pi_refexp");
+    await db.exec(`select apply_paymongo_payment('pi_refexp', 'paid', 'pay_refexp', '{}'::jsonb)`);
+
+    // A full succeeded refund, then the payment marked refunded. Both steps are
+    // needed: 0033's trigger refuses a payment flipped to `refunded` without
+    // refunds rows covering its amount, which is the schema refusing to let
+    // this test reach its state by a shortcut the application could not take.
+    const paymentId = await scalar<string>(db, `select id::text from payments where order_id = '${orderId}'`);
+    await db.exec(`
+      insert into refunds (payment_id, order_id, amount_cents, reason, status)
+      values ('${paymentId}', '${orderId}', 32900, 'requested_by_customer', 'succeeded')
+    `);
+    await db.exec(`update payments set status = 'refunded' where order_id = '${orderId}'`);
+
+    expect(await scalar<number>(db, "select expire_unpaid_online_orders()")).toBe(1);
+
+    // Cancelling the order is right: nobody is making food that was paid for
+    // and refunded. Calling the refund a failed charge is not.
+    expect(await scalar<string>(db, `select status::text from orders where id = '${orderId}'`)).toBe("cancelled");
+    expect(await scalar<string>(db, `select status::text from payments where order_id = '${orderId}'`)).toBe("refunded");
+  });
+
   it("records a late paid webhook as money needing a refund, without reopening the expired order", async () => {
     const { orderId } = await addOnlineOrder(db, "NY-LATE01", "pi_late");
     await db.exec("select expire_unpaid_online_orders()");

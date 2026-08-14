@@ -16,10 +16,23 @@ afterEach(() => {
   supabaseConfigured.mockReturnValue(true);
 });
 
+/**
+ * Copied from what a browser actually POSTs, not from what the database
+ * function's parameter list suggests.
+ *
+ * `PushSubscription.toJSON()` nests the keys and carries `expirationTime`. An
+ * earlier version of this fixture was flat, matched the schema it was testing,
+ * passed every assertion below, and refused every real subscription in Chrome
+ * with a 409. A fixture invented alongside the code it checks proves the two
+ * agree with each other and nothing about the world.
+ */
 const subscription = {
   endpoint: "https://fcm.googleapis.com/fcm/send/abc123",
-  p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
-  auth: "tBHItJI5svbpez7KI4CCXg",
+  expirationTime: null,
+  keys: {
+    p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+    auth: "tBHItJI5svbpez7KI4CCXg",
+  },
 };
 
 /**
@@ -44,8 +57,8 @@ describe("registerStaffSubscription", () => {
     expect(await register(subscription)).toEqual({ ok: true });
     expect(rpc).toHaveBeenCalledWith("register_staff_push_subscription", {
       p_endpoint: subscription.endpoint,
-      p_p256dh: subscription.p256dh,
-      p_auth_key: subscription.auth,
+      p_p256dh: subscription.keys.p256dh,
+      p_auth_key: subscription.keys.auth,
     });
   });
 
@@ -70,12 +83,23 @@ describe("registerStaffSubscription", () => {
   });
 
   it("refuses a body that is not a subscription without asking the database", async () => {
+    // These drive the rejection log deliberately, so keep the run's output
+    // clean. afterEach restores it.
+    vi.spyOn(console, "error").mockImplementation(() => {});
     for (const bad of [
       null,
       {},
       { ...subscription, endpoint: "not-a-url" },
-      { ...subscription, p256dh: "" },
-      { endpoint: subscription.endpoint, p256dh: subscription.p256dh },
+      { ...subscription, keys: { ...subscription.keys, p256dh: "" } },
+      { endpoint: subscription.endpoint },
+      // The shape the database function's parameters suggest, which is NOT the
+      // shape a browser sends. Kept as a refusal case so nobody "simplifies"
+      // the schema back to it.
+      {
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      },
     ]) {
       expect((await register(bad)).ok).toBe(false);
     }
@@ -94,10 +118,27 @@ describe("registerStaffSubscription", () => {
     // nothing was written at all.
     expect(logged.length).toBeGreaterThan(0);
     for (const line of logged) {
-      expect(line).not.toContain(subscription.p256dh);
-      expect(line).not.toContain(subscription.auth);
+      expect(line).not.toContain(subscription.keys.p256dh);
+      expect(line).not.toContain(subscription.keys.auth);
       expect(line).not.toContain(subscription.endpoint);
     }
+  });
+
+  it("names the field when a body is malformed, and still not its value", async () => {
+    // The line that would have made the nested-keys bug a five-second read
+    // instead of a screenshot of a 409. It has to say enough to diagnose and
+    // no more: a rejected body still carries a real device credential.
+    const logged: string[] = [];
+    vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
+      logged.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "));
+    });
+
+    await register({ endpoint: subscription.endpoint, p256dh: subscription.keys.p256dh });
+
+    const joined = logged.join("\n");
+    expect(joined).toContain("keys");
+    expect(joined).not.toContain(subscription.keys.p256dh);
+    expect(joined).not.toContain(subscription.endpoint);
   });
 
   it("says the same thing when Supabase is not configured at all", async () => {

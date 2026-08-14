@@ -4,10 +4,26 @@ import { createStaffClient, supabaseConfigured } from "@/lib/supabase/server";
 
 const unavailable = "We could not turn on alerts on this device. Please try again.";
 
+/**
+ * The shape a browser actually sends, which is not the shape it is convenient
+ * to write down.
+ *
+ * `PushSubscription.toJSON()` nests the two keys under `keys`, alongside an
+ * `expirationTime` nothing here wants. The first cut of this schema expected
+ * `p256dh` and `auth` at the top level, which is the shape the DATABASE
+ * function takes, and it passed a unit test written to the same assumption
+ * while refusing every real subscription with a 409 that named no cause. The
+ * browser's serialization is the contract; flattening happens below.
+ *
+ * `expirationTime` is deliberately not declared, and `z.object` ignores what it
+ * is not told about, so a browser that adds a field does not start failing.
+ */
 export const staffSubscriptionSchema = z.object({
   endpoint: z.url().max(512),
-  p256dh: z.string().min(1).max(255),
-  auth: z.string().min(1).max(255),
+  keys: z.object({
+    p256dh: z.string().min(1).max(255),
+    auth: z.string().min(1).max(255),
+  }),
 });
 
 export type StaffSubscriptionResult = { ok: true } | { ok: false; error: string };
@@ -28,15 +44,21 @@ export type StaffSubscriptionResult = { ok: true } | { ok: false; error: string 
  */
 export async function registerStaffSubscription(input: unknown): Promise<StaffSubscriptionResult> {
   const parsed = staffSubscriptionSchema.safeParse(input);
-  if (!parsed.success || !supabaseConfigured()) {
+  if (!parsed.success) {
+    // Which fields, never their values: `issues` names paths and constraints,
+    // and the values here are what let anyone send to that device. Without
+    // this line a shape mismatch is a 409 with no cause anywhere, which is
+    // exactly how the nested-keys bug above reached a browser.
+    console.error("[push] staff subscription body rejected", parsed.error.issues);
     return { ok: false, error: unavailable };
   }
+  if (!supabaseConfigured()) return { ok: false, error: unavailable };
 
   const supabase = await createStaffClient();
   const { data, error } = await supabase.rpc("register_staff_push_subscription", {
     p_endpoint: parsed.data.endpoint,
-    p_p256dh: parsed.data.p256dh,
-    p_auth_key: parsed.data.auth,
+    p_p256dh: parsed.data.keys.p256dh,
+    p_auth_key: parsed.data.keys.auth,
   });
 
   if (error) {
