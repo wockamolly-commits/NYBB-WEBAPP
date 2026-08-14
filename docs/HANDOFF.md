@@ -32,6 +32,15 @@ over a fortnight without one red run, and two of them were mocks whose call sign
 matched the functions they stood in for. That is the shape of error a test file can hold while
 still passing every assertion. Run it alongside the other three.
 
+**There are two typechecks now, because there are two platforms.** `npm run typecheck` covers the
+Next app and `tests/`; `npm run typecheck:app` covers `apps/customer`, which is React Native and
+has its own tsconfig extending `expo/tsconfig.base`. The root tsconfig excludes `apps` deliberately:
+it declares the DOM libraries, which a React Native app does not have, and more practically, the
+first Vercel deploy failed because `next build` typechecks everything the root tsconfig includes and
+Vercel does not install `apps/customer`'s dependencies. It passed locally only because those
+packages are installed on the developer's machine. **Same trap as the test suite's `npm install` in
+`apps/customer`: a green local run can depend on a directory a fresh checkout does not have.**
+
 **The payment-first ruling of 2026-08-11 replanned section 27, and Phase 1 is no longer complete.**
 Pickup orders must be paid online before processing, so the shipped counter checkout is disallowed,
 online prepay became Phase 1b (a launch blocker, not a Phase 5 option), and refunds became Phase 2b
