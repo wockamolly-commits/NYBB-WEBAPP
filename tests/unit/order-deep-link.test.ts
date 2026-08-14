@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customerPayload } from "@/lib/push/payload";
+import { customerPayload, type CustomerPayloadOrder } from "@/lib/push/payload";
 
 /**
  * The tap, on the phone's side of it.
@@ -22,12 +22,23 @@ import { customerPayload } from "@/lib/push/payload";
 const parseOrderDeepLink = async () =>
   (await import("../../apps/customer/src/push/deep-link")).parseOrderDeepLink;
 
-const order = {
+const order: CustomerPayloadOrder = {
   shortCode: "NY-ABC234",
   trackingToken: "11111111-1111-4111-8111-111111111111",
-  status: "ready" as const,
-  timeline: { rejectedReason: null, cancelledReason: null },
-  payment: { method: "qrph", status: "paid" },
+  status: "ready",
+  timeline: {
+    acceptedAt: null,
+    preparingAt: null,
+    readyAt: null,
+    claimedAt: null,
+    rejectedAt: null,
+    rejectedReason: null,
+    cancelledAt: null,
+    cancelledReason: null,
+    customerArrivedAt: null,
+    noShowAt: null,
+  },
+  payment: { method: "qrph", status: "paid", amountCents: 45000, paidAt: null },
 };
 
 describe("the order a tapped notification names", () => {

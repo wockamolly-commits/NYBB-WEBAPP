@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/Button";
+import { StaffPushOptIn } from "@/components/workspace/StaffPushOptIn";
 import { OrderCard } from "./OrderCard";
 import { OrdersPoller } from "./OrdersPoller";
 import { getWorkspaceOrders } from "@/lib/staff/orders";
@@ -34,6 +35,13 @@ export default async function WorkspaceOrdersPage() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <p className="text-nybb-bone/50 max-w-md text-sm">Realtime is primary, with a 20-second polling fallback when a socket drops.</p>
+          {/*
+            No permission check around this. requireStaffPermission above already
+            turns this whole page away without orders:view, which is the same
+            permission register_staff_push_subscription asks the database about.
+            A second check here would be a second place for the two to drift.
+          */}
+          <StaffPushOptIn />
           <ButtonLink href="/workspace/orders/history" tone="dark" variant="secondary">History</ButtonLink>
         </div>
       </div>

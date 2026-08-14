@@ -63,6 +63,19 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // A cached service worker outlives the deploy that replaced it and
+        // keeps running old code on a device nobody ever closes. The browser
+        // caps this file's own cache at 24 hours by default, which is 24 hours
+        // of a counter tablet handling notifications with last week's worker.
+        // `updateViaCache: "none"` at the registration in StaffPushOptIn.tsx is
+        // the other half of this; a header alone does not cover the update
+        // check the browser makes on its own.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
     ];
   },
 };
