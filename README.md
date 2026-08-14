@@ -14,10 +14,28 @@ implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is n
 its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (445 tests)
+build`, `npm run lint` and `npm test` (665 tests in 58 files)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0029` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0042` apply cleanly against a real
 Postgres in the test suite.
+
+**Phase 3's notifications are built, on the branch `feat/order-notifications`.**
+Customers are told on a native app through Expo push; the counter tablet is told
+through Web Push, because its browser is closed at the moment a new order lands.
+Three things a future session will otherwise rediscover:
+
+- `push_subscriptions` is not new. It predates this work by thirty-one
+  migrations (`0007`), which is why the transport split lives in a column rather
+  than in a second table.
+- `staff_push_targets` is the only caller of `staff_can_access_branch(profile,
+  branch)` other than the wrapper every RLS policy goes through, so a change to
+  that function changes who gets told about an order, not only who can read one.
+- The expiry sweep is the one event that queues rather than sending inline. Every
+  other notification goes out under `after()` on the request that caused it.
+
+Nothing has been delivered to a real handset yet, and it cannot be from this
+repository alone: see `docs/push-device-test-checklist.md` for the four external
+prerequisites and the cases only a device can answer.
 
 **The Supabase project now exists, and `0001` to `0025` plus the seed are
 applied to it.** `0022` had been applied through the dashboard SQL editor, which
@@ -87,8 +105,8 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 445 tests, including focused coverage for the store availability and customer
-  arrival RPCs, 178
+- 665 tests, including focused coverage for the store availability and customer
+  arrival RPCs, 239
   of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at

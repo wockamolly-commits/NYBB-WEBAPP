@@ -30,6 +30,8 @@
 | `supabase/migrations/0038_push_registration.sql` | `transport` column, key constraint, two registration RPCs, `staff_push_targets`, grants |
 | `supabase/migrations/0039_expiry_queues_notification.sql` | Expiry sweep also inserts a `notifications` row |
 | `supabase/migrations/0040_payment_reconciliation_returns_order.sql` | `apply_paymongo_payment` returns the order id it reconciled |
+| `supabase/migrations/0041_claim_queued_push_notifications.sql` | Atomic `for update skip locked` claim of queued rows, added during Task 8 |
+| `supabase/migrations/0042_push_registration_owner_fallback.sql` | `register_customer_push_device` matches on `auth.uid()` as well as the token, added during Task 9 |
 | `lib/push/payload.ts` | Order plus event to title, body, url, tag. Reads `statusCopy()` |
 | `lib/push/vapid.ts` | 87-character key assertion |
 | `lib/push/expo.ts` | Expo HTTP send, dead-token cleanup |
@@ -44,6 +46,40 @@
 | `app/manifest.ts` | Landscape-first installable workspace |
 | `components/workspace/StaffPushOptIn.tsx` | Counter tablet opt-in button |
 | `apps/customer/src/push/register.ts` | Expo permission and token registration |
+| `apps/customer/src/push/deep-link.ts` | The `data.url` parser, split out so the test runner can load it |
+| `lib/staff/push.ts` | Framework-neutral staff registration service, mirroring `lib/customer/push.ts` |
+| `docs/push-device-test-checklist.md` | The cases only a real handset can answer |
+
+### Defects in this plan, found while implementing it
+
+Recorded here rather than silently corrected, per `AGENTS.md` rule 3. The plan governed and was
+followed except where it was wrong, and each of these is a place it was wrong.
+
+1. **Two migrations this table did not list.** `0041` and `0042` above were both written during
+   implementation. `0041` because the drain needed an atomic claim the plan had not thought about;
+   `0042` because of defect 4 below.
+2. **Task 4's brief carried a stale copy of `statusCopy()`'s input type**, so the payload builder's
+   type did not compile as written. Corrected during Task 4.
+3. **Task 7's brief cited `0030` as the source of `apply_paymongo_payment`.** `0032` is its latest
+   ancestor. Copying `0030` would have silently reverted immediate cancellation on payment failure.
+   The implementer caught it and copied `0032`.
+4. **Task 2's brief gave `register_customer_push_device` no `auth.uid()` fallback**, although both
+   its siblings (`get_order_by_tracking` in `0014`, `customer_mark_order_arrived` in `0029`) have
+   one. That made `lib/customer/push.ts`'s signed-in branch unreachable and would have failed
+   silently the day account order history landed. Fixed by `0042` rather than by downgrading the
+   documentation: the docs were describing the right behaviour and the database was wrong.
+5. **Task 9's brief showed `readMobileBody` returning `error`** when the real shape returns
+   `response`, and used a `bad_request` code that is not a `MobileErrorCode`. The implementer
+   followed the real payment route instead.
+6. **Task 7's brief said to return the order id on every path.** That makes a no-op reconciliation
+   indistinguishable from a real one, so a redelivered webhook rings the counter twice. See the
+   correction recorded against `0040` in the consolidated fix wave.
+7. **Task 11's brief said to generate the icons from "the brand mark in `public/brand/`".** That
+   directory holds one file, a script tagline lockup, and no mark. The icons come from the archive
+   logo at `C:\dev\nybb-assets` instead, per `AGENTS.md` rule 5.
+8. **Task 10's brief asked for a test that a notification tap opens the right order**, which was
+   impossible as the module was structured: it imports two native modules the repository's test
+   runner cannot load. Splitting `deep-link.ts` out made the test possible.
 
 ---
 
@@ -1955,7 +1991,7 @@ Per `AGENTS.md` rule 3, this is a correction to the spec rather than a silent di
 
 - [ ] **Step 4: Update the status documents**
 
-`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0040`, and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
+`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0042` (the plan said `0040`, before `0041` and `0042` were written), and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
 
 - [ ] **Step 5: Run the full loop one last time**
 

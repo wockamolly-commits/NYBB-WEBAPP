@@ -188,8 +188,23 @@ web storefront. Re-run the customer e2e suite on physical devices or device clou
 web browser.
 
 Pilot at the confirmed branch only after payment, refunds, capacity limits, and the no-show policy
-are production-ready. Retain the web storefront through the pilot until the owner approves removal
-or conversion to a marketing-only site.
+are production-ready.
+
+**Removal approved 2026-08-13.** This paragraph previously said to retain the web storefront
+through the pilot until the owner approved removal or conversion to a marketing-only site. The
+owner approved removal. The customer side is the app, and only the app.
+
+What follows from that, so nobody spends another day maintaining code with a deletion date: the
+storefront pages, the browser cart, the browser checkout and the customer tracking page are
+destined for deletion rather than maintenance. Treat a bug in any of them as a reason to delete
+sooner, not as work. Two consequences are already visible in this repository:
+
+- Customer notifications are native (Expo), not Web Push. Section 15 of the spec records why.
+- `app/manifest.ts` is written for the counter tablet, not for a customer's home screen. Its
+  `start_url` is the orders board.
+
+The staff workspace is NOT affected by this. It stays in the browser until a native staff app
+exists, which is Phase M4 work and not scheduled.
 
 ## Definition-of-done changes
 
@@ -221,8 +236,9 @@ These are owner decisions. Do not infer them from the mobile-app direction alone
    signing keys, and store privacy declarations is not yet known.
 5. **Resolved 2026-08-12.** IT approved Expo and managed native builds. The initial scaffold is
    the customer app. The staff app follows once the mobile-safe backend contract is in place.
-6. What is the web storefront's role during and after the pilot: temporary fallback, marketing
-   site with app-download links, or retirement after a defined acceptance point?
+6. **Resolved 2026-08-13.** Retirement. The web storefront is not a fallback and not a
+   marketing-only site: the customer half of this product is the app. See "Removal approved
+   2026-08-13" above for what that makes deletable.
 
 The existing open decisions on prep capacity, ZenPOS contact, no-show policy, online-sales
 reconciliation, assets, and franchise inquiry handling remain open and are still launch-relevant.

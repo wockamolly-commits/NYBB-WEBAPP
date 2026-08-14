@@ -21,7 +21,8 @@ ranking.
 ## Where things stand
 
 **Phase 0 and Phase 1a are complete, including the live customer OTP smoke test. Phase 2a has
-started.** `npm run build`, `npm run lint` and `npm test` (445 tests in 34 files) are green. The
+started.** `npm run build`, `npm run lint` and `npm test` (665 tests in 58 files, 239 of them
+against a real Postgres, and migrations now run to `0042`) are green. The
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
 verified against staging. Central Bloc, IT Park, Lahug is the owner-selected pilot branch.
 
@@ -36,6 +37,31 @@ payments.
 Owner blockers now: the pilot branch's kitchen capacity, the no-show and refund policy under
 payment first, PayMongo merchant approval (start this early, it is the long pole), and a ZenPOS
 technical contact for `docs/zenpos-questions.md`.
+
+**Phase 3's notifications are built on `feat/order-notifications`, and nothing has reached a real
+handset.** Five things a session picking this up will otherwise spend an afternoon rediscovering:
+
+- **`push_subscriptions` is not new.** It arrived in `0007`, thirty-one migrations before this
+  work, along with `push_subscription_orders` and `notifications`. That is why the customer/staff
+  transport split lives in a `transport` column ('web' or 'expo') rather than in a second table,
+  and why the queue table was already the right shape when the expiry sweep needed one.
+- **The customer half is Expo, the staff half is Web Push.** Not a hedge: the web storefront is
+  being retired (`docs/mobile-app-transition.md`), so there is no customer browser left to hold a
+  subscription, while the staff workspace stays in the browser until a native staff app exists.
+- **`staff_push_targets` (`0038`) is the only caller of `staff_can_access_branch(profile, branch)`
+  other than `current_staff_can_access_branch`, the wrapper every RLS policy goes through.**
+  So a change to that function's rules changes who is told about an order, not only who can read
+  one, and the notification path is the half nobody thinks of.
+- **The expiry sweep is the one event that queues.** `0039` is the only thing in the schema that
+  inserts into `notifications`. Every other notification is sent inline under `after()` on the
+  request that caused it. The queue exists because a `pg_cron` sweep has no request to hang work
+  off, not because sending is generally asynchronous here.
+- **There is no retry, deliberately, and a `failed` row is not proof nobody was told.** A send that
+  fails is not tried again. `0007`'s `sending_started_at` column exists so a later sweep can tell
+  "in flight" from "stuck", that sweep does not exist yet, and `lib/push/drain.ts` says at its top
+  where it would belong. Whoever builds it must read the comment at `drain.ts:100-108` first: if a
+  notification was delivered and only the bookkeeping write afterwards failed, the row reads
+  `failed`, and a naive retry would tell that customer the same thing twice.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking

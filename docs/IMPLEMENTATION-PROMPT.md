@@ -1217,10 +1217,30 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 
 **Three channels, in priority order.**
 
-1. **Web Push (VAPID, self-hosted).** The primary channel. Two audiences:
-   - Customer: fires on `ready`. This is the entire value proposition of pickup ordering.
-   - Staff: fires on a new order landing. Proven on Android counter tablets in the reference.
-   Opt-in prompt appears after the first successful order, never on first page load.
+1. **Push. The primary channel, but no longer one transport.** Two audiences, and as of
+   2026-08-13 they no longer share a delivery mechanism:
+   - **Customer: Expo push to the native app.** Fires on `ready`, and also on `rejected` and
+     `cancelled`. This is the entire value proposition of pickup ordering.
+   - **Staff: Web Push (VAPID, self-hosted).** Fires on a new order landing. Proven on Android
+     counter tablets in the reference.
+   Opt-in prompt appears after the first successful order, never on first page load. On the
+   customer side that now means the order screen, showing an order that already exists.
+
+   **What changed, and why.** This section originally said Web Push for both audiences. The owner
+   approved retiring the web storefront on 2026-08-13 (`docs/mobile-app-transition.md`), which
+   leaves no customer-facing browser to hold a Web Push subscription, and iOS Safari's Web Push
+   requires the customer to install the site to their home screen first. The customer half is
+   therefore Expo push through `apps/customer`. The staff half stays Web Push because the staff
+   workspace stays in the browser until a native staff app exists, which is not scheduled.
+
+   Both halves share everything above the transport: one `push_subscriptions` table, one payload
+   builder, one queue. `transport` on that table ('web' or 'expo') is the only place the split
+   is visible in the schema.
+
+   **The customer events are three, not one.** This section listed only `ready`. `rejected` and
+   `cancelled` were added afterwards and are the reason a customer whose payment timed out is
+   told at all. `cancelled` in particular is the only thing that tells somebody their order was
+   dropped for non-payment.
 2. **In-app realtime toast and sound.** For anyone with the tab open. Guard against replaying
    toasts for already-seen orders: the reference shipped a bug where a first sighting counted as a
    status change and completed orders replayed their toasts.
@@ -1229,7 +1249,13 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 **Hard rules:**
 
 - Assert `NEXT_PUBLIC_VAPID_PUBLIC_KEY.length === 87` at startup and log loudly if not. A wrong key
-  makes the opt-in button disappear with no error anywhere.
+  makes the opt-in button disappear with no error anywhere. This now covers the staff half only,
+  and `components/workspace/StaffPushOptIn.tsx` no longer lets the button disappear either.
+- The Android notification channel id is `orders` on both sides. Android drops a notification for
+  a channel that does not exist on the phone, silently, with no error anywhere. `lib/push/expo.ts`
+  sends it and `apps/customer/src/push/register.ts` creates it.
+- The customer app must set a notification handler. `expo-notifications` discards a notification
+  that arrives while the app is in the foreground when no handler is set.
 - Anything sent after the response must be returned as an awaitable promise to `after()`. Detached
   promises are killed mid-flight on Vercel and the `ECONNRESET` surfaces on an unrelated later
   request.
@@ -1796,11 +1822,23 @@ before the first real order, not after:
 
 *Deliverable: a staff member can make a customer whole when the kitchen cannot deliver.*
 
-**Phase 3, notifications and POS.** Web Push for customer-ready and staff-new-order. "I'm here".
-The `PosAdapter` interface, `ManualRekeyAdapter`, the ticket panel, the In-POS guard, and the
-`/workspace/pos` mapping UI. Send `docs/zenpos-questions.md` to ZenPOS and record the answers in
-`docs/zenpos-discovery.md`.
+**Phase 3, notifications and POS.** Expo push to the customer app for ready, rejected and
+cancelled; Web Push for staff-new-order. "I'm here". The `PosAdapter` interface,
+`ManualRekeyAdapter`, the ticket panel, the In-POS guard, and the `/workspace/pos` mapping UI.
+Send `docs/zenpos-questions.md` to ZenPOS and record the answers in `docs/zenpos-discovery.md`.
 *Deliverable: the pickup loop closes. This is the demo.*
+
+**Corrected 2026-08-13, same change as section 15.** This phase used to say "Web Push for
+customer-ready" and one customer event. Both halves of that are now wrong: the customer transport
+is Expo, and three events reach the customer, not one.
+
+**This phase has external dependencies the repo cannot resolve, and they are not the same ones
+Phase 1b has.** An Expo project id, an FCM server key, an APNs key, and a real build are all
+required before a single customer notification can be delivered, and the APNs key needs a paid
+Apple Developer membership. `docs/push-device-test-checklist.md` lists them and says what each
+one blocks. Note that the Apple membership is on the critical path for iPhone customers ORDERING
+at all, not only for notifying them, so it is a launch dependency rather than a notifications
+dependency. Start it now.
 
 **Phase 4, owner tools.** Menu management CRUD with availability holds. Settings form. Analytics.
 Vouchers. Reorder. Note that the analytics no-show split by paid versus counter is gone, since
