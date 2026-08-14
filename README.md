@@ -14,9 +14,9 @@ implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is n
 its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (670 tests in 58 files)
+build`, `npm run lint` and `npm test` (672 tests in 58 files)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0043` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0044` apply cleanly against a real
 Postgres in the test suite.
 
 **Phase 3's notifications are built, on the branch `feat/order-notifications`.**
@@ -37,10 +37,13 @@ Nothing has been delivered to a real handset yet, and it cannot be from this
 repository alone: see `docs/push-device-test-checklist.md` for the four external
 prerequisites and the cases only a device can answer.
 
-**The Supabase project now exists, and `0001` to `0025` plus the seed are
-applied to it.** `0022` had been applied through the dashboard SQL editor, which
-does not record it in the CLI's migration history, so the history was repaired
-before `0023` and `0024` were pushed. See handoff trap 15. The storefront reads the real database over PostgREST, proved
+**The Supabase project now exists, and `0001` to `0044` plus the seed are
+applied to it as of 2026-08-14.** `0022` and `0033` had both been applied through
+the dashboard SQL editor, which does not record them in the CLI's migration
+history, so the history was repaired in each case before the following
+migrations were pushed. See handoff trap 15. A green migration suite proves the
+files apply, not that anyone applied them: check
+`npx supabase migration list` before believing the schema matches the branch. The storefront reads the real database over PostgREST, proved
 by writing a string into a category blurb that exists nowhere in `lib/catalog/`,
 finding it in the server-rendered HTML of the production build, and restoring it
 by re-running the seed. The static fallback renders an identical page, so seeing
@@ -105,8 +108,8 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 670 tests, including focused coverage for the store availability and customer
-  arrival RPCs, 241
+- 672 tests, including focused coverage for the store availability and customer
+  arrival RPCs, 242
   of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to
   point at

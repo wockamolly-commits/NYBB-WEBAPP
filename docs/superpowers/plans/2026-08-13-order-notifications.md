@@ -32,6 +32,8 @@
 | `supabase/migrations/0040_payment_reconciliation_returns_order.sql` | `apply_paymongo_payment` returns the order id it reconciled |
 | `supabase/migrations/0041_claim_queued_push_notifications.sql` | Atomic `for update skip locked` claim of queued rows, added during Task 8 |
 | `supabase/migrations/0042_push_registration_owner_fallback.sql` | `register_customer_push_device` matches on `auth.uid()` as well as the token, added during Task 9 |
+| `supabase/migrations/0043_payment_reconciliation_reports_no_ops.sql` | `apply_paymongo_payment` returns null when it reconciled nothing, added by the consolidated fix wave |
+| `supabase/migrations/0044_expiry_sweep_restores_refund_guard.sql` | Restores the `refunded` guard `0039` reverted, added when the migrations were finally applied |
 | `lib/push/payload.ts` | Order plus event to title, body, url, tag. Reads `statusCopy()` |
 | `lib/push/vapid.ts` | 87-character key assertion |
 | `lib/push/expo.ts` | Expo HTTP send, dead-token cleanup |
@@ -80,6 +82,14 @@ followed except where it was wrong, and each of these is a place it was wrong.
 8. **Task 10's brief asked for a test that a notification tap opens the right order**, which was
    impossible as the module was structured: it imports two native modules the repository's test
    runner cannot load. Splitting `deep-link.ts` out made the test possible.
+9. **Task 3's brief said to copy `expire_unpaid_online_orders()` from `0030`.** `0033` was the
+   latest ancestor and had changed one line, so `0039` silently reverted it, and the reviewer
+   diffed against `0030` and correctly found the copy faithful. This is defect 3 a second time, in
+   a different task, which makes it the rule rather than the slip: **a function restated by more
+   than one migration must be diffed against the most recent restatement, and "byte-identical to
+   the migration that introduced it" is not a passing check.** Fixed by `0044`.
+   Both instances were found by someone other than the reviewer, and the second only because a
+   deployment failure forced a body-by-body comparison against the real database.
 
 ---
 
@@ -1991,7 +2001,7 @@ Per `AGENTS.md` rule 3, this is a correction to the spec rather than a silent di
 
 - [ ] **Step 4: Update the status documents**
 
-`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0043` (the plan said `0040`, before `0041`, `0042` and `0043` were written), and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
+`README.md` and `docs/HANDOFF.md` both carry a live status and a test count. Update the count, note that migrations now run to `0044` (the plan said `0040`, before `0041` through `0044` were written), and add what a future session needs: that `push_subscriptions` predates this work by thirty-one migrations, that the send side is the only caller of `staff_can_access_branch` outside a policy, and that the expiry sweep is the one event that queues.
 
 - [ ] **Step 5: Run the full loop one last time**
 

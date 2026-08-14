@@ -21,8 +21,8 @@ ranking.
 ## Where things stand
 
 **Phase 0 and Phase 1a are complete, including the live customer OTP smoke test. Phase 2a has
-started.** `npm run build`, `npm run lint`, `npm run typecheck` and `npm test` (670 tests in 58
-files, 241 of them against a real Postgres, and migrations now run to `0043`) are green. The
+started.** `npm run build`, `npm run lint`, `npm run typecheck` and `npm test` (672 tests in 58
+files, 242 of them against a real Postgres, and migrations now run to `0044`) are green. The
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
 verified against staging. Central Bloc, IT Park, Lahug is the owner-selected pilot branch.
 
@@ -88,9 +88,19 @@ browser pane about anything that waits for a frame.
   rest and turns red on engagement, so "Empty the cart" does not shout at somebody who is only
   reading their order. The focus ring colour is derived from the background utility on the
   surrounding surface, so never set one per control.
-- `supabase/migrations/0001` to `0029` are written and pass the local migration suite. `0001`
-  to `0025` are applied to staging; `0026` through `0029` are pending there.
-  applied to staging as of 2026-08-11. `0022` needed a history repair first, see trap 15.
+- `supabase/migrations/0001` to `0044` are written, pass the local migration suite, and are
+  **all applied to the Supabase project as of 2026-08-14.**
+  **A green migration suite says the migrations APPLY, not that anybody applied them.** That
+  distinction cost an afternoon: the branch's whole notification feature was built, reviewed and
+  committed against a database that was still at `0029`, and nothing in the test loop could
+  notice, because PGlite builds the schema from the files every run. Before debugging any RPC
+  that "does not exist", run
+  `npx supabase migration list --db-url "$SUPABASE_DB_URL"` and compare.
+  `0022` and `0033` both needed a history repair, having been applied through the dashboard SQL
+  editor without being recorded. See trap 15. **Verify before repairing**: for `0033` that meant
+  checking every object existed, that the md5 of every function body matched the file, and that
+  eleven grants were what the file asks for. A repair on an assumption writes the divergence into
+  the history permanently.
   Spec section 6 is the design and **section 6.6
   records the ten places the schema departs from it**, with reasons. Read 6.6 before changing
   anything in there.
@@ -101,7 +111,7 @@ browser pane about anything that waits for a frame.
 - `scripts/ingest-legacy-images.ts` is the Storage ingest. It and `build-static-images.ts` share
   `scripts/lib/image-pipeline.ts`.
 - `tests/sql/` runs the migrations and the seed against Postgres compiled to WebAssembly (PGlite).
-  241 of the 670 tests live there. **Read trap 14 before trusting a green run about grants:** the
+  242 of the 672 tests live there. **Read trap 14 before trusting a green run about grants:** the
   harness only sees a platform behaviour it has been told to shim.
 - **`DESIGN.md` and `PRODUCT.md` are tracked and are the design system and the product record.**
   Read `DESIGN.md` before any visual work. `.impeccable/design.json` is the same system in machine
