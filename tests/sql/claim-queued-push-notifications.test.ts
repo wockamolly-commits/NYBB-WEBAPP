@@ -3,11 +3,17 @@ import type { PGlite } from "@electric-sql/pglite";
 import { freshDatabase, scalar } from "./harness";
 
 /**
- * `claim_queued_push_notifications` (0041) exists to make claiming atomic:
- * lib/push/drain.ts can be called by the five-minute cron and by hand, so two
- * drains can overlap, and a mocked unit test cannot prove a `for update skip
- * locked` claim actually behaves that way under concurrency. This is that
- * proof, as far as PGlite can give one.
+ * `claim_queued_push_notifications` (0041) exists to make claiming atomic. Its
+ * caller, `lib/push/drain.ts`, was deleted with the mobile app on 2026-08-17,
+ * because the queue it drained could only ever be delivered over Expo. **The
+ * function is still applied in production and this test still earns its place**:
+ * the expiry sweep keeps filling the queue, and a customer web push would drain
+ * it through this same claim.
+ *
+ * The property under test is that two overlapping drains cannot take the same
+ * row. A mocked unit test cannot prove a `for update skip locked` claim actually
+ * behaves that way under concurrency. This is that proof, as far as PGlite can
+ * give one.
  *
  * What this cannot prove: PGlite serializes every query and transaction
  * through a single mutex (see BasePGlite's "run a function exclusively, no

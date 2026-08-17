@@ -84,9 +84,4 @@ export type PlaceOrderResult =
        * retry with it, which is the whole point of having one.
        */
       newAttempt?: true;
-      /**
-       * How the mobile API should classify this refusal, when it is not a
-       * problem with the form. The browser ignores it.
-       */
-      kind?: "limited" | "unavailable";
     };

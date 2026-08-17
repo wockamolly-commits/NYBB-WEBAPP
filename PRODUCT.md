@@ -167,9 +167,11 @@ to the remaining items:
   `app/globals.css`. Nothing from the ZOMBEANS reference brand transfers: not a color, not a
   typeface, not a line of copy.
 - **Franchise line.** The business actively sells franchises (`franchise@5bdf.ph`, (032) 520-4930).
-  As of 2026-08-17 this is the website's primary job: the public site is a franchise sales and
-  lead-generation site, with customer ordering living entirely in the app. Franchise fee
-  PHP 1,000,000, capital investment PHP 9,000,000.
+  As of 2026-08-17 this is the website's primary job: the public site leads with franchise sales
+  and lead generation. It said "with customer ordering living entirely in the app" when written;
+  the app was dropped later the same day, so ordering is on the website too, secondary to
+  franchise in the landing page's hierarchy rather than absent. Franchise fee PHP 1,000,000,
+  capital investment PHP 9,000,000.
 
 ## Evidence on Hand
 

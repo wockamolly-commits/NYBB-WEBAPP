@@ -71,7 +71,6 @@ export async function submitOrder(
       error:
         "Online ordering is not connected yet. The branches page has the " +
         "phone numbers, and they can take this now.",
-      kind: "unavailable",
     };
   }
 

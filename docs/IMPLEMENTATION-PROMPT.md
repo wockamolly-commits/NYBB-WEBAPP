@@ -1,28 +1,33 @@
 # Master Implementation Prompt: New York Buffalo Brad's Pickup Ordering Platform
 
-## Current direction, as of 2026-08-17
+## Current direction, as of 2026-08-17 (revised the same day)
 
-**Read this before anything else in this file.** The sections below were written for a
-pickup-only, browser-first product. That is not what is being built any more. Where a
-section disagrees with this one, **this section wins**, and the sections themselves carry
-correction notes where the gap is large. Appendix A records how the direction arrived
-here and why, so that nothing below has to be read as an argument.
+**Read this before anything else in this file.** Where a section disagrees with this one,
+**this section wins**, and the sections themselves carry correction notes where the gap is
+large. Appendix A records how the direction arrived here and why, so that nothing below
+has to be read as an argument.
 
-**There are three surfaces and one backend.**
+**This is a web app. There is no mobile app.** Earlier the same day this section said the
+opposite, and an Expo phone app plus a versioned `/api/mobile/v1` contract were built
+against it. Both are deleted. So are the Expo push transport, the customer push
+registration RPC's only caller, and the customer notification path that nothing else could
+deliver. The browser cart, checkout, tracking, account and login pages are **not frozen and
+not awaiting deletion**: they are the customer channel.
+
+**There are two surfaces and one backend.**
 
 | Surface | What it is | State |
 |---|---|---|
-| `apps/customer` | The Expo phone app. **The only customer ordering channel.** | Built through Phase M1, places real orders |
-| `app/(marketing)` | The public website. Brand and **franchise lead generation**, not ordering. | Franchise pages not yet built |
+| `app/(marketing)` | The public website: brand, **franchise lead generation**, and customer ordering. | Franchise inquiry page and leads screen built |
 | `app/(workspace)` | Staff tools in the browser on the counter tablet. | Partial |
-| `app/api/mobile/v1`, `lib/customer/`, `supabase/` | The shared backend all three sit on. | Live |
+| `lib/`, `supabase/` | The shared backend both sit on. | Live |
 
-**Service model.** Customers place **pickup** orders in the app. Staff review and accept
-them, then enter each accepted order manually in ZenPOS. ZenPOS is the official sale
-record. Pricing, totals, payment state and order status are decided by the server and
-never by the phone.
+**Service model.** Customers place **pickup** orders on the website. Staff review and
+accept them, then enter each accepted order manually in ZenPOS. ZenPOS is the official sale
+record. Pricing, totals, payment state and order status are decided by the server and never
+by the browser.
 
-**Five things not to build.** Each names who can reverse it. Do not reverse any of them
+**Four things not to build.** Each names who can reverse it. Do not reverse any of them
 yourself, and do not infer a reversal from a passing remark.
 
 1. **No delivery.** No delivery fields, screens, rider workflows, fees, or integrations.
@@ -36,18 +41,21 @@ yourself, and do not infer a reversal from a passing remark.
    price reads, kitchen-status reads, report import, webhooks, mapping, or automated
    sync. Manual entry stays a staff operating step. Reopen after the core system is
    ready.
-4. **No new customer-facing web surfaces.** The customer half of this product is the app.
-   The browser cart, checkout, order tracking, account and login pages are **frozen**:
-   they stay reachable, they get no work, and a bug in them is a note on the deletion
-   ticket rather than a task. They are not a fallback ordering channel.
-5. **No static generation of web pages.** A nonce-based CSP and prerendering are mutually
-   exclusive, and section 22 makes the CSP non-negotiable. Reopens only when the frozen
-   routes are actually deleted. Section 23 has the detail.
+4. **No static generation of web pages.** A nonce-based CSP and prerendering are mutually
+   exclusive, and section 22 makes the CSP non-negotiable. Section 23 has the detail.
+
+The rule that used to sit fifth here, "no new customer-facing web surfaces", is **revoked**.
+It existed only because the app was to be the customer channel.
+
+**Do not rebuild the mobile app or its API without the owner saying so.** A native client
+would need the bearer-token half of `lib/customer/caller.ts` (still present, still used by
+the browser's forwarded-token path), a new versioned route surface, and a push transport.
+The service layer under `lib/customer/` was deliberately kept framework-neutral, so that is
+a build, not a rewrite.
 
 **Active spec documents.** `docs/service-model-and-zenpos-options.md` for the service
-model, `docs/mobile-api-contract.md` for the app's backend contract, and
-`docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md` for the website.
-`README.md` holds live build status.
+model, and `docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md` for the
+website. `README.md` holds live build status.
 
 > **How to use this file.** This is the specification for the project it lives in. Read it in full
 > before starting work, and re-read the relevant section before starting each phase. Do not paste
@@ -921,16 +929,13 @@ Public web, app/(marketing). Franchise lead generation and brand. No ordering.
   /contact                   Branch, phone, hours, map, socials
   /terms /privacy /refund    Legal. Required if PayMongo card is ever enabled.
 
-Frozen. Reachable, unchanged, receiving no work. Awaiting deletion, see "Current direction" item 4.
+The customer ordering channel. Was briefly marked frozen and awaiting deletion while the
+phone app was the plan; that is revoked and these are live surfaces again.
   /cart                      Line editing, voucher field, subtotal
   /checkout                  Pickup slot picker, payment method, place order
   /order/[code]              Live tracking, pickup code, "I'm here" button
   /account                   Order history, reorder, saved details
   /login                     Email OTP, 6-digit code. Staff still reach the workspace through it
-
-Customer app, apps/customer (Expo). The only customer ordering channel.
-  Menu, item sheet, cart, checkout, order tracking, sign-in, account.
-  Backed by app/api/mobile/v1. See docs/mobile-api-contract.md.
 
 Staff workspace (auth + role gated, landscape-first tablet PWA)
   /workspace                 Today's KPIs
@@ -1250,30 +1255,37 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 
 **Three channels, in priority order.**
 
-1. **Push. The primary channel, but no longer one transport.** Two audiences, and as of
-   2026-08-13 they no longer share a delivery mechanism:
-   - **Customer: Expo push to the native app.** Fires on `ready`, and also on `rejected` and
-     `cancelled`. This is the entire value proposition of pickup ordering.
+1. **Push. Staff only, as of 2026-08-17.**
    - **Staff: Web Push (VAPID, self-hosted).** Fires on a new order landing. Proven on Android
-     counter tablets in the reference.
-   Opt-in prompt appears after the first successful order, never on first page load. On the
-   customer side that now means the order screen, showing an order that already exists.
+     counter tablets in the reference. Opt-in appears in the workspace, not on first page load.
+   - **Customer: nothing.** See below.
 
-   **What changed, and why.** This section originally said Web Push for both audiences. The owner
-   approved retiring the web storefront on 2026-08-13 (`docs/mobile-app-transition.md`), which
-   leaves no customer-facing browser to hold a Web Push subscription, and iOS Safari's Web Push
-   requires the customer to install the site to their home screen first. The customer half is
-   therefore Expo push through `apps/customer`. The staff half stays Web Push because the staff
-   workspace stays in the browser until a native staff app exists, which is not scheduled.
+   **What changed, twice.** This section originally said Web Push for both audiences. On
+   2026-08-13 the customer half became Expo push, because the plan was to retire the web
+   storefront in favour of a phone app and a retired storefront cannot hold a Web Push
+   subscription. On 2026-08-17 that plan was dropped: the product is web only, the app and
+   its Expo transport are deleted, and the customer half went with them because the only
+   registration surface it ever had was the app's.
 
-   Both halves share everything above the transport: one `push_subscriptions` table, one payload
-   builder, one queue. `transport` on that table ('web' or 'expo') is the only place the split
-   is visible in the schema.
+   **What a customer gets today.** The tracking page, which refreshes itself over Realtime
+   (migration `0021`, `components/order/OrderTrackingLiveRefresh.tsx`). That covers the
+   customer who is looking at it, which is the common case for `ready` on a pickup order,
+   and does not cover the customer who has closed the tab.
 
-   **The customer events are three, not one.** This section listed only `ready`. `rejected` and
-   `cancelled` were added afterwards and are the reason a customer whose payment timed out is
-   told at all. `cancelled` in particular is the only thing that tells somebody their order was
-   dropped for non-payment.
+   **What restoring it would take.** A Web Push opt-in on `/order/[code]`, built the way
+   `components/workspace/StaffPushOptIn.tsx` is, writing a `transport = 'web'` customer row
+   through a new RPC, plus a `notifyCustomer` to replace the deleted one. Note the iOS
+   constraint that pushed this to Expo in the first place: Safari's Web Push requires the
+   customer to install the site to their home screen before it will deliver anything.
+
+   The schema still carries both halves. One `push_subscriptions` table, one payload builder,
+   one queue; `transport` ('web' or 'expo') is where the split lives, and the 'expo' half is
+   now unreachable rather than removed. The database was deliberately not migrated back.
+
+   **The customer events were three, not one.** This section listed only `ready`. `rejected`
+   and `cancelled` were added afterwards, and `cancelled` was the only thing that told
+   somebody their order was dropped for non-payment. Nothing tells them now, which is the
+   sharpest edge of this removal and the reason to restore the customer half before launch.
 2. **In-app realtime toast and sound.** For anyone with the tab open. Guard against replaying
    toasts for already-seen orders: the reference shipped a bug where a first sighting counted as a
    status change and completed orders replayed their toasts.
@@ -1282,13 +1294,9 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 **Hard rules:**
 
 - Assert `NEXT_PUBLIC_VAPID_PUBLIC_KEY.length === 87` at startup and log loudly if not. A wrong key
-  makes the opt-in button disappear with no error anywhere. This now covers the staff half only,
-  and `components/workspace/StaffPushOptIn.tsx` no longer lets the button disappear either.
-- The Android notification channel id is `orders` on both sides. Android drops a notification for
-  a channel that does not exist on the phone, silently, with no error anywhere. `lib/push/expo.ts`
-  sends it and `apps/customer/src/push/register.ts` creates it.
-- The customer app must set a notification handler. `expo-notifications` discards a notification
-  that arrives while the app is in the foreground when no handler is set.
+  makes the opt-in button disappear with no error anywhere. This covers the staff half, which is
+  the only half, and `components/workspace/StaffPushOptIn.tsx` no longer lets the button disappear
+  either.
 - Anything sent after the response must be returned as an awaitable promise to `after()`. Detached
   promises are killed mid-flight on Vercel and the `ECONNRESET` surfaces on an unrelated later
   request.
@@ -1651,26 +1659,20 @@ GET  /api/store/hours             public, cached, for the footer and the closed 
 GET  /api/branches/[slug]/slots   available pickup slots with remaining capacity
 ```
 
-**Added while building Phase M1.** The native customer app is exactly the
-non-browser caller this section reserves Route Handlers for, and it needs more
-than a slot read:
+**Built for Phase M1 and removed on 2026-08-17.** A versioned `/api/mobile/v1`
+surface (menu, slots, checkout, order read, payment, mock payment, arrival, push
+registration, and three auth routes) existed for the native app, which was the
+non-browser caller this section reserves Route Handlers for. The app is gone and
+so is the surface.
 
-```
-GET  /api/mobile/v1/menu                            published catalog
-GET  /api/mobile/v1/slots                           pickup windows
-POST /api/mobile/v1/orders                          checkout
-GET  /api/mobile/v1/orders/[shortCode]              order read, bearer or tracking token
-POST /api/mobile/v1/orders/[shortCode]/payment      start a payment
-POST /api/mobile/v1/orders/[shortCode]/payment/mock development simulator, 404 in production
-POST /api/mobile/v1/orders/[shortCode]/arrival      customer arrival signal
-```
-
-These are not a second implementation of checkout. The customer Server Actions
-were reduced to adapters over the services in `lib/customer/`, and the routes
-call the same code with a bearer token where the browser has a cookie. The path
-carries a version because an installed app cannot be redeployed alongside the
-server. `docs/mobile-api-contract.md` is the contract; the default in the
-paragraph above still holds for the web workspace.
+**What it left behind, deliberately.** The customer Server Actions had been
+reduced to thin adapters over framework-neutral services in `lib/customer/`, so
+that the routes could call the same code with a bearer token where the browser
+has a cookie. Those services stayed. They are where the rate limit, the
+validation and the refusal messages are tested without a Next request, and
+`lib/customer/caller.ts` still carries `bearerCaller` because the browser
+forwards its own access token through the same path. A future non-browser
+client is a new route surface over existing services, not a rewrite.
 
 **Postgres RPCs are the third layer**, and they own anything that must be atomic or authorized in
 the database: `place_order`, `staff_set_order_status`, `cashier_advance_order`,
@@ -1855,23 +1857,24 @@ before the first real order, not after:
 
 *Deliverable: a staff member can make a customer whole when the kitchen cannot deliver.*
 
-**Phase 3, notifications and POS.** Expo push to the customer app for ready, rejected and
-cancelled; Web Push for staff-new-order. "I'm here". The `PosAdapter` interface,
-`ManualRekeyAdapter`, the ticket panel, the In-POS guard, and the `/workspace/pos` mapping UI.
-Send `docs/zenpos-questions.md` to ZenPOS and record the answers in `docs/zenpos-discovery.md`.
+**Phase 3, notifications and POS.** Web Push for staff-new-order. "I'm here". The `PosAdapter`
+interface, `ManualRekeyAdapter`, the ticket panel, the In-POS guard, and the `/workspace/pos`
+mapping UI. Send `docs/zenpos-questions.md` to ZenPOS and record the answers in
+`docs/zenpos-discovery.md`.
 *Deliverable: the pickup loop closes. This is the demo.*
 
-**Corrected 2026-08-13, same change as section 15.** This phase used to say "Web Push for
-customer-ready" and one customer event. Both halves of that are now wrong: the customer transport
-is Expo, and three events reach the customer, not one.
+**Corrected twice, same changes as section 15.** This phase originally said "Web Push for
+customer-ready" and one customer event. On 2026-08-13 it became Expo push and three events.
+On 2026-08-17 the customer half was removed outright with the app.
 
-**This phase has external dependencies the repo cannot resolve, and they are not the same ones
-Phase 1b has.** An Expo project id, an FCM server key, an APNs key, and a real build are all
-required before a single customer notification can be delivered, and the APNs key needs a paid
-Apple Developer membership. `docs/push-device-test-checklist.md` lists them and says what each
-one blocks. Note that the Apple membership is on the critical path for iPhone customers ORDERING
-at all, not only for notifying them, so it is a launch dependency rather than a notifications
-dependency. Start it now.
+**The external dependencies this phase used to carry are gone with it.** An Expo project id,
+an FCM server key, an APNs key and a real build were all required before a single customer
+notification could be delivered, and the APNs key needed a paid Apple Developer membership.
+None of that is on the critical path any more, because there is no app to build and no
+iPhone customer blocked from ordering. **This is the one clear win in dropping the app**, and
+it is worth stating plainly, because it also removed the only thing that told a customer
+their order was cancelled for non-payment. Restoring that is customer Web Push, which needs
+no Apple membership on Android and needs the customer to install the site on iOS.
 
 **Phase 4, owner tools.** Menu management CRUD with availability holds. Settings form. Analytics.
 Vouchers. Reorder. Note that the analytics no-show split by paid versus counter is gone, since
@@ -1987,10 +1990,11 @@ Things you might be tempted to do. Do not.
 ## Appendix A. How the direction changed, and why
 
 This document was written for a pickup-only, browser-first product. Between 2026-08-12
-and 2026-08-17 that changed five times. Each change used to sit as a banner at the top of
-this file, stacked on the ones before it, which meant the current direction could only be
-worked out by reading corrections in date order. They are recorded here instead, and
-"Current direction" at the top now states the result directly.
+and 2026-08-17 that changed six times, and the sixth change put it back where it started:
+a browser-first product, now with a franchise site attached. Each change used to sit as a
+banner at the top of this file, stacked on the ones before it, which meant the current
+direction could only be worked out by reading corrections in date order. They are recorded
+here instead, and "Current direction" at the top now states the result directly.
 
 Nothing in this appendix is instruction. It is here so that a reader who wonders why the
 body of the spec disagrees with the top of it has an answer, and so that a decision is not
@@ -2003,6 +2007,7 @@ quietly reversed by someone who never learned why it was made.
 | 2026-08-12 | ZenPOS system integration deferred. Manual entry remains a staff step, and automated writes to ZenPOS are permanently barred. | Owner |
 | 2026-08-13 | The customer web storefront is retired entirely rather than kept as a fallback or converted to a marketing-only site. | Owner |
 | 2026-08-17 | The website becomes a franchise sales and lead-generation site. Open question 7 resolved: the franchise form lives on this platform. | Marketing Head |
+| 2026-08-17 | **The mobile app is dropped. This is a web app.** The Expo app, the `/api/mobile/v1` contract, the Expo push transport and the customer notification path are deleted. The web storefront is un-retired and is the customer channel again. The franchise inquiry page stays. | Owner |
 
 **On delivery, in more detail.** The original amendment of 2026-08-12 announced pickup
 *and* delivery, and was superseded by the deferral the same day. Section 9 records the
@@ -2011,16 +2016,20 @@ duplicate an aggregator the business already pays. Delivery is not a screen. It 
 capture, zones, a fee model, a changed order lifecycle, and either riders or an aggregator
 handoff. Treat any request for it as an owner decision with a design phase attached.
 
-**On the storefront retirement.** The transitional plan originally kept the web storefront
-through the pilot, with removal to be approved later. The owner approved removal on
-2026-08-13. Two consequences are already visible in the codebase: customer notifications
-are native Expo push rather than Web Push (section 15), and `app/manifest.ts` is written
-for the counter tablet rather than a customer's home screen, so its `start_url` is the
-orders board.
+**On the storefront retirement, and its reversal.** The transitional plan originally kept
+the web storefront through the pilot, with removal to be approved later. The owner approved
+removal on 2026-08-13, then dropped the whole app direction on 2026-08-17. The storefront
+was never actually deleted, which is the only reason the reversal was cheap: the routes were
+frozen rather than removed, so un-freezing them was a decision rather than a rebuild.
 
-The staff workspace was never part of that retirement. It stays in the browser until a
-native staff app exists, which is not currently scheduled.
+**That is the lesson worth keeping from this episode.** A direction that had been held for
+five days, approved by the owner, and built against (an entire Expo app, eleven route
+handlers, a push transport) was reversed in one sentence. Freezing rather than deleting cost
+almost nothing and saved all of it.
 
-**On the frozen routes.** Retirement was approved but deletion is on hold as of
-2026-08-17, so the transactional web routes still exist. Frozen is not the same as
-supported: see item 4 of "Current direction".
+One consequence of the app direction survives in the codebase and is not a bug:
+`app/manifest.ts` is written for the counter tablet rather than a customer's home screen, so
+its `start_url` is the orders board. That was justified by the customer being on an app; it
+is now justified by who actually installs a site, which the file explains.
+
+The staff workspace was never part of the retirement, and is unaffected by the reversal.

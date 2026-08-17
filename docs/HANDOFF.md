@@ -32,14 +32,17 @@ over a fortnight without one red run, and two of them were mocks whose call sign
 matched the functions they stood in for. That is the shape of error a test file can hold while
 still passing every assertion. Run it alongside the other three.
 
-**There are two typechecks now, because there are two platforms.** `npm run typecheck` covers the
-Next app and `tests/`; `npm run typecheck:app` covers `apps/customer`, which is React Native and
-has its own tsconfig extending `expo/tsconfig.base`. The root tsconfig excludes `apps` deliberately:
-it declares the DOM libraries, which a React Native app does not have, and more practically, the
-first Vercel deploy failed because `next build` typechecks everything the root tsconfig includes and
-Vercel does not install `apps/customer`'s dependencies. It passed locally only because those
-packages are installed on the developer's machine. **Same trap as the test suite's `npm install` in
-`apps/customer`: a green local run can depend on a directory a fresh checkout does not have.**
+**There is one typecheck again, because there is one platform.** `npm run typecheck` covers the
+Next app and `tests/`. A second one, `npm run typecheck:app`, covered the React Native app under
+`apps/customer` until the mobile direction was dropped on 2026-08-17; it is gone, along with the
+root tsconfig's `exclude: ["apps"]` and eslint's Expo ignore rules.
+
+**Keep the lesson, though, because it generalizes past React Native.** The first Vercel deploy
+failed because `next build` typechecks everything the root tsconfig includes, and Vercel does not
+install a nested workspace's dependencies. It passed locally only because those packages were on
+the developer's machine. **Any green local run can depend on a directory a fresh checkout does not
+have**, and the same trap applied to the test suite, which needed its own `npm install` in
+`apps/customer`. Adding a second package root brings both back.
 
 **The payment-first ruling of 2026-08-11 replanned section 27, and Phase 1 is no longer complete.**
 Pickup orders must be paid online before processing, so the shipped counter checkout is disallowed,
@@ -53,30 +56,40 @@ Owner blockers now: the pilot branch's kitchen capacity, the no-show and refund 
 payment first, PayMongo merchant approval (start this early, it is the long pole), and a ZenPOS
 technical contact for `docs/zenpos-questions.md`.
 
-**Phase 3's notifications are built and merged to `main`, and nothing has reached a real
-handset.** Five things a session picking this up will otherwise spend an afternoon rediscovering:
+**Phase 3's notifications are built and merged to `main`, and only the staff half is still
+reachable.** Five things a session picking this up will otherwise spend an afternoon
+rediscovering:
 
 - **`push_subscriptions` is not new.** It arrived in `0007`, thirty-one migrations before this
   work, along with `push_subscription_orders` and `notifications`. That is why the customer/staff
   transport split lives in a `transport` column ('web' or 'expo') rather than in a second table,
   and why the queue table was already the right shape when the expiry sweep needed one.
-- **The customer half is Expo, the staff half is Web Push.** Not a hedge: the web storefront is
-  being retired (`docs/mobile-app-transition.md`), so there is no customer browser left to hold a
-  subscription, while the staff workspace stays in the browser until a native staff app exists.
+- **The customer half is gone; the staff half is Web Push.** The customer half was Expo, because
+  the plan was to retire the web storefront in favour of a phone app. That plan was dropped on
+  2026-08-17. The app, the Expo transport, `notifyCustomer` and the queue drain were all deleted,
+  because the only thing that could ever register a customer device was the app's own route.
+  **Nothing tells a customer their order was cancelled for non-payment any more.** The tracking
+  page updates over Realtime for a customer who still has it open, and that is the whole of it.
+  Restoring this means a Web Push opt-in on `/order/[code]`, modelled on
+  `components/workspace/StaffPushOptIn.tsx`, writing a `transport = 'web'` customer row.
 - **`staff_push_targets` (`0038`) is the only caller of `staff_can_access_branch(profile, branch)`
   other than `current_staff_can_access_branch`, the wrapper every RLS policy goes through.**
   So a change to that function's rules changes who is told about an order, not only who can read
   one, and the notification path is the half nobody thinks of.
-- **The expiry sweep is the one event that queues.** `0039` is the only thing in the schema that
-  inserts into `notifications`. Every other notification is sent inline under `after()` on the
-  request that caused it. The queue exists because a `pg_cron` sweep has no request to hang work
-  off, not because sending is generally asynchronous here.
-- **There is no retry, deliberately, and a `failed` row is not proof nobody was told.** A send that
-  fails is not tried again. `0007`'s `sending_started_at` column exists so a later sweep can tell
-  "in flight" from "stuck", that sweep does not exist yet, and `lib/push/drain.ts` says at its top
-  where it would belong. Whoever builds it must read the comment at `drain.ts:100-108` first: if a
-  notification was delivered and only the bookkeeping write afterwards failed, the row reads
-  `failed`, and a naive retry would tell that customer the same thing twice.
+- **The expiry sweep still queues rows nothing drains.** `0039` is the only thing in the schema
+  that inserts into `notifications`, and it runs inside `pg_cron`, which has no request to hang
+  work off. `lib/push/drain.ts` used to empty that queue through `notifyCustomer`; both are
+  deleted, so the rows now pile up as `queued` and no code reads them. The migration was
+  deliberately not reverted, so a future customer web push inherits a queue that is already
+  filling. **The cancellation itself is unaffected**: the sweep cancels the order and releases
+  the pickup slot, and only the telling is missing.
+- **The retry that never existed, and the reason to be careful building one.** `0007`'s
+  `sending_started_at` exists so a later sweep can tell "in flight" from "stuck". That sweep was
+  never built. Whoever builds it should know the hazard the deleted drain documented: if a
+  notification was delivered and only the bookkeeping write afterwards failed, the row read
+  `failed`, so a naive retry would tell that customer the same thing twice. Recover the reasoning
+  from `git show 9bb2c38:lib/push/drain.ts` (the last commit that had it) rather than re-deriving
+  it.
 
 **The storefront now renders dynamically, on purpose.** A nonce CSP and static generation are
 mutually exclusive in Next, and for one release that conflict left the production build blocking

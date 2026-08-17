@@ -5,18 +5,22 @@ import { createPublicClient } from "@/lib/supabase/public-client";
 /**
  * Who is asking, in a form that does not care how they reached us.
  *
- * The customer services in this folder are called from two places that have
- * nothing in common. A Server Action reads a cookie jar through
- * `next/headers`; a mobile Route Handler reads an `Authorization` header off a
- * `Request` and has no cookies at all. Neither of those facts is interesting to
- * the act of placing an order, so both adapters reduce themselves to this
- * before they call anything: a way to produce the caller's identity, and an
+ * The customer services in this folder do not want to know how a request
+ * arrived. A Server Action reads a cookie jar through `next/headers`, and the
+ * browser may also forward its access token; neither of those facts is
+ * interesting to the act of placing an order, so the adapter reduces itself to
+ * this before it calls anything: a way to produce the caller's identity, and an
  * address to count against.
  *
  * That is what "framework-neutral service" means here. It is not that the code
  * avoids importing Next by taste. It is that identity and the limiter key are
  * decided at the edge, by the adapter that can actually see them, and
- * everything below this line behaves the same for both callers.
+ * everything below this line behaves the same regardless.
+ *
+ * This shape was built when a native app's Route Handler was the second caller,
+ * reading an `Authorization` header off a `Request` with no cookies at all.
+ * That app is gone. The boundary is kept because it is what lets these rules be
+ * tested without a Next request, not because a second caller is expected back.
  *
  * WHY `identity` IS A FUNCTION AND NOT A CLIENT.
  * ================================================================
@@ -64,7 +68,7 @@ export function guestCaller(address: string | null = null): CustomerCaller {
 }
 
 /**
- * A caller holding a Supabase access token, which is how a phone signs in.
+ * A caller holding a Supabase access token rather than a cookie.
  *
  * Cookie-free, and that is the property that matters. The reference project
  * learned that a cookie-writing client used inside a mutation can delete a

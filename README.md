@@ -6,22 +6,23 @@ brand and franchise website that sits alongside it.
 Built by inheriting the architecture of the ZOMBEANS ordering platform
 (`C:\dev\zombeans-web`, read-only reference) on Next.js 16, Supabase, and Tailwind v4.
 
-## Three surfaces, one backend
+## Two surfaces, one backend
 
 | Surface | Directory | What it does |
 |---|---|---|
-| Customer app | `apps/customer` | Expo phone app. The **only** customer ordering channel. |
-| Public website | `app/(marketing)` | Brand and **franchise lead generation**. No ordering. |
+| Public website | `app/(marketing)` | Brand, **franchise lead generation**, and customer ordering. |
 | Staff workspace | `app/(workspace)` | Counter tablet, in the browser. |
 
-They share `supabase/`, `lib/customer/`, and `app/api/mobile/v1`.
+They share `supabase/` and `lib/`.
 
-The browser cart, checkout, tracking, account and login pages are **frozen**: reachable,
-receiving no work, awaiting deletion. They are not a fallback ordering channel.
+**This is a web app. There is no mobile app.** An Expo phone app and a versioned
+`/api/mobile/v1` contract were built and then removed on 2026-08-17, along with the Expo
+push transport and the customer notification path that only that app could receive. The
+browser cart, checkout, tracking, account and login pages had been marked frozen and
+awaiting deletion under that direction; they are neither. They are the customer channel.
 
 Read `docs/IMPLEMENTATION-PROMPT.md`, section "Current direction", before starting work.
-It states what is true today and lists the five things not to build. Appendix A of that
-file records how the direction got here.
+Appendix A of that file records how the direction got here and back.
 
 ## Status
 
@@ -32,28 +33,33 @@ implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is n
 its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (672 tests in 58 files)
+build`, `npm run lint` and `npm test` (621 tests in 55 files)
 are all green, every page has been rendered and reviewed in a browser at 320px,
 375px and 1280px, and migrations `0001` to `0044` apply cleanly against a real
 Postgres in the test suite.
 
-**Phase 3's notifications are built and merged to `main`.**
-Customers are told on a native app through Expo push; the counter tablet is told
-through Web Push, because its browser is closed at the moment a new order lands.
+**Phase 3's notifications are built and merged to `main`, and only the staff half
+survives.** The counter tablet is told through Web Push, because its browser is
+closed at the moment a new order lands. Customers are not pushed to at all: that
+half was Expo-only and went with the app. The tracking page updates itself over
+Realtime instead, which is what a customer waiting on an order is looking at.
+
 Three things a future session will otherwise rediscover:
 
 - `push_subscriptions` is not new. It predates this work by thirty-one
   migrations (`0007`), which is why the transport split lives in a column rather
-  than in a second table.
+  than in a second table. The `expo` half of that column is now unreachable.
 - `staff_push_targets` is the only caller of `staff_can_access_branch(profile,
   branch)` other than the wrapper every RLS policy goes through, so a change to
   that function changes who gets told about an order, not only who can read one.
-- The expiry sweep is the one event that queues rather than sending inline. Every
-  other notification goes out under `after()` on the request that caused it.
+- The expiry sweep (`0039`) still queues a `notifications` row it can no longer
+  send, because it runs inside pg_cron and the drain that emptied it was an Expo
+  path. Those rows accumulate as `queued` and nothing reads them. The
+  cancellation itself, which is the part money depends on, happens in the sweep
+  and is unaffected.
 
-Nothing has been delivered to a real handset yet, and it cannot be from this
-repository alone: see `docs/push-device-test-checklist.md` for the four external
-prerequisites and the cases only a device can answer.
+Adding customer web push means a browser opt-in on the order page, built the way
+`components/workspace/StaffPushOptIn.tsx` already is. It is unbuilt, not broken.
 
 **The Supabase project now exists, and `0001` to `0044` plus the seed are
 applied to it as of 2026-08-14.** `0022` and `0033` had both been applied through
@@ -126,7 +132,7 @@ Done:
 - `scripts/ingest-legacy-images.ts`, the Supabase Storage ingest. It and
   `build-static-images.ts` share `scripts/lib/image-pipeline.ts`, so they
   differ in destination and nothing else
-- 672 tests, including focused coverage for the store availability and customer
+- 621 tests, including focused coverage for the store availability and customer
   arrival RPCs, 242
   of which run the migrations and the seed against Postgres
   compiled to WebAssembly, so the schema is verifiable with no project to

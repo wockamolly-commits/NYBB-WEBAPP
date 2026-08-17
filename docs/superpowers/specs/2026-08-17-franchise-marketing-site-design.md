@@ -3,32 +3,37 @@
 Written 2026-08-17. Covers spec section 7 (information architecture), N9 (franchise
 inquiry form), and the repurposing of the customer web surface.
 
+> **Revised later the same day, 2026-08-17. The franchise half of this document
+> stands; the app half does not.** The owner dropped the mobile app, so the
+> website is the customer ordering channel again. Everything below about
+> `apps/customer`, `app/api/mobile/v1` and "app download" describes deleted code
+> or a page element that should not be built. The section originally titled
+> "Frozen means frozen" is **void**: the transactional web routes are live, not
+> frozen. Read this for the franchise site design, which is unaffected and is
+> what shipped.
+
 ## What this is
 
 The company gave two directions that sounded like a conflict and are not one.
 
 - The **Marketing Head** wants the website to focus on franchise inquiries.
-- The **IT Head** wants a customer ordering app.
+- The **IT Head** wanted a customer ordering app. *(Dropped by the owner later
+  on 2026-08-17. The website carries ordering again.)*
 
-These describe two different surfaces. The app has been the customer ordering
-channel since 2026-08-12 and is already built through Phase M1. The website is
-losing its ordering job anyway, per the retirement approved 2026-08-13. So the
-website is not being taken away from anyone: it is changing from a second
-ordering channel into a brand and lead-generation site, which is the job
-Marketing is asking it to do.
+The franchise argument does not depend on the app existing. The website's brand
+and lead-generation job is additive: the site sells franchises to a business
+audience on pages the ordering flow never touches, and ordering lives on
+`/menu`, `/cart`, `/checkout` and `/order/[code]`. Both fit on one site because
+they are read by different people arriving from different places.
 
-Three surfaces, one backend:
+Two surfaces, one backend:
 
 ```
-app/(marketing)     franchise-led public web, SEO facing
+app/(marketing)     franchise-led public web, SEO facing, plus customer ordering
 app/(workspace)     staff browser tools, unchanged
-app/api/mobile/v1   the app's contract, unchanged
-apps/customer       Expo, the only customer ordering channel
-lib/customer/       framework-neutral services, shared
+lib/customer/       framework-neutral services
 supabase/           one database, one RLS boundary, + franchise_inquiries
 ```
-
-Marketing gets the web, IT gets the app, and neither waits on the other.
 
 ## Decisions taken, and where they came from
 
@@ -37,7 +42,7 @@ Marketing gets the web, IT gets the app, and neither waits on the other.
 | The franchise inquiry form lives on this platform | Marketing Head, 2026-08-17 | This resolves open question 7 in both `PRODUCT.md` and spec section 28. |
 | The public website becomes franchise-led, not a storefront | Marketing Head, 2026-08-17 | Full sales site, not just a form. See "Scope of the sales site". |
 | Delivery stays deferred | Owner, 2026-08-12, reaffirmed 2026-08-17 | The IT Head said "pickup and delivery". The deferral has not been reopened by the owner, so this is treated as loose phrasing. See "Deferred, with triggers". |
-| The transactional web routes are frozen, not deleted | Owner, 2026-08-17 | They stay standing and reachable. They receive no work. See "Frozen means frozen". |
+| ~~The transactional web routes are frozen, not deleted~~ **Reversed** | Owner, 2026-08-17 (later the same day) | They are live and supported. The freeze existed only while the app was to be the customer channel. See "Frozen means frozen", which is void. |
 | Static generation and the CSP change are dropped from this scope | This design, 2026-08-17 | Their justification depended on deleting those routes. See "Why everything stays dynamic". |
 | Repurpose `app/(storefront)` in place rather than building a second app | This design, 2026-08-17 | The design system is the expensive part and it already exists. |
 
@@ -124,30 +129,28 @@ copy, not on engineering.
 ## Phase F3, landing page restructure
 
 `/` changes its primary call to action from ordering to franchise inquiry, with
-app download secondary. The existing franchise strip at
-`app/(marketing)/page.tsx` becomes the hero rather than one quiet amber line
-near the bottom.
+**ordering** secondary. (This said "app download secondary" when written. There
+is no app to download; the secondary call to action is the menu.) The existing
+franchise strip at `app/(marketing)/page.tsx` becomes the hero rather than one
+quiet amber line near the bottom.
 
 The `mailto:franchise@5bdf.ph` links in the footer, the contact page and the
 landing page all repoint at `/franchise`. Keep the address visible as text on
 the contact page, because some franchise inquiries will always arrive by email
 and the business should not look like it hides its address.
 
-## Frozen means frozen
+## ~~Frozen means frozen~~ (VOID, 2026-08-17)
 
-The transactional web routes stay standing and reachable. They get no work.
+**This whole section is reversed. Do not follow it.** It said the browser cart,
+checkout, tracking page, account and login were frozen, that a bug in them was a
+note on a deletion ticket rather than a fix, and that breaking one with a change
+to `lib/customer/` was acceptable. All of that depended on the phone app being
+the customer channel. The app is gone. **These routes are the customer channel,
+they are supported, and a bug in one is a bug.**
 
-- A bug in the browser cart, checkout, tracking page, account or login is a note
-  on the deletion ticket, not a fix.
-- They are not a supported fallback ordering channel. The owner retired that role
-  on 2026-08-13 and this design does not reinstate it.
-- Changes to `lib/customer/` are judged against the app and the mobile API. If a
-  change breaks a frozen web route, that is acceptable and is not a blocker.
-- They do not appear in the definition of done for the app pilot.
-
-This matches the standing instruction at
-[`docs/mobile-app-transition.md`](../../mobile-app-transition.md), which already
-says to treat a bug in them as a reason to delete sooner rather than as work.
+It is preserved rather than deleted because it explains why some code and
+comments written in the five days it was in force refer to those routes as
+frozen. Where the text and this notice disagree, this notice wins.
 
 ## Why everything stays dynamic
 
@@ -189,11 +192,10 @@ rule 3.
 
 - **`PRODUCT.md` item 7** and **spec section 28 item 7**: open question 7 is
   resolved. The franchise form lives on this platform.
-- **`docs/mobile-app-transition.md`**: its closing line lists franchise inquiry
-  handling as still open. It is now decided.
+- ~~**`docs/mobile-app-transition.md`**~~: deleted with the app on 2026-08-17.
 - **Spec section 7**: the information architecture lists `/franchise` as a single
-  page and the customer routes as live. Record that the customer routes are
-  frozen and that `/franchise` has children.
+  page. Record that `/franchise` has children. (This also asked to record the
+  customer routes as frozen. That instruction is void: they are live.)
 - **`README.md`**: the status section should say what the website is now for.
 
 ## Definition of done
@@ -205,7 +207,7 @@ rule 3.
 - `anon` cannot read `franchise_inquiries`, proved by an SQL test rather than by
   inspection.
 - A mail-provider failure loses the email and keeps the lead.
-- The landing page leads with franchise, with app download secondary.
+- The landing page leads with franchise, with ordering secondary.
 - No `mailto:franchise@5bdf.ph` link remains as the only route to inquiring.
 - Nothing in this work adds a delivery field, screen, or endpoint.
 - `npm run build`, `npm run lint` and `npm test` are green.

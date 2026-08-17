@@ -7,7 +7,7 @@ import {
   readWebhookBody,
   verifyPaymongoSignature,
 } from "@/lib/paymongo/webhook";
-import { notifyCustomer, notifyStaffOfNewOrder } from "@/lib/push/dispatch";
+import { notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 
 export const runtime = "nodejs";
@@ -76,10 +76,12 @@ export async function POST(request: Request) {
   // call changed nothing: a redelivered paid event, or a failure arriving after
   // the payment succeeded. Both are ordinary traffic here, because this handler
   // answers 500 on a reconciliation error and PayMongo retries on any non-2xx.
-  // So these two guards are what stop a retry ringing the tablet twice and a
-  // late failure telling a customer their paid order was not paid.
+  // So this guard is what stops a retry ringing the tablet twice.
+  //
+  // A failed payment used to push to the customer as well. It no longer does:
+  // that path only ever reached the native app. The customer is sitting on the
+  // tracking page when this arrives, and it updates itself over Realtime.
   if (status === "paid" && orderId) after(notifyStaffOfNewOrder(orderId));
-  if (status === "failed" && orderId) after(notifyCustomer(orderId));
 
   return Response.json({ received: true });
 }

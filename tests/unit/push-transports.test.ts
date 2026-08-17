@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertVapidKey } from "@/lib/push/vapid";
-import { sendExpo } from "@/lib/push/expo";
 
 // web-push is a CommonJS module without named exports here, so the mock
 // shape has to work whether the interop resolves to `.default` or to the
@@ -45,44 +44,6 @@ describe("assertVapidKey", () => {
   it("says nothing when the key is absent or empty, because that is a feature being off", () => {
     expect(() => assertVapidKey(undefined)).not.toThrow();
     expect(() => assertVapidKey("")).not.toThrow();
-  });
-});
-
-describe("sendExpo", () => {
-  it("reports a dead token so its row can be deleted", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      data: [{ status: "error", details: { error: "DeviceNotRegistered" } }],
-    }), { status: 200 })));
-
-    const dead = await sendExpo([{ endpoint: "ExponentPushToken[gone]" }], payload);
-    expect(dead).toEqual(["ExponentPushToken[gone]"]);
-  });
-
-  it("reports nothing dead on success", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      data: [{ status: "ok", id: "receipt-1" }],
-    }), { status: 200 })));
-
-    expect(await sendExpo([{ endpoint: "ExponentPushToken[live]" }], payload)).toEqual([]);
-  });
-
-  it("reports nothing dead on a server error, because a 500 is not a verdict", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("boom", { status: 500 })));
-    expect(await sendExpo([{ endpoint: "ExponentPushToken[live]" }], payload)).toEqual([]);
-  });
-
-  it("never rejects when the network is gone", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => {
-      throw new Error("ECONNRESET");
-    }));
-    await expect(sendExpo([{ endpoint: "ExponentPushToken[live]" }], payload)).resolves.toEqual([]);
-  });
-
-  it("sends nothing and calls nothing for an empty target list", async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    expect(await sendExpo([], payload)).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

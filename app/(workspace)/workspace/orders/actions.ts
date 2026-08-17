@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { z } from "zod";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 import { paymongoConfigured } from "@/lib/paymongo/config";
@@ -10,7 +9,6 @@ import { classifyRefundFailure, isRefundReason, type RefundActionResult } from "
 import { createPaymongoRefund } from "@/lib/paymongo/refunds";
 import { isMockPaymentId, mockPaymentsEnabled } from "@/lib/paymongo/mock";
 import { isRejectReasonCode } from "@/lib/orders/reject-reasons";
-import { notifyCustomer } from "@/lib/push/dispatch";
 import type { StaffOrderActionResult } from "@/lib/staff/order-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -56,11 +54,10 @@ async function setStatus(
     console.error("[workspace] staff_set_order_status failed", error.message);
     return { ok: false, error: friendly(error.message) };
   }
-  // Only ready is worth a customer's lock screen. Preparing and claimed are
-  // both things they either already know or are standing there for.
-  if (status === "ready") {
-    after(notifyCustomer(parsedId.data));
-  }
+  // No push to the customer from here. The only customer transport this
+  // project ever had was the native app's, and the app is gone; the tracking
+  // page picks a status change up over Realtime instead. See the note at the
+  // top of `lib/push/dispatch.ts`.
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace");
   return { ok: true };
@@ -119,7 +116,6 @@ export async function rejectOrder(
     console.error("[workspace] staff_reject_order failed", error.message);
     return { ok: false, error: friendly(error.message) };
   }
-  after(notifyCustomer(parsedId.data));
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
