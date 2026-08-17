@@ -14,12 +14,13 @@ import { z } from "zod";
  * harder at what they typed. Piping in this direction also hands the rate
  * limiter's hashed namespace one spelling of an address rather than several.
  *
- * It lives here rather than in either caller because it had to be fixed twice:
- * `lib/customer/auth.ts` got the ordering right while the web action
- * (`app/(marketing)/login/actions.ts`) kept the broken one, and a validator
- * copied into two files is a validator that gets repaired in one. The web action
- * is a `"use server"` file, so it could not export this for a test even if it
- * wanted to, which is the second reason this module exists.
+ * It lives here rather than in its caller because it had to be fixed twice. The
+ * mobile API's `lib/customer/auth.ts` got the ordering right while the web
+ * action (`app/(marketing)/login/actions.ts`) kept the broken one, and a
+ * validator copied into two files is a validator that gets repaired in one.
+ * That second caller is gone with the mobile app, but the reasoning is not: the
+ * web action is a `"use server"` file, so it could not export this for a test
+ * even if it wanted to, which is the standing reason this module exists.
  */
 export const signInEmailSchema = z
   .string({ error: "Enter a valid email address." })

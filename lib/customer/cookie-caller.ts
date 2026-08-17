@@ -34,9 +34,8 @@ export function sessionCaller(): CustomerCaller {
  * A caller for a Server Action: cookies, plus the address the limiter counts.
  *
  * The address comes from the same proxy headers the limiter has always used, so
- * a Server Action and a mobile request from the same connection land in the
- * same bucket. That is worth having: otherwise moving a customer to the app
- * would quietly double every limit.
+ * every request from one connection lands in the same bucket regardless of
+ * which surface it came through.
  *
  * A browser that forwarded its access token gets the cookie-free bearer path,
  * exactly as checkout has always done. The cookie is the fallback for a client

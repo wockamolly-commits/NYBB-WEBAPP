@@ -9,10 +9,10 @@ import { normalizeShortCode } from "@/lib/orders/tracking";
 /**
  * The browser's way of telling the counter a customer is here.
  *
- * The decision and the authorization live in `lib/customer/arrival.ts`, which
- * the mobile API calls too. What is left here is the one thing only a browser
- * needs: the rendered tracking page has to be rebuilt, because it is what the
- * customer is looking at when they press the button.
+ * The decision and the authorization live in `lib/customer/arrival.ts`. What is
+ * left here is the one thing only a browser needs: the rendered tracking page
+ * has to be rebuilt, because it is what the customer is looking at when they
+ * press the button.
  */
 export async function markCustomerArrived(
   input: CustomerArrivalInput,

@@ -5,11 +5,16 @@ import type { MetadataRoute } from "next";
  *
  * WHY THIS IS NOT THE STOREFRONT'S MANIFEST.
  * ================================================================
- * `start_url` is the orders board, not the menu. The customer half of this
- * project is a native app (see `docs/mobile-app-transition.md`), so the only
- * audience left with a reason to install this site to a home screen is staff,
- * and dropping them on the storefront would make the installed icon a slower
- * way to reach a page they never open.
+ * `start_url` is the orders board, not the menu, and that is a judgement about
+ * who installs a site rather than about who uses it. Customers reach the menu
+ * from a link or a search and order once; the counter tablet is opened at the
+ * start of a shift, every shift, and is the one device that gains anything from
+ * a home screen icon and a standalone window. Dropping staff on the storefront
+ * would make that icon a slower way to reach a page they never open.
+ *
+ * If the customer side ever wants an installable experience of its own, this
+ * file is the thing that has to change, because a manifest is per origin and
+ * this one is spoken for.
  *
  * `orientation: "landscape"` is spec section 8.3. Android honours it inside a
  * standalone window; iOS ignores it, which is one more reason the tablet at

@@ -21,17 +21,6 @@ export type CheckoutFailure = {
   field?: CheckoutField;
   staleSlots?: true;
   newAttempt?: true;
-  /**
-   * How to classify this refusal, for a caller that speaks in status codes.
-   *
-   * The browser has no use for it: the sentence already says what to do, and a
-   * form has nothing to retry on its own. The mobile API reads it so that a
-   * limit answers 429 and a missing database answers 503, rather than both
-   * arriving as "your request conflicted with something". A client that cannot
-   * tell those apart either hammers a limit it cannot see or gives up on an
-   * outage that was about to end.
-   */
-  kind?: "limited" | "unavailable";
 };
 
 const UNEXPECTED =
@@ -203,7 +192,6 @@ export function checkoutFailure(raw: string): CheckoutFailure {
         error:
           "That is several orders in quick succession from this number. " +
           "Please wait a minute before placing another.",
-        kind: "limited",
       };
 
     // Raised by the Server Action rather than by 0013, and it needs its own
@@ -222,7 +210,6 @@ export function checkoutFailure(raw: string): CheckoutFailure {
           "the last few minutes. On office or mall wifi that can be somebody " +
           "else nearby. Please wait a few minutes, or call the branch and " +
           "they will take this order now.",
-        kind: "limited",
       };
 
     // The first request is still in flight. Retrying with the same attempt id

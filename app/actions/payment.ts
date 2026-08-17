@@ -9,21 +9,20 @@ import { notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 /**
  * Payment, from the browser's side.
  *
- * Both of these are adapters now. `lib/customer/payment.ts` holds the
+ * Both of these are adapters. `lib/customer/payment.ts` holds the
  * authorization, the rate limit, the settings check and every PayMongo call,
- * and the mobile API reaches the same code with a bearer token instead of a
- * cookie. The browser channel is pinned here rather than accepted from the
- * client, so a return URL is always one this server built.
+ * and this file is only the part that reads a cookie jar. The return URL is
+ * built by the server in every case and is never accepted from the client.
  */
 export async function payOrder(input: unknown): Promise<PayOrderResult> {
   const request = typeof input === "object" && input !== null ? input : {};
-  return startPayment({ ...request, channel: "web" }, await cookieCaller());
+  return startPayment(request, await cookieCaller());
 }
 
 /** Applies an intentional development payment result through the webhook RPC. */
 export async function completeMockPayment(input: unknown): Promise<PayOrderResult> {
   const request = typeof input === "object" && input !== null ? input : {};
-  const result = await settleMockPayment({ ...request, channel: "web" }, await cookieCaller());
+  const result = await settleMockPayment(request, await cookieCaller());
   if (result.ok && "orderId" in result && result.orderId) {
     after(notifyStaffOfNewOrder(result.orderId));
   }

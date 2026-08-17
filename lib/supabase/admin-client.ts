@@ -44,7 +44,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * for it would silently turn every order into a guest order, placed with a key
  * the storefront has no business holding. `lib/customer/orders.ts` says the
  * same thing at the point of temptation, and `lib/customer/caller.ts` repeats
- * it where the mobile API decides which client a request gets.
+ * it where a request's client is chosen.
  *
  * It is also deliberately cookie-free, for the reason `public-client.ts` gives:
  * a client that writes cookies inside a Server Action can sign a customer out

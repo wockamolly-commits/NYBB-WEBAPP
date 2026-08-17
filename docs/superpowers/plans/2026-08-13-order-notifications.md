@@ -1,5 +1,13 @@
 # Order Notifications Implementation Plan
 
+> **SUPERSEDED, 2026-08-17. Do not execute this plan.** It was written for a product with an
+> Expo phone app, and every customer-side task below targets files that no longer exist:
+> `apps/customer/`, `app/api/mobile/v1/`, `lib/customer/push.ts`, `lib/push/expo.ts` and
+> `lib/push/drain.ts` were all deleted when the mobile direction was dropped. The staff-side
+> tasks did ship and are live. This file is kept as the record of how the notification
+> backbone was designed and why, which is still accurate for the half that survives. See
+> section 15 of `docs/IMPLEMENTATION-PROMPT.md` for the current state.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Notify a customer in the Expo app when their order is ready, refused or cancelled, and notify staff on the counter tablet when a paid order lands.

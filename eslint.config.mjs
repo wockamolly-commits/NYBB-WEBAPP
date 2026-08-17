@@ -19,23 +19,7 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "playwright-report/**",
     "blob-report/**",
-    // The Expo app's build output and dependencies.
-    "apps/*/dist/**",
-    "apps/*/node_modules/**",
-    "apps/*/.expo/**",
   ]),
-  {
-    // The native app is linted by this config on purpose: the React and hooks
-    // rules are worth having in both places, and a second lint setup is a
-    // second thing to keep in step. Only the rules that assume a DOM are turned
-    // off, because React Native has no `alt` attribute and its accessibility
-    // surface is `accessibilityLabel`, which the screens do use.
-    files: ["apps/**/*.{ts,tsx}"],
-    rules: {
-      "jsx-a11y/alt-text": "off",
-      "@next/next/no-img-element": "off",
-    },
-  },
 ]);
 
 export default eslintConfig;

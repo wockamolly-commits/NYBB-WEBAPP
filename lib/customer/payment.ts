@@ -35,8 +35,8 @@ import type { CustomerCaller } from "./caller";
  * reached by somebody who could already read this order.
  *
  * The final word on whether an order is paid is the PayMongo webhook, never a
- * return URL and never a client saying so. Both the browser and the app resolve
- * payment state by reading the order back.
+ * return URL and never a client saying so. The browser resolves payment state
+ * by reading the order back.
  */
 
 const paymentRequestSchema = z.object({
@@ -44,12 +44,6 @@ const paymentRequestSchema = z.object({
   trackingToken: z.string().nullable().optional(),
   paymentAttemptId: z.string().regex(CHECKOUT_ATTEMPT_PATTERN),
   method: z.string(),
-  /**
-   * Where PayMongo should send the customer back to. Two fixed destinations
-   * that this server builds, never a URL from the client: a caller-supplied
-   * return address is an open redirect with a payment page attached to it.
-   */
-  channel: z.enum(["web", "app"]).optional(),
 });
 
 function unavailable(): PayOrderResult {
@@ -57,32 +51,16 @@ function unavailable(): PayOrderResult {
 }
 
 /**
- * The app's deep-link scheme, which has to match `apps/customer/app.json`.
+ * Where PayMongo sends the customer once they are done with the QR.
  *
- * Validated rather than interpolated blind. This value ends up as the scheme of
- * a URL handed to a payment provider, and an unchecked environment variable is
- * a strange place to allow arbitrary text.
+ * There is one destination and this server builds it. There used to be two,
+ * the second being a `scheme://` deep link back into the native app; that app
+ * is gone and so is the environment variable that named its scheme.
  */
-const APP_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
-
-export function mobileAppScheme(value: string | undefined = process.env.MOBILE_APP_SCHEME): string {
-  const scheme = value?.trim().toLowerCase();
-  return scheme && APP_SCHEME_PATTERN.test(scheme) ? scheme : "nybb-order";
-}
-
 export function paymentReturnUrl(
-  channel: "web" | "app",
   shortCode: string,
   trackingToken: string | null,
 ): string {
-  // The app already holds its own tracking token in device storage, so the
-  // deep link does not carry one. That is one fewer copy of a bearer credential
-  // travelling through a payment provider's redirect chain, and the app can
-  // still read the order when it comes back to the foreground.
-  if (channel === "app") {
-    return `${mobileAppScheme()}://order/${encodeURIComponent(shortCode)}`;
-  }
-
   const url = new URL(`/order/${encodeURIComponent(shortCode)}`, siteUrl());
   if (trackingToken) url.searchParams.set("t", trackingToken);
   return url.toString();
@@ -214,7 +192,7 @@ export async function startPayment(
       intentId: intent.id,
       paymentMethodId: paymentMethod.id,
       clientKey: intent.clientKey,
-      returnUrl: paymentReturnUrl(parsed.data.channel ?? "web", shortCode, trackingToken),
+      returnUrl: paymentReturnUrl(shortCode, trackingToken),
       idempotencyKey: paymongoIdempotencyKey(
         "attach",
         String(orderPayment.id),

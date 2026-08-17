@@ -1,35 +1,26 @@
 # Push notifications: the device checklist
 
 Everything in this file is something no test run in this repository can answer. The suite proves
-that the right row is queued, that the right payload is built, that the claim cannot double-send
-and that the two ends of the deep link agree on one URL shape. It cannot prove that a phone lying
-face down on a table lights up, which is the only thing a customer actually experiences.
+that the right payload is built and that the right people are looked up. It cannot prove that a
+tablet sitting closed on a counter lights up, which is the only thing anybody actually experiences.
 
 Work through this on real hardware before telling anyone notifications are done.
 
+**This is now a staff-only checklist.** It used to open with four Expo prerequisites (a project id,
+an FCM server key, an APNs key with a paid Apple Developer membership behind it, and a real EAS
+build), all of which blocked the customer half and three of which had lead times measured in days.
+The mobile app was dropped on 2026-08-17 and the customer notification path went with it, so none
+of that is on the critical path any more. If customer notifications come back they will be Web
+Push in the browser, which needs no Apple membership and reuses the VAPID pair below.
+
 ---
 
-## Before any of it: four things this repository cannot provide
+## The one prerequisite, and it is cheap
 
-None of these are code. Every one of them blocks the entire customer half, and three of them have
-lead times measured in days.
-
-| Prerequisite | What it blocks | Notes |
-| --- | --- | --- |
-| **Expo project id** (`extra.eas.projectId` in `apps/customer/app.json`) | Every customer notification, on both platforms. | `getExpoPushTokenAsync()` throws without it, and `registerForOrder` swallows the throw by design, so the symptom is silence rather than an error. Nothing reaches the server. |
-| **FCM server key** (Firebase, uploaded to Expo) | Android delivery. | The token mints without it; delivery just never happens. |
-| **APNs key** (Apple Developer, uploaded to Expo) | iOS delivery. | Requires a paid Apple Developer membership. |
-| **A real build** (EAS development or production build) | Everything. | Expo Go cannot receive push for a project it does not own, and the Android channel is created by the app, not by the store listing. |
-
-**The Apple Developer membership is on the critical path for iPhone customers ordering at all, not
-only for notifying them.** Without it there is no iOS build to install, so an iPhone customer has
-no app. Treat it as a launch dependency with a lead time, in the same class as PayMongo merchant
-approval, and start it before it is needed.
-
-Staff Web Push has its own prerequisite, and it is cheap: a VAPID key pair
-(`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). `npx web-push
-generate-vapid-keys` produces one in a second. Without it the opt-in on the orders board says the
-feature is not configured on this deployment, which is the intended behaviour and not a fault.
+Staff Web Push needs a VAPID key pair (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+`VAPID_SUBJECT`). `npx web-push generate-vapid-keys` produces one in a second. Without it the
+opt-in on the orders board says the feature is not configured on this deployment, which is the
+intended behaviour and not a fault.
 
 ### Installing the production pair
 
@@ -54,44 +45,6 @@ As of 2026-08-14 there is no deployment: the Vercel account holds no NYBB projec
 pair has been generated and is waiting for one.
 
 ---
-
-## Customer, on the phone
-
-Each of these needs a real order, because `register_customer_push_device` refuses a terminal one
-and the queue only fills on a real status change.
-
-- [ ] **Locked Android.** Place an order, put the phone to sleep, mark the order ready from the
-      workspace. The notification appears on the lock screen, with the NYBB icon and the small
-      monochrome badge, and it vibrates.
-- [ ] **Locked iPhone.** The same. iOS is the one that will fail first if the APNs key is wrong,
-      and it fails silently.
-- [ ] **App killed, not backgrounded.** Swipe the app out of the task switcher, then trigger the
-      notification. This is a different delivery path from a backgrounded app on both platforms,
-      and it is the ordinary state of a phone in a pocket half an hour after ordering.
-- [ ] **Tapping through opens the right order.** From a cold start (app killed), tap the
-      notification. The app must open on that order, not the menu.
-- [ ] **Tapping a notification for a DIFFERENT order than the one on screen.** Have order A open,
-      receive a notification about order B, tap it, land on B. `tests/unit/order-deep-link.test.ts`
-      proves the URL parses to the right order; nothing proves the screen follows it.
-      This is the case most likely to be broken by a later change to `App.tsx`.
-- [ ] **The app is open, on a screen that is not the order screen.** Browse the menu with a live
-      order, then have it go ready. The notification must appear. `expo-notifications` discards a
-      foreground notification when no handler is set, so this is a real failure mode with a real
-      fix, and it is invisible to every automated check.
-- [ ] **Two devices on one order.** Register a second phone against the same order (place the order
-      on one, open it on the other with the same tracking token). Both must be told. The queue
-      fans out per subscription, and `push_subscription_orders` keys on endpoint plus order code
-      specifically so this works.
-- [ ] **Permission revoked mid-order.** Place an order, turn notifications off in OS settings, then
-      trigger the status change. Nothing should arrive and nothing should crash. Re-opening the
-      order screen must not produce a second permission prompt, because the OS will not show one.
-- [ ] **A returning device, on a new order.** Order once, then order again a week later on the same
-      phone without reinstalling. The second order's alerts must arrive. This is the reference
-      project's actual shipped bug: it skipped registration when permission was already granted, so
-      the device stayed registered only for the first order it ever placed.
-- [ ] **The three customer events, not just one.** `ready`, `rejected` and `cancelled` all notify.
-      Force a `cancelled` by leaving a payment to time out. That path is the only thing that tells
-      somebody their order was dropped for non-payment, and it is the one nobody remembers to test.
 
 ## Before concluding anything is broken
 

@@ -2,8 +2,7 @@ import { z } from "zod";
 
 /**
  * Validation for a franchise lead, kept free of Next and of the database so the
- * rules can be tested on their own and reused if this ever gains a mobile or
- * API caller.
+ * rules can be tested on their own.
  *
  * The bias throughout is toward ACCEPTING the lead. This form is not a checkout:
  * a refused order can be retried by a customer who wants the food, but a
