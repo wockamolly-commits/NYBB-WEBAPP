@@ -62,6 +62,7 @@ describe("migrations", () => {
       "0042",
       "0043",
       "0044",
+      "0045",
     ]);
   });
 
@@ -249,7 +250,9 @@ describe("migrations", () => {
     }
   });
 
-  it("expose exactly eight functions to anon", async () => {
+  // Named without a count on purpose: it read "eight" while the list held nine,
+  // because the number is the one part nobody updates when they add a function.
+  it("expose exactly this set of functions to anon", async () => {
     const result = await db.query<{ name: string }>(`
       select p.proname as name
       from pg_proc p
@@ -286,6 +289,14 @@ describe("migrations", () => {
     // get_order_by_tracking: the short code and tracking token together decide
     // whether the caller may speak for the order, this time to attach a device
     // to it rather than to read it.
+    //
+    // submit_franchise_inquiry (0045) is the second write here and the only one
+    // that authorizes nothing at all, because a franchise lead is a stranger
+    // introducing themselves. What bounds it is that it writes to a table anon
+    // cannot read back, stores no address or user agent, and refuses anything
+    // over its length limits. The abuse it cannot prevent on its own, a flood of
+    // plausible-looking leads, is bounded in the app by an address rate limit
+    // and a honeypot instead.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -296,6 +307,7 @@ describe("migrations", () => {
       "get_storefront_menu",
       "place_order",
       "register_customer_push_device",
+      "submit_franchise_inquiry",
     ]);
   });
 
