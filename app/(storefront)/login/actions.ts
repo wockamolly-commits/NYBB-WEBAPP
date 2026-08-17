@@ -4,6 +4,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { signInEmailSchema } from "@/lib/auth/email";
 import { checkOtpRequestLimit, checkOtpVerifyLimit } from "@/lib/auth/rate-limit";
 import {
   requestedStaffNextPath,
@@ -24,7 +25,9 @@ import {
 } from "@/lib/supabase/server";
 
 const requestSchema = z.object({
-  email: z.email({ error: "Enter a valid email address." }).trim().toLowerCase(),
+  // Trims and folds before checking the format. See `lib/auth/email.ts` for why
+  // the order matters and why the rule is not written inline here.
+  email: signInEmailSchema,
   next: z.string().max(240).optional(),
 });
 

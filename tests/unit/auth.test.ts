@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toAuthPhone } from "@/lib/auth/customer-identity";
+import { signInEmailSchema } from "@/lib/auth/email";
 import { storefrontIdentityLink } from "@/lib/auth/navigation";
 import {
   requestedStaffNextPath,
@@ -58,6 +59,35 @@ describe("safeStaffNextPath", () => {
     );
     expect(requestedStaffNextPath("/account")).toBeNull();
     expect(requestedStaffNextPath("/workspace/login")).toBeNull();
+  });
+});
+
+describe("signInEmailSchema", () => {
+  it("folds and trims the email, so a pasted address still signs in", () => {
+    // The whole reason this schema is a pipe: a password manager or a mail
+    // client hands over " Maria@Example.COM " with the padding attached, and
+    // validating before trimming told that person their address was invalid.
+    expect(signInEmailSchema.parse("  Maria@Example.COM ")).toBe("maria@example.com");
+  });
+
+  it("normalizes to one spelling, so the rate limiter counts one person once", () => {
+    for (const spelling of ["maria@example.com", "MARIA@EXAMPLE.COM", "\tmaria@example.com\n"]) {
+      expect(signInEmailSchema.parse(spelling)).toBe("maria@example.com");
+    }
+  });
+
+  it("still refuses an address that is malformed once trimmed", () => {
+    for (const bad of ["not-an-email", "  ", "maria@", "", "  @example.com "]) {
+      expect(signInEmailSchema.safeParse(bad).success).toBe(false);
+    }
+  });
+
+  it("gives a message a person can act on", () => {
+    const parsed = signInEmailSchema.safeParse("nope");
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0]?.message).toBe("Enter a valid email address.");
+    }
   });
 });
 

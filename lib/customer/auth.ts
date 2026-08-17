@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { z } from "zod";
+import { signInEmailSchema } from "@/lib/auth/email";
 import { checkOtpRequestLimit, checkOtpVerifyLimit } from "@/lib/auth/rate-limit";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
 
@@ -42,26 +43,14 @@ import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-cl
  */
 
 /**
- * Normalized first, validated second, and the order is the whole point.
- *
- * `z.email().trim().toLowerCase()` reads as though it does this, and does the
- * opposite: those are transforms applied to a value that has already passed
- * validation, so a trailing space fails as a malformed address. A software
- * keyboard's autocomplete appends exactly that space, which makes the failure
- * common, invisible to the person typing, and impossible to fix by looking
- * harder at what they typed. Piping in this direction also means the limiter's
- * hashed namespace gets one spelling of an address rather than several.
+ * Normalized first, validated second, and the order is the whole point. The rule
+ * lives in `lib/auth/email.ts` because the web sign-in action needs the identical
+ * one and had the ordering backwards for a while.
  */
-const emailSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .pipe(z.email({ error: "Enter a valid email address." }));
-
-export const otpRequestSchema = z.object({ email: emailSchema });
+export const otpRequestSchema = z.object({ email: signInEmailSchema });
 
 export const otpVerifySchema = z.object({
-  email: emailSchema,
+  email: signInEmailSchema,
   token: z.string().trim().regex(/^\d{6}$/, { error: "Enter the six-digit code from your email." }),
 });
 
