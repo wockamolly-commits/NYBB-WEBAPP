@@ -87,8 +87,10 @@ browser pane about anything that waits for a frame.
 - `lib/catalog/` holds the full Hot Wings menu, nine wing flavours, the Level of Hotness scale with
   its variation-dependent pricing, nine branches, and a generated image manifest. Its types mirror
   the Phase 1 tables.
-- `components/` and `app/(storefront)/` render the landing, `/menu`, `/menu/[category]`, `/about`
-  and `/contact`, all reviewed in a browser at 375px and 1280px.
+- `components/` and `app/(marketing)/` render the landing, `/menu`, `/menu/[category]`, `/about`
+  and `/contact`, all reviewed in a browser at 375px and 1280px. The group was called
+  `(storefront)` until 2026-08-17; a route group in parentheses adds nothing to the URL, so the
+  rename moved no page and broke no link.
 - **`components/ui/Button.tsx` is the control system, and it is not optional.** It exports
   `Button`, `ButtonLink`, `buttonStyles` and `PRESSABLE`, alongside `QuantityStepper` and
   `TextLink` in the same folder. `ActionLink.tsx` is deleted. Every control on the site goes

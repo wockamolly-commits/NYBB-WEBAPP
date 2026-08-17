@@ -16,7 +16,7 @@ import { z } from "zod";
  *
  * It lives here rather than in either caller because it had to be fixed twice:
  * `lib/customer/auth.ts` got the ordering right while the web action
- * (`app/(storefront)/login/actions.ts`) kept the broken one, and a validator
+ * (`app/(marketing)/login/actions.ts`) kept the broken one, and a validator
  * copied into two files is a validator that gets repaired in one. The web action
  * is a `"use server"` file, so it could not export this for a test even if it
  * wanted to, which is the second reason this module exists.

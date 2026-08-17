@@ -431,8 +431,8 @@ Depth that does exist is pressed rather than stacked. The wall drawing is ink at
 darkens the ground rather than lightening it and reads as an emboss in the paper. The chrome
 gradient makes the bar read as the ground lit from the front.
 
-**The wall belongs to the storefront, not to the document.** It is rendered by
-`app/(storefront)/layout.tsx` as a `MuralArt` layer. The slot it occupies was `body::before` until
+**The wall belongs to the public site, not to the document.** It is rendered by
+`app/(marketing)/layout.tsx` as a `MuralArt` layer. The slot it occupies was `body::before` until
 that turned out to be a claim nobody had checked: that every route on the origin wants a marketing
 watermark behind it. The 404 does not: it carries a street scene of its own, and a second drawing
 pressed into the ground behind the first is two drawn scenes on one page, which The One Drawn Scene

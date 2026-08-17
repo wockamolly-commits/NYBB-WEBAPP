@@ -21,7 +21,7 @@ export const metadata: Metadata = {
  * WHY THIS FILE REPEATS THE CHROME. `app/not-found.tsx` sits at the root, which
  * is what makes it answer for every unmatched URL on the site rather than only
  * for a `notFound()` thrown inside one segment. The cost is that it renders
- * inside `app/layout.tsx` alone and never sees `app/(storefront)/layout.tsx`,
+ * inside `app/layout.tsx` alone and never sees `app/(marketing)/layout.tsx`,
  * so the header and the footer are named here. The cart bar is deliberately not:
  * it is a bar advertising a cart, and this screen's job is to point at the menu.
  *

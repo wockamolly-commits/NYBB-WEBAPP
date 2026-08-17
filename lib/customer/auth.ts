@@ -11,7 +11,7 @@ import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-cl
  *
  * WHY THIS IS NOT THE LOGIN SERVER ACTION.
  * ================================================================
- * `app/(storefront)/login/actions.ts` does three things this must not do. It
+ * `app/(marketing)/login/actions.ts` does three things this must not do. It
  * reads `next/headers`, it `redirect()`s, and it routes staff addresses into
  * the isolated workspace cookie family. A phone has no cookies, cannot be
  * redirected, and is never a workspace client: the staff workspace stays
