@@ -151,7 +151,8 @@ to the remaining items:
 5. A ZenPOS technical contact, so the integration discovery checklist can be answered.
 6. The original shoot deliverables: cutout sources with alpha rather than orange flattened JPEGs,
    and full resolution wing photos for Cheezy, Salted Egg and Smokey Barbecue.
-7. Whether the franchise inquiry form lives on this platform or keeps pointing at `5bdf.ph`.
+7. *(Resolved 2026-08-17: the franchise inquiry form lives on this platform, and the website is
+   being rebuilt around franchise lead generation. Marketing still owes the sales copy.)*
 
 ## Brand Commitments
 
@@ -166,7 +167,9 @@ to the remaining items:
   `app/globals.css`. Nothing from the ZOMBEANS reference brand transfers: not a color, not a
   typeface, not a line of copy.
 - **Franchise line.** The business actively sells franchises (`franchise@5bdf.ph`, (032) 520-4930).
-  Franchise lead generation exists on the current site and is kept, pending item 7 above.
+  As of 2026-08-17 this is the website's primary job: the public site is a franchise sales and
+  lead-generation site, with customer ordering living entirely in the app. Franchise fee
+  PHP 1,000,000, capital investment PHP 9,000,000.
 
 ## Evidence on Hand
 

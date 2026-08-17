@@ -53,7 +53,7 @@ Owner blockers now: the pilot branch's kitchen capacity, the no-show and refund 
 payment first, PayMongo merchant approval (start this early, it is the long pole), and a ZenPOS
 technical contact for `docs/zenpos-questions.md`.
 
-**Phase 3's notifications are built on `feat/order-notifications`, and nothing has reached a real
+**Phase 3's notifications are built and merged to `main`, and nothing has reached a real
 handset.** Five things a session picking this up will otherwise spend an afternoon rediscovering:
 
 - **`push_subscriptions` is not new.** It arrived in `0007`, thirty-one migrations before this

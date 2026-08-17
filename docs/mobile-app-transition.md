@@ -1,5 +1,11 @@
 # Mobile-app transition plan
 
+> **This document is a record, not the current direction.** It was written on 2026-08-12 and
+> amended repeatedly as decisions landed. For what is true today, read the "Current direction"
+> section at the top of `docs/IMPLEMENTATION-PROMPT.md`. What remains valuable here is the
+> reasoning: the retained/changed tables, the target architecture, and the phase definitions.
+> Where this file and "Current direction" disagree, "Current direction" wins.
+
 > **Service-model amendment, 2026-08-12.** Customers will place pickup orders in the NYBB app.
 > Staff will review and accept them, then manually enter each accepted order in ZenPOS. The mobile
 > target includes the customer pickup journey and the staff acceptance and pickup-operations tools.
@@ -241,4 +247,6 @@ These are owner decisions. Do not infer them from the mobile-app direction alone
    2026-08-13" above for what that makes deletable.
 
 The existing open decisions on prep capacity, ZenPOS contact, no-show policy, online-sales
-reconciliation, assets, and franchise inquiry handling remain open and are still launch-relevant.
+reconciliation, and assets remain open and are still launch-relevant. Franchise inquiry handling
+is no longer among them: it was resolved on 2026-08-17, and the website is being rebuilt around it.
+See `docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md`.

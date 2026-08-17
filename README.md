@@ -1,9 +1,27 @@
 # NYBB Order
 
-Pickup-only ordering platform for **New York Buffalo Brad's Hot Wings** (Cebu, Philippines).
+Pickup ordering for **New York Buffalo Brad's Hot Wings** (Cebu, Philippines), plus the
+brand and franchise website that sits alongside it.
 
 Built by inheriting the architecture of the ZOMBEANS ordering platform
 (`C:\dev\zombeans-web`, read-only reference) on Next.js 16, Supabase, and Tailwind v4.
+
+## Three surfaces, one backend
+
+| Surface | Directory | What it does |
+|---|---|---|
+| Customer app | `apps/customer` | Expo phone app. The **only** customer ordering channel. |
+| Public website | `app/(marketing)` | Brand and **franchise lead generation**. No ordering. |
+| Staff workspace | `app/(workspace)` | Counter tablet, in the browser. |
+
+They share `supabase/`, `lib/customer/`, and `app/api/mobile/v1`.
+
+The browser cart, checkout, tracking, account and login pages are **frozen**: reachable,
+receiving no work, awaiting deletion. They are not a fallback ordering channel.
+
+Read `docs/IMPLEMENTATION-PROMPT.md`, section "Current direction", before starting work.
+It states what is true today and lists the five things not to build. Appendix A of that
+file records how the direction got here.
 
 ## Status
 
@@ -19,7 +37,7 @@ are all green, every page has been rendered and reviewed in a browser at 320px,
 375px and 1280px, and migrations `0001` to `0044` apply cleanly against a real
 Postgres in the test suite.
 
-**Phase 3's notifications are built, on the branch `feat/order-notifications`.**
+**Phase 3's notifications are built and merged to `main`.**
 Customers are told on a native app through Expo push; the counter tablet is told
 through Web Push, because its browser is closed at the moment a new order lands.
 Three things a future session will otherwise rediscover:

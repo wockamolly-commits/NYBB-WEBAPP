@@ -1,28 +1,53 @@
 # Master Implementation Prompt: New York Buffalo Brad's Pickup Ordering Platform
 
-> **Superseding service-model amendment, 2026-08-12.** NYBB will support pickup and delivery,
-> with customers placing orders in the NYBB app, then staff manually entering each accepted order
-> in ZenPOS. ZenPOS is the official sale record. The pickup-only portions of this historical prompt
-> are no longer authority for new work. Follow `docs/service-model-and-zenpos-options.md` and
-> `docs/transition-inventory.md` for the active transition direction. Do not delete the existing
-> implementation while the customer-order and manual-ZenPOS-entry replacement is being designed and
-> tested.
->
-> **Hard integration boundary, 2026-08-12.** Do not automatically send, create, update, or
-> synchronize NYBB customer orders in ZenPOS. Staff enter accepted orders manually in ZenPOS. A
-> future ZenPOS connection may read or import information into NYBB, but it must not write customer
-> order data to ZenPOS.
->
-> **Delivery deferral, 2026-08-12.** Delivery is deferred and out of scope for the current build.
-> Focus on customer pickup ordering, staff acceptance, and manual ZenPOS entry. Keep the future
-> delivery design in the transition documents, but do not add delivery fields, screens, rider
-> workflows, fees, or integrations until the owner reopens that phase.
->
-> **ZenPOS integration deferral, 2026-08-12.** Keep manual ZenPOS entry as a staff operating step,
-> but do not build a system connection to ZenPOS in the current phase. This includes no API work,
-> ticket import, stock or price reads, kitchen-status reads, report import, webhooks, mapping, or
-> automated synchronization. Build and polish the NYBB pickup experience first. Reopen the ZenPOS
-> discovery and integration work only after the core system is ready.
+## Current direction, as of 2026-08-17
+
+**Read this before anything else in this file.** The sections below were written for a
+pickup-only, browser-first product. That is not what is being built any more. Where a
+section disagrees with this one, **this section wins**, and the sections themselves carry
+correction notes where the gap is large. Appendix A records how the direction arrived
+here and why, so that nothing below has to be read as an argument.
+
+**There are three surfaces and one backend.**
+
+| Surface | What it is | State |
+|---|---|---|
+| `apps/customer` | The Expo phone app. **The only customer ordering channel.** | Built through Phase M1, places real orders |
+| `app/(marketing)` | The public website. Brand and **franchise lead generation**, not ordering. | Franchise pages not yet built |
+| `app/(workspace)` | Staff tools in the browser on the counter tablet. | Partial |
+| `app/api/mobile/v1`, `lib/customer/`, `supabase/` | The shared backend all three sit on. | Live |
+
+**Service model.** Customers place **pickup** orders in the app. Staff review and accept
+them, then enter each accepted order manually in ZenPOS. ZenPOS is the official sale
+record. Pricing, totals, payment state and order status are decided by the server and
+never by the phone.
+
+**Five things not to build.** Each names who can reverse it. Do not reverse any of them
+yourself, and do not infer a reversal from a passing remark.
+
+1. **No delivery.** No delivery fields, screens, rider workflows, fees, or integrations.
+   Reversible only by the **owner**. On 2026-08-17 the IT Head referred to "pickup and
+   delivery"; that was not treated as a reversal. Section 9 has the reasoning.
+2. **No automated ZenPOS writes, ever.** Never send, create, update, or synchronize NYBB
+   customer orders into ZenPOS. Staff key them in by hand. A future ZenPOS connection may
+   *read* into NYBB, but must never *write* order data out. This one is a permanent
+   boundary, not a deferral.
+3. **No ZenPOS system integration in this phase.** No API work, ticket import, stock or
+   price reads, kitchen-status reads, report import, webhooks, mapping, or automated
+   sync. Manual entry stays a staff operating step. Reopen after the core system is
+   ready.
+4. **No new customer-facing web surfaces.** The customer half of this product is the app.
+   The browser cart, checkout, order tracking, account and login pages are **frozen**:
+   they stay reachable, they get no work, and a bug in them is a note on the deletion
+   ticket rather than a task. They are not a fallback ordering channel.
+5. **No static generation of web pages.** A nonce-based CSP and prerendering are mutually
+   exclusive, and section 22 makes the CSP non-negotiable. Reopens only when the frozen
+   routes are actually deleted. Section 23 has the detail.
+
+**Active spec documents.** `docs/service-model-and-zenpos-options.md` for the service
+model, `docs/mobile-api-contract.md` for the app's backend contract, and
+`docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md` for the website.
+`README.md` holds live build status.
 
 > **How to use this file.** This is the specification for the project it lives in. Read it in full
 > before starting work, and re-read the relevant section before starting each phase. Do not paste
@@ -60,9 +85,10 @@ proven architecture of an existing production system called **ZOMBEANS**, not by
    from memory.
 4. **Build in the phases in section 27.** Do not attempt the whole system in one pass. Each phase
    ends with a working, demonstrable app.
-5. **Ask before guessing on the items flagged `NEEDS OWNER INPUT`.** There are exactly seven of
-   them and they are listed in section 28. Everything else you decide yourself using the rules
-   here.
+5. **Ask before guessing on the items flagged `NEEDS OWNER INPUT`.** They are listed in section
+   28, which records both the resolved and the still-open ones. As of 2026-08-17 the open ones
+   are prep capacity, the ZenPOS contact, the no-show policy, online-sales reconciliation, and
+   the original shoot deliverables. Everything else you decide yourself using the rules here.
 6. **No em dashes** in code comments, commit messages, UI copy, or documents you write. Use
    commas, periods, or parentheses.
 
@@ -881,23 +907,30 @@ here was built as specified.
 ## 7. Information architecture
 
 ```
-Public
-  /                          Landing: hero, heat scale hook, bestsellers, pickup explainer,
-                             branch card with hours and a static map, franchise strip
-  /menu                      Category tabs, photo grid, search, sold-out states
-  /menu/[category]           Category view (statically generated, DB-driven at build)
-  /menu/[category]/[item]    Product detail: variation, flavor, heat, quantity, add-ons
-  /cart                      Line editing, voucher field, subtotal
-  /checkout                  Name, phone, email (optional), pickup slot picker,
-                             payment method, place order
-  /order/[code]              Live tracking: status timeline, pickup code, "I'm here" button,
-                             countdown to ready
-  /account                   Order history, reorder, saved details, loyalty card
-  /login                     Email OTP, 6-digit code
+Public web, app/(marketing). Franchise lead generation and brand. No ordering.
+  /                          Landing: franchise as the primary call to action, app download
+                             secondary, hero, heat scale hook, branch card with hours and map
+  /franchise                 Franchise inquiry form. Writes franchise_inquiries, mails
+                             franchise@5bdf.ph. Rate limited, honeypot, no CAPTCHA (N9)
+  /franchise/*               Sales pages: the offer, the numbers (PHP 1M fee, PHP 9M capital),
+                             process and timeline, branch showcase, FAQ. Blocked on Marketing copy
+  /menu                      Category tabs, photo grid, search. Brand showcase, not an ordering path
+  /menu/[category]           Category view (DB-driven)
+  /menu/[category]/[item]    Product detail: variation, flavor, heat, add-ons
   /about                     Real brand story, the wing flavors, the sports-lounge angle
   /contact                   Branch, phone, hours, map, socials
-  /franchise                 Franchise inquiry form (the current site has one, keep the lead gen)
   /terms /privacy /refund    Legal. Required if PayMongo card is ever enabled.
+
+Frozen. Reachable, unchanged, receiving no work. Awaiting deletion, see "Current direction" item 4.
+  /cart                      Line editing, voucher field, subtotal
+  /checkout                  Pickup slot picker, payment method, place order
+  /order/[code]              Live tracking, pickup code, "I'm here" button
+  /account                   Order history, reorder, saved details
+  /login                     Email OTP, 6-digit code. Staff still reach the workspace through it
+
+Customer app, apps/customer (Expo). The only customer ordering channel.
+  Menu, item sheet, cart, checkout, order tracking, sign-in, account.
+  Backed by app/api/mobile/v1. See docs/mobile-api-contract.md.
 
 Staff workspace (auth + role gated, landscape-first tablet PWA)
   /workspace                 Today's KPIs
@@ -1892,8 +1925,11 @@ Stop and ask before deciding these. Do not invent answers.
    Salted Egg, and Smokey Barbecue, which exist only as 300x300 thumbnails. Clean product shots for
    the coffee and waffle lines would close the last gap and are a phone-and-plain-background job.
    The logos are already clean transparent PNGs and need nothing.
-7. **Whether the franchise inquiry form should stay on this platform** or keep pointing at
-   `5bdf.ph`.
+7. ~~**Whether the franchise inquiry form should stay on this platform** or keep pointing at
+   `5bdf.ph`.~~ **Resolved 2026-08-17.** It stays on this platform, and the website is being
+   rebuilt around it as a franchise sales site. See
+   `docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md`. Marketing still owes
+   the sales copy and any franchise-specific photography, which blocks the pages but not the form.
 
 ---
 
@@ -1945,3 +1981,46 @@ Things you might be tempted to do. Do not.
 - Do not use `vercel.json` cron.
 - Do not ship a feature flag defaulted to on.
 - Do not write Next.js from memory. Read `node_modules/next/dist/docs/`.
+
+---
+
+## Appendix A. How the direction changed, and why
+
+This document was written for a pickup-only, browser-first product. Between 2026-08-12
+and 2026-08-17 that changed five times. Each change used to sit as a banner at the top of
+this file, stacked on the ones before it, which meant the current direction could only be
+worked out by reading corrections in date order. They are recorded here instead, and
+"Current direction" at the top now states the result directly.
+
+Nothing in this appendix is instruction. It is here so that a reader who wonders why the
+body of the spec disagrees with the top of it has an answer, and so that a decision is not
+quietly reversed by someone who never learned why it was made.
+
+| Date | Change | Decided by |
+|---|---|---|
+| 2026-08-12 | Customer ordering moves from the browser storefront to an Expo phone app. Not a wrapper around the website: a product-platform change. | IT Head |
+| 2026-08-12 | Delivery deferred and out of scope. | Owner |
+| 2026-08-12 | ZenPOS system integration deferred. Manual entry remains a staff step, and automated writes to ZenPOS are permanently barred. | Owner |
+| 2026-08-13 | The customer web storefront is retired entirely rather than kept as a fallback or converted to a marketing-only site. | Owner |
+| 2026-08-17 | The website becomes a franchise sales and lead-generation site. Open question 7 resolved: the franchise form lives on this platform. | Marketing Head |
+
+**On delivery, in more detail.** The original amendment of 2026-08-12 announced pickup
+*and* delivery, and was superseded by the deferral the same day. Section 9 records the
+business reasoning: Foodpanda already serves delivery, and building a delivery rail would
+duplicate an aggregator the business already pays. Delivery is not a screen. It is address
+capture, zones, a fee model, a changed order lifecycle, and either riders or an aggregator
+handoff. Treat any request for it as an owner decision with a design phase attached.
+
+**On the storefront retirement.** The transitional plan originally kept the web storefront
+through the pilot, with removal to be approved later. The owner approved removal on
+2026-08-13. Two consequences are already visible in the codebase: customer notifications
+are native Expo push rather than Web Push (section 15), and `app/manifest.ts` is written
+for the counter tablet rather than a customer's home screen, so its `start_url` is the
+orders board.
+
+The staff workspace was never part of that retirement. It stays in the browser until a
+native staff app exists, which is not currently scheduled.
+
+**On the frozen routes.** Retirement was approved but deletion is on hold as of
+2026-08-17, so the transactional web routes still exist. Frozen is not the same as
+supported: see item 4 of "Current direction".
