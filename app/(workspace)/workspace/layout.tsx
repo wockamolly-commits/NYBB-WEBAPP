@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClipboardList, ExternalLink, History, LayoutDashboard, LogOut, ScrollText, Settings, ShieldCheck, Store, UserRound, Users } from "lucide-react";
+import { ClipboardList, ExternalLink, Handshake, History, LayoutDashboard, LogOut, ScrollText, Settings, ShieldCheck, Store, UserRound, Users } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { HeatRule } from "@/components/site/HeatRule";
 import { STAFF_ROLES } from "@/lib/staff/roles";
@@ -84,10 +84,19 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             </ButtonLink>
           ) : null}
           {profile.role === "admin" ? (
-            <ButtonLink href="/workspace/team" tone="dark" variant="ghost" className="px-3">
-              <Users aria-hidden className="size-4" />
-              Team
-            </ButtonLink>
+            <>
+              <ButtonLink href="/workspace/team" tone="dark" variant="ghost" className="px-3">
+                <Users aria-hidden className="size-4" />
+                Team
+              </ButtonLink>
+              {/* Admin rather than a permission, because RLS on
+                  franchise_inquiries is is_admin(). A staff member offered this
+                  link would open a page that tells them there are no leads. */}
+              <ButtonLink href="/workspace/franchise" tone="dark" variant="ghost" className="px-3">
+                <Handshake aria-hidden className="size-4" />
+                Leads
+              </ButtonLink>
+            </>
           ) : null}
           <ButtonLink href="/workspace/profile" tone="dark" variant="ghost" className="px-3">
             <UserRound aria-hidden className="size-4" />
