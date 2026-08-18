@@ -43,8 +43,10 @@ the opt-in again. If you ever must replace it, plan on re-registering every tabl
 
 Use a different pair for local development, so a laptop can never send to a real counter tablet.
 
-As of 2026-08-14 there is no deployment: the Vercel account holds no NYBB project. A production
-pair has been generated and is waiting for one.
+As of 2026-08-18 the `nybb-order` Vercel project exists and deploys, so a production pair has
+somewhere to go. Whether it has been SET there is a separate question, and the opt-in saying
+"not configured on this deployment" is how you find out. See
+`docs/vercel-deployment-checklist.md`, including why some commits deploy and others are blocked.
 
 ---
 

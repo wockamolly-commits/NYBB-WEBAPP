@@ -1,20 +1,40 @@
-# Vercel: the first deployment
+# Vercel: deployments, and the commits that cannot make one
 
-Written 2026-08-17, after finding that the failing "Vercel" check on every push was not a broken
-build. There was no project to deploy into.
+Written 2026-08-17, corrected 2026-08-18 after the dashboard contradicted it.
 
-## What the state actually was
+## What is actually wrong, and what this file first said
 
-- The Vercel account (`wockamolly-commits' projects`, `team_IsA5SxUzoiYiEJ4MnAeccdIf`) held two
-  projects, `pesoconnect` and `peso-connect`. No NYBB project existed.
-- `.vercel/project.json` pointed at `prj_IWLSh8iIx3gAEFK57HzmyGQM3Aso`, which returns 404. It had
-  been deleted. That stale file has been removed (it is gitignored, so it was local only).
-- The Vercel GitHub App is still installed on the repository, so every push receives a commit
-  status it cannot satisfy. It reported "GitHub couldn't verify an account for the commit" on a
-  branch and "Deployment was blocked" on `main`. Two messages, one cause.
+**The `nybb-order` project exists, is connected to this repository, and deploys.** Two production
+deployments are live and green.
 
-Nothing in the application was wrong. `npm run build`, `npm run lint`, `npm run typecheck` and the
-full test suite were green throughout.
+The first version of this file said no project existed. That was wrong, and the way it went wrong
+is worth keeping. The Vercel API listed only `pesoconnect` and `peso-connect` for the team, and
+`.vercel/project.json` pointed at a project id that returns 404, so the conclusion looked
+supported. It was not: the same token had already answered `403 Forbidden` on `list_deployments`,
+which was evidence the view was PARTIAL. An empty listing from a partial view is not proof of
+absence, and it was read as one.
+
+**The real cause is commit attribution, and the discriminator is the COMMITTER, not the author.**
+Every commit in this repository is authored by `mollywocka@gmail.com`. The two that deployed
+successfully carry a different committer, `wockamolly@gmail.com`, because GitHub itself created
+them while performing a rebase merge and stamped them with the merging account's verified address.
+Every commit pushed straight from the CLI carries `mollywocka@gmail.com` in both fields and is
+refused, reported as "GitHub couldn't verify an account for the commit" on a branch and
+"Deployment was blocked" on `main`.
+
+So the pattern is: **merge through GitHub and it deploys; push directly and it does not.**
+
+### Fixing it, two ways
+
+1. **Add `mollywocka@gmail.com` to the GitHub account** (Settings, Emails) and verify it, so Vercel
+   can attribute commits carrying it. Keeps the existing git identity.
+2. **Set `git config user.email wockamolly@gmail.com`** so future commits carry the address Vercel
+   already accepts. Does not fix commits already pushed.
+
+Either is a decision about an account, so neither belongs to an assistant.
+
+Nothing in the application was ever wrong. `npm run build`, `npm run lint`, `npm run typecheck` and
+the full test suite were green throughout.
 
 ## The one decision to make before starting
 
