@@ -36,6 +36,23 @@ Either is a decision about an account, so neither belongs to an assistant.
 Nothing in the application was ever wrong. `npm run build`, `npm run lint`, `npm run typecheck` and
 the full test suite were green throughout.
 
+## Where this stands, 2026-08-18
+
+- The git identity is corrected. Commits had been signed `mollywocka@gmail.com`, which is
+  `wockamolly@gmail.com` with the two halves of the name transposed, so Vercel could not attribute
+  them and refused every one. It is a machine-wide setting and it was a typo, not a second account.
+  Verified: the first commit pushed after the correction deployed green.
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` were set on 2026-08-18, using the
+  newer **publishable** key (`sb_publishable_...`) rather than the legacy `anon` JWT. `supabase-js`
+  is 2.112.0 and accepts either, and nothing in `lib/supabase/` assumes a key format. If the
+  publishable key ever misbehaves, the legacy `anon` key is the proven fallback, so do not press
+  "Disable JWT-based API keys" in Supabase while that fallback still matters.
+- **Setting them was not enough, and this is trap 1 arriving in real life.** Vercel does not
+  rebuild when an environment variable changes. The values sat unused through a deployment that
+  reported success, and the bundle still contained no Supabase URL. A redeploy is what applies them.
+- The VAPID pair is still unset, so customer and staff push are both inert.
+- The site carries `noindex` until the franchise form can store a lead. See `app/layout.tsx`.
+
 ## The one decision to make before starting
 
 **An env-less deployment is a legitimate first deploy here, not a broken one.** Every reader in
