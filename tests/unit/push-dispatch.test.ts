@@ -103,26 +103,51 @@ describe("notifyCustomer", () => {
     ];
 
     const deleted: string[][] = [];
+    // Records every `.eq()` rather than counting them, so this survives a
+    // filter being added and, more to the point, FAILS if one is removed. The
+    // first version of this mock hard-coded a two-link chain and asserted only
+    // `targets.length`, which meant it would have passed just the same if the
+    // query had dropped a filter or a keypair column.
+    const filters: [string, unknown][] = [];
     from.mockImplementation((table: string) => {
       if (table === "orders") return makeSelectBuilder({ data: order, error: null });
-      return {
-        select: () => ({
-          eq: () => ({ eq: () => Promise.resolve({ data: subscriptions, error: null }) }),
-        }),
+      const builder: Record<string, unknown> = {
+        select: () => builder,
+        eq: (column: string, value: unknown) => {
+          filters.push([column, value]);
+          return builder;
+        },
         delete: () => ({
           in: (_column: string, values: string[]) => {
             deleted.push(values);
             return Promise.resolve({ error: null });
           },
         }),
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve({ data: subscriptions, error: null }).then(resolve),
       };
+      return builder;
     });
     sendWeb.mockResolvedValue(["https://push.example/dead"]);
 
     const result = await notifyCustomer(orderId);
 
     expect(result).toEqual({ ok: true, delivered: 1 });
-    expect(sendWeb.mock.calls[0]?.[0]).toHaveLength(2);
+
+    // The staff tablet and a customer's phone are both `transport = 'web'` rows
+    // in one table, so `audience` is the only thing standing between a counter
+    // tablet and a stranger's order status. Asserted by name, not by count.
+    expect(filters).toContainEqual(["audience", "customer"]);
+    expect(filters).toContainEqual(["transport", "web"]);
+    expect(filters).toContainEqual(["push_subscription_orders.order_code", "NY-ABC234"]);
+
+    // The whole target, not its length. `sendWeb` cannot encrypt without both
+    // keys, so a mapping that silently dropped one would be a send that never
+    // arrives, and the old length-only assertion could not see it.
+    expect(sendWeb.mock.calls[0]?.[0]).toEqual([
+      { endpoint: "https://push.example/live", p256dh: "a", auth_key: "b" },
+      { endpoint: "https://push.example/dead", p256dh: "c", auth_key: "d" },
+    ]);
     expect(sendWeb.mock.calls[0]?.[1].audience).toBe("customer");
     expect(deleted).toEqual([["https://push.example/dead"]]);
   });
