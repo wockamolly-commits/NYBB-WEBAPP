@@ -66,8 +66,11 @@ Three things a future session will otherwise rediscover:
   is the part money depends on, happens in the sweep regardless and was never
   affected.
 
-**The Supabase project now exists, and `0001` to `0044` plus the seed are
-applied to it as of 2026-08-14.** `0022` and `0033` had both been applied through
+**The Supabase project now exists, and `0001` to `0047` plus the seed are
+applied to it.** `0001` to `0044` went in on 2026-08-14, `0045` and `0046` on
+2026-08-17, and `0047` on 2026-08-18. **`0047` is therefore frozen**: section 25
+makes migrations forward-only, and it has now run against a real database, so
+correcting it means `0048`, never an edit. `0022` and `0033` had both been applied through
 the dashboard SQL editor, which does not record them in the CLI's migration
 history, so the history was repaired in each case before the following
 migrations were pushed. See handoff trap 15. A green migration suite proves the

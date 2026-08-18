@@ -932,6 +932,13 @@ because each one costs a day if rediscovered.
     order on the counter tablet would flip the tablet's row to `audience = 'customer'` and the
     tablet would stop being told about new orders with nothing anywhere saying why.
 
+    **`0047` is applied to production as of 2026-08-18 and is therefore frozen.** It was edited
+    in place once, during the branch that wrote it, to make that guard atomic rather than
+    check-then-act. That was legitimate only because it had never run anywhere. It has now, so
+    the next correction to it is `0048`. Applying it changed nothing a customer can see yet: it
+    adds a registration function, and nothing can call that function until a deployment exists
+    with a VAPID pair.
+
 ## Do not
 
 - Do not invent answers to spec section 28. Central Bloc is the selected pilot branch and its 24/7
