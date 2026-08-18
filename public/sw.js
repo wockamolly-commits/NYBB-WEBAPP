@@ -1,11 +1,13 @@
 /**
- * The counter tablet's service worker.
+ * The service worker for both the counter tablet and a customer's phone.
  *
- * This is the only code in the project that runs with the workspace closed,
- * which is the entire reason staff notifications are Web Push and not a
- * websocket on the orders board. Its whole job is to turn one JSON payload
- * from `lib/push/payload.ts` into a notification, and to put the person who
- * taps that notification on the orders board.
+ * One worker serves scope "/", so it is the only code in the project that
+ * runs with either the workspace or the storefront closed, which is the
+ * entire reason notifications are Web Push and not a websocket. Its whole
+ * job is to turn one JSON payload from `lib/push/payload.ts` into a
+ * notification, and to put the person who taps that notification on the
+ * right screen for who they are: the orders board for staff, their order
+ * for a customer.
  *
  * WHY IT TAKES OVER IMMEDIATELY.
  * ================================================================
@@ -22,7 +24,42 @@
  * intercept a single request.
  */
 
-const FALLBACK_URL = "/workspace/orders";
+/**
+ * What to show when a payload cannot be read, per audience.
+ *
+ * A push that arrives and shows nothing is worse than a vague one: Chrome
+ * shows its own "This site has been updated in the background" notice in
+ * that case, which tells nobody anything and looks like a fault. So a
+ * payload this worker cannot read still becomes a notification.
+ *
+ * There are two of these because one worker serves scope "/" and therefore
+ * both audiences. Before customers had Web Push there was a single fallback
+ * pointing at the orders board, which is what a customer would have been
+ * shown.
+ */
+const FALLBACKS = {
+  staff: {
+    title: "New order",
+    body: "Open the orders board to see it.",
+    url: "/workspace/orders",
+    tag: "orders-fallback",
+    requireInteraction: true,
+    renotify: true,
+    vibrate: null,
+    audience: "staff",
+  },
+  customer: {
+    title: "Your order has an update",
+    body: "Open your order to see what changed.",
+    url: "/",
+    tag: "order-fallback",
+    requireInteraction: false,
+    renotify: false,
+    vibrate: null,
+    audience: "customer",
+  },
+};
+
 const ICON = "/icon-192.png";
 const BADGE = "/badge.png";
 
@@ -41,30 +78,23 @@ self.addEventListener("push", (event) => {
 /**
  * The payload, or something safe when it is not one.
  *
- * A push that arrives and shows nothing is worse than a vague one: Chrome
- * shows its own "This site has been updated in the background" notice in that
- * case, which tells the counter nothing and looks like a fault. So a payload
- * this worker cannot read still becomes a notification that opens the board.
+ * The audience check happens before the shape check: even a payload that
+ * fails the shape check still tells us who it was for, and that is enough
+ * to pick the right fallback below.
  */
 function read(data) {
+  let audience = "staff";
   try {
     const payload = data ? data.json() : null;
+    if (payload && payload.audience === "customer") audience = "customer";
     if (payload && typeof payload.title === "string" && typeof payload.body === "string") {
       return payload;
     }
   } catch {
-    // Falls through to the notice below.
+    // Falls through to the fallback below.
   }
 
-  return {
-    title: "New order",
-    body: "Open the orders board to see it.",
-    url: FALLBACK_URL,
-    tag: "orders-fallback",
-    requireInteraction: true,
-    renotify: true,
-    vibrate: null,
-  };
+  return FALLBACKS[audience];
 }
 
 function show(payload) {
@@ -78,7 +108,10 @@ function show(payload) {
     tag: payload.tag || "orders",
     renotify: Boolean(payload.renotify),
     requireInteraction: Boolean(payload.requireInteraction),
-    data: { url: typeof payload.url === "string" ? payload.url : FALLBACK_URL },
+    // A real payload always carries its own `url`. This default is only
+    // reached for an unreadable one, which is why it points at the staff
+    // fallback rather than anywhere a customer would land.
+    data: { url: typeof payload.url === "string" ? payload.url : FALLBACKS.staff.url },
   };
 
   // `vibrate: null` is not the same as leaving it out. The payload type allows
@@ -90,7 +123,9 @@ function show(payload) {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || FALLBACK_URL;
+  // Again, a real payload always carries its own `url` by the time it gets
+  // here, so this only matters for an unreadable payload.
+  const url = (event.notification.data && event.notification.data.url) || FALLBACKS.staff.url;
   event.waitUntil(open(url));
 });
 
