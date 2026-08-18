@@ -244,13 +244,27 @@ export async function notifyCustomer(orderId: string): Promise<CustomerNotifyRes
 
     const payload = customerPayload(order);
 
-    // The customer side of push_subscriptions is transport = 'web' since 0047.
-    // The 'expo' rows 0038 could write are unreachable now, and filtering here
-    // is what keeps a stale one from ever being handed to a Web Push sender
-    // that cannot use it.
+    // Both filters are load-bearing, for different reasons.
+    //
+    // `transport = 'web'` because the customer side is Web Push since 0047. The
+    // 'expo' rows 0038 could write are unreachable now, and this is what keeps
+    // a stale one from being handed to a sender that cannot use it.
+    //
+    // `audience = 'customer'` because this query decides whose lock screen
+    // shows a stranger's order. Both audiences live in one table keyed on a
+    // unique `endpoint`, and both are transport 'web', so transport alone does
+    // not separate them. 0047 refuses to register a customer subscription
+    // against an endpoint that already belongs to staff, and its `on conflict`
+    // carries an atomic backstop for the race in that check, but neither stops
+    // a `push_subscription_orders` row from having been written against a staff
+    // endpoint. Reaching that state needs an unminted endpoint URL, which the
+    // push protocol makes unguessable, so this filter is defence in depth. It
+    // is here because the failure it prevents is a counter tablet showing a
+    // customer's order status to whoever is standing at the counter.
     const { data: subscriptions, error: subscriptionsError } = await admin
       .from("push_subscriptions")
       .select("endpoint, p256dh, auth_key, push_subscription_orders!inner ( order_code )")
+      .eq("audience", "customer")
       .eq("transport", "web")
       .eq("push_subscription_orders.order_code", order.shortCode);
 
