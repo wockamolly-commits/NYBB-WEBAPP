@@ -140,10 +140,13 @@ If you want `pg_cron` to be able to call the route through `pg_net`, it needs th
 and the same secret. Confirm the sweep is scheduled in Supabase before assuming expiry works in
 production; a green deploy says nothing about it.
 
-**Known gap, carried deliberately.** That sweep still inserts `notifications` rows that nothing
-drains, because the drain was an Expo path and went with the mobile app on 2026-08-17. They
-accumulate as `queued` and are read by nothing. The cancellation itself, which is the part a
-customer's money depends on, happens inside the sweep and is unaffected. See section 15 of
+**The cancellation is what money depends on, and it happens regardless.** The sweep cancels an
+unpaid order from inside `pg_cron`, on its own, whether or not this route is ever called. That part
+was never in question. What this route adds is the notification: it drains whatever `notifications`
+rows the sweep queued and sends them as Web Push. That drain was an Expo path that went with the
+mobile app on 2026-08-17, and for a while the queued rows really did sit unread. This branch
+restored it: `drainPushQueue` (`lib/push/drain.ts`) runs at the end of this handler again, so a
+customer whose order was cancelled for non-payment is told, not just the counter. See section 15 of
 `docs/IMPLEMENTATION-PROMPT.md`.
 
 ## If the GitHub check still fails after all this
