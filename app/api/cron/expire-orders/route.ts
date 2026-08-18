@@ -1,29 +1,26 @@
 import { hasCronAuthorization } from "@/lib/cron/authorization";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
+import { drainPushQueue } from "@/lib/push/drain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Releases pickup capacity for online payments that were never completed.
+ * Releases pickup capacity for online payments that were never completed, then
+ * drains whatever push notification that sweep queued.
  *
- * The sweep also runs on pg_cron every five minutes on its own. This route is
- * the manual handle on the same function, for when somebody wants it to happen
- * now rather than within five minutes.
+ * `0039`'s sweep cancels an order from inside a pg_cron job, deliberately,
+ * because cancellation cannot depend on Vercel or an HTTP round trip. It cannot
+ * send a push itself for the same reason, so it inserts a `notifications` row
+ * and this route turns that row into an actual notification. The sweep also
+ * still runs on pg_cron every five minutes on its own; this route remains the
+ * drain, whether pg_cron triggers it or somebody runs it by hand.
  *
- * WHAT THIS ROUTE NO LONGER DOES.
- * ================================================================
- * It used to drain the `notifications` rows 0039's sweep queues, because that
- * sweep runs inside pg_cron and cannot send a push itself. The only thing
- * those rows were ever sent through was the native app's Expo transport, so
- * with the app gone the drain had nothing to deliver and was removed with it.
- *
- * The sweep still writes those rows: 0039 is applied in production and this
- * project is not migrating the database back. They accumulate as `queued` and
- * nothing reads them. That is a slow-growing table, not a broken one, and the
- * cancellation itself (the part a customer's money depends on) happens in the
- * sweep, not in the notification. Whoever adds a customer web push opt in
- * later inherits a queue that is already being filled.
+ * The drain was deleted with the mobile app on 2026-08-17, because the only
+ * transport it had was Expo. Rows queued between then and now are still there,
+ * and the first run of this route after deployment will send them. That is the
+ * intended behaviour: a customer whose order was cancelled for non-payment is
+ * better told late than never.
  */
 export async function GET(request: Request) {
   if (!hasCronAuthorization(request.headers.get("authorization"), process.env.CRON_SECRET)) {
@@ -39,8 +36,9 @@ export async function GET(request: Request) {
     return Response.json({ error: "expiry sweep failed" }, { status: 500 });
   }
 
+  const drained = await drainPushQueue();
   return Response.json(
-    { expired: data },
+    { expired: data, ...drained },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
