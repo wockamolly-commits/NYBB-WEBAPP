@@ -84,6 +84,93 @@ function makeSubscriptionsBuilder(
   return builder;
 }
 
+describe("notifyCustomer", () => {
+  it("sends to the order's web endpoints and deletes what comes back dead", async () => {
+    const { notifyCustomer } = await import("@/lib/push/dispatch");
+
+    const order = {
+      short_code: "NY-ABC234",
+      tracking_token: "11111111-1111-4111-8111-111111111111",
+      status: "ready",
+      accepted_at: null, preparing_at: null, ready_at: null, claimed_at: null,
+      rejected_at: null, rejected_reason: null, cancelled_at: null,
+      cancelled_reason: null, customer_arrived_at: null, no_show_at: null,
+      payments: { method: "qrph", status: "paid", amount_cents: 45000, paid_at: null },
+    };
+    const subscriptions = [
+      { endpoint: "https://push.example/live", p256dh: "a", auth_key: "b" },
+      { endpoint: "https://push.example/dead", p256dh: "c", auth_key: "d" },
+    ];
+
+    const deleted: string[][] = [];
+    from.mockImplementation((table: string) => {
+      if (table === "orders") return makeSelectBuilder({ data: order, error: null });
+      return {
+        select: () => ({
+          eq: () => ({ eq: () => Promise.resolve({ data: subscriptions, error: null }) }),
+        }),
+        delete: () => ({
+          in: (_column: string, values: string[]) => {
+            deleted.push(values);
+            return Promise.resolve({ error: null });
+          },
+        }),
+      };
+    });
+    sendWeb.mockResolvedValue(["https://push.example/dead"]);
+
+    const result = await notifyCustomer(orderId);
+
+    expect(result).toEqual({ ok: true, delivered: 1 });
+    expect(sendWeb.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(sendWeb.mock.calls[0]?.[1].audience).toBe("customer");
+    expect(deleted).toEqual([["https://push.example/dead"]]);
+  });
+
+  it("resolves rather than throwing when the lookup fails", async () => {
+    const { notifyCustomer } = await import("@/lib/push/dispatch");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation(() =>
+      makeSelectBuilder({ data: null, error: { message: "boom" } }),
+    );
+
+    await expect(notifyCustomer(orderId)).resolves.toEqual({
+      ok: false,
+      reason: "order_lookup_failed",
+    });
+  });
+
+  it("does not touch the database when the admin client is unavailable", async () => {
+    const { notifyCustomer } = await import("@/lib/push/dispatch");
+    adminConfiguredMock.mockReturnValue(false);
+
+    await expect(notifyCustomer(orderId)).resolves.toEqual({
+      ok: false,
+      reason: "admin_unconfigured",
+    });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("never logs the tracking token when it has to log an unreadable row", async () => {
+    const { notifyCustomer } = await import("@/lib/push/dispatch");
+    const token = "11111111-1111-4111-8111-111111111111";
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation(() =>
+      makeSelectBuilder({
+        data: { short_code: "NY-ABC234", tracking_token: token, status: "nonsense" },
+        error: null,
+      }),
+    );
+
+    const result = await notifyCustomer(orderId);
+
+    expect(result).toEqual({ ok: false, reason: "order_unreadable" });
+    const logged = spy.mock.calls.flat().map((v) => JSON.stringify(v)).join(" ");
+    expect(logged).not.toContain(token);
+    spy.mockRestore();
+  });
+});
+
 describe("notifyStaffOfNewOrder", () => {
   it("resolves rather than throwing when staff_push_targets fails", async () => {
     // Reaching staff_push_targets is the whole point of this test, so give
