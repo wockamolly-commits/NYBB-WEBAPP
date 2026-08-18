@@ -61,6 +61,35 @@ const daughterOfFortune = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
+  /**
+   * TEMPORARY. REMOVE THIS WHEN THE FRANCHISE FORM CAN ACTUALLY SAVE A LEAD.
+   * ================================================================
+   * The deployment is public and has no Supabase credentials set, so
+   * `supabaseConfigured()` is false and `storeFranchiseInquiry` refuses every
+   * submission. A would-be franchisee reaching /franchise today gets an error
+   * and an email address, which is honest but is not what the page is for.
+   *
+   * Being findable is the entire point of a franchise site, so hiding it is a
+   * cost, not a free precaution. It is worth paying only while the form cannot
+   * do its job: a page that ranks and then fails converts a lead into a bad
+   * first impression of the business.
+   *
+   * A `noindex` tag rather than a `robots.txt` disallow, and the difference
+   * matters. A disallow stops crawlers READING the page, which also stops them
+   * reading any instruction on it, so a URL already known can stay listed with
+   * no description. `noindex` invites the crawler in specifically to be told
+   * not to list it, which works whether or not the page was indexed before.
+   * For that reason this project deliberately has no robots.txt: adding one
+   * that blocks crawling would undo this.
+   *
+   * The workspace sets the same thing for a permanent reason (staff tools are
+   * nobody's search result). This one is temporary and inherits to every route
+   * under it, the storefront included.
+   *
+   * TO UNDO: delete this block, redeploy, and request indexing in Google Search
+   * Console rather than waiting to be recrawled.
+   */
+  robots: { index: false, follow: false },
   title: {
     default: "New York Buffalo Brad's Hot Wings",
     template: "%s · NY Buffalo Brad's",
