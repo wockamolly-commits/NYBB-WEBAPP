@@ -8,6 +8,11 @@ import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
 export const metadata: Metadata = {
   title: { default: "Workspace", template: "%s · NYBB Workspace" },
   robots: { index: false, follow: false },
+  // The counter tablet's own manifest. The root app/manifest.ts describes the
+  // customer site, because a manifest is per origin and iOS delivers Web Push
+  // only to a site installed to the Home Screen. Without this split, a customer
+  // installing to receive alerts would land on the orders board in landscape.
+  manifest: "/workspace.webmanifest",
 };
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {

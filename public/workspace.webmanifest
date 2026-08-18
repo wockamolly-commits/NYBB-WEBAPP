@@ -1,0 +1,13 @@
+{
+  "name": "New York Buffalo Brad's Workspace",
+  "short_name": "NYBB Workspace",
+  "description": "The orders board, and the alerts that arrive when it is closed.",
+  "start_url": "/workspace/orders",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b0b0c",
+  "theme_color": "#ef6212",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ]
+}
