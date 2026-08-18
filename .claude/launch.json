@@ -8,22 +8,6 @@
       "port": 3000
     },
     {
-      "name": "dev-worktree",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "--prefix",
-        "C:/Users/Steven/.codex/worktrees/3500/nybb-order",
-        "run",
-        "dev",
-        "--",
-        "-p",
-        "3010",
-        "-H",
-        "0.0.0.0"
-      ],
-      "port": 3010
-    },
-    {
       "name": "prod",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["next", "start", "-p", "3001"],
