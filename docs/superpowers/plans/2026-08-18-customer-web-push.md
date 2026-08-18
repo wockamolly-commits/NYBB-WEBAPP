@@ -206,14 +206,21 @@ describe("the grant boundary", () => {
     db = await setup();
   });
 
-  it("is callable by anon and authenticated, and by nobody else", async () => {
-    const grantees = await db.query<{ grantee: string }>(`
-      select grantee from information_schema.role_routine_grants
-      where routine_name = 'register_customer_push_subscription'
-      order by grantee
-    `);
-    const names = grantees.rows.map((row) => row.grantee).filter((n) => n !== "postgres");
-    expect(names.sort()).toEqual(["anon", "authenticated"]);
+  // has_function_privilege rather than information_schema, matching
+  // tests/sql/push-registration.test.ts. It answers the question directly and
+  // is owner-agnostic, where a grantee listing has to filter the owner role by
+  // name and goes red if PGlite names it differently.
+  it("exposes registration to the roles that need it and no others", async () => {
+    const signature =
+      "register_customer_push_subscription(text, text, text, text, text)";
+    const check = async (role: string) =>
+      scalar<boolean>(db, `select has_function_privilege('${role}', '${signature}', 'execute')`);
+
+    expect(await check("anon")).toBe(true);
+    expect(await check("authenticated")).toBe(true);
+    // Not service_role: the dispatch path reads subscriptions directly and has
+    // no reason to register one.
+    expect(await check("service_role")).toBe(false);
   });
 });
 ```
