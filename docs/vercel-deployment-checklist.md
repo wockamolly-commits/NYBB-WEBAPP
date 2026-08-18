@@ -51,7 +51,14 @@ the full test suite were green throughout.
   rebuild when an environment variable changes. The values sat unused through a deployment that
   reported success, and the bundle still contained no Supabase URL. A redeploy is what applies them.
 - The VAPID pair is still unset, so customer and staff push are both inert.
-- The site carries `noindex` until the franchise form can store a lead. See `app/layout.tsx`.
+- **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.** The
+  `noindex` that covered the site while it could not is removed, so the site is findable again.
+  Proving the connection without submitting anything is worth knowing for next time: request
+  `/order/<any-code>`. "We cannot find an order for that link" means the database was reached and
+  answered, because `lib/orders/reader.ts` returns `unavailable`, with different wording, for an
+  unconfigured or failing connection. Scanning the client bundle for the Supabase URL does NOT
+  work, because `NEXT_PUBLIC_` values are only inlined into pages that use them from the browser,
+  and neither the landing page nor `/franchise` does.
 
 ## The one decision to make before starting
 
