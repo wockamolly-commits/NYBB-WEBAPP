@@ -1,3 +1,8 @@
+import { statusCopy } from "@/lib/orders/status";
+import type { OrderStatus, TrackedOrder } from "@/lib/orders/types";
+
+export type PushAudience = "customer" | "staff";
+
 export type PushPayload = {
   title: string;
   body: string;
@@ -6,6 +11,21 @@ export type PushPayload = {
   requireInteraction: boolean;
   renotify: boolean;
   vibrate: number[] | null;
+  /**
+   * Who this is for, so `public/sw.js` can pick the right words when it cannot
+   * parse the rest of the payload. One worker serves scope "/" and therefore
+   * both audiences, and its fallback used to tell a customer to open the
+   * orders board.
+   */
+  audience: PushAudience;
+};
+
+export type CustomerPayloadOrder = {
+  shortCode: string;
+  trackingToken: string;
+  status: OrderStatus;
+  timeline: TrackedOrder["timeline"];
+  payment: TrackedOrder["payment"];
 };
 
 export type StaffPayloadOrder = {
@@ -14,6 +34,36 @@ export type StaffPayloadOrder = {
   itemCount: number;
   pickupStartsAt: string | null;
 };
+
+/**
+ * The customer's notification, in the tracking screen's own words.
+ *
+ * `statusCopy()` already decides what every status says, including the branch's
+ * chosen refusal reason and the three different ways an order can be cancelled.
+ * Writing a second sentence here would put two voices in front of one customer,
+ * and they would drift the first time somebody edited one of them. This project
+ * already refuses that for money; the same argument applies to a message that
+ * lands on a stranger's lock screen.
+ */
+export function customerPayload(order: CustomerPayloadOrder): PushPayload {
+  const copy = statusCopy(order);
+  const isReady = order.status === "ready";
+
+  return {
+    title: copy.title,
+    body: copy.body,
+    url: `/order/${order.shortCode}?t=${order.trackingToken}`,
+    // The short code, so a second notification about one order replaces the
+    // first rather than stacking under it.
+    tag: order.shortCode,
+    // Ready is the only one the customer has to act on. Everything else is
+    // information, and information that survives a swipe is a nuisance.
+    requireInteraction: isReady,
+    renotify: isReady,
+    vibrate: isReady ? [120, 60, 120] : null,
+    audience: "customer",
+  };
+}
 
 /**
  * The counter's notification.
@@ -42,5 +92,6 @@ export function staffPayload(order: StaffPayloadOrder): PushPayload {
     requireInteraction: true,
     renotify: true,
     vibrate: [200, 100, 200],
+    audience: "staff",
   };
 }

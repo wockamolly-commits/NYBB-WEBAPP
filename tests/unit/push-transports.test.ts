@@ -24,6 +24,7 @@ const payload = {
   requireInteraction: true,
   renotify: true,
   vibrate: [120, 60, 120],
+  audience: "customer" as const,
 };
 
 afterEach(() => {
