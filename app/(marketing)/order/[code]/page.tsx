@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CustomerPushOptIn } from "@/components/order/CustomerPushOptIn";
 import { OrderTracker } from "@/components/order/OrderTracker";
 import { OrderTrackingLiveRefresh } from "@/components/order/OrderTrackingLiveRefresh";
 import { ButtonLink } from "@/components/ui/Button";
@@ -73,6 +74,10 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
           </p>
           <OrderTracker
             order={lookup.order}
+            trackingToken={typeof token === "string" ? token : null}
+          />
+          <CustomerPushOptIn
+            shortCode={lookup.order.shortCode}
             trackingToken={typeof token === "string" ? token : null}
           />
         </>
