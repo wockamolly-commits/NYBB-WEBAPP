@@ -1255,37 +1255,51 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 
 **Three channels, in priority order.**
 
-1. **Push. Staff only, as of 2026-08-17.**
+1. **Push. Both audiences, both on Web Push, as of 2026-08-18.**
    - **Staff: Web Push (VAPID, self-hosted).** Fires on a new order landing. Proven on Android
      counter tablets in the reference. Opt-in appears in the workspace, not on first page load.
-   - **Customer: nothing.** See below.
+   - **Customer: Web Push (the same VAPID pair).** Fires on `ready`, `rejected` and a
+     non-payment `cancelled`. Opt-in appears on `/order/[code]`
+     (`components/order/CustomerPushOptIn.tsx`), writing a `transport = 'web'` customer row
+     through `register_customer_push_subscription` (`0047`).
 
-   **What changed, twice.** This section originally said Web Push for both audiences. On
+   **What changed, three times.** This section originally said Web Push for both audiences. On
    2026-08-13 the customer half became Expo push, because the plan was to retire the web
    storefront in favour of a phone app and a retired storefront cannot hold a Web Push
-   subscription. On 2026-08-17 that plan was dropped: the product is web only, the app and
-   its Expo transport are deleted, and the customer half went with them because the only
-   registration surface it ever had was the app's.
+   subscription. On 2026-08-17 that plan was dropped and the customer half went with the app,
+   because the only registration surface it ever had was the app's own route: staff kept Web
+   Push, customers got nothing. On 2026-08-18 the customer half came back, on Web Push rather
+   than Expo, because the storefront that Expo push required to be gone was un-retired the day
+   before.
 
-   **What a customer gets today.** The tracking page, which refreshes itself over Realtime
-   (migration `0021`, `components/order/OrderTrackingLiveRefresh.tsx`). That covers the
-   customer who is looking at it, which is the common case for `ready` on a pickup order,
-   and does not cover the customer who has closed the tab.
+   **The iOS constraint that pushed this to Expo in the first place is now a live product
+   limitation, not a hypothetical.** Safari delivers Web Push only to a site the customer has
+   added to their Home Screen. `CustomerPushOptIn.tsx` checks for that: outside standalone mode
+   on iOS it tells the customer to add the site to their Home Screen instead of offering a
+   button that cannot work. `app/manifest.ts` is what that install prompt uses, and it is now
+   the customer manifest; the counter tablet has its own, `public/workspace.webmanifest`,
+   because a manifest is per origin and the two audiences want opposite things from one (see
+   Appendix A).
 
-   **What restoring it would take.** A Web Push opt-in on `/order/[code]`, built the way
-   `components/workspace/StaffPushOptIn.tsx` is, writing a `transport = 'web'` customer row
-   through a new RPC, plus a `notifyCustomer` to replace the deleted one. Note the iOS
-   constraint that pushed this to Expo in the first place: Safari's Web Push requires the
-   customer to install the site to their home screen before it will deliver anything.
+   The schema still carries both transports. One `push_subscriptions` table, one payload
+   builder, one queue; `transport` ('web' or 'expo') is where that split lives, and the 'expo'
+   half, `register_customer_push_device` (`0038`), is permanently unreachable rather than
+   dropped, the same way the app's other routes were frozen rather than deleted. `0047` is the
+   Web Push sibling that actually gets called.
 
-   The schema still carries both halves. One `push_subscriptions` table, one payload builder,
-   one queue; `transport` ('web' or 'expo') is where the split lives, and the 'expo' half is
-   now unreachable rather than removed. The database was deliberately not migrated back.
+   **`0047` authorizes exactly as `0042` does** (the tracking token, or the signed-in owner;
+   a terminal order is refused because it has nothing left to announce), **and additionally
+   refuses an endpoint that already belongs to another audience.** `push_subscriptions` is
+   unique on `endpoint`. Without that guard, a staff member opening their own order on the
+   counter tablet would silently flip the tablet's row to `audience = 'customer'`, and the
+   tablet would stop being told about new orders with nothing anywhere saying why.
 
-   **The customer events were three, not one.** This section listed only `ready`. `rejected`
-   and `cancelled` were added afterwards, and `cancelled` was the only thing that told
-   somebody their order was dropped for non-payment. Nothing tells them now, which is the
-   sharpest edge of this removal and the reason to restore the customer half before launch.
+   **The customer events are three, not one.** This section originally listed only `ready`.
+   `rejected` and `cancelled` were added while the customer half was still Expo, and
+   `cancelled` is the only one of the three that tells somebody their order was dropped for
+   non-payment. All three are wired again: `ready` and `rejected` fire from the mutations that
+   cause them, and the non-payment `cancelled` fires from the cron drain rather than `after()`,
+   because that is where the expiry sweep lives.
 2. **In-app realtime toast and sound.** For anyone with the tab open. Guard against replaying
    toasts for already-seen orders: the reference shipped a bug where a first sighting counted as a
    status change and completed orders replayed their toasts.
@@ -1294,9 +1308,9 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 **Hard rules:**
 
 - Assert `NEXT_PUBLIC_VAPID_PUBLIC_KEY.length === 87` at startup and log loudly if not. A wrong key
-  makes the opt-in button disappear with no error anywhere. This covers the staff half, which is
-  the only half, and `components/workspace/StaffPushOptIn.tsx` no longer lets the button disappear
-  either.
+  makes the opt-in button disappear with no error anywhere. This covers both audiences, since they
+  share one key pair, and neither `components/workspace/StaffPushOptIn.tsx` nor
+  `components/order/CustomerPushOptIn.tsx` lets the button disappear silently.
 - Anything sent after the response must be returned as an awaitable promise to `after()`. Detached
   promises are killed mid-flight on Vercel and the `ECONNRESET` surfaces on an unrelated later
   request.
@@ -1863,18 +1877,19 @@ mapping UI. Send `docs/zenpos-questions.md` to ZenPOS and record the answers in
 `docs/zenpos-discovery.md`.
 *Deliverable: the pickup loop closes. This is the demo.*
 
-**Corrected twice, same changes as section 15.** This phase originally said "Web Push for
+**Corrected three times, same changes as section 15.** This phase originally said "Web Push for
 customer-ready" and one customer event. On 2026-08-13 it became Expo push and three events.
-On 2026-08-17 the customer half was removed outright with the app.
+On 2026-08-17 the customer half was removed outright with the app. On 2026-08-18 it returned,
+on Web Push rather than Expo, on `register_customer_push_subscription` (`0047`), with all three
+events wired again.
 
-**The external dependencies this phase used to carry are gone with it.** An Expo project id,
-an FCM server key, an APNs key and a real build were all required before a single customer
-notification could be delivered, and the APNs key needed a paid Apple Developer membership.
-None of that is on the critical path any more, because there is no app to build and no
-iPhone customer blocked from ordering. **This is the one clear win in dropping the app**, and
-it is worth stating plainly, because it also removed the only thing that told a customer
-their order was cancelled for non-payment. Restoring that is customer Web Push, which needs
-no Apple membership on Android and needs the customer to install the site on iOS.
+**The external dependencies this phase used to carry stayed gone.** An Expo project id, an
+FCM server key, an APNs key and a real build were all required before a single customer
+notification could be delivered under the Expo design, and the APNs key needed a paid Apple
+Developer membership. None of that came back with the customer half, because it returned on
+Web Push, which needs no Apple membership on Android and needs only that the customer install
+the site on iOS. That was the one clear win in dropping the app, and it survived the app's own
+reversal.
 
 **Phase 4, owner tools.** Menu management CRUD with availability holds. Settings form. Analytics.
 Vouchers. Reorder. Note that the analytics no-show split by paid versus counter is gone, since
@@ -2008,6 +2023,7 @@ quietly reversed by someone who never learned why it was made.
 | 2026-08-13 | The customer web storefront is retired entirely rather than kept as a fallback or converted to a marketing-only site. | Owner |
 | 2026-08-17 | The website becomes a franchise sales and lead-generation site. Open question 7 resolved: the franchise form lives on this platform. | Marketing Head |
 | 2026-08-17 | **The mobile app is dropped. This is a web app.** The Expo app, the `/api/mobile/v1` contract, the Expo push transport and the customer notification path are deleted. The web storefront is un-retired and is the customer channel again. The franchise inquiry page stays. | Owner |
+| 2026-08-18 | Customer notifications return, on Web Push rather than Expo. The manifest splits so an iPhone customer can install the site and receive them. | Owner |
 
 **On delivery, in more detail.** The original amendment of 2026-08-12 announced pickup
 *and* delivery, and was superseded by the deferral the same day. Section 9 records the
@@ -2027,9 +2043,13 @@ five days, approved by the owner, and built against (an entire Expo app, eleven 
 handlers, a push transport) was reversed in one sentence. Freezing rather than deleting cost
 almost nothing and saved all of it.
 
-One consequence of the app direction survives in the codebase and is not a bug:
-`app/manifest.ts` is written for the counter tablet rather than a customer's home screen, so
-its `start_url` is the orders board. That was justified by the customer being on an app; it
-is now justified by who actually installs a site, which the file explains.
+One consequence of the app direction no longer survives in the codebase, and its going is worth
+recording so nobody looks for it. Through 2026-08-17, `app/manifest.ts` was written for the
+counter tablet rather than a customer's home screen, because the customer was on an app and had
+no reason to install the site. On 2026-08-18, when customer Web Push came back and iOS would not
+deliver it to an uninstalled site, that justification inverted: `app/manifest.ts` is now the
+customer's install prompt, and the counter tablet has its own manifest instead,
+`public/workspace.webmanifest`, named by the workspace layout's metadata. A manifest is per
+origin, and the two audiences now want opposite things from one.
 
 The staff workspace was never part of the retirement, and is unaffected by the reversal.

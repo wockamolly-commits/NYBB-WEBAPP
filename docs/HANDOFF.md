@@ -64,25 +64,31 @@ rediscovering:
   work, along with `push_subscription_orders` and `notifications`. That is why the customer/staff
   transport split lives in a `transport` column ('web' or 'expo') rather than in a second table,
   and why the queue table was already the right shape when the expiry sweep needed one.
-- **The customer half is gone; the staff half is Web Push.** The customer half was Expo, because
-  the plan was to retire the web storefront in favour of a phone app. That plan was dropped on
-  2026-08-17. The app, the Expo transport, `notifyCustomer` and the queue drain were all deleted,
-  because the only thing that could ever register a customer device was the app's own route.
-  **Nothing tells a customer their order was cancelled for non-payment any more.** The tracking
-  page updates over Realtime for a customer who still has it open, and that is the whole of it.
-  Restoring this means a Web Push opt-in on `/order/[code]`, modelled on
-  `components/workspace/StaffPushOptIn.tsx`, writing a `transport = 'web'` customer row.
+- **The customer half came back on 2026-08-18, on Web Push rather than Expo.** The customer half
+  was Expo through 2026-08-17, because the plan then was to retire the web storefront for a phone
+  app; when that plan was dropped and the storefront un-retired the same day, a browser could
+  register a Web Push subscription again. `register_customer_push_subscription` (`0047`) is the
+  new RPC, `lib/customer/push.ts` and `app/api/push/customer/subscribe/route.ts` are the service
+  and the route, and `customerPayload` / `notifyCustomer` are back on `sendWeb`.
+  **A customer is told again when their order is cancelled for non-payment.** All three events
+  fire: `ready` and `rejected` from the mutations that cause them, `cancelled` from the cron drain
+  rather than `after()`, because the non-payment case runs through the expiry sweep. The tracking
+  page still updates over Realtime for a customer who has it open; Web Push is for the one who
+  has closed the tab, which was always the gap Realtime alone could not cover.
 - **`staff_push_targets` (`0038`) is the only caller of `staff_can_access_branch(profile, branch)`
   other than `current_staff_can_access_branch`, the wrapper every RLS policy goes through.**
   So a change to that function's rules changes who is told about an order, not only who can read
   one, and the notification path is the half nobody thinks of.
-- **The expiry sweep still queues rows nothing drains.** `0039` is the only thing in the schema
-  that inserts into `notifications`, and it runs inside `pg_cron`, which has no request to hang
-  work off. `lib/push/drain.ts` used to empty that queue through `notifyCustomer`; both are
-  deleted, so the rows now pile up as `queued` and no code reads them. The migration was
-  deliberately not reverted, so a future customer web push inherits a queue that is already
-  filling. **The cancellation itself is unaffected**: the sweep cancels the order and releases
-  the pickup slot, and only the telling is missing.
+- **`drainPushQueue` is back, and the cron route calls it again.** `0039` is the only thing in the
+  schema that inserts into `notifications`, and it runs inside `pg_cron`, which has no request to
+  hang work off, so the queue is still how that path gets told at all. `lib/push/drain.ts` was
+  deleted along with the rest of the customer half on 2026-08-17 and restored on 2026-08-18.
+  **The rows that piled up as `queued` while the drain was gone are still sitting there**, and
+  they will go out on the first cron run after this ships, all at once, to customers whose orders
+  may be long since resolved by other means. Check `notifications` for their age before the first
+  deploy if that staleness matters. The cancellation itself was never affected by any of this: the
+  sweep cancels the order and releases the pickup slot regardless of whether anything downstream
+  reads the queue.
 - **The retry that never existed, and the reason to be careful building one.** `0007`'s
   `sending_started_at` exists so a later sweep can tell "in flight" from "stuck". That sweep was
   never built. Whoever builds it should know the hazard the deleted drain documented: if a
@@ -919,6 +925,12 @@ because each one costs a day if rediscovered.
     in has to be signed in inside the pane. Note also that the pane cannot take a screenshot unless
     it is displayed on screen, so prefer `get_page_text` and `read_network_requests`, which work
     either way.
+
+19. **A customer endpoint and a staff endpoint are the same column.** `push_subscriptions` is
+    unique on `endpoint`, so `0047` refuses to register a customer subscription against an
+    endpoint that already belongs to staff. Without that guard, a staff member opening their own
+    order on the counter tablet would flip the tablet's row to `audience = 'customer'` and the
+    tablet would stop being told about new orders with nothing anywhere saying why.
 
 ## Do not
 

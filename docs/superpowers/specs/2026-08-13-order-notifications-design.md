@@ -2,13 +2,16 @@
 
 Written 2026-08-13. Covers spec section 15 and the notifications half of Phase 3.
 
-> **Half superseded, 2026-08-17.** The customer half of this design was Expo push to a
-> phone app. The app was dropped, and the transport, the registration route and
-> `notifyCustomer` went with it, so everything below about `apps/customer`, Expo tokens and
-> `/api/mobile/v1` describes deleted code. **The staff half shipped and is live**, and the
-> reasoning about the shared backbone (one `push_subscriptions` table, one payload builder,
-> the queue the expiry sweep needs) still holds and is the thing to read before building
-> customer Web Push. See section 15 of `docs/IMPLEMENTATION-PROMPT.md`.
+> **Half superseded, 2026-08-17. Amended 2026-08-18: the customer half is back, on a**
+> **different design.** The customer half of this design was Expo push to a phone app. The
+> app was dropped, and the transport, the registration route and `notifyCustomer` went with
+> it, so everything below about `apps/customer`, Expo tokens and `/api/mobile/v1` still
+> describes deleted code and none of it came back. **The staff half shipped and is live**,
+> and the reasoning about the shared backbone (one `push_subscriptions` table, one payload
+> builder, the queue the expiry sweep needs) still holds. For what replaced the customer
+> half, read `docs/superpowers/specs/2026-08-18-customer-web-push-design.md` instead of the
+> customer sections below. See section 15 of `docs/IMPLEMENTATION-PROMPT.md` for the current
+> state of both audiences.
 
 ## What this is
 

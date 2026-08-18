@@ -38,28 +38,33 @@ are all green, every page has been rendered and reviewed in a browser at 320px,
 375px and 1280px, and migrations `0001` to `0044` apply cleanly against a real
 Postgres in the test suite.
 
-**Phase 3's notifications are built and merged to `main`, and only the staff half
-survives.** The counter tablet is told through Web Push, because its browser is
-closed at the moment a new order lands. Customers are not pushed to at all: that
-half was Expo-only and went with the app. The tracking page updates itself over
-Realtime instead, which is what a customer waiting on an order is looking at.
+**Phase 3's notifications are built and merged to `main`, and both audiences are
+told, both on Web Push.** The counter tablet is told because its browser is
+closed at the moment a new order lands. Customers are told on `ready`,
+`rejected`, and a `cancelled` for non-payment, through the same opt-in pattern
+on `/order/[code]` (`components/order/CustomerPushOptIn.tsx`). The customer
+half was Expo-only, then gone with the app, then rebuilt on Web Push on
+2026-08-18: `register_customer_push_subscription` (`0047`) is the RPC,
+`lib/customer/push.ts` and `app/api/push/customer/subscribe/route.ts` are the
+service and the route. The tracking page still updates itself over Realtime for
+whoever is looking at it; Web Push is for whoever has closed the tab, on either
+side of the counter.
 
 Three things a future session will otherwise rediscover:
 
 - `push_subscriptions` is not new. It predates this work by thirty-one
   migrations (`0007`), which is why the transport split lives in a column rather
-  than in a second table. The `expo` half of that column is now unreachable.
+  than in a second table. The `expo` half of that column, `register_customer_push_device`
+  (`0038`), is now permanently unreachable rather than dropped.
 - `staff_push_targets` is the only caller of `staff_can_access_branch(profile,
   branch)` other than the wrapper every RLS policy goes through, so a change to
   that function changes who gets told about an order, not only who can read one.
-- The expiry sweep (`0039`) still queues a `notifications` row it can no longer
-  send, because it runs inside pg_cron and the drain that emptied it was an Expo
-  path. Those rows accumulate as `queued` and nothing reads them. The
-  cancellation itself, which is the part money depends on, happens in the sweep
-  and is unaffected.
-
-Adding customer web push means a browser opt-in on the order page, built the way
-`components/workspace/StaffPushOptIn.tsx` already is. It is unbuilt, not broken.
+- The expiry sweep (`0039`) still queues a `notifications` row, and `drainPushQueue`
+  empties that queue again: the cron route calls it once more, the same as before
+  the app was dropped. The rows that piled up as `queued` while the drain was
+  gone go out on the first run after this ships. The cancellation itself, which
+  is the part money depends on, happens in the sweep regardless and was never
+  affected.
 
 **The Supabase project now exists, and `0001` to `0044` plus the seed are
 applied to it as of 2026-08-14.** `0022` and `0033` had both been applied through

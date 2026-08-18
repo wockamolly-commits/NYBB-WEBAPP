@@ -6,12 +6,14 @@ tablet sitting closed on a counter lights up, which is the only thing anybody ac
 
 Work through this on real hardware before telling anyone notifications are done.
 
-**This is now a staff-only checklist.** It used to open with four Expo prerequisites (a project id,
-an FCM server key, an APNs key with a paid Apple Developer membership behind it, and a real EAS
-build), all of which blocked the customer half and three of which had lead times measured in days.
-The mobile app was dropped on 2026-08-17 and the customer notification path went with it, so none
-of that is on the critical path any more. If customer notifications come back they will be Web
-Push in the browser, which needs no Apple membership and reuses the VAPID pair below.
+**Both audiences are back, and both are Web Push.** This file used to open with four Expo
+prerequisites (a project id, an FCM server key, an APNs key with a paid Apple Developer membership
+behind it, and a real EAS build), all of which blocked the customer half and three of which had
+lead times measured in days. The mobile app was dropped on 2026-08-17 and the customer
+notification path went with it. It came back on 2026-08-18 as Web Push in the browser, the same
+transport staff already use, which is why the customer section below is so much shorter than the
+Expo one it replaces: there is no app build, no project id, and no APNs key, only the VAPID pair
+below and a phone.
 
 ---
 
@@ -95,6 +97,30 @@ anywhere in it. Both cost real time on 2026-08-14. Check them first.
 - [ ] **The tablet installed to the home screen.** The manifest asks for landscape and a standalone
       window, and Android is the platform that honours the orientation lock. Confirm it opens on
       the orders board and not the storefront.
+
+## Customer, on a phone
+
+Each of these needs a real order, because `register_customer_push_subscription` refuses a terminal
+one and the queue only fills on a real status change.
+
+- [ ] **Locked Android, Chrome.** Place an order, opt in, sleep the phone, mark the order ready from
+      the workspace. The notification appears on the lock screen and it vibrates.
+- [ ] **The tab closed entirely.** Not backgrounded. This is the whole reason this is Web Push and
+      not the Realtime refresh the page already has.
+- [ ] **iPhone, added to the Home Screen.** Safari delivers nothing until the site is installed. Before
+      installing, confirm the control says so rather than offering a button. After installing, confirm
+      the opt-in appears and works.
+- [ ] **iPhone, not installed.** Confirm the instruction is what shows, and that no button is offered.
+- [ ] **Tapping through opens that order**, with its tracking token, not the home page.
+- [ ] **Two devices on one order.** Register a second phone against the same order using the same
+      tracking link. Both must be told.
+- [ ] **The three events, not just one.** Ready, rejected and cancelled all notify. Force a cancelled
+      by leaving an online payment to time out. That path runs through the cron drain rather than
+      `after()`, so a pass on ready proves nothing about it, and it is the one nobody remembers to
+      test.
+- [ ] **The counter tablet still works afterwards.** Sign in as staff on the same device that just
+      registered as a customer, and confirm the tablet still receives new-order alerts. `0047` is
+      supposed to make this impossible to break; this is the check that it does.
 
 ---
 
