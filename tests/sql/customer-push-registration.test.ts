@@ -156,6 +156,40 @@ describe("register_customer_push_subscription", () => {
       select count(*)::int from push_subscription_orders where endpoint = '${ENDPOINT}'
     `)).toBe(0);
   });
+
+  // THE BACKSTOP THE PRE-CHECK ABOVE ISN'T. The exists() refusal and the
+  // upsert are separate statements, so under read committed a staff
+  // registration could in principle land in the gap between them. This
+  // proves the upsert itself, not just the pre-check, keeps a staff row's
+  // keys safe: it runs the same insert ... on conflict ... do update that
+  // the function runs, skipping the pre-check entirely, and shows the
+  // where clause on the conflict target refuses the write on its own.
+  it("cannot poison a staff row's keys even with the pre-check skipped", async () => {
+    await db.exec(`
+      insert into push_subscriptions (audience, profile_id, transport, endpoint, p256dh, auth_key)
+      values ('staff', '${STAFF}', 'web', '${ENDPOINT}', 'staff-key', 'staff-auth')
+    `);
+
+    await db.exec(`
+      insert into push_subscriptions (audience, transport, endpoint, p256dh, auth_key, last_seen_at)
+      values ('customer', 'web', '${ENDPOINT}', 'customer-key', 'customer-auth', now())
+      on conflict (endpoint) do update
+        set p256dh = excluded.p256dh,
+            auth_key = excluded.auth_key,
+            last_seen_at = now()
+      where push_subscriptions.audience = 'customer'
+    `);
+
+    expect(await scalar<string>(db, `
+      select audience from push_subscriptions where endpoint = '${ENDPOINT}'
+    `)).toBe("staff");
+    expect(await scalar<string>(db, `
+      select p256dh from push_subscriptions where endpoint = '${ENDPOINT}'
+    `)).toBe("staff-key");
+    expect(await scalar<string>(db, `
+      select auth_key from push_subscriptions where endpoint = '${ENDPOINT}'
+    `)).toBe("staff-auth");
+  });
 });
 
 describe("the grant boundary", () => {

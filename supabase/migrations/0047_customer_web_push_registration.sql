@@ -23,6 +23,16 @@
 -- staff_push_targets filters on audience = 'staff', so the tablet would stop
 -- being told about new orders, silently, on the one device the business cannot
 -- afford to have go quiet. This function refuses a foreign endpoint instead.
+--
+-- The refusal below is a check, not a lock: under read committed, a staff
+-- registration for the same endpoint could commit in the gap between that
+-- check and the insert that follows it. The `where` clause on the upsert
+-- closes that gap. It repeats the same audience test at the only point that
+-- is actually atomic with the write, so a staff row's keys can never be
+-- overwritten even if the pre-check above were somehow bypassed or beaten.
+-- Keeping both is deliberate: the check above is what produces the clean,
+-- unremarkable false a caller sees on a normal refusal, and the `where`
+-- clause is the backstop that makes the guard true no matter the timing.
 
 create or replace function register_customer_push_subscription(
   p_short_code text,
@@ -91,7 +101,8 @@ begin
   on conflict (endpoint) do update
     set p256dh = excluded.p256dh,
         auth_key = excluded.auth_key,
-        last_seen_at = now();
+        last_seen_at = now()
+  where push_subscriptions.audience = 'customer';
 
   insert into public.push_subscription_orders (endpoint, order_code, last_seen_at)
   values (v_endpoint, v_code, now())
