@@ -64,6 +64,7 @@ describe("migrations", () => {
       "0044",
       "0045",
       "0046",
+      "0047",
     ]);
   });
 
@@ -291,6 +292,10 @@ describe("migrations", () => {
     // whether the caller may speak for the order, this time to attach a device
     // to it rather than to read it.
     //
+    // register_customer_push_subscription (0047) is register_customer_push_device's
+    // Web Push sibling, checked the same way and for the same reason: the
+    // native app it served is gone, and a browser needs its own path in.
+    //
     // submit_franchise_inquiry (0045) is the second write here and the only one
     // that authorizes nothing at all, because a franchise lead is a stranger
     // introducing themselves. What bounds it is that it writes to a table anon
@@ -308,6 +313,7 @@ describe("migrations", () => {
       "get_storefront_menu",
       "place_order",
       "register_customer_push_device",
+      "register_customer_push_subscription",
       "submit_franchise_inquiry",
     ]);
   });
