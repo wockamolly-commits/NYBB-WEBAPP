@@ -77,7 +77,6 @@ export async function POST(request: Request) {
   // the payment succeeded. Both are ordinary traffic here, because this handler
   // answers 500 on a reconciliation error and PayMongo retries on any non-2xx.
   // So this guard is what stops a retry ringing the tablet twice.
-  //
   if (status === "paid" && orderId) after(notifyStaffOfNewOrder(orderId));
   if (status === "failed" && orderId) after(notifyCustomer(orderId));
 
