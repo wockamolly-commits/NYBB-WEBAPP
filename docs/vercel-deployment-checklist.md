@@ -253,20 +253,34 @@ every page, and the franchise form still stores a real lead and sends a real ale
 needs to be genuinely unreachable while the business is not trading, that is Vercel's Deployment
 Protection, under the project's Settings, and it takes effect immediately with no redeploy.
 
-**Which option is available depends on the plan, and this account is on Hobby.**
+**ON THIS ACCOUNT'S PLAN, NONE OF IT CAN PROTECT THE LIVE SITE. Tried and confirmed 2026-08-19.**
 
-| Option | Plan | What it does |
+The scope selector is where this bites, and the middle option reads as though it covers production
+when it does not:
+
+| Scope | Covers `nybb-order.vercel.app`? | Available on Hobby? |
 | --- | --- | --- |
-| Vercel Authentication | Hobby and up | Only people signed into Vercel with access to the project can view the site |
-| Password Protection | Pro and up | A shared password anyone can be given |
-| Trusted IPs | Enterprise | An address allowlist |
+| Only Preview Deployments | No | Yes |
+| Production Deployment URLs and All Previews | **No** | Yes |
+| All Deployments | Yes | **No, requires an upgrade** |
 
-So Password Protection is likely greyed out here. Vercel Authentication does the same job and ties
-access to accounts rather than to a password that gets forwarded. Its cost is sharing: showing the
-site to somebody means adding them to the project, where a password could simply be told to them.
+Turning on Vercel Authentication at the middle scope was verified as working and useless for this
+purpose: the long generated deployment URL answered `302` to `vercel.com/sso-api`, while
+`nybb-order.vercel.app` answered `200` with the full page to an anonymous request. The protection
+was real. It guarded doors nobody uses.
 
-Apply it to **all deployments**. Previews only leaves the live site open, which is the thing being
-closed.
+**THE DECISION TAKEN, 2026-08-19: leave the site unlisted rather than locked.** The reasoning, so
+it is not relitigated from scratch. What is exposed is a brochure whose contents are already public
+(menu, prices, branch addresses), a franchise form whose worst case is an unsolicited LEAD, and an
+honest note that ordering is not open. The staff workspace is behind its own sign-in and unaffected
+by any of this. Nothing here leaks data or costs money, so the exposure is one of impression, and
+`noindex` already answers that: nobody arrives at a site they cannot find, and a `.vercel.app`
+subdomain is not usefully guessable.
+
+Revisit if the URL starts being shared for review, or if anything that does hold value moves in
+front of the sign-in. The options then are an upgrade, or a password gate in `proxy.ts`, which
+already runs on every request. The second is real work and reinvents something Vercel sells, so it
+needs a reason beyond tidiness.
 
 **IT BLOCKS MACHINES TOO, AND THAT IS THE PART THAT BITES LATER.** Protection refuses every request
 that cannot authenticate, including ones no human is behind:
