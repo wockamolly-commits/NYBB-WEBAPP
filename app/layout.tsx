@@ -68,10 +68,14 @@ export const metadata: Metadata = {
    * which is worth stating so the next person does not delete it against the
    * old one. The first time, the franchise form could not store a lead and
    * being found would have converted enquiries into error messages. That is
-   * fixed. This time the site works and the BUSINESS is not ready: ordering
-   * still says it opens soon because no branch has confirmed kitchen capacity,
-   * and a franchise pitch is a poor first impression alongside a storefront
-   * that cannot take an order.
+   * fixed. This time the site works and the BUSINESS is not ready: no branch
+   * has confirmed its real prep time or slot capacity (open question 4 in the
+   * spec's section 28), so the numbers the pickup windows are generated from
+   * are placeholders a manager has never signed off. The storefront now states
+   * whether ordering is open by reading the flags rather than by asserting it
+   * in copy, which makes the page honest in either state but does not answer
+   * the capacity question, and a franchise pitch is a poor first impression
+   * beside a kitchen nobody has sized.
    *
    * A `noindex` tag rather than a `robots.txt` disallow, and the difference
    * matters. A disallow stops crawlers READING the page, which also stops them

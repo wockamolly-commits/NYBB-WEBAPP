@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { ButtonLink } from "@/components/ui/Button";
 import { branchFormatLabel, branches, catalogImage } from "@/lib/catalog";
 import { telHref } from "@/lib/phone";
 
@@ -17,8 +18,20 @@ export default function ContactPage() {
       <h1 className="font-display heading-page">Branches</h1>
       <p className="text-nybb-ink/75 mt-4 max-w-lg text-base leading-relaxed">
         {branches.length} counters across Cebu, from street fronts to food halls
-        to petrol stations. Call the one you want to collect from.
+        to petrol stations. Call the one you want to collect from, or pick it on
+        the ordering page and the kitchen will hold a window for you.
       </p>
+
+      {/* A directory and a decision are different jobs, so they are different
+          pages, but somebody who came here looking for a shop to order from
+          should not have to find the other one by guessing. Ghost weight: this
+          page's own content is the nine cards below, and this is a door out of
+          it rather than its purpose. */}
+      <div className="mt-6">
+        <ButtonLink href="/stores" tone="light" variant="secondary">
+          Choose a counter to order from
+        </ButtonLink>
+      </div>
 
       {hero ? (
         <Image

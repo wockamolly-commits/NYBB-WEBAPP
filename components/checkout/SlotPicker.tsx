@@ -123,7 +123,12 @@ export function SlotPicker({
                         className={cn(
                           "mt-1.5 text-xs leading-none",
                           active
-                            ? "text-nybb-ink/75"
+                            // 80, not 75. Composited through a 1x1 canvas,
+                            // ink at 75% over Buffalo Orange measures 4.37:1
+                            // and this note is 12px, so it was under AA on
+                            // the one window the customer had chosen. 80%
+                            // measures 4.74:1.
+                            ? "text-nybb-ink/80"
                             : open
                               ? "text-nybb-orange"
                               : "text-nybb-bone/35",
@@ -140,11 +145,18 @@ export function SlotPicker({
         </div>
       ))}
 
+      {/* IT USED TO OPEN "Collect at NYBB Hot Wings, Central Bloc". The band
+          at the top of the screen now names the counter, and repeating it
+          eight lines later reads as a page saying the same thing twice rather
+          than as two facts worth knowing. What is left is the part only this
+          panel can explain: why the grid starts where it starts, and how long
+          each window is. Both are per branch, which is exactly why they are
+          worth printing. */}
       {slots.branch && days.length > 0 ? (
         <p className="text-nybb-bone/65 mt-4 max-w-[62ch] text-sm leading-relaxed">
-          Collect at {slots.branch.name}. Windows are {slots.branch.slotMinutes} minutes
-          long, and the earliest is {slots.branch.prepMinutes} minutes from now because
-          that is how long the kitchen needs.
+          Windows are {slots.branch.slotMinutes} minutes long, and the earliest is{" "}
+          {slots.branch.prepMinutes} minutes from now because that is how long this
+          kitchen needs.
         </p>
       ) : null}
     </section>

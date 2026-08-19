@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
+import { StoreBar } from "@/components/store/StoreBar";
 import { TextLink } from "@/components/ui/TextLink";
+import { getStoreSelection } from "@/lib/branches/selection";
+import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { getStorefrontMenu, WING_FLAVOUR_GROUP_SLUG } from "@/lib/menu";
 import { findOptionGroup } from "@/lib/menu";
 
@@ -16,13 +19,28 @@ export const metadata: Metadata = {
  * The whole menu on one page, with the category rail jumping between sections.
  *
  * The menu comes from `get_storefront_menu()` when Supabase is configured and
- * from the static catalog when it is not. This page is statically generated,
- * so that call happens during `next build`: the inherited trap is that a
- * Vercel Preview scope missing NEXT_PUBLIC_SUPABASE_* would fail the build,
- * which is exactly why the reader keeps the fallback rather than throwing.
+ * from the static catalog when it is not.
+ *
+ * WHY THE INTRO SENTENCE IS COMPUTED RATHER THAN WRITTEN.
+ *
+ * It used to read "Online ordering opens soon; until then, call the branch you
+ * want to collect from", which was true on the day it was typed and false in
+ * whichever environment did not match it. Whether a customer can finish an
+ * order is a fact two functions already know, so the page asks them instead of
+ * asserting an answer that goes stale without anybody noticing.
  */
 export default async function MenuPage() {
-  const { categories } = await getStorefrontMenu();
+  const [{ categories }, selection, orderingOpen] = await Promise.all([
+    getStorefrontMenu(),
+    getStoreSelection(),
+    onlineOrderingOpen(),
+  ]);
+
+  // Both halves, always. A counter that can cook is worth nothing without a
+  // rail that can take the money, and a rail with no live counter has nothing
+  // to sell. Either one missing means no order can be completed on this site,
+  // and every screen in the flow has to say the same thing about that.
+  const canOrder = orderingOpen && selection.stores.some((store) => store.orderable);
 
   return (
     <>
@@ -31,9 +49,17 @@ export default async function MenuPage() {
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <h1 className="font-display heading-page">The menu</h1>
         <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
-          Prices are the same at every branch. Online ordering opens soon; until
-          then, call the branch you want to collect from.
+          {canOrder
+            ? "Prices are the same at every counter. Build the order here, then choose a pickup window at checkout."
+            : "Prices are the same at every counter. Online ordering is not open yet, so call the counter you want to collect from."}
         </p>
+
+        {/* Only where it can lead somewhere. A band naming the counter an
+            order goes to, on a site that cannot complete one, is furniture
+            that contradicts the sentence directly above it. */}
+        {canOrder ? (
+          <StoreBar selection={selection} returnTo="/menu" className="mt-8" />
+        ) : null}
 
         {categories.map((category) => (
           <section

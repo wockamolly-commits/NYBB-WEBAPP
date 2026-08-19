@@ -21,7 +21,14 @@ import type { PlacedOrder } from "@/lib/checkout/types";
  * unreachable from a browser, which is why the copy says so plainly instead of
  * quietly relying on them not to close the tab.
  */
-export function OrderPlaced({ order }: { order: PlacedOrder }) {
+export function OrderPlaced({
+  order,
+  signedIn = false,
+}: {
+  order: PlacedOrder;
+  /** Decides whether the tracking link is a convenience or the only copy. */
+  signedIn?: boolean;
+}) {
   const timezone = order.branch.timezone;
   const tracking = orderTrackingHref(order.shortCode, order.trackingToken);
   const window = formatSlotRange(
@@ -69,8 +76,13 @@ export function OrderPlaced({ order }: { order: PlacedOrder }) {
             <dt className="type-caps text-nybb-bone/55">Order number</dt>
             <dd className="font-mono-tabular mt-1 text-base">{order.shortCode}</dd>
           </div>
+          {/* IT SAID "TO PAY AT THE COUNTER" UNTIL PICKUP BECAME PAYMENT
+              FIRST. Nothing on this platform takes money at a counter any
+              more, so the label was telling a customer to arrive with cash for
+              an order they had already settled. "Order total" is what the
+              figure is, and it stays true whichever rail paid it. */}
           <div>
-            <dt className="type-caps text-nybb-bone/55">To pay at the counter</dt>
+            <dt className="type-caps text-nybb-bone/55">Order total</dt>
             <dd className="font-mono-tabular text-nybb-orange mt-1 text-base">
               {formatPeso(order.totalCents)}
             </dd>
@@ -91,10 +103,15 @@ export function OrderPlaced({ order }: { order: PlacedOrder }) {
         <ButtonLink href={tracking} tone="light" size="lg">
           Track this order
         </ButtonLink>
+        {/* THIS USED TO END "UNTIL ACCOUNTS ARRIVE". They arrived: /account
+            carries the order history and a signed-in customer can reopen any
+            order from it without the link. So the warning is now only true for
+            a guest, and telling a signed-in customer their order is one closed
+            tab from being lost is a false alarm about their own account. */}
         <p className="text-nybb-ink/70 mt-3 max-w-prose text-sm leading-relaxed">
-          Bookmark that page, or keep this tab open. The link is what opens your
-          order later, and we cannot send you another copy of it until accounts
-          arrive.
+          {signedIn
+            ? "This order is in your account, so you can reopen it from there at any time. The link above is the quick way back to it."
+            : "Bookmark that page, or keep this tab open. You ordered as a guest, so that link is the only way back to this order from a browser."}
         </p>
       </div>
 

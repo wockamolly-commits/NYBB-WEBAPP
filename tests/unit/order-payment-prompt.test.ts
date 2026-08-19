@@ -28,7 +28,17 @@ describe("what a customer waiting on an online payment is shown", () => {
     expect(prompt.body).toMatch(/nothing has been charged/i);
 
     // And names something that works instead of a button that does not.
-    expect(prompt.body).toMatch(/pay at the counter/i);
+    // The branch phone number is rendered directly under this paragraph.
+    expect(prompt.body).toMatch(/call the branch/i);
+
+    // IT MUST NOT OFFER THE COUNTER. This assertion used to require exactly
+    // that phrase, which was right when both rails existed and became a test
+    // pinning a lie in place once pickup went payment first: checkout offers
+    // one online method and nothing on this platform takes money at a till,
+    // so "order again and pay at the counter" sent a stranded customer to the
+    // one route that does not exist. Inverted rather than deleted, because the
+    // phrase is the kind that gets pasted back in from an older screen.
+    expect(prompt.body).not.toMatch(/at the counter/i);
   });
 });
 

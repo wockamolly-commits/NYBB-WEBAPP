@@ -65,12 +65,17 @@ export function onlinePaymentPrompt(serviceable: boolean): OnlinePaymentPrompt {
   return {
     kind: "unavailable",
     title: "Online payment is not available",
+    // IT USED TO SAY "order again and pay at the counter". There is no
+    // counter rail: pickup is payment first and checkout offers one online
+    // method, so that sentence asked a stranded customer to take the one
+    // route that does not exist. What is left are the two things that do
+    // work, and the phone number is directly under this paragraph.
     body:
       "Online payment is not switched on for this site yet, so this order " +
       "cannot be paid here. Nothing has been charged. It will be released " +
       "automatically in a few minutes and the pickup window will go back to " +
-      "whoever wants it, so please order again and pay at the counter, or " +
-      "call the branch below.",
+      "whoever wants it. Please call the branch below and they will take this " +
+      "order over the phone.",
   };
 }
 

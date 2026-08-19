@@ -22,8 +22,11 @@ const publicSettingsSchema = z.object({
  * button answered "We could not start that payment. Please try again in a
  * moment." every single time.
  *
- * Offering nothing online is a safe answer rather than a broken one: checkout
- * falls back to paying at the counter, so a customer can still order.
+ * Offering nothing online is a safe answer rather than a broken one, but it is
+ * no longer a quiet one. Pickup is payment first, so an empty list means
+ * checkout cannot complete at all, and the screens that lead to it have to say
+ * so before a cart is built rather than after. `onlineOrderingOpen` below is
+ * how they ask.
  */
 export async function getCheckoutPaymentMethods(): Promise<OnlineMethod[]> {
   if (!supabaseConfigured() || !onlinePaymentsServiceable()) return [];
@@ -38,4 +41,18 @@ export async function getCheckoutPaymentMethods(): Promise<OnlineMethod[]> {
     return [];
   }
   return enabledOnlineMethods(parsed.data.paymongo_methods, parsed.data.paymongo_enabled === true);
+}
+
+/**
+ * Whether a customer can complete an order on this deployment right now.
+ *
+ * The storefront used to answer this with a hardcoded sentence ("Online
+ * ordering opens soon") written on the menu and twice on the landing page,
+ * which meant the site was wrong in whichever environment did not match what
+ * the sentence assumed. The answer is knowable: pickup is payment first, so
+ * ordering is open exactly when there is an online rail this deployment can
+ * carry through.
+ */
+export async function onlineOrderingOpen(): Promise<boolean> {
+  return (await getCheckoutPaymentMethods()).length > 0;
 }

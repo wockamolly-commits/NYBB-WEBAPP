@@ -107,8 +107,15 @@ optional payment and loyalty work. The realtime staff board and pickup-code clai
   service-mode selector. Nothing in the codebase may mention delivery, riders, dine-in tables,
   Loyverse, or the reference project's theming.
 - **Single branch at launch on a multi-branch schema** (D2). Every menu, pricing, hours, stock,
-  order and settings table carries `branch_id`. The branch picker is fully built and flag hidden.
-  Never hardcode a branch.
+  order and settings table carries `branch_id`. ~~The branch picker is fully built and flag
+  hidden.~~ **Superseded 2026-08-19: the counter picker ships at `/stores` and is not hidden.**
+  Hiding it made the customer's most load-bearing question invisible: `get_pickup_slots(null)`
+  resolved the first active branch by `sort_order`, so the shop somebody collected from was
+  decided for them and named only in a footnote at the bottom of checkout. What replaces the flag
+  is the truth: the picker lists all nine counters, marks the one that is live as choosable and
+  the other eight as phone-only with their numbers, and disappears entirely on a deployment that
+  cannot complete an order. Growing to ten is still a boolean, and now it is a boolean the
+  storefront reads. Never hardcode a branch.
 - **The client never sends a price.** No total, discount, or fee originates on the client. Every
   order write goes through a `SECURITY DEFINER` Postgres function. Every table has RLS.
 - **No feature flag ships defaulted to on.** Settings fail closed. ~~Both payment rails (pay at

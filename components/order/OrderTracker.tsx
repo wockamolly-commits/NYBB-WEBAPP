@@ -295,14 +295,20 @@ export function OrderTracker({
             </span>
           </div>
 
+          {/* THE LAST BRANCH USED TO READ "Pay at the counter when you
+              collect." Pickup is payment first and no counter rail is
+              reachable from checkout, so that sentence sent a customer to a
+              till that will not take their money. It is now the honest
+              fallback: this order carries no completed payment and the branch
+              is the only place that can resolve it. */}
           <p className="border-nybb-bone/15 text-nybb-bone/65 mt-4 border-t pt-4 text-sm leading-relaxed">
             {order.payment?.status === "refunded"
               ? "A refund was issued for this payment."
               : order.payment?.status === "paid"
-              ? "Paid in full. Nothing to settle at the counter."
-              : awaitingOnlinePayment
-                ? "Complete QR Ph payment before the kitchen receives this order."
-              : "Pay at the counter when you collect."}
+                ? "Paid in full. Nothing to settle when you collect."
+                : awaitingOnlinePayment
+                  ? "Complete QR Ph payment before the kitchen receives this order."
+                  : "This order has no completed payment against it. Please call the branch below before setting off."}
           </p>
 
           {order.notes ? (

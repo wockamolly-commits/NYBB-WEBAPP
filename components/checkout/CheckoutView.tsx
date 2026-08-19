@@ -9,6 +9,7 @@ import { PendingPayment } from "@/components/checkout/PendingPayment";
 import { payOrder } from "@/app/actions/payment";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { TextLink } from "@/components/ui/TextLink";
 import { clearCart } from "@/lib/cart/store";
 import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
@@ -53,12 +54,28 @@ export function CheckoutView({
   initialDetails = EMPTY_DETAILS,
   signedIn = false,
   paymentMethods,
+  branchSlug = null,
+  storeChosen = false,
+  storeCount = 0,
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
   initialDetails?: CheckoutDetails;
   signedIn?: boolean;
   paymentMethods: OnlineMethod[];
+  /**
+   * The counter the customer chose, resolved and validated on the server.
+   *
+   * Null is a real answer rather than a missing one: `place_order` takes null
+   * and resolves the single active branch, which is exactly right when there
+   * is one counter and nobody has been asked. It is a slug either way, never a
+   * price and never a name, so the server still reads every peso from the
+   * price list the branch it resolves points at.
+   */
+  branchSlug?: string | null;
+  storeChosen?: boolean;
+  /** How many counters can take an order. Decides whether the choice is real. */
+  storeCount?: number;
 }) {
   const router = useRouter();
   const { cart, loaded } = useCart();
@@ -105,7 +122,7 @@ export function CheckoutView({
       />
     );
   }
-  if (placed) return <OrderPlaced order={placed} />;
+  if (placed) return <OrderPlaced order={placed} signedIn={signedIn} />;
 
   if (!loaded) {
     return (
@@ -135,6 +152,16 @@ export function CheckoutView({
   const onlineMethod = paymentMethods.includes("qrph") ? "qrph" : null;
   const paymentMethod = onlineMethod ?? "qrph";
   const timezone = slots.branch?.timezone ?? "Asia/Manila";
+
+  /**
+   * Whether the counter still has to be chosen before this order can be placed.
+   *
+   * Only when there is a genuine choice to make. With one live counter the
+   * server resolves it and asking would be a step that has one answer, which
+   * is a step that exists to look thorough. The day a second counter opens,
+   * this turns itself on.
+   */
+  const needsStore = storeCount > 1 && !storeChosen;
   const detailError =
     failure && isDetailField(failure.field)
       ? { field: failure.field, message: failure.message }
@@ -142,7 +169,7 @@ export function CheckoutView({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedSlot || submitting) return;
+    if (!selectedSlot || needsStore || submitting) return;
 
     startSubmitting(async () => {
       let accessToken: string | null = null;
@@ -156,7 +183,11 @@ export function CheckoutView({
 
       const result = await placeOrder({
         attemptId: attemptId(),
-        branchSlug: slots.branch?.slug ?? null,
+        // The counter the customer chose, not whichever one the slot reader
+        // happened to resolve. Those were the same value while the picker did
+        // not exist; they are not once it does, and the one that matters is
+        // the one the screen named above the window grid.
+        branchSlug: branchSlug ?? slots.branch?.slug ?? null,
         pickupSlotStart: selectedSlot,
         details,
         paymentMethod,
@@ -239,8 +270,8 @@ export function CheckoutView({
             disabled={submitting || !onlineMethod}
             paymentDescription={
               onlineMethod
-                ? "Pay securely with QR Ph after you place the order. The kitchen receives it after payment is confirmed."
-                : "Online payment is not available yet. Orders cannot be placed until QR Ph is enabled."
+                ? "Pay with QR Ph on the next screen. Nothing is charged by placing the order, and the kitchen receives it once payment is confirmed."
+                : "Online payment is not open on this site yet, so an order cannot be completed here. The counter phone numbers are on the branches page and they can take this now."
             }
           />
         </div>
@@ -282,30 +313,49 @@ export function CheckoutView({
             </span>
           </div>
 
-          <p className="border-nybb-bone/15 mt-4 border-t pt-4 leading-relaxed">
-            <span className="type-caps text-nybb-bone/55 block">Pickup</span>
-            <span className="text-nybb-bone mt-1 block text-sm">
-              {chosenSlot
-                ? `${formatSlotRange(chosenSlot, timezone)}, ${slots.branch?.shortName}`
-                : "No time chosen yet"}
-            </span>
-          </p>
+          {/* Two lines, because they are two facts and a customer checks them
+              separately: the shop they are walking to, and the minute they are
+              walking there for. They used to be one comma-joined string that
+              said "No time chosen yet" and named no counter at all, which left
+              the summary silent about the single thing a pickup order is. */}
+          <dl className="border-nybb-bone/15 mt-4 space-y-3 border-t pt-4">
+            <div>
+              <dt className="type-caps text-nybb-bone/55">Collect from</dt>
+              <dd className="text-nybb-bone mt-1 text-sm leading-relaxed">
+                {slots.branch?.shortName ?? "No counter chosen yet"}
+              </dd>
+            </div>
+            <div>
+              <dt className="type-caps text-nybb-bone/55">Pickup window</dt>
+              <dd className="text-nybb-bone mt-1 text-sm leading-relaxed">
+                {chosenSlot
+                  ? formatSlotRange(chosenSlot, timezone)
+                  : "No time chosen yet"}
+              </dd>
+            </div>
+          </dl>
 
+          {/* The label names what is missing, so the button is never a dead
+              end the customer has to go hunting the cause of. Order matters:
+              it asks for the counter before the window, because the windows on
+              screen belong to a counter. */}
           <Button
             type="submit"
             tone="dark"
             size="lg"
             block
-            disabled={!selectedSlot || !onlineMethod || submitting}
+            disabled={!selectedSlot || needsStore || !onlineMethod || submitting}
             className="mt-6"
           >
             {submitting
               ? "Placing the order"
-              : selectedSlot
-                ? onlineMethod
-                  ? `Continue to QR Ph, ${formatPeso(resolved.subtotalCents)}`
-                  : "QR Ph is not available yet"
-                : "Choose a pickup time"}
+              : !onlineMethod
+                ? "Online payment is not open yet"
+                : needsStore
+                  ? "Choose a counter first"
+                  : selectedSlot
+                    ? `Continue to QR Ph, ${formatPeso(resolved.subtotalCents)}`
+                    : "Choose a pickup time"}
           </Button>
 
           {/* Only the failures that are not about a field the customer can see.
@@ -332,8 +382,34 @@ export function CheckoutView({
               What is worth saying here, next to a button carrying a peso
               figure, is only that pressing it does not charge anybody. */}
           <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
-            {onlineMethod ? "You will pay by QR Ph next." : "QR Ph must be enabled before checkout opens."}
+            {onlineMethod
+              ? "You will pay by QR Ph next."
+              : "The counters are taking orders by phone in the meantime."}
           </p>
+
+          {/* THE GUEST'S ONE WAY BACK TO THIS ORDER.
+              ================================================================
+              A guest is handed a tracking link on the next screen and that is
+              the only copy of it in existence: close the tab and the order is
+              unreachable from a browser, because there is no account for it to
+              hang off. Signing in costs one email code and turns that into a
+              row in the order history at /account.
+
+              It is said here rather than on the confirmation, which is the
+              screen where it is already too late to act on: the order exists,
+              the cart is gone, and signing in then would be a detour away from
+              a pickup code. A quiet line, not a panel. It is worth knowing and
+              it is not worth interrupting a checkout for. */}
+          {!signedIn ? (
+            <p className="border-nybb-bone/15 text-nybb-bone/65 mt-4 border-t pt-4 text-sm leading-relaxed">
+              Ordering as a guest is fine and you still pay the same way. Signing
+              in keeps this order in your history, so you can reopen it without
+              the tracking link.{" "}
+              <TextLink href="/login" tone="dark">
+                Sign in
+              </TextLink>
+            </p>
+          ) : null}
 
           {/* Full width and inset to the card's edges, so it reads as the
               second rank of the same stack rather than as a stray underline

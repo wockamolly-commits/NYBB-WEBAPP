@@ -66,6 +66,7 @@ describe("migrations", () => {
       "0046",
       "0047",
       "0048",
+      "0049",
     ]);
   });
 
@@ -304,11 +305,21 @@ describe("migrations", () => {
     // over its length limits. The abuse it cannot prevent on its own, a flood of
     // plausible-looking leads, is bounded in the app by an address rate limit
     // and a honeypot instead.
+    //
+    // get_orderable_branches (0049) is the narrowest read on this list. The
+    // branches table is RLS'd to staff, which left the storefront unable to
+    // answer the one question a pickup-only shop is built around, so
+    // get_pickup_slots(null) silently resolved the first active branch and the
+    // customer was never asked where they were collecting from. This returns
+    // the active rows only, the columns a picker draws, and the two booleans
+    // that decide whether a card is selectable. No capacity figures, no
+    // reservations, no settings. Everything in it is painted on the shopfront.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
       "customer_mark_order_arrived",
       "get_order_by_tracking",
+      "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
       "get_storefront_menu",

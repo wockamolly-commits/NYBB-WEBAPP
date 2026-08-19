@@ -965,6 +965,30 @@ because each one costs a day if rediscovered.
     database rather than only against PGlite: the claim answered `true` once and `false` twice for
     one order, stamped `staff_notified_at` a single time, and is refused to an anonymous caller.
 
+    **`0049` is applied as of 2026-08-19 and is therefore frozen.** It adds
+    `get_orderable_branches()`, the anon-callable read the counter picker needs, because
+    `branches` is RLS'd to staff and the storefront had no way to list the shops it sells from.
+    Verified against the real database with the ANON key rather than service-role, because the
+    grant is the entire point of the migration: the function returns the one live counter with
+    `acceptsOrdersNow` and `isOpenNow` both true, and a direct `select` on `branches` from the
+    same client is still refused with `42501`. The migration widened exactly one function and not
+    the table.
+
+    The fallback in `lib/branches/reader.ts` stays. It is now dead against this database and that
+    is the point: it is what a deployment pointed at an older project falls back to, and it
+    reproduces the single-branch behaviour the site had before the picker existed rather than
+    500'ing.
+
+    **The fallback did not work the first time, and the reason is worth carrying.** It guarded on
+    `42883`, Postgres' own "function does not exist". That code never arrives: the storefront
+    reaches Postgres through PostgREST, which resolves RPC names against a cached schema and
+    answers `PGRST202` with "Could not find the function ... in the schema cache" before the
+    statement is ever sent. Every storefront page 500'd against the real staging database, and
+    nothing in the type checker, the unit tests or the PGlite suite could have caught it, because
+    all three talk to Postgres directly. **A fallback keyed on an error code is only as good as
+    the layer that produces the code.** Run the page against the real database before believing a
+    graceful-degradation path exists.
+
 21. **`app_settings` is one database shared by every environment, so a feature
     flag is not an environment switch.** Turning `paymongo_enabled` and
     `paymongo_methods.qrph` on made the production deployment offer QR Ph at
@@ -1056,3 +1080,18 @@ because each one costs a day if rediscovered.
 - Do not judge anything interactive from `next dev` alone. Dev renders per request and production
   did not, which is precisely how trap 11 hid for a phase. `.claude/launch.json` has a `prod`
   configuration on port 3001 for exactly this.
+- Do not write customer copy that asserts what the deployment can do. Three screens said "online
+  ordering opens soon" and one said the customer would "pay at the counter", both hardcoded, and
+  both were false in whichever environment did not match the day they were typed. Whether an order
+  can be completed is knowable: `onlineOrderingOpen()` asks the flag and the deployment together.
+  Ask it. The same rule retired "we cannot send you another copy of it until accounts arrive" from
+  the confirmation screen, which kept warning signed-in customers about an account they had.
+- Do not read the counter off `get_pickup_slots(null)` and call it the customer's choice. That call
+  resolves the first active branch by `sort_order`, which is a correct default and not an answer to
+  "where am I collecting from". `getStoreSelection()` in `lib/branches/selection.ts` is the answer,
+  it validates the cookie against the branches that can actually take an order on every read, and
+  checkout passes its slug to both `getPickupSlots` and `place_order`.
+- Do not borrow an alpha across grounds. `text-nybb-ink/75` is correct on the amber page and
+  measures 4.37:1 over Buffalo Orange, which is under AA for the 12px and 14px lines that sit on a
+  selected card or a chosen pickup window. On orange the value is `/80`, at 4.74:1. Composite
+  through a 1x1 canvas to check; Tailwind v4 emits `oklch()` and naive parsing invents failures.

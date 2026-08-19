@@ -6,6 +6,9 @@ import { ProductTile } from "@/components/menu/ProductTile";
 import { ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
 import { branches, catalogImage } from "@/lib/catalog";
+import { storesHref } from "@/lib/branches/href";
+import { getStoreSelection } from "@/lib/branches/selection";
+import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { optionPriceCents } from "@/lib/catalog/pricing";
 import {
   featuredItems,
@@ -78,13 +81,18 @@ import { telHref } from "@/lib/phone";
  * numbered steps further down. If a new line here describes the website
  * instead of the wings, it is in the wrong place on the page.
  *
- * WHAT IS TRUE TODAY. Online ordering is Phase 1 and is not built. The page
- * says so once, in the hero, under the buttons where it is read, and it hands
- * the visitor the working alternative in the same breath rather than at the
- * end: the hero's second button is "Call a branch", and it lands on the nine
- * counters and nine dialable numbers that close the page. Saying a capability
- * is missing is only honest if the remedy is reachable from where the sentence
- * is read. It does not describe a checkout that does not exist.
+ * WHAT IS TRUE TODAY IS NOW ASKED, NOT ASSERTED. This page used to state in
+ * three places that online ordering "opens soon", which was true on the day it
+ * was typed and false in whichever environment did not match it: the checkout
+ * exists, and whether it can complete depends on a flag in the database and on
+ * whether the deployment holds payment credentials. Both are readable, so the
+ * page reads them and says whichever thing is true.
+ *
+ * The honesty rule behind the old sentence survives intact: when ordering is
+ * shut, the page says so where it is read, under the buttons, and hands over
+ * the working alternative in the same breath rather than at the end. Saying a
+ * capability is missing is only honest if the remedy is reachable from where
+ * the sentence is read.
  */
 
 const steps = [
@@ -111,7 +119,20 @@ const steps = [
 ];
 
 export default async function Home() {
-  const { categories } = await getStorefrontMenu();
+  const [{ categories }, selection, orderingOpen] = await Promise.all([
+    getStorefrontMenu(),
+    getStoreSelection(),
+    onlineOrderingOpen(),
+  ]);
+
+  // Open means both halves: a rail this deployment can carry a payment
+  // through, and at least one counter that can cook the order.
+  const orderable = selection.stores.filter((store) => store.orderable);
+  const canOrder = orderingOpen && orderable.length > 0;
+  // A returning customer with a counter already chosen goes straight to the
+  // food. Somebody new is asked where they are collecting first, because on a
+  // pickup-only platform that question changes the four screens after it.
+  const orderHref = selection.selected ? "/menu" : storesHref("/menu");
   const featured = featuredItems(categories);
   const counter = catalogImage("scene-counter");
 
@@ -304,17 +325,41 @@ export default async function Home() {
               its own ragged second line. Full width and stacked is the honest
               shape at that size. */}
               <div className="flex flex-col gap-3 min-[380px]:flex-row min-[380px]:flex-wrap min-[380px]:items-center">
-                <ButtonLink href="/menu" tone="dark" size="lg">
-                  See the menu
-                </ButtonLink>
-                <ButtonLink
-                  href="#branches"
-                  tone="dark"
-                  variant="secondary"
-                  size="lg"
-                >
-                  Call a branch
-                </ButtonLink>
+                {/* The primary action follows what the service can actually
+                    do. With ordering open, the loudest control on the page is
+                    the one that starts an order; with it shut, promoting a
+                    checkout that will refuse the visitor would be the exact
+                    dishonesty the paragraph below is written to avoid, so the
+                    menu takes the fill and the phone takes the outline. */}
+                {canOrder ? (
+                  <>
+                    <ButtonLink href={orderHref} tone="dark" size="lg">
+                      Start an order
+                    </ButtonLink>
+                    <ButtonLink
+                      href="/menu"
+                      tone="dark"
+                      variant="secondary"
+                      size="lg"
+                    >
+                      See the menu
+                    </ButtonLink>
+                  </>
+                ) : (
+                  <>
+                    <ButtonLink href="/menu" tone="dark" size="lg">
+                      See the menu
+                    </ButtonLink>
+                    <ButtonLink
+                      href="#branches"
+                      tone="dark"
+                      variant="secondary"
+                      size="lg"
+                    >
+                      Call a branch
+                    </ButtonLink>
+                  </>
+                )}
               </div>
 
               {/* The honest status line, and it no longer carries an instruction it
@@ -330,8 +375,11 @@ export default async function Home() {
               first screen that states what is and is not true today, so the
               fulfilment mode joins it instead of getting a slot of its own. */}
               <p className="text-nybb-bone/60 mt-7 max-w-[46ch] text-sm leading-relaxed">
-                Pickup only, and online ordering opens soon. Until it does, the
-                counter nearest you takes the order on the phone.
+                {canOrder
+                  ? orderable.length === 1
+                    ? `Pickup only, paid online, collected at ${orderable[0].shortName}. The other counters take orders on the phone.`
+                    : "Pickup only, paid online. Choose the counter you are collecting from and the kitchen holds a window for it."
+                  : "Pickup only, and online ordering is not open yet. Until it is, the counter nearest you takes the order on the phone."}
               </p>
             </div>
           </div>
@@ -485,8 +533,9 @@ export default async function Home() {
               </h2>
               <p className="text-nybb-bone/65 mt-5 max-w-[42ch] leading-relaxed">
                 Mall food halls, petrol forecourts, a medical mall and a resort.
-                Online ordering opens soon. Until it does, the counter nearest
-                you will take it on the phone.
+                {canOrder
+                  ? ` Online ordering is open at ${orderable.length === 1 ? orderable[0].shortName : `${orderable.length} of them`}. The rest take orders on the phone.`
+                  : " Online ordering is not open yet, so the counter nearest you will take it on the phone."}
               </p>
 
               {counter ? (

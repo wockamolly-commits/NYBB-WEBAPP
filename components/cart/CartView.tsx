@@ -69,7 +69,24 @@ function DroppedNotice({ dropped, repriced }: CartChanges) {
   );
 }
 
-export function CartView({ categories }: { categories: MenuCategory[] }) {
+export function CartView({
+  categories,
+  storeName = null,
+  orderingOpen = true,
+}: {
+  categories: MenuCategory[];
+  /** The chosen counter's short name, or null when none has been chosen. */
+  storeName?: string | null;
+  /**
+   * Whether checkout can actually complete on this deployment.
+   *
+   * Read on the server and passed down, because it is a fact about the machine
+   * serving the request plus a flag in the database, and a browser can know
+   * neither. The cart used to send everybody to a checkout that might refuse
+   * them, which is the worst place to find out.
+   */
+  orderingOpen?: boolean;
+}) {
   const { cart, loaded, changes } = useCart();
 
   /**
@@ -355,16 +372,35 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
           {/* Checkout is the whole screen now: it chooses the window, takes
               the name and number, and places the order. Whether any window
               exists is still a question only the server can answer, so that
-              answer stays there rather than being guessed at here. */}
-          <ButtonLink
-            href="/checkout"
-            tone="dark"
-            size="lg"
-            block
-            className="mt-6"
-          >
-            Choose a pickup time
-          </ButtonLink>
+              answer stays there rather than being guessed at here.
+
+              What this screen can now answer, because the page read it on the
+              server, is whether checkout can complete at all. When it cannot,
+              the control goes rather than going grey: a disabled primary
+              button at the foot of a cart invites pressing, and the sentence
+              underneath is what actually resolves the customer's problem. */}
+          {orderingOpen ? (
+            <ButtonLink
+              href="/checkout"
+              tone="dark"
+              size="lg"
+              block
+              className="mt-6"
+            >
+              Choose a pickup time
+            </ButtonLink>
+          ) : (
+            <ButtonLink
+              href="/contact"
+              tone="dark"
+              variant="secondary"
+              size="lg"
+              block
+              className="mt-6"
+            >
+              Counter phone numbers
+            </ButtonLink>
+          )}
           {/* THIS SENTENCE USED TO SAY THE ORDER COULD NOT BE PLACED ONLINE
               AND TO CALL THE BRANCH INSTEAD. It stopped being true the day
               place_order landed, and nothing here noticed, because the cart
@@ -381,10 +417,17 @@ export function CartView({ categories }: { categories: MenuCategory[] }) {
 
               14px, not 12px, and bone/65: this is the sentence that sets the
               expectation for the screen after it, so it is not footnote
-              material. */}
+              material.
+
+              IT THEN SPENT A SECOND SPELL SAYING THE CUSTOMER WOULD PAY AT THE
+              COUNTER. That stopped being true when pickup became payment
+              first: there is no counter rail reachable from this checkout, and
+              a customer told to bring cash and then asked for QR Ph on the
+              next screen has been misled by the screen before it. */}
           <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
-            Pickup only, and you pay at the counter when you collect. The next
-            screen shows the windows the kitchen has open.
+            {orderingOpen
+              ? `Pickup only, and paid online before the kitchen starts. The next screen shows the windows ${storeName ?? "your counter"} has open.`
+              : "Online ordering is not open yet. The counters are taking orders by phone, and the same menu and prices apply."}
           </p>
         </div>
       </div>
