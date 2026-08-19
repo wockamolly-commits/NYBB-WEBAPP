@@ -61,6 +61,39 @@ const daughterOfFortune = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
+  /**
+   * NOT READY TO BE FOUND. REMOVE WHEN THE BUSINESS IS READY TO OPERATE.
+   * ================================================================
+   * This is the second time this tag has been here and the reason is different,
+   * which is worth stating so the next person does not delete it against the
+   * old one. The first time, the franchise form could not store a lead and
+   * being found would have converted enquiries into error messages. That is
+   * fixed. This time the site works and the BUSINESS is not ready: ordering
+   * still says it opens soon because no branch has confirmed kitchen capacity,
+   * and a franchise pitch is a poor first impression alongside a storefront
+   * that cannot take an order.
+   *
+   * A `noindex` tag rather than a `robots.txt` disallow, and the difference
+   * matters. A disallow stops crawlers READING the page, which also stops them
+   * reading any instruction on it, so a URL already known can stay listed with
+   * no description. `noindex` invites the crawler in specifically to be told
+   * not to list it, which works whether or not the page was indexed before.
+   * For that reason this project deliberately has no robots.txt, and adding one
+   * that blocks crawling would undo this.
+   *
+   * IT HIDES, IT DOES NOT LOCK. Anyone with the address still reaches the site,
+   * and the franchise form still stores a real lead and still sends a real
+   * alert. If the site needs to be genuinely unreachable, that is Vercel's
+   * Deployment Protection, which is a project setting rather than anything in
+   * this repository.
+   *
+   * The workspace sets the same tag for a permanent and unrelated reason: staff
+   * tools are nobody's search result.
+   *
+   * TO UNDO: delete this block, redeploy, and request indexing in Google Search
+   * Console rather than waiting to be recrawled.
+   */
+  robots: { index: false, follow: false },
   title: {
     default: "New York Buffalo Brad's Hot Wings",
     template: "%s · NY Buffalo Brad's",

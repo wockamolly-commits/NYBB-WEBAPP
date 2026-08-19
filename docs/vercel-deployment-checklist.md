@@ -97,8 +97,15 @@ the full test suite were green throughout.
   So the spam limit is on, and so is push sending. Had this key been missing, push would have
   looked correct at every step a keyboard can check and delivered nothing, which is a bad thing to
   discover on a tablet at a counter.
-- **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.** The
-  `noindex` that covered the site while it could not is removed, so the site is findable again.
+- **The site is `noindex` again as of 2026-08-19, and the reason is not the old one.** It was first
+  hidden because the franchise form could not store a lead. That is fixed. It is hidden now because
+  the BUSINESS is not ready to operate: ordering still says it opens soon, since no branch has
+  confirmed kitchen capacity, and a franchise pitch reads badly beside a storefront that cannot
+  take an order. Whoever removes the tag should check that reason rather than the first one.
+  **It hides, it does not lock.** Anyone with the address still reaches the site, and the franchise
+  form still stores a real lead and sends a real alert. Genuine inaccessibility is Vercel's
+  Deployment Protection, a project setting rather than anything in this repository.
+- **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.**
   Proving the connection without submitting anything is worth knowing for next time: request
   `/order/<any-code>`. "We cannot find an order for that link" means the database was reached and
   answered, because `lib/orders/reader.ts` returns `unavailable`, with different wording, for an
