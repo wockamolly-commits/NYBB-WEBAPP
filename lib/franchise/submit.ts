@@ -11,19 +11,24 @@ import type { FranchiseInquiry } from "./inquiry";
  * should not get one. That is the same shape every other public write in this
  * schema uses.
  *
- * NOTHING IS EMAILED YET, AND THAT IS NOT AN OVERSIGHT.
+ * THE MAIL IS SENT ELSEWHERE, AND DELIBERATELY NOT FROM HERE.
  * ================================================================
- * Spec N9 asks for a mail to franchise@5bdf.ph alongside the row. There is no
- * mailer in this project: `.env.example` reserves RESEND_API_KEY and
- * `app_settings.email_enabled` has defaulted to false since 0008, but no
- * provider is installed or wired. Adding one is a dependency, a credential and
- * a recurring cost, which is an owner decision rather than a detail to slip in
- * here.
+ * Spec N9 asks for a mail to franchise@5bdf.ph alongside the row, and since
+ * 2026-08-18 there is one: `lib/email/franchise-alert.ts` composes it and
+ * `app/(marketing)/franchise/actions.ts` hands it to `after()` once this
+ * function has returned ok.
  *
- * So the row is the system of record and the mail is a convenience on top of
- * it, which is the right order anyway: a lead that is emailed and not stored is
- * lost the moment somebody deletes the mail, and a lead that is stored and not
- * emailed is merely waiting to be looked at.
+ * It is not called from here, for the same reason `lib/customer/payment.ts`
+ * does not call `notifyStaffOfNewOrder`: this file is framework-neutral and
+ * `after()` belongs to the adapter that has a request in flight. Keeping the
+ * split means these rules stay testable without a Next request.
+ *
+ * The ordering is the part worth protecting. The row is the system of record
+ * and the mail is a convenience on top of it: a lead that is emailed and not
+ * stored is lost the moment somebody deletes the mail, and a lead that is
+ * stored and not emailed is merely waiting to be looked at. So the mail is
+ * attempted only after a successful store, and its failure is logged rather
+ * than raised.
  */
 
 /**

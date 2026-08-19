@@ -1,6 +1,8 @@
 "use server";
 
 import { headers } from "next/headers";
+import { after } from "next/server";
+import { sendFranchiseAlert } from "@/lib/email/franchise-alert";
 import {
   franchiseInquirySchema,
   firstIssue,
@@ -61,6 +63,20 @@ export async function submitFranchiseInquiry(
   if (!result.ok) {
     return { status: "error", message: result.message, values: parsed.data };
   }
+
+  // AFTER the store, and only on success. The row is the system of record and
+  // the mail is a nudge toward it, so a lead is never traded for an alert.
+  //
+  // Handed to `after()` rather than awaited, for two reasons. The person who
+  // filled the form should see their confirmation without waiting on a mail
+  // provider, and a detached promise is killed mid-flight on Vercel, surfacing
+  // its ECONNRESET on somebody else's later request. `sendFranchiseAlert`
+  // resolves in every case, so nothing here can reject.
+  //
+  // The service stays free of Next imports and the adapter owns `after()`,
+  // which is the same split `app/actions/payment.ts` uses for the counter's
+  // new-order push.
+  after(sendFranchiseAlert(parsed.data));
 
   return { status: "sent" };
 }
