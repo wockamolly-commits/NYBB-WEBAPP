@@ -74,6 +74,29 @@ the full test suite were green throughout.
   not prove a notification arrives on a phone lying face down, or on a tablet whose browser is
   fully closed, which is the entire reason this is Web Push rather than a page that refreshes
   itself. Those cases live in `docs/push-device-test-checklist.md` and need real hardware.
+- **`SUPABASE_SERVICE_ROLE_KEY` is set, and it turned on more than anyone was asking for.**
+  It was set at some point before 2026-08-19 without being announced, and the proof is
+  indirect but solid: a franchise alert email arrived, and `emailEnabled()` in
+  `lib/email/franchise-alert.ts` returns false the moment `adminConfigured()` is false. No key, no
+  email. (Reaching the workspace proves nothing here, because `resolveStaffEmailAccess`
+  short-circuits on `SUPER_ADMIN_EMAIL` before it ever consults the admin client.)
+
+  **This one key gates far more than the spam limit it is usually described by.** Everything below
+  is silently inert without it, and every one of them fails by doing nothing rather than by
+  erroring, which is the worst way to find out:
+
+  | Gated on `adminConfigured()` | What its absence looks like |
+  | --- | --- |
+  | `withinAddressLimit` (`lib/rate-limit/limiter.ts`) | The limiter fails OPEN by specification, so the form works and is simply unprotected |
+  | `notifyCustomer`, `notifyStaffOfNewOrder` (`lib/push/dispatch.ts`) | Opt-in works, a subscription is stored, and no notification is ever sent |
+  | `drainPushQueue` (`lib/push/drain.ts`) | Queued cancellation notices accumulate unread |
+  | `emailEnabled` (`lib/email/franchise-alert.ts`) | Leads store, nobody is told |
+  | `resolve_active_staff_email` (`lib/staff/access.ts`) | Only the configured Super Admin can sign in; real staff cannot |
+  | `startPayment`, `settleMockPayment` (`lib/customer/payment.ts`) | Payment refuses with a generic unavailable message |
+
+  So the spam limit is on, and so is push sending. Had this key been missing, push would have
+  looked correct at every step a keyboard can check and delivered nothing, which is a bad thing to
+  discover on a tablet at a counter.
 - **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.** The
   `noindex` that covered the site while it could not is removed, so the site is findable again.
   Proving the connection without submitting anything is worth knowing for next time: request
