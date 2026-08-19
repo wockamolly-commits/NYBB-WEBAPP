@@ -935,7 +935,7 @@ because each one costs a day if rediscovered.
     **`0047` is applied to production as of 2026-08-18 and is therefore frozen.** It was edited
     in place once, during the branch that wrote it, to make that guard atomic rather than
     check-then-act. That was legitimate only because it had never run anywhere. It has now, so
-    the next correction to it is `0048`. Applying it changed nothing a customer can see yet: it
+    the next correction to it is a later file. Applying it changed nothing a customer can see yet: it
     adds a registration function, and nothing can call that function until a deployment exists
     with a VAPID pair.
 
@@ -960,6 +960,10 @@ because each one costs a day if rediscovered.
     Server Actions and redelivered webhooks. **The general lesson is the one worth carrying: for
     any notification, name the moment it fires and then name a real path that reaches that moment
     today.** Both halves. The second is the one nobody checks.
+
+    **`0048` is applied as of 2026-08-19 and is therefore frozen.** Verified against the real
+    database rather than only against PGlite: the claim answered `true` once and `false` twice for
+    one order, stamped `staff_notified_at` a single time, and is refused to an anonymous caller.
 
 21. **`app_settings` is one database shared by every environment, so a feature
     flag is not an environment switch.** Turning `paymongo_enabled` and

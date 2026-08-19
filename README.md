@@ -85,12 +85,16 @@ Three things a future session will otherwise rediscover:
   affected.
 
 **The Supabase project now exists, and `0001` to `0047` plus the seed are
-applied to it. `0048` is written and green in the suite but is NOT applied**,
-which is the first item under Next. `0001` to `0044` went in on 2026-08-14, `0045` and `0046` on
-2026-08-17, and `0047` on 2026-08-18. **`0047` is therefore frozen**: section 25
-makes migrations forward-only, and it has now run against a real database, so
-correcting it means a later file, never an edit. `0048` is not frozen yet and
-becomes so the moment it is applied. `0022` and `0033` had both been applied through
+applied to it, and `0048` went in on 2026-08-19.** `0001` to `0044` went in on
+2026-08-14, `0045` and `0046` on 2026-08-17, and `0047` on 2026-08-18. **`0047`
+and `0048` are therefore both frozen**: section 25 makes migrations
+forward-only, and each has now run against a real database, so correcting
+either means a later file, never an edit.
+
+`0048` was verified against the real database rather than only in the suite:
+`claim_staff_new_order_notice` answered `true` once and `false` twice for the
+same order, stamped `staff_notified_at` a single time, and is refused to an
+anonymous caller. `0022` and `0033` had both been applied through
 the dashboard SQL editor, which does not record them in the CLI's migration
 history, so the history was repaired in each case before the following
 migrations were pushed. See handoff trap 15. A green migration suite proves the
@@ -379,23 +383,18 @@ the counter, so ordering keeps working. See handoff trap 21.
 
 Next:
 
-1. **Apply `0048` to the project.** It is written and green against a real Postgres in the suite,
-   and nothing announces an order to a counter tablet until it is applied: the claim RPC it adds is
-   called before every send, and a missing function is a logged error that fails open, so the alert
-   still goes out but the exactly-once guarantee does not exist yet. `npx supabase migration list`
-   before believing otherwise. `0047` and everything below it are frozen.
-2. **Run the staff half of `docs/push-device-test-checklist.md` on the tablet.** This is now
-   possible: place a counter order, with the workspace browser closed. It was believed to be
-   waiting on PayMongo and was not.
-3. Re-run the wider Workspace smoke test. The audit page is verified against
+1. **Run the staff half of `docs/push-device-test-checklist.md` on the tablet.** Everything it
+   needs is now in place: `0048` is applied, the VAPID pair is set, and the counter is told when
+   an order is placed. It was believed to be waiting on PayMongo and was not.
+2. Re-run the wider Workspace smoke test. The audit page is verified against
    staging; the order board and Team page have not been re-checked since `0024`
    replaced the transition function.
-4. Kitchen capacity for Central Bloc, which is spec section 28 item 4 and a conversation with the
+3. Kitchen capacity for Central Bloc, which is spec section 28 item 4 and a conversation with the
    manager rather than a build. Its 24/7 schedule is owner-confirmed and configured.
-5. PayMongo merchant approval, which is the actual blocker for taking money and therefore for the
+4. PayMongo merchant approval, which is the actual blocker for taking money and therefore for the
    payment-first ruling in spec section 17. It has a lead time measured in weeks and nothing in this
    repository shortens it. The code around it is ported and waiting on keys.
-6. Add a second Supabase project for production, per spec section 25. The
+5. Add a second Supabase project for production, per spec section 25. The
    current one should be treated as staging.
 
 ## Start here
