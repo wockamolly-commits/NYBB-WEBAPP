@@ -364,6 +364,19 @@ Phase 2 so far:
   the honest starting state: no hours or capacity was invented, and no branch
   is made live by the migration.
 
+**Online payment is switched on in the database, and that is now gated by what
+each deployment can actually service.** `paymongo_enabled` and
+`paymongo_methods.qrph` are true in `app_settings`, which every environment
+shares, so production began offering QR Ph at checkout while holding no
+PayMongo keys and unable to run the simulator (it is hard-disabled whenever
+`NODE_ENV` is production). Orders were placed on a rail that could not be paid,
+and the pay button answered "We could not start that payment. Please try again
+in a moment." on every press while logging nothing. `onlinePaymentsServiceable()`
+is the missing question, asked now by both checkout's offer and the order page's
+button: the database decides whether the business takes a rail, the deployment
+decides whether it can carry one. With no keys, checkout falls back to paying at
+the counter, so ordering keeps working. See handoff trap 21.
+
 Next:
 
 1. **Apply `0048` to the project.** It is written and green against a real Postgres in the suite,

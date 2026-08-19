@@ -961,6 +961,41 @@ because each one costs a day if rediscovered.
     any notification, name the moment it fires and then name a real path that reaches that moment
     today.** Both halves. The second is the one nobody checks.
 
+21. **`app_settings` is one database shared by every environment, so a feature
+    flag is not an environment switch.** Turning `paymongo_enabled` and
+    `paymongo_methods.qrph` on made the production deployment offer QR Ph at
+    checkout. That deployment holds no PayMongo keys, and the simulator is
+    hard-disabled whenever `NODE_ENV` is production, so every press of the pay
+    button returned "We could not start that payment. Please try again in a
+    moment." A customer could place a QR Ph order and then had no way to pay it.
+
+    **The guard that was missing is the distinction between two questions.**
+    "Does this business take QR Ph" is the owner's decision and belongs in the
+    database. "Can the machine serving this request carry a QR Ph payment
+    through" is a fact about the deployment, and nothing was asking it.
+    `onlinePaymentsServiceable()` is that question, and both checkout's offer
+    and the order page's pay button now go through it.
+
+    **The branch that refused logged nothing at all**, which is why this looked
+    like a PayMongo outage rather than a configuration mismatch: a real
+    PayMongo failure and an unconfigured deployment returned the identical
+    sentence, and only one of them left a trace. It logs now.
+
+    Two further things worth keeping:
+
+    - An order can outlive its rail. Orders placed on QR Ph before the fix are
+      still unpayable on a keyless deployment, so `/order/[code]` now says so
+      and names the branch phone number rather than offering a button that
+      cannot work.
+    - **A paid online order stays `pending`.** That is by design: the staff
+      board reads the payment row (`lib/staff/board.ts`) and offers Start.
+      But `orders_broadcast_tracking_status` fires on a STATUS change, so
+      settling a payment broadcasts nothing, and the tracking page had no
+      reason to re-render. The simulator therefore printed "Mock payment
+      confirmed" directly above "Payment still needed" until the 20-second
+      visible-tab poll caught up. Any future surface that changes a payment
+      without changing a status has to refresh the tree itself.
+
 ## Do not
 
 - Do not invent answers to spec section 28. Central Bloc is the selected pilot branch and its 24/7

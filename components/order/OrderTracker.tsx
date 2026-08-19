@@ -1,3 +1,4 @@
+import { onlinePaymentsServiceable } from "@/lib/paymongo/config";
 import { telHref } from "@/lib/phone";
 import { formatPeso } from "@/lib/format";
 import { PICKUP_STEPS, statusCopy, stepIndex } from "@/lib/orders/status";
@@ -88,6 +89,10 @@ export function OrderTracker({
               shortCode={order.shortCode}
               trackingToken={trackingToken}
               totalCents={order.totalCents}
+              // Read here, on the server, because it is a fact about the
+              // machine serving this request and the browser has no way to
+              // know it.
+              serviceable={onlinePaymentsServiceable()}
             />
           ) : null}
 

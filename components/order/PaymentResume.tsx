@@ -5,16 +5,23 @@ import Image from "next/image";
 import { payOrder } from "@/app/actions/payment";
 import { Button } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
+import { onlinePaymentPrompt } from "@/lib/orders/status";
 import { MockPayment } from "@/components/checkout/MockPayment";
 
 export function PaymentResume({
   shortCode,
   trackingToken,
   totalCents,
+  serviceable,
 }: {
   shortCode: string;
   trackingToken: string | null;
   totalCents: number;
+  /**
+   * Whether this deployment can carry an online payment through, decided on
+   * the server. Not the same question as whether the business takes QR Ph.
+   */
+  serviceable: boolean;
 }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [mock, setMock] = useState(false);
@@ -39,6 +46,22 @@ export function PaymentResume({
         setError(result.error);
       }
     });
+  }
+
+  const prompt = onlinePaymentPrompt(serviceable);
+
+  // No button at all, rather than a disabled one. A greyed-out control invites
+  // somebody to keep pressing it; a sentence naming the branch phone number
+  // below gives them something that actually resolves the order.
+  if (prompt.kind === "unavailable") {
+    return (
+      <div className="border-nybb-bone/15 mt-6 border-t pt-5">
+        <p className="type-caps text-nybb-bone/55">{prompt.title}</p>
+        <p className="text-nybb-bone/75 mt-2 max-w-prose text-sm leading-relaxed">
+          {prompt.body}
+        </p>
+      </div>
+    );
   }
 
   return (

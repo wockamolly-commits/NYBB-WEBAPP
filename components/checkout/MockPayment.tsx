@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { completeMockPayment } from "@/app/actions/payment";
 import { Button } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
@@ -16,6 +17,7 @@ export function MockPayment({
   totalCents: number;
   compact?: boolean;
 }) {
+  const router = useRouter();
   const [result, setResult] = useState<"idle" | "paid" | "failed">("idle");
   const [pending, startTransition] = useTransition();
 
@@ -29,6 +31,16 @@ export function MockPayment({
         outcome,
       });
       setResult(next.ok && "done" in next ? "paid" : "failed");
+
+      // The page around this component is server-rendered from the order, and
+      // settling a payment does not change the order's STATUS: a paid online
+      // order stays `pending` and the staff board reads the payment row to
+      // offer Start. So the tracking page's Realtime signal, which fires on a
+      // status change, never fires here. Without this refresh the screen went
+      // on saying "Waiting for payment" and "Payment still needed" directly
+      // above the words "Mock payment confirmed", and only the 20-second
+      // visible-tab poll eventually resolved the contradiction.
+      router.refresh();
     });
   }
 

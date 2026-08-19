@@ -5,7 +5,7 @@ import { readOrderByTracking } from "@/lib/orders/reader";
 import { normalizeShortCode, normalizeTrackingToken } from "@/lib/orders/tracking";
 import { mapAttachResult, type PayOrderResult } from "@/lib/paymongo/attach-result";
 import { PaymongoError } from "@/lib/paymongo/client";
-import { paymongoConfigured } from "@/lib/paymongo/config";
+import { onlinePaymentsServiceable } from "@/lib/paymongo/config";
 import {
   attachPaymentIntent,
   createPaymentIntent,
@@ -77,8 +77,29 @@ export async function startPayment(
   const shortCode = normalizeShortCode(parsed.data.shortCode);
   const trackingToken = normalizeTrackingToken(parsed.data.trackingToken);
   const mockEnabled = mockPaymentsEnabled();
-  if (!shortCode || !adminConfigured() || (!mockEnabled && !paymongoConfigured())) {
-    return unavailable();
+  if (!shortCode || !adminConfigured()) return unavailable();
+
+  // Logged, and named, because this branch used to be the quietest failure in
+  // the system. `app_settings.paymongo_enabled` is shared by every
+  // environment, so switching QR Ph on opened it on a production deployment
+  // with no PayMongo keys, where the simulator is hard-disabled. Every press
+  // of the pay button returned the generic "try again in a moment" and wrote
+  // nothing anywhere, so there was no evidence that this was the branch being
+  // taken rather than PayMongo refusing us. Checkout no longer offers a rail
+  // this deployment cannot service; an order placed before that fix still
+  // reaches here.
+  if (!onlinePaymentsServiceable()) {
+    console.error(
+      "[payment] online payment is switched on in app_settings but this " +
+        "deployment cannot service it: no PayMongo keys, and the simulator " +
+        "is unavailable outside development",
+    );
+    return {
+      ok: false,
+      error:
+        "Online payment is not available on this site yet. Please call the " +
+        "branch on your order page, and they can take this now.",
+    };
   }
 
   if (

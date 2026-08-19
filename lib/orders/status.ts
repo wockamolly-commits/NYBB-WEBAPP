@@ -40,6 +40,39 @@ export function isTerminalStatus(status: OrderStatus): boolean {
 }
 
 /**
+ * What to show a customer whose order is waiting on an online payment.
+ *
+ * There are two answers and only one of them is a button. An order can outlive
+ * the deployment's ability to take money for it: the rail is opened by a flag
+ * in a database every environment shares, so orders were placed on QR Ph
+ * against a production deployment holding no PayMongo keys. Those orders are
+ * real, correct, and unpayable here, and the screen offered them a button that
+ * failed on every press with "please try again in a moment", which is an
+ * instruction to keep doing the one thing that cannot work.
+ *
+ * Extracted from the component, the way `lib/staff/board.ts` extracts the
+ * board's rule, because the interesting part is which of the two a customer
+ * gets rather than how it is laid out.
+ */
+export type OnlinePaymentPrompt =
+  /** Offer the pay button. This deployment can carry the payment through. */
+  | { kind: "payable" }
+  /** No button. Say what happened and give them something that works. */
+  | { kind: "unavailable"; title: string; body: string };
+
+export function onlinePaymentPrompt(serviceable: boolean): OnlinePaymentPrompt {
+  if (serviceable) return { kind: "payable" };
+  return {
+    kind: "unavailable",
+    title: "Online payment is not available",
+    body:
+      "This order is placed and its pickup window is held, but online payment " +
+      "is not switched on here yet. Call the branch below to sort out payment, " +
+      "or place the order again and pay at the counter.",
+  };
+}
+
+/**
  * How the screen should look, rather than which status it is.
  *
  * `ready` is its own tone and not merely another active step. It is the moment
