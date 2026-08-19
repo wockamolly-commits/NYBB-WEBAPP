@@ -43,10 +43,14 @@ the opt-in again. If you ever must replace it, plan on re-registering every tabl
 
 Use a different pair for local development, so a laptop can never send to a real counter tablet.
 
-As of 2026-08-18 the `nybb-order` Vercel project exists and deploys, so a production pair has
-somewhere to go. Whether it has been SET there is a separate question, and the opt-in saying
-"not configured on this deployment" is how you find out. See
-`docs/vercel-deployment-checklist.md`, including why some commits deploy and others are blocked.
+**As of 2026-08-19 the pair is set on the production deployment and the staff opt-in offers a
+button.** That is the last thing that can be confirmed from a keyboard. Everything below this line
+needs hardware, and the reason is the same one that made this Web Push in the first place: the
+cases that matter are the ones where nobody is looking at a screen.
+
+Note what the button proves and what it does not. It proves the public key reached the BUILD, not
+merely the settings page, which is a real distinction that has already caught this project twice.
+It proves nothing about delivery.
 
 ---
 

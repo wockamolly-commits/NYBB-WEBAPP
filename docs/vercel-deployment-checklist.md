@@ -60,7 +60,20 @@ the full test suite were green throughout.
   that sender delivers ONLY to the address the Resend account was created with.** So
   `FRANCHISE_ALERT_TO` currently has to be that address and cannot be `franchise@5bdf.ph`. When a
   domain is verified, change those two values and redeploy. No code changes.
-- The VAPID pair is still unset, so customer and staff push are both inert.
+- **The VAPID pair is set as of 2026-08-19**, along with `VAPID_SUBJECT` and `SUPER_ADMIN_EMAIL`.
+  Confirmed by the staff opt-in on `/workspace/orders` offering a button rather than saying it is
+  not configured on this deployment, which is the distinction that proves the public key reached
+  the BUILD rather than merely the settings page.
+  `SUPER_ADMIN_EMAIL` is worth naming beside it: it is the only authority for a staff session
+  (`lib/staff/access.ts`), so without it nobody can reach the workspace at all and the push opt-in
+  is untestable no matter how correct the keys are.
+  **Generate that pair once and keep it.** A browser ties its subscription to the exact key that
+  created it, so replacing the pair does not rotate a credential, it silently orphans every device
+  that has opted in. That cost was zero until the first device registered. It is not zero now.
+- **What is proven and what is not.** A button appearing proves the key reached the build. It does
+  not prove a notification arrives on a phone lying face down, or on a tablet whose browser is
+  fully closed, which is the entire reason this is Web Push rather than a page that refreshes
+  itself. Those cases live in `docs/push-device-test-checklist.md` and need real hardware.
 - **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.** The
   `noindex` that covered the site while it could not is removed, so the site is findable again.
   Proving the connection without submitting anything is worth knowing for next time: request
