@@ -66,9 +66,11 @@ export function onlinePaymentPrompt(serviceable: boolean): OnlinePaymentPrompt {
     kind: "unavailable",
     title: "Online payment is not available",
     body:
-      "This order is placed and its pickup window is held, but online payment " +
-      "is not switched on here yet. Call the branch below to sort out payment, " +
-      "or place the order again and pay at the counter.",
+      "Online payment is not switched on for this site yet, so this order " +
+      "cannot be paid here. Nothing has been charged. It will be released " +
+      "automatically in a few minutes and the pickup window will go back to " +
+      "whoever wants it, so please order again and pay at the counter, or " +
+      "call the branch below.",
   };
 }
 

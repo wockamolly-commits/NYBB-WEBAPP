@@ -15,11 +15,20 @@ describe("what a customer waiting on an online payment is shown", () => {
     expect(prompt.kind).toBe("unavailable");
     if (prompt.kind !== "unavailable") return;
 
-    // The order still exists and its window is still held. Saying otherwise
-    // sends somebody to order the same food twice.
-    expect(prompt.body).toContain("placed");
-    // And it names something that works instead of a button that does not.
-    expect(prompt.body).toContain("Call the branch");
+    // It must NOT claim the pickup window is held. An unpaid online order is
+    // cancelled by expire_unpaid_online_orders() after
+    // `online_payment_expiry_minutes` and its slot is released, so telling a
+    // customer their window is safe is a promise this system actively breaks
+    // minutes later. The first version of this copy said exactly that.
+    expect(prompt.body).not.toMatch(/held|reserved|saved for you/i);
+    expect(prompt.body).toMatch(/released automatically/i);
+
+    // Says no money moved, because "payment failed" reads as "I may have been
+    // charged" to anybody who has ever used a card online.
+    expect(prompt.body).toMatch(/nothing has been charged/i);
+
+    // And names something that works instead of a button that does not.
+    expect(prompt.body).toMatch(/pay at the counter/i);
   });
 });
 
