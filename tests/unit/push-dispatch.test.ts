@@ -224,12 +224,16 @@ describe("notifyStaffOfNewOrder", () => {
       }
       throw new Error(`unexpected table ${table}`);
     });
-    rpc.mockResolvedValue({ data: null, error: new Error("denied") });
+    rpc.mockImplementation((fn: string) =>
+      fn === "claim_staff_new_order_notice"
+        ? Promise.resolve({ data: true, error: null })
+        : Promise.resolve({ data: null, error: new Error("denied") }),
+    );
     const { notifyStaffOfNewOrder } = await import("@/lib/push/dispatch");
     await expect(notifyStaffOfNewOrder(orderId)).resolves.toBeUndefined();
-    // Proves the targetsError branch (dispatch.ts:319-325) was actually
-    // reached, not skipped on the way there.
-    expect(rpc).toHaveBeenCalled();
+    // Proves the targetsError branch was actually reached, not skipped on the
+    // way there.
+    expect(rpc).toHaveBeenCalledWith("staff_push_targets", expect.anything());
     expect(sendWeb).not.toHaveBeenCalled();
   });
 
@@ -262,10 +266,14 @@ describe("notifyStaffOfNewOrder", () => {
       }
       throw new Error(`unexpected table ${table}`);
     });
-    rpc.mockResolvedValue({
-      data: [{ endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" }],
-      error: null,
-    });
+    rpc.mockImplementation((fn: string) =>
+      fn === "claim_staff_new_order_notice"
+        ? Promise.resolve({ data: true, error: null })
+        : Promise.resolve({
+            data: [{ endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" }],
+            error: null,
+          }),
+    );
     sendWeb.mockResolvedValueOnce(["https://web.push/live"]);
 
     const { notifyStaffOfNewOrder } = await import("@/lib/push/dispatch");
@@ -286,5 +294,63 @@ describe("notifyStaffOfNewOrder", () => {
     // never checks the summing at all.
     expect(payload.body).toContain("5 items");
     expect(deleteSpy).toHaveBeenCalledWith(["https://web.push/live"]);
+  });
+
+  // Every caller of this function retries: checkout replays a Server Action
+  // and `place_order` hands back the first attempt's result unchanged, and
+  // PayMongo redelivers a webhook. The counter cannot tell a duplicate alert
+  // from a second order, so the second call has to be silent, and it has to be
+  // silent before it costs a lookup.
+  it("sends nothing, and reads nothing, when the notice is already claimed", async () => {
+    from.mockImplementation((table: string) => {
+      throw new Error(`should not have read ${table}`);
+    });
+    rpc.mockResolvedValue({ data: false, error: null });
+
+    const { notifyStaffOfNewOrder } = await import("@/lib/push/dispatch");
+    await expect(notifyStaffOfNewOrder(orderId)).resolves.toBeUndefined();
+
+    expect(rpc).toHaveBeenCalledWith("claim_staff_new_order_notice", {
+      p_order_id: orderId,
+    });
+    expect(from).not.toHaveBeenCalled();
+    expect(sendWeb).not.toHaveBeenCalled();
+  });
+
+  // Fails open, on purpose, and this test is the record of that choice. A
+  // database hiccup on the claim must not cost the counter an order; the price
+  // of the alternative is a duplicate alert, which is an annoyance rather than
+  // food nobody cooks.
+  it("still sends when the claim itself errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation((table: string) => {
+      if (table === "orders") {
+        return makeSelectBuilder({
+          data: {
+            short_code: "NY-ABC234",
+            branch_id: "44444444-4444-4444-8444-444444444444",
+            branches: { short_name: "Katipunan" },
+            pickup_slots: null,
+          },
+          error: null,
+        });
+      }
+      if (table === "order_items") return makeSelectBuilder({ data: [{ qty: 1 }], error: null });
+      if (table === "push_subscriptions") return makeSubscriptionsBuilder([], () => {});
+      throw new Error(`unexpected table ${table}`);
+    });
+    rpc.mockImplementation((fn: string) =>
+      fn === "claim_staff_new_order_notice"
+        ? Promise.resolve({ data: null, error: new Error("connection reset") })
+        : Promise.resolve({
+            data: [{ endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" }],
+            error: null,
+          }),
+    );
+
+    const { notifyStaffOfNewOrder } = await import("@/lib/push/dispatch");
+    await notifyStaffOfNewOrder(orderId);
+
+    expect(sendWeb).toHaveBeenCalledTimes(1);
   });
 });

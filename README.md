@@ -33,9 +33,9 @@ implemented and smoke-tested against Supabase. Central Bloc's 24/7 schedule is n
 its kitchen capacity remains pending. Once that capacity is confirmed, a customer can place a real
 pickup order, get a pickup code back, and open the order again from its
 tracking link or signed-in order history. `npm run
-build`, `npm run lint` and `npm test` (621 tests in 55 files)
+build`, `npm run lint`, `npm run typecheck` and `npm test` (701 tests in 64 files)
 are all green, every page has been rendered and reviewed in a browser at 320px,
-375px and 1280px, and migrations `0001` to `0044` apply cleanly against a real
+375px and 1280px, and migrations `0001` to `0048` apply cleanly against a real
 Postgres in the test suite.
 
 **Phase 3's notifications are built and merged to `main`, and both audiences are
@@ -49,6 +49,24 @@ half was Expo-only, then gone with the app, then rebuilt on Web Push on
 service and the route. The tracking page still updates itself over Realtime for
 whoever is looking at it; Web Push is for whoever has closed the tab, on either
 side of the counter.
+
+**The counter tablet could not be told about a single order until 2026-08-19, and no test in this
+repository could see it.** `notifyStaffOfNewOrder` had two callers, the PayMongo webhook and the
+development mock rail, and both fire when money settles. Every order this system can currently take
+is paid at the counter (`paymongo_enabled` is off, so checkout offers `counter` alone, and
+`place_order` writes the payment row `due`), so no webhook was ever coming and the tablet rang for
+nothing. The unit tests passed because they test the dispatcher, which was correct; the gap was that
+nothing called it. It was read as blocked on PayMongo merchant approval, which has a lead time in
+weeks. `app/actions/checkout.ts` now announces a counter order at placement, which is what spec
+section 15 said all along, and **the tablet test in `docs/push-device-test-checklist.md` needs no
+PayMongo, no merchant account and no card rail.** An online order is still announced from the
+webhook on `paid`, deliberately: it is placed unpaid and the expiry sweep may yet cancel it.
+
+Migration `0048` is what makes that telling exactly once.
+`claim_staff_new_order_notice` hands the right to send to whichever caller asks first and refuses
+every later one. It exists because all three callers retry: a replayed Server Action reaches the
+trigger with `place_order`'s stored result, byte for byte identical to the first, and PayMongo
+redelivers webhooks. A counter cannot tell a duplicate alert from a second order.
 
 Three things a future session will otherwise rediscover:
 
@@ -67,10 +85,12 @@ Three things a future session will otherwise rediscover:
   affected.
 
 **The Supabase project now exists, and `0001` to `0047` plus the seed are
-applied to it.** `0001` to `0044` went in on 2026-08-14, `0045` and `0046` on
+applied to it. `0048` is written and green in the suite but is NOT applied**,
+which is the first item under Next. `0001` to `0044` went in on 2026-08-14, `0045` and `0046` on
 2026-08-17, and `0047` on 2026-08-18. **`0047` is therefore frozen**: section 25
 makes migrations forward-only, and it has now run against a real database, so
-correcting it means `0048`, never an edit. `0022` and `0033` had both been applied through
+correcting it means a later file, never an edit. `0048` is not frozen yet and
+becomes so the moment it is applied. `0022` and `0033` had both been applied through
 the dashboard SQL editor, which does not record them in the CLI's migration
 history, so the history was repaired in each case before the following
 migrations were pushed. See handoff trap 15. A green migration suite proves the
@@ -346,14 +366,23 @@ Phase 2 so far:
 
 Next:
 
-1. Re-run the wider Workspace smoke test. The audit page is verified against
+1. **Apply `0048` to the project.** It is written and green against a real Postgres in the suite,
+   and nothing announces an order to a counter tablet until it is applied: the claim RPC it adds is
+   called before every send, and a missing function is a logged error that fails open, so the alert
+   still goes out but the exactly-once guarantee does not exist yet. `npx supabase migration list`
+   before believing otherwise. `0047` and everything below it are frozen.
+2. **Run the staff half of `docs/push-device-test-checklist.md` on the tablet.** This is now
+   possible: place a counter order, with the workspace browser closed. It was believed to be
+   waiting on PayMongo and was not.
+3. Re-run the wider Workspace smoke test. The audit page is verified against
    staging; the order board and Team page have not been re-checked since `0024`
    replaced the transition function.
-2. Apply migrations `0026` through `0029` on staging, then configure Central Bloc's confirmed
-   24/7 schedule as 12:00 AM to 12:00 AM every day and browser-smoke-test the
-   availability and settings controls.
-   Kitchen capacity remains blocked on spec section 28, item 4.
-3. Add a second Supabase project for production, per spec section 25. The
+4. Kitchen capacity for Central Bloc, which is spec section 28 item 4 and a conversation with the
+   manager rather than a build. Its 24/7 schedule is owner-confirmed and configured.
+5. PayMongo merchant approval, which is the actual blocker for taking money and therefore for the
+   payment-first ruling in spec section 17. It has a lead time measured in weeks and nothing in this
+   repository shortens it. The code around it is ported and waiting on keys.
+6. Add a second Supabase project for production, per spec section 25. The
    current one should be treated as staging.
 
 ## Start here

@@ -1258,6 +1258,25 @@ Inherit the ZOMBEANS model exactly. It is well-tested and the alternatives are w
 1. **Push. Both audiences, both on Web Push, as of 2026-08-18.**
    - **Staff: Web Push (VAPID, self-hosted).** Fires on a new order landing. Proven on Android
      counter tablets in the reference. Opt-in appears in the workspace, not on first page load.
+
+     **"A new order landing" means two different moments, one per payment rail, and until
+     2026-08-19 only one of them was wired.** An online order lands when its payment clears, so it
+     is announced from the PayMongo webhook on `paid`: announcing it at placement would put a
+     kitchen to work on food nobody has paid for, and the expiry sweep may yet cancel it. A counter
+     order lands when it is placed, because its payment row is written `due` and the money is taken
+     at claim, so no later event is coming. Only the webhook and the development mock rail called
+     `notifyStaffOfNewOrder`, and both of them are payment settling, so for the whole of Phase 3 the
+     tablet could not be told about the only kind of order this system can currently take.
+     `app/actions/checkout.ts` announces a counter order at placement; the webhook keeps the online
+     one. If the payment-first ruling in section 17 retires counter checkout, that call site simply
+     stops firing and nothing else changes.
+
+     **Sending is exactly once per order, and the guarantee is in the database.** Every caller
+     retries: a Server Action replayed on a flaky connection reaches the trigger with `place_order`'s
+     stored result, identical to the first, and PayMongo redelivers webhooks.
+     `claim_staff_new_order_notice` (`0048`) hands the right to send to whichever caller asks first
+     and answers every later one `false`. A counter cannot tell a duplicate alert from a second
+     order, which is why this is a lock on a row rather than a condition at each call site.
    - **Customer: Web Push (the same VAPID pair).** Fires on `ready`, `rejected` and a
      non-payment `cancelled`. Opt-in appears on `/order/[code]`
      (`components/order/CustomerPushOptIn.tsx`), writing a `transport = 'web'` customer row
@@ -1438,13 +1457,28 @@ showed as "Unmapped" with truncated dropdowns. Assume ZenPOS paginates too.
 order is processed. There is no pay at counter and no pay later. An order is not sent to the branch,
 and does not consume kitchen capacity, until payment has cleared.
 
-This inverts D4 and moves PayMongo from Phase 5 optional to a Phase 1 launch blocker. **As written
-today the platform cannot satisfy this ruling**, and the gap is not a flag: `lib/paymongo` was never
-ported, `app_settings.paymongo_enabled` defaults false, `place_order` rejects every non-counter
-method while that flag is off (`0013_place_order.sql:260`), and `lib/checkout/schema.ts` pins
-`payment_method` to `'counter'` on purpose. Turning counter off before online prepay works and is
-merchant-approved closes ordering completely. Sequencing, and the consequences below, are the
-owner's to accept.
+This inverts D4 and moves PayMongo from Phase 5 optional to a Phase 1 launch blocker.
+
+**Corrected 2026-08-19. The paragraph here used to say `lib/paymongo` was never ported and that
+`lib/checkout/schema.ts` pinned `payment_method` to `'counter'`. Both were true when it was written
+and neither is true now**, and the difference matters because reading them made the whole payment
+half look unstarted. `lib/paymongo/` holds the client, intents, webhook, confirmation and refunds;
+`0030` to `0033` are the payment lifecycle, the expiry cancellation and staff refunds; the checkout
+schema accepts all five methods; and `enforce_paymongo_payment_method` (`0030`) checks the flag
+against the payment row itself rather than trusting the screen. What is genuinely missing is
+external and not code: **merchant approval, and the keys that follow it.**
+
+What remains true: `app_settings.paymongo_enabled` defaults false, `place_order` rejects every
+non-counter method while that flag is off (`0013_place_order.sql:260`), and turning counter off
+before online prepay works and is merchant-approved closes ordering completely. Sequencing, and the
+consequences below, are the owner's to accept.
+
+**The counter rail is therefore live and the ruling has not been applied to it.** Every order the
+system can take today is paid at the counter, which the ruling disallows, and section 15's staff
+notification now fires for exactly those orders. That is not a second divergence: a counter order
+has no later payment event to wait for, so the alternative is a counter that is never told an order
+exists. When the ruling is applied and counter checkout is retired, the placement trigger stops
+firing on its own and the webhook is left as the sole announcer.
 
 Consequences that follow from the ruling and are not yet built:
 

@@ -303,6 +303,18 @@ export async function notifyCustomer(orderId: string): Promise<CustomerNotifyRes
 /**
  * Tells whoever is behind the counter that an order is waiting on them.
  *
+ * Three callers now, and they are all retrying callers. Checkout replays a
+ * Server Action on a flaky connection and `place_order` hands back the first
+ * attempt's stored result unchanged; PayMongo redelivers a webhook. Neither
+ * replay is distinguishable from the real thing at this level, and a second
+ * alert for one order is indistinguishable from a second order on a lock
+ * screen. `claim_staff_new_order_notice` (0048) is what settles it, in the
+ * only place the question can be answered atomically, so this function is
+ * safe to call as often as anybody likes and sends at most once per order.
+ *
+ * A false claim is not an error and is not logged as one. It is the normal
+ * answer to the second caller.
+ *
  * The item count here means the same thing `cartQuantity` means on the
  * storefront, a sum of line quantities rather than a count of distinct lines,
  * so "3 items" reads the same way in the cart and on the counter's lock
@@ -312,6 +324,23 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
   try {
     if (!adminConfigured()) return;
     const admin = createAdminClient();
+
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_staff_new_order_notice",
+      { p_order_id: orderId },
+    );
+
+    if (claimError) {
+      // Failing closed here would mean a database hiccup silently costs the
+      // counter an order. Failing open costs it a duplicate alert, which is
+      // an annoyance rather than a missed order, so this logs and continues.
+      console.error(
+        "[push] claim_staff_new_order_notice failed",
+        claimError.message,
+      );
+    } else if (claimed !== true) {
+      return;
+    }
 
     const { data, error } = await admin
       .from("orders")

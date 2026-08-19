@@ -17,6 +17,36 @@ below and a phone.
 
 ---
 
+## What has to be true before the tablet can ring at all
+
+**Until 2026-08-19 nothing could ring it, and the reason was not hardware.**
+`notifyStaffOfNewOrder` had two callers, the PayMongo webhook and the development mock rail, and
+both of them fire when money settles. Every order this system can currently take is paid at the
+counter: `paymongo_enabled` is off, so checkout offers `counter` and nothing else, `place_order`
+writes the payment row as `due`, and the money is captured at claim. No webhook is ever coming for
+those orders, so the first item in the staff list below, the one the whole staff half exists for,
+could not be performed at all. It was read as waiting on PayMongo merchant approval, which has a
+lead time in weeks. It was not: it was waiting on a trigger nobody had wired.
+
+`app/actions/checkout.ts` now announces a counter order the moment it is placed, which is what spec
+section 15 said all along ("fires on a new order landing"). **The tablet test therefore needs no
+PayMongo, no merchant account and no card rail. It needs the VAPID pair below, a tablet, and one
+order.**
+
+Two things follow, and both matter when reading a result:
+
+- **An online order is still announced from the webhook, not at placement, and that is deliberate.**
+  It is placed unpaid and the expiry sweep may yet cancel it, so announcing it would put the kitchen
+  to work on food nobody has paid for. When PayMongo goes on, that path wants its own run of the
+  first item below, because it is a different trigger reaching the same tablet.
+- **One order rings once, and the database is what guarantees it.** `claim_staff_new_order_notice`
+  (`0048`) hands the right to send to whichever caller asks first. A replayed Server Action or a
+  redelivered webhook gets `false` and sends nothing. If you are testing repeatedly, note that
+  re-triggering a notification for an order already announced is not a way to get a second alert:
+  place a new order instead.
+
+---
+
 ## The one prerequisite, and it is cheap
 
 Staff Web Push needs a VAPID key pair (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
@@ -78,9 +108,13 @@ anywhere in it. Both cost real time on 2026-08-14. Check them first.
 
 ## Staff, on the counter tablet
 
-- [ ] **The workspace closed entirely.** Close the browser, not just the tab, then place an order.
-      The tablet must ring. This is the entire reason the staff half is Web Push and not a socket
-      on the orders board, so a pass on a tablet with the board open proves nothing.
+- [ ] **The workspace closed entirely.** Close the browser, not just the tab, then place an order,
+      paying at the counter. The tablet must ring. This is the entire reason the staff half is Web
+      Push and not a socket on the orders board, so a pass on a tablet with the board open proves
+      nothing.
+- [ ] **A second order rings a second time.** Not the same order twice. The claim in `0048` is
+      per order, so this is what separates "the alert works" from "one alert happened to get
+      through", and it is the check that the claim is not stuck on.
 - [ ] **Opt in, in the production build.** `next dev` is not a valid environment for this: run
       `npm run build && npx next start -p 3001`, sign in, tap "Tell me about new orders" on the
       orders board, and confirm a `push_subscriptions` row appears with `audience = 'staff'` and

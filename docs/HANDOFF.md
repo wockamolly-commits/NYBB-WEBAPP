@@ -939,6 +939,28 @@ because each one costs a day if rediscovered.
     adds a registration function, and nothing can call that function until a deployment exists
     with a VAPID pair.
 
+20. **A feature can be complete, tested, deployed and reachable by nobody, and every test still
+    passes.** Staff push had a dispatcher with unit tests, a payload builder with unit tests, an
+    opt-in button, a service worker, a VAPID pair set in production, an RPC to find who to tell,
+    and a documented hardware checklist. It had no caller for any order the system could actually
+    take. `notifyStaffOfNewOrder` was invoked from the PayMongo webhook and the development mock
+    rail, both of which fire on a payment settling, while `paymongo_enabled` is off and every real
+    order is therefore paid at the counter. The counter tablet was never told about a single order.
+
+    **What made it survive so long is that the missing piece was an absence.** Nothing was wrong
+    with the code that existed; there was no line to review, no assertion to fail, no error to log.
+    `tests/unit/push-triggers.test.ts` was written to catch precisely this and did not, because it
+    checked the two call sites that existed rather than asking which orders arrive at a counter.
+    Then the absence acquired an explanation: it was read as blocked on PayMongo merchant approval,
+    which is real, has a lead time in weeks, and is entirely unrelated. A plausible external blocker
+    is how an unwired feature stops being looked at.
+
+    Fixed 2026-08-19 by `app/actions/checkout.ts` announcing a counter order at placement, with
+    `claim_staff_new_order_notice` (`0048`) keeping it to one alert per order across replayed
+    Server Actions and redelivered webhooks. **The general lesson is the one worth carrying: for
+    any notification, name the moment it fires and then name a real path that reaches that moment
+    today.** Both halves. The second is the one nobody checks.
+
 ## Do not
 
 - Do not invent answers to spec section 28. Central Bloc is the selected pilot branch and its 24/7
