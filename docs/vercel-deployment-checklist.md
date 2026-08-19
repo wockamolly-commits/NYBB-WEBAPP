@@ -246,6 +246,44 @@ restored it: `drainPushQueue` (`lib/push/drain.ts`) runs at the end of this hand
 customer whose order was cancelled for non-payment is told, not just the counter. See section 15 of
 `docs/IMPLEMENTATION-PROMPT.md`.
 
+## Step 6: Deployment Protection, and the two machines it locks out
+
+`noindex` hides the site from search. It does not lock it: anyone holding the address still reaches
+every page, and the franchise form still stores a real lead and sends a real alert. If the site
+needs to be genuinely unreachable while the business is not trading, that is Vercel's Deployment
+Protection, under the project's Settings, and it takes effect immediately with no redeploy.
+
+**Which option is available depends on the plan, and this account is on Hobby.**
+
+| Option | Plan | What it does |
+| --- | --- | --- |
+| Vercel Authentication | Hobby and up | Only people signed into Vercel with access to the project can view the site |
+| Password Protection | Pro and up | A shared password anyone can be given |
+| Trusted IPs | Enterprise | An address allowlist |
+
+So Password Protection is likely greyed out here. Vercel Authentication does the same job and ties
+access to accounts rather than to a password that gets forwarded. Its cost is sharing: showing the
+site to somebody means adding them to the project, where a password could simply be told to them.
+
+Apply it to **all deployments**. Previews only leaves the live site open, which is the thing being
+closed.
+
+**IT BLOCKS MACHINES TOO, AND THAT IS THE PART THAT BITES LATER.** Protection refuses every request
+that cannot authenticate, including ones no human is behind:
+
+- **PayMongo's payment webhook** (`/api/paymongo/webhook`). A refused webhook means a payment
+  clears at PayMongo and this system never learns, so the order sits unpaid and the counter is
+  never told. That is money taken for food nobody cooks.
+- **The expiry sweep** calling `/api/cron/expire-orders` from Supabase, which releases pickup
+  capacity for online payments that were never completed and drains the queued cancellation
+  notices.
+
+Neither is live as of 2026-08-19: PayMongo is unconfigured and `CRON_SECRET` is unset. **So turning
+protection on today is safe, and turning payments on later is when this becomes a live hazard.**
+The fix at that point is Vercel's Protection Bypass for Automation, which issues a secret those
+specific requests carry. Do not solve it by narrowing protection to previews only, which reopens
+the site entirely.
+
 ## If the GitHub check still fails after all this
 
 The Vercel App reports against the repository, so a red check with no project attached is expected
