@@ -50,6 +50,16 @@ the full test suite were green throughout.
 - **Setting them was not enough, and this is trap 1 arriving in real life.** Vercel does not
   rebuild when an environment variable changes. The values sat unused through a deployment that
   reported success, and the bundle still contained no Supabase URL. A redeploy is what applies them.
+  **This applies to the server-side names too**, not only the `NEXT_PUBLIC_` ones: a deployment
+  captures its environment when it is created, so `RESEND_API_KEY` needed a redeploy exactly as
+  `NEXT_PUBLIC_SUPABASE_URL` did.
+- **Franchise lead alerts are live as of 2026-08-19**, confirmed by a real submission arriving in
+  a real inbox. `RESEND_API_KEY`, `RESEND_FROM` and `FRANCHISE_ALERT_TO` are set, and
+  `app_settings.email_enabled` is true.
+  **The sender is Resend's shared `onboarding@resend.dev`, because no domain is verified yet, and
+  that sender delivers ONLY to the address the Resend account was created with.** So
+  `FRANCHISE_ALERT_TO` currently has to be that address and cannot be `franchise@5bdf.ph`. When a
+  domain is verified, change those two values and redeploy. No code changes.
 - The VAPID pair is still unset, so customer and staff push are both inert.
 - **The franchise form stores a lead, confirmed by a real submission on 2026-08-18.** The
   `noindex` that covered the site while it could not is removed, so the site is findable again.
