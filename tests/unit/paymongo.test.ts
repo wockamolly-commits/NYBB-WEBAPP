@@ -45,6 +45,11 @@ describe("PayMongo payment helpers", () => {
   it("maps QR, redirect, and completed attachment outcomes", () => {
     expect(mapAttachResult("awaiting_next_action", "https://qr.example", null))
       .toEqual({ ok: true, qr: { imageUrl: "https://qr.example" } });
+    // The simulation link rides along only when one was passed. Nothing here
+    // decides whether it MAY be shown; that gate is paymentSimulationVisible,
+    // and the caller applies it before this point.
+    expect(mapAttachResult("awaiting_next_action", "data:image/png;base64,AAA", null, "https://sim.example"))
+      .toEqual({ ok: true, qr: { imageUrl: "data:image/png;base64,AAA", testUrl: "https://sim.example" } });
     expect(mapAttachResult("awaiting_next_action", null, "https://wallet.example"))
       .toEqual({ ok: true, redirectUrl: "https://wallet.example" });
     expect(mapAttachResult("succeeded", null, null)).toEqual({ ok: true, done: true });

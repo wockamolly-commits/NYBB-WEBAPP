@@ -14,7 +14,7 @@ import {
   paymongoIdempotencyKey,
 } from "@/lib/paymongo/intents";
 import { canPayOnline, isOnlineMethod } from "@/lib/paymongo/methods";
-import { mockPaymentsEnabled } from "@/lib/paymongo/mock";
+import { mockPaymentsEnabled, paymentSimulationVisible } from "@/lib/paymongo/mock";
 import { withinAddressLimit } from "@/lib/rate-limit/limiter";
 import { siteUrl } from "@/lib/site-url";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
@@ -230,7 +230,12 @@ export async function startPayment(
       .eq("id", orderPayment.id)
       .eq("status", "pending");
     if (error) return unavailable();
-    return mapAttachResult(attached.status, attached.qrImageUrl, attached.redirectUrl);
+    return mapAttachResult(
+      attached.status,
+      attached.qrImageUrl,
+      attached.redirectUrl,
+      paymentSimulationVisible() ? attached.qrTestUrl : null,
+    );
   } catch (cause) {
     if (cause instanceof PaymongoError) {
       console.error("[payment] PayMongo request failed", cause.status, cause.code);
