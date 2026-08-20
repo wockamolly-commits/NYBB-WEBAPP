@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CalendarClock, Mail, MapPin, Phone } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import {
   franchiseLeadParams,
   getFranchiseLeads,
@@ -14,6 +15,17 @@ import { telHref } from "@/lib/phone";
 import { LeadHandledControl } from "./LeadHandledControl";
 
 export const metadata: Metadata = { title: "Franchise leads" };
+
+/**
+ * The same control as the status filter on Order history, which is the point.
+ * This filter used to be a bare <select> styled by hand, sitting next to an
+ * identical form on an identical page that used the design system's Select.
+ * Two dropdowns, two keyboard behaviours, two focus rings, for one job.
+ */
+const scopeOptions: readonly WorkspaceSelectOption<"open" | "all">[] = [
+  { value: "open", label: "Not yet handled" },
+  { value: "all", label: "Everything" },
+];
 
 function manilaDateTime(value: string): string {
   return new Date(value).toLocaleString("en-PH", {
@@ -68,7 +80,7 @@ export default async function FranchiseLeadsPage({
         </ButtonLink>
       </div>
 
-      <form className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-[2fr_1fr_auto]">
+      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-[2fr_1fr_auto]">
         <div>
           <WorkspaceFieldLabel htmlFor="lead-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -79,18 +91,13 @@ export default async function FranchiseLeadsPage({
             placeholder="Name, email, phone or location"
           />
         </div>
-        <div>
-          <WorkspaceFieldLabel htmlFor="lead-scope">Showing</WorkspaceFieldLabel>
-          <select
-            id="lead-scope"
-            name="scope"
-            defaultValue={filters.scope}
-            className="border-nybb-bone/30 text-nybb-bone mt-2 h-11 w-full rounded-md border bg-transparent px-3 text-sm outline-none focus:border-nybb-bone"
-          >
-            <option value="open" className="text-nybb-ink">Not yet handled</option>
-            <option value="all" className="text-nybb-ink">Everything</option>
-          </select>
-        </div>
+        <WorkspaceSelect
+          id="lead-scope"
+          name="scope"
+          label="Showing"
+          options={scopeOptions}
+          defaultValue={filters.scope}
+        />
         <div className="flex items-end gap-2">
           <Button type="submit" tone="dark" className="flex-1">Filter</Button>
           <ButtonLink href="/workspace/franchise" tone="dark" variant="ghost">Reset</ButtonLink>
@@ -192,7 +199,7 @@ function LeadCard({ lead }: { lead: FranchiseLead }) {
       ) : null}
 
       {handled ? (
-        <p className="text-nybb-bone/45 mt-4 text-xs">
+        <p className="text-nybb-bone/55 mt-4 text-xs">
           Handled {manilaDateTime(lead.handledAt!)}
           {lead.handledByName ? ` by ${lead.handledByName}` : ""}
         </p>

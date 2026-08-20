@@ -6,7 +6,7 @@ import { manilaDayStartIso } from "./dashboard";
 import type { WorkspaceOrder } from "./order-types";
 
 const orderSelect = `
-  id, short_code, status, is_test, customer_name, total_cents, notes, placed_at,
+  id, short_code, status, is_test, customer_name, customer_phone, total_cents, notes, placed_at,
   customer_arrived_at, branch_id,
   pickup_slots ( slot_start ),
   payments ( method, provider, status, provider_payment_id ),
@@ -34,6 +34,7 @@ const rowSchema = z.object({
   status: z.enum(["pending", "accepted", "preparing", "ready", "claimed"]),
   is_test: z.boolean(),
   customer_name: z.string(),
+  customer_phone: z.string(),
   total_cents: z.coerce.number().int().nonnegative(),
   notes: z.string().nullable(),
   placed_at: z.string(),
@@ -70,6 +71,7 @@ function toWorkspaceOrder(value: unknown): WorkspaceOrder | null {
     status: row.status,
     isTest: row.is_test,
     customerName: row.customer_name,
+    customerPhone: row.customer_phone,
     totalCents: row.total_cents,
     notes: row.notes,
     placedAt: row.placed_at,

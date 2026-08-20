@@ -20,10 +20,23 @@ const columns: Array<{
   { key: "claimed", label: "Claimed today", matches: (order) => order.status === "claimed" },
 ];
 
+/**
+ * Formatted on the server, so it is one string by the time it reaches the
+ * browser and cannot disagree with itself across a hydration boundary.
+ */
+function manilaTime(value: Date): string {
+  return value.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Manila",
+  });
+}
+
 export default async function WorkspaceOrdersPage() {
   const { profile } = await requireStaffPermission("orders:view", "/workspace/orders");
   const orders = await getWorkspaceOrders(profile.branchId);
   const mayRefund = hasStaffPermission(profile, "refunds:manage");
+  const readAt = manilaTime(new Date());
 
   return (
     <div>
@@ -34,7 +47,18 @@ export default async function WorkspaceOrdersPage() {
           <h1 className="font-display heading-major mt-2">Orders board</h1>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <p className="text-nybb-bone/50 max-w-md text-sm">Realtime is primary, with a 20-second polling fallback when a socket drops.</p>
+          {/*
+            This replaced "Realtime is primary, with a 20-second polling
+            fallback when a socket drops", which describes the transport to a
+            reader who has no transport problem to solve. What a counter needs
+            from this corner is proof the board is not frozen, and the only
+            honest proof is the time it was last read. If that clock stops
+            moving, the tablet has lost the site, which is the one fault the
+            old sentence could not have told anybody about.
+          */}
+          <p className="text-nybb-bone/55 max-w-md text-sm">
+            Updates on its own. Last read {readAt}.
+          </p>
           {/*
             No permission check around this. requireStaffPermission above already
             turns this whole page away without orders:view, which is the same
@@ -65,7 +89,7 @@ export default async function WorkspaceOrdersPage() {
               <div className="space-y-3">
                 {columnOrders.map((order) => <OrderCard key={order.id} order={order} mayRefund={mayRefund} />)}
                 {columnOrders.length === 0 ? (
-                  <p className="border-nybb-bone/20 text-nybb-bone/35 rounded-md border border-dashed px-3 py-8 text-center text-sm">No orders here</p>
+                  <p className="border-nybb-bone/20 text-nybb-bone/55 rounded-md border border-dashed px-3 py-8 text-center text-sm">No orders here</p>
                 ) : null}
               </div>
             </section>

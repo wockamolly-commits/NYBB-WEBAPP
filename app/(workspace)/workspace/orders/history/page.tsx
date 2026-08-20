@@ -3,8 +3,11 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import { formatPeso } from "@/lib/format";
+import { describePayment } from "@/lib/staff/board";
+import { canIssueRefund, reservedRefundCents } from "@/lib/staff/refunds";
 import {
   getOrderHistory,
+  ORDER_HISTORY_LIMIT,
   normalizeOrderHistoryFilters,
   summarizeOrderHistory,
   type OrderHistoryEntry,
@@ -39,11 +42,7 @@ function manilaDateTime(value: string): string {
 }
 
 function paymentLabel(order: OrderHistoryEntry): string {
-  if (!order.payment) return "No payment record";
-  if (order.payment.status === "paid") {
-    return order.payment.method === "counter" ? "Paid at counter" : "Paid online";
-  }
-  return `${order.payment.method} · ${order.payment.status}`;
+  return describePayment(order.payment, { settled: true });
 }
 
 function refundLabel(order: OrderHistoryEntry): string | null {
@@ -54,7 +53,11 @@ function refundLabel(order: OrderHistoryEntry): string | null {
   if (order.payment.refunds.some((refund) => refund.status === "pending")) {
     return "Refund awaiting confirmation";
   }
-  return refunded > 0 ? `Refunded ${formatPeso(refunded)}` : "Refund not completed";
+  // "Refund not completed" read as though it were still in progress. Every
+  // refund on this order is finished and none of them succeeded.
+  return refunded > 0
+    ? `Refunded ${formatPeso(refunded)}`
+    : "A refund was attempted and did not go through";
 }
 
 export default async function OrderHistoryPage({
@@ -67,6 +70,8 @@ export default async function OrderHistoryPage({
     searchParams,
   ]);
   const filters = normalizeOrderHistoryFilters(values);
+  // YYYY-MM-DD sorts the same as a string as it does as a date, so no parsing.
+  const datesReversed = filters.from !== "" && filters.to !== "" && filters.from > filters.to;
   const orders = await getOrderHistory(profile.branchId, filters);
   const summary = summarizeOrderHistory(orders ?? []);
   const mayRefund = hasStaffPermission(profile, "refunds:manage");
@@ -86,7 +91,7 @@ export default async function OrderHistoryPage({
         </ButtonLink>
       </div>
 
-      <form className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-5">
+      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-5">
         <div className="md:col-span-2 xl:col-span-1">
           <WorkspaceFieldLabel htmlFor="history-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -118,28 +123,43 @@ export default async function OrderHistoryPage({
         </div>
       </form>
 
+      {datesReversed ? (
+        <p
+          role="alert"
+          className="border-nybb-orange/60 bg-nybb-orange/10 mt-4 rounded-md border p-4 text-sm leading-relaxed"
+        >
+          &ldquo;Placed from&rdquo; is after &ldquo;Placed through&rdquo;, so nothing can fall
+          between them. Swap the two dates to see results.
+        </p>
+      ) : null}
+
       {orders ? (
         <>
           <section aria-label="History summary" className="mt-5 grid gap-px overflow-hidden rounded-md bg-nybb-bone/15 sm:grid-cols-3">
             <div className="bg-nybb-charcoal p-4">
               <p className="type-caps text-nybb-bone/50">Orders</p>
               <p className="font-display heading-panel mt-2">{summary.orderCount}</p>
-              {summary.testOrderCount ? <p className="text-nybb-bone/45 mt-1 text-xs">Includes {summary.testOrderCount} test</p> : null}
+              {summary.testOrderCount ? <p className="text-nybb-bone/55 mt-1 text-xs">Includes {summary.testOrderCount} test</p> : null}
             </div>
             <div className="bg-nybb-charcoal p-4">
               <p className="type-caps text-nybb-bone/50">Paid orders</p>
               <p className="font-display heading-panel mt-2">{summary.paidOrderCount}</p>
-              <p className="text-nybb-bone/45 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
             </div>
             <div className="bg-nybb-charcoal p-4">
               <p className="type-caps text-nybb-bone/50">Paid sales</p>
               <p className="font-display heading-panel mt-2">{formatPeso(summary.paidSalesCents)}</p>
-              <p className="text-nybb-bone/45 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
             </div>
           </section>
 
-          <p className="text-nybb-bone/45 mt-4 text-xs">Showing up to 250 matching closed orders.</p>
-          <div className="mt-3 space-y-3">
+          {orders.length >= ORDER_HISTORY_LIMIT ? (
+            <p role="status" className="text-nybb-bone/55 mt-4 text-xs">
+              Showing the {ORDER_HISTORY_LIMIT} most recent matches. Narrow the dates or the
+              search to be sure you are seeing everything.
+            </p>
+          ) : null}
+          <div className="mt-4 space-y-3">
             {orders.map((order) => (
               <article key={order.id} className="bg-nybb-charcoal rounded-md p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -150,11 +170,11 @@ export default async function OrderHistoryPage({
                       {order.isTest ? <span className="border-nybb-yellow/60 text-nybb-yellow rounded border px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider">Test</span> : null}
                     </div>
                     <p className="text-nybb-bone/60 mt-1 text-sm">{order.customer.name} · {order.customer.phone}</p>
-                    {order.customer.email ? <p className="text-nybb-bone/40 mt-0.5 text-xs">{order.customer.email}</p> : null}
+                    {order.customer.email ? <p className="text-nybb-bone/55 mt-0.5 text-xs">{order.customer.email}</p> : null}
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-lg font-bold">{formatPeso(order.totalCents)}</p>
-                    <p className="text-nybb-bone/45 mt-1 text-xs">{paymentLabel(order)}</p>
+                    <p className="text-nybb-bone/55 mt-1 text-xs">{paymentLabel(order)}</p>
                   </div>
                 </div>
 
@@ -163,23 +183,38 @@ export default async function OrderHistoryPage({
                     {order.items.map((item, index) => (
                       <li key={`${item.name}-${index}`}>
                         <span className="text-nybb-orange font-mono">{item.quantity}x</span>{" "}
-                        {item.name} <span className="text-nybb-bone/45">{item.variation}</span>
-                        {item.options.length ? <span className="text-nybb-bone/45 mt-0.5 block text-xs">{item.options.join(", ")}</span> : null}
+                        {item.name} <span className="text-nybb-bone/55">{item.variation}</span>
+                        {item.options.length ? <span className="text-nybb-bone/55 mt-0.5 block text-xs">{item.options.join(", ")}</span> : null}
                       </li>
                     ))}
                   </ul>
                   <dl className="grid gap-x-5 gap-y-2 text-xs sm:grid-cols-2 lg:min-w-96">
-                    <div><dt className="text-nybb-bone/40">Placed</dt><dd className="mt-0.5">{manilaDateTime(order.placedAt)}</dd></div>
-                    <div><dt className="text-nybb-bone/40">Closed</dt><dd className="mt-0.5">{manilaDateTime(order.closedAt)}</dd></div>
-                    <div><dt className="text-nybb-bone/40">Pickup</dt><dd className="mt-0.5">{order.pickupAt ? manilaDateTime(order.pickupAt) : "No slot"}</dd></div>
-                    <div><dt className="text-nybb-bone/40">Payment</dt><dd className="mt-0.5">{paymentLabel(order)}</dd></div>
+                    <div><dt className="text-nybb-bone/55">Placed</dt><dd className="mt-0.5">{manilaDateTime(order.placedAt)}</dd></div>
+                    <div><dt className="text-nybb-bone/55">Closed</dt><dd className="mt-0.5">{manilaDateTime(order.closedAt)}</dd></div>
+                    <div><dt className="text-nybb-bone/55">Pickup</dt><dd className="mt-0.5">{order.pickupAt ? manilaDateTime(order.pickupAt) : "No slot"}</dd></div>
+                    <div><dt className="text-nybb-bone/55">Contact</dt><dd className="mt-0.5">{order.customer.phone}</dd></div>
                   </dl>
                 </div>
-                {order.reason ? <p className="bg-nybb-graphite text-nybb-bone/70 mt-4 rounded p-3 text-sm"><span className="text-nybb-bone/40">Reason:</span> {order.reason}</p> : null}
-                {order.notes ? <p className="text-nybb-bone/55 mt-3 text-sm"><span className="text-nybb-bone/35">Order note:</span> {order.notes}</p> : null}
+                {order.reason ? <p className="bg-nybb-graphite text-nybb-bone/70 mt-4 rounded p-3 text-sm"><span className="text-nybb-bone/55">Reason:</span> {order.reason}</p> : null}
+                {order.notes ? <p className="text-nybb-bone/55 mt-3 text-sm"><span className="text-nybb-bone/55">Order note:</span> {order.notes}</p> : null}
                 {refundLabel(order) ? <p className="text-nybb-bone/55 mt-3 text-sm">{refundLabel(order)}</p> : null}
-                {mayRefund && order.payment?.provider === "paymongo" && order.payment.status === "paid" ? (
-                  <RefundControl orderId={order.id} amountCents={order.payment.amountCents} />
+                {/*
+                  The same test `staff_request_refund` runs, including the
+                  remainder. A fully refunded payment already flips to the
+                  `refunded` status and drops out on the line above, but a
+                  partly refunded one stays `paid` for ever, so without the
+                  remainder check this offered an "Issue refund" button whose
+                  only possible outcome was a red message.
+                */}
+                {mayRefund
+                  && order.payment?.provider === "paymongo"
+                  && order.payment.status === "paid"
+                  && canIssueRefund(order.payment.amountCents, order.payment.refunds) ? (
+                  <RefundControl
+                    orderId={order.id}
+                    amountCents={order.payment.amountCents}
+                    refundedCents={reservedRefundCents(order.payment.refunds)}
+                  />
                 ) : null}
               </article>
             ))}

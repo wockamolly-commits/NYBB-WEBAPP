@@ -17,6 +17,9 @@ export {
   isValidWorkspaceDate as isValidHistoryDate,
 };
 
+/** The page's own cap, exported so the screen can say when it has been hit. */
+export const ORDER_HISTORY_LIMIT = 250;
+
 export const HISTORY_STATUSES = [
   "claimed",
   "rejected",
@@ -240,7 +243,7 @@ export async function getOrderHistory(
     .select(historySelect)
     .in("status", filters.status === "all" ? [...HISTORY_STATUSES] : [filters.status])
     .order("placed_at", { ascending: false })
-    .limit(250);
+    .limit(ORDER_HISTORY_LIMIT);
 
   if (branchId) query.eq("branch_id", branchId);
   const from = manilaDateStartIso(filters.from);

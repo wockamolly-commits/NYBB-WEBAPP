@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, ShieldCheck, ShieldOff } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import {
@@ -39,6 +39,17 @@ function ActionMessage({ state }: { state: WorkspaceAccessActionState }) {
 function MemberCard({ member }: { member: WorkspaceMember }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+
+  // The card no longer remounts on save, so the open confirmation has to be
+  // closed deliberately rather than by accident of a changing key. Done during
+  // render off a change in the action result rather than in an effect, which
+  // is the adjust-state-on-new-input pattern: useActionState hands back a new
+  // object per submission, so identity is the signal that one just landed.
+  const [seen, setSeen] = useState(state);
+  if (seen !== state) {
+    setSeen(state);
+    if (state.status === "success") setConfirmingRevoke(false);
+  }
   const roleLabel = member.role === "admin"
     ? "Super Admin"
     : member.staffRole
@@ -65,7 +76,7 @@ function MemberCard({ member }: { member: WorkspaceMember }) {
       </div>
 
       {member.role === "admin" ? (
-        <p className="text-nybb-bone/45 max-w-64 text-xs leading-relaxed">
+        <p className="text-nybb-bone/55 max-w-64 text-xs leading-relaxed">
           The Super Admin is controlled by server configuration and cannot be changed here.
         </p>
       ) : (
@@ -149,6 +160,14 @@ function MemberCard({ member }: { member: WorkspaceMember }) {
 
 export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[] }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
+  const grantForm = useRef<HTMLFormElement>(null);
+
+  // An email left sitting in the box after a successful grant is an invitation
+  // to grant the same person again, and the second attempt reads as a failure
+  // to anybody who does not know it already worked.
+  useEffect(() => {
+    if (state.status === "success") grantForm.current?.reset();
+  }, [state.status]);
 
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[22rem_1fr]">
@@ -157,7 +176,7 @@ export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[]
         <p className="text-nybb-bone/55 mt-3 text-sm leading-relaxed">
           The person must first sign in once through the regular website login so their account exists.
         </p>
-        <form action={action} className="mt-5 space-y-4">
+        <form ref={grantForm} action={action} className="mt-5 space-y-4">
           <input type="hidden" name="active" value="true" />
           <div>
             <WorkspaceFieldLabel htmlFor="team-email">Email address</WorkspaceFieldLabel>
@@ -194,10 +213,14 @@ export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[]
         </div>
         <ul className="mt-5 space-y-3">
           {members.map((member) => (
-            <MemberCard
-              key={`${member.profileId}:${member.staffRole}:${member.isActive}`}
-              member={member}
-            />
+            /*
+              Keyed on the person, and on nothing that changes when you edit
+              them. The key used to carry staffRole and isActive, so the first
+              thing a successful save did was change the key, remount the card
+              and throw away the "Workspace access saved." it had just been
+              handed. An admin changed a role and watched nothing happen.
+            */
+            <MemberCard key={member.profileId} member={member} />
           ))}
         </ul>
       </section>

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { ClipboardList, ExternalLink, Handshake, History, LayoutDashboard, LogOut, ScrollText, Settings, ShieldCheck, Store, UserRound, Users } from "lucide-react";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { ShieldCheck } from "lucide-react";
 import { HeatRule } from "@/components/site/HeatRule";
+import { WorkspaceNav, type WorkspaceNavItem } from "@/components/workspace/WorkspaceNav";
+import { WorkspaceSignOut } from "@/components/workspace/WorkspaceSignOut";
 import { STAFF_ROLES } from "@/lib/staff/roles";
 import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
+import type { StaffProfile } from "@/lib/staff/session";
 
 export const metadata: Metadata = {
   title: { default: "Workspace", template: "%s · NYBB Workspace" },
@@ -14,6 +16,44 @@ export const metadata: Metadata = {
   // installing to receive alerts would land on the orders board in landscape.
   manifest: "/workspace.webmanifest",
 };
+
+/**
+ * The bar this person is allowed to see.
+ *
+ * Kept on the server, where the permission answer is authoritative, and handed
+ * to the client component as a plain list. The client decides which item is
+ * current; it never decides which items exist.
+ */
+function navItems(profile: StaffProfile): WorkspaceNavItem[] {
+  const items: WorkspaceNavItem[] = [];
+
+  if (hasStaffPermission(profile, "dashboard:view")) {
+    items.push({ href: "/workspace", label: "Dashboard", icon: "dashboard" });
+  }
+  if (hasStaffPermission(profile, "orders:view")) {
+    items.push({ href: "/workspace/orders", label: "Orders", icon: "orders" });
+    items.push({ href: "/workspace/orders/history", label: "History", icon: "history" });
+  }
+  if (hasStaffPermission(profile, "store:availability")) {
+    items.push({ href: "/workspace/availability", label: "Availability", icon: "availability" });
+  }
+  if (hasStaffPermission(profile, "settings:manage")) {
+    items.push({ href: "/workspace/settings", label: "Settings", icon: "settings" });
+  }
+  if (hasStaffPermission(profile, "audit:view")) {
+    items.push({ href: "/workspace/audit", label: "Audit", icon: "audit" });
+  }
+  if (profile.role === "admin") {
+    items.push({ href: "/workspace/team", label: "Team", icon: "team" });
+    // Admin rather than a permission, because RLS on franchise_inquiries is
+    // is_admin(). A staff member offered this link would open a page that
+    // tells them there are no leads.
+    items.push({ href: "/workspace/franchise", label: "Leads", icon: "leads" });
+  }
+  items.push({ href: "/workspace/profile", label: "Profile", icon: "profile" });
+
+  return items;
+}
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireStaff();
@@ -40,78 +80,14 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             </span>
             <div className="min-w-0">
               <p className="font-display text-lg leading-none tracking-[0.06em]">NYBB WORKSPACE</p>
-              <p className="text-nybb-bone/55 mt-1 truncate text-xs">
+              <p className="text-nybb-bone/60 mt-1 truncate text-xs">
                 {profile.displayName} · {roleLabel}
               </p>
             </div>
           </div>
-          <form action="/auth/signout?scope=staff" method="post">
-            <Button type="submit" tone="dark" variant="ghost" size="icon" className="size-11" aria-label="Sign out of staff workspace">
-              <LogOut aria-hidden className="size-4" />
-            </Button>
-          </form>
+          <WorkspaceSignOut />
         </div>
-        <nav aria-label="Workspace" className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8">
-          {hasStaffPermission(profile, "dashboard:view") ? (
-            <ButtonLink href="/workspace" tone="dark" variant="ghost" className="px-3">
-              <LayoutDashboard aria-hidden className="size-4" />
-              Dashboard
-            </ButtonLink>
-          ) : null}
-          {hasStaffPermission(profile, "orders:view") ? (
-            <>
-              <ButtonLink href="/workspace/orders" tone="dark" variant="ghost" className="px-3">
-                <ClipboardList aria-hidden className="size-4" />
-                Orders
-              </ButtonLink>
-              <ButtonLink href="/workspace/orders/history" tone="dark" variant="ghost" className="px-3">
-                <History aria-hidden className="size-4" />
-                History
-              </ButtonLink>
-            </>
-          ) : null}
-          {hasStaffPermission(profile, "store:availability") ? (
-            <ButtonLink href="/workspace/availability" tone="dark" variant="ghost" className="px-3">
-              <Store aria-hidden className="size-4" />
-              Availability
-            </ButtonLink>
-          ) : null}
-          {hasStaffPermission(profile, "settings:manage") ? (
-            <ButtonLink href="/workspace/settings" tone="dark" variant="ghost" className="px-3">
-              <Settings aria-hidden className="size-4" />
-              Settings
-            </ButtonLink>
-          ) : null}
-          {hasStaffPermission(profile, "audit:view") ? (
-            <ButtonLink href="/workspace/audit" tone="dark" variant="ghost" className="px-3">
-              <ScrollText aria-hidden className="size-4" />
-              Audit
-            </ButtonLink>
-          ) : null}
-          {profile.role === "admin" ? (
-            <>
-              <ButtonLink href="/workspace/team" tone="dark" variant="ghost" className="px-3">
-                <Users aria-hidden className="size-4" />
-                Team
-              </ButtonLink>
-              {/* Admin rather than a permission, because RLS on
-                  franchise_inquiries is is_admin(). A staff member offered this
-                  link would open a page that tells them there are no leads. */}
-              <ButtonLink href="/workspace/franchise" tone="dark" variant="ghost" className="px-3">
-                <Handshake aria-hidden className="size-4" />
-                Leads
-              </ButtonLink>
-            </>
-          ) : null}
-          <ButtonLink href="/workspace/profile" tone="dark" variant="ghost" className="px-3">
-            <UserRound aria-hidden className="size-4" />
-            Profile
-          </ButtonLink>
-          <ButtonLink href="/" tone="dark" variant="ghost" className="ml-auto px-3" target="_blank" rel="noreferrer">
-            <ExternalLink aria-hidden className="size-4" />
-            Storefront
-          </ButtonLink>
-        </nav>
+        <WorkspaceNav items={navItems(profile)} />
         <HeatRule className="h-1" />
       </header>
       <main id="workspace-main" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">

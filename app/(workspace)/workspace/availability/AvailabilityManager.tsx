@@ -31,6 +31,7 @@ function BranchCard({ branch, intake }: { branch: BranchAvailability; intake: Or
   const reason = availabilityReason(branch, intake);
   const canToggle = intake.acceptingOrders && branch.isActive && branch.hasPublishedHours;
   const willAccept = !branch.isAcceptingOrders;
+  const blockedId = `availability-blocked-${branch.branchId}`;
 
   return (
     <article className="bg-nybb-charcoal rounded-md p-5 sm:p-6">
@@ -52,23 +53,35 @@ function BranchCard({ branch, intake }: { branch: BranchAvailability; intake: Or
           <p className="font-display heading-panel">Current status</p>
           <p className="text-nybb-bone/70 mt-2 text-sm leading-relaxed">{AVAILABILITY_REASON_COPY[reason]}</p>
           <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
-            <span className="text-nybb-bone/50">Platform: <strong className="text-nybb-bone font-medium">{branch.isActive ? "Live" : "Not live"}</strong></span>
-            <span className="text-nybb-bone/50">Counter: <strong className="text-nybb-bone font-medium">{branch.isAcceptingOrders ? "Open" : "Paused"}</strong></span>
-            <span className="text-nybb-bone/50">Hours: <strong className="text-nybb-bone font-medium">{branch.hasPublishedHours ? "Published" : "Missing"}</strong></span>
-            <span className="text-nybb-bone/50">Now: <strong className="text-nybb-bone font-medium">{branch.isOpenNow ? "Within hours" : "Outside hours"}</strong></span>
+            <span className="text-nybb-bone/60">Platform: <strong className="text-nybb-bone font-medium">{branch.isActive ? "Live" : "Not live"}</strong></span>
+            <span className="text-nybb-bone/60">Counter: <strong className="text-nybb-bone font-medium">{branch.isAcceptingOrders ? "Open" : "Paused"}</strong></span>
+            <span className="text-nybb-bone/60">Hours: <strong className="text-nybb-bone font-medium">{branch.hasPublishedHours ? "Published" : "Missing"}</strong></span>
+            <span className="text-nybb-bone/60">Now: <strong className="text-nybb-bone font-medium">{branch.isOpenNow ? "Within hours" : "Outside hours"}</strong></span>
           </div>
         </div>
         <form action={action}>
           <input type="hidden" name="branchId" value={branch.branchId} />
           <input type="hidden" name="accepting" value={willAccept ? "true" : "false"} />
-          <Button type="submit" tone="dark" variant={willAccept ? "primary" : "danger"} disabled={pending || !canToggle}>
+          <Button
+            type="submit"
+            tone="dark"
+            variant={willAccept ? "primary" : "danger"}
+            disabled={pending || !canToggle}
+            aria-describedby={canToggle ? undefined : blockedId}
+          >
             {pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : willAccept ? <PlayCircle aria-hidden className="size-4" /> : <PauseCircle aria-hidden className="size-4" />}
             {willAccept ? "Resume orders" : "Pause orders"}
           </Button>
         </form>
       </div>
+      {/*
+        The reason sits above the dead button rather than below it, and carries
+        an id the button points at. A disabled control is skipped by the Tab
+        key, so an explanation placed after it was reachable only by somebody
+        who already knew to go looking for it.
+      */}
       {!canToggle ? (
-        <p className="text-nybb-bone/45 mt-3 text-xs">{!intake.acceptingOrders ? "Business-wide ordering is paused. A settings manager must resume it first." : !branch.isActive ? "Make this branch live in Settings before opening the counter." : "Publish its hours in Settings before opening the counter."}</p>
+        <p id={blockedId} className="text-nybb-bone/55 mt-3 text-xs">{!intake.acceptingOrders ? "Business-wide ordering is paused. A settings manager must resume it first." : !branch.isActive ? "Make this branch live in Settings before opening the counter." : "Publish its hours in Settings before opening the counter."}</p>
       ) : null}
       <StatusMessage state={state} />
 
@@ -76,7 +89,7 @@ function BranchCard({ branch, intake }: { branch: BranchAvailability; intake: Or
         <div className="grid min-w-[36rem] grid-cols-7 gap-2">
           {WEEK_ORDER.map((weekday) => {
             const day = branch.week[weekday];
-            return <div key={weekday} className="bg-nybb-graphite rounded p-2.5"><p className="type-caps text-nybb-bone/50">{WEEKDAY_SHORT_LABELS[weekday]}</p><p className="text-nybb-bone/75 mt-1 text-xs leading-snug">{formatWindow(day)}</p></div>;
+            return <div key={weekday} className="bg-nybb-graphite rounded p-2.5"><p className="type-caps text-nybb-bone/60">{WEEKDAY_SHORT_LABELS[weekday]}</p><p className="text-nybb-bone/75 mt-1 text-xs leading-snug">{formatWindow(day)}</p></div>;
           })}
         </div>
       </div>
