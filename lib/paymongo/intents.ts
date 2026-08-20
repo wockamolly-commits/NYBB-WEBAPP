@@ -111,11 +111,22 @@ export async function attachPaymentIntent(input: {
   clientKey: string;
   returnUrl: string;
   idempotencyKey: string;
-}): Promise<{ status: string; qrImageUrl: string | null; redirectUrl: string | null; paymentId: string | null }> {
+}): Promise<{
+  status: string;
+  qrImageUrl: string | null;
+  qrTestUrl: string | null;
+  redirectUrl: string | null;
+  paymentId: string | null;
+}> {
   const data = await paymongoFetch<{
     attributes: {
       status: string;
-      next_action?: { code?: { image_url?: string }; redirect?: { url?: string } } | null;
+      next_action?: {
+        // image_url is a data: URI carrying the PNG, not an https address.
+        // test_url appears in test mode only and completes the payment.
+        code?: { image_url?: string; test_url?: string };
+        redirect?: { url?: string };
+      } | null;
       payments?: { id: string }[];
     };
   }>(`/payment_intents/${input.intentId}/attach`, {
@@ -134,6 +145,7 @@ export async function attachPaymentIntent(input: {
   return {
     status: data.attributes.status,
     qrImageUrl: data.attributes.next_action?.code?.image_url ?? null,
+    qrTestUrl: data.attributes.next_action?.code?.test_url ?? null,
     redirectUrl: data.attributes.next_action?.redirect?.url ?? null,
     paymentId: data.attributes.payments?.[0]?.id ?? null,
   };

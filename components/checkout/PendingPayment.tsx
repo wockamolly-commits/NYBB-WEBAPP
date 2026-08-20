@@ -98,6 +98,25 @@ export function PendingPayment({
           </div>
         ) : null}
 
+        {result.ok && "qr" in result && result.qr.testUrl ? (
+          <div className="border-nybb-yellow mt-6 border-l-2 pl-4">
+            <p className="type-caps text-nybb-yellow">Development only</p>
+            <p className="text-nybb-bone/75 mt-2 max-w-prose text-sm leading-relaxed">
+              <strong>Do not scan the code above.</strong> PayMongo generates a real QR Ph code
+              in test mode, and paying it moves real money. Complete this payment on PayMongo&rsquo;s
+              simulation page instead.
+            </p>
+            <a
+              href={result.qr.testUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-nybb-yellow mt-3 inline-block text-sm underline decoration-current/40 underline-offset-4 hover:decoration-current"
+            >
+              Open PayMongo&rsquo;s test payment page
+            </a>
+          </div>
+        ) : null}
+
         {result.ok && "done" in result ? (
           <p className="bg-nybb-yellow text-nybb-ink mt-6 rounded-md px-4 py-3 text-sm leading-relaxed">
             Payment is being confirmed. Keep this page open and check your order status in a
