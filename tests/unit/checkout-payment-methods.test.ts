@@ -31,14 +31,21 @@ const { getCheckoutPaymentMethods } = await import("@/lib/checkout/payment-setti
 const KEYS = [
   "PAYMONGO_SECRET_KEY",
   "NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY",
+  "PAYMONGO_WEBHOOK_SECRET",
   "MOCK_PAYMENTS_ENABLED",
 ] as const;
 const saved: Record<string, string | undefined> = {};
 
-/** Keys present, so a real PayMongo call could be made. */
+/**
+ * Credentials present, so a real PayMongo call could be made AND its result
+ * could be confirmed. All three matter: without the webhook secret the signed
+ * paid event is rejected as forged, so the payment would be taken and the
+ * order would never leave pending.
+ */
 function withPaymongoKeys() {
   process.env.PAYMONGO_SECRET_KEY = "sk_test_probe";
   process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY = "pk_test_probe";
+  process.env.PAYMONGO_WEBHOOK_SECRET = "whsk_probe";
 }
 
 /** A development deployment running the simulator. NODE_ENV is "test" here. */
@@ -101,6 +108,16 @@ describe("the payment rails checkout may offer", () => {
     });
 
     // Keys alone do not open a rail. The owner's flag is still the decision.
+    expect(await getCheckoutPaymentMethods()).toEqual([]);
+  });
+
+  it("offers nothing when the keys cannot confirm what they charge", async () => {
+    databaseSaysQrphIsOn();
+    withPaymongoKeys();
+    delete process.env.PAYMONGO_WEBHOOK_SECRET;
+
+    // Keys good enough to take a payment, and nothing able to prove one
+    // arrived. That is the one failure worse than showing no rail at all.
     expect(await getCheckoutPaymentMethods()).toEqual([]);
   });
 
