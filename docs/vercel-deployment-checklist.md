@@ -292,8 +292,13 @@ that cannot authenticate, including ones no human is behind:
   capacity for online payments that were never completed and drains the queued cancellation
   notices.
 
-Neither is live as of 2026-08-19: PayMongo is unconfigured and `CRON_SECRET` is unset. **So turning
-protection on today is safe, and turning payments on later is when this becomes a live hazard.**
+Neither is live as of 2026-08-20: `CRON_SECRET` is unset, and PayMongo has an account but no
+credentials in any Vercel scope. **So turning protection on today is safe, and turning payments on
+later is when this becomes a live hazard.** Deployment Protection blocking
+`/api/paymongo/webhook` is exactly the failure that `PAYMONGO_WEBHOOK_SECRET` guards against from
+the other side: the payment clears and nothing here learns of it. Read
+`docs/paymongo-payments.md` before setting the three PayMongo variables, and remember that
+deployment protection has to be dealt with in the same pass.
 The fix at that point is Vercel's Protection Bypass for Automation, which issues a secret those
 specific requests carry. Do not solve it by narrowing protection to previews only, which reopens
 the site entirely.

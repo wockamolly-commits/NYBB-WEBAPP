@@ -19,6 +19,15 @@ export function paymongoIdempotencyKey(
   return `nybb:${operation}:${digest}`;
 }
 
+/**
+ * The intent body, carrying exactly one rail.
+ *
+ * `payment_method_options` is card-only configuration (3DS, installments) and
+ * is sent only when card is the rail being allowed. It used to go out on every
+ * intent, including the QR Ph ones that are the only rail this deployment
+ * actually offers, which was never exercised against the real API because the
+ * development simulator does not build this payload at all.
+ */
 export function buildPaymentIntentPayload(input: {
   amountCents: number;
   description: string;
@@ -33,7 +42,9 @@ export function buildPaymentIntentPayload(input: {
         description: input.description,
         capture_type: "automatic",
         payment_method_allowed: [PAYMONGO_METHOD[input.method]],
-        payment_method_options: { card: { request_three_d_secure: "any" } },
+        ...(input.method === "card"
+          ? { payment_method_options: { card: { request_three_d_secure: "any" } } }
+          : {}),
         metadata: input.metadata,
       },
     },

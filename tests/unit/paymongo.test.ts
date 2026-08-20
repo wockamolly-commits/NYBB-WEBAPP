@@ -16,12 +16,23 @@ describe("PayMongo payment helpers", () => {
   it("uses the provider minimum and includes only the chosen rail in an intent", () => {
     expect(canPayOnline(99, "qrph")).toBe(false);
     expect(canPayOnline(100, "qrph")).toBe(true);
-    expect(buildPaymentIntentPayload({
+    const qrph = buildPaymentIntentPayload({
       amountCents: 32900,
       description: "NYBB NY-ABC234",
       method: "qrph",
       metadata: { order_id: "order" },
-    }).data.attributes.payment_method_allowed).toEqual(["qrph"]);
+    });
+    expect(qrph.data.attributes.payment_method_allowed).toEqual(["qrph"]);
+    // Card-only configuration does not ride along on a rail that is not card.
+    expect(qrph.data.attributes).not.toHaveProperty("payment_method_options");
+
+    const card = buildPaymentIntentPayload({
+      amountCents: 32900,
+      description: "NYBB NY-ABC234",
+      method: "card",
+      metadata: { order_id: "order" },
+    });
+    expect(card.data.attributes).toHaveProperty("payment_method_options");
   });
 
   it("derives a stable, opaque idempotency key", () => {

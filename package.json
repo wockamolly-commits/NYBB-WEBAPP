@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "paymongo": "node scripts/paymongo.mjs",
     "ingest:images": "tsx scripts/ingest-legacy-images.ts",
     "build:static-images": "tsx scripts/build-static-images.ts",
     "build:seed": "tsx scripts/build-seed.ts",
