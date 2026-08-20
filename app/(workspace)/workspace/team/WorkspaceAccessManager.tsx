@@ -8,7 +8,7 @@ import {
   WorkspaceSelect,
   type WorkspaceSelectOption,
 } from "@/components/ui/WorkspaceSelect";
-import { STAFF_ROLES, type StaffJobRole } from "@/lib/staff/roles";
+import { STAFF_JOB_ROLES, STAFF_ROLES, type StaffJobRole } from "@/lib/staff/roles";
 import type {
   WorkspaceAccessActionState,
   WorkspaceMember,
@@ -16,7 +16,7 @@ import type {
 import { setWorkspaceAccess } from "./actions";
 
 const initialState: WorkspaceAccessActionState = { status: "idle" };
-const roleOptions = (Object.keys(STAFF_ROLES) as StaffJobRole[]).map(
+const roleOptions = STAFF_JOB_ROLES.map(
   (role): WorkspaceSelectOption<StaffJobRole> => ({
     value: role,
     label: STAFF_ROLES[role].label,

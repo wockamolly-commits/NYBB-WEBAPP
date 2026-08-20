@@ -10,6 +10,7 @@ import { isConfiguredSuperAdminEmail } from "./access";
 import {
   isStaffPermission,
   resolvePermissions,
+  STAFF_JOB_ROLES,
   type PermissionOverride,
   type StaffJobRole,
   type StaffPermission,
@@ -29,7 +30,7 @@ export type StaffProfile = {
 const profileSchema = z.object({
   id: z.uuid(),
   role: z.enum(["admin", "staff"]),
-  staff_role: z.enum(["cashier", "kitchen", "manager"]).nullable(),
+  staff_role: z.enum(STAFF_JOB_ROLES).nullable(),
   display_name: z.string().min(1),
   branch_id: z.uuid().nullable(),
 });

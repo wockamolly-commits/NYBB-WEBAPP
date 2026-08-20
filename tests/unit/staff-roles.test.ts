@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isStaffJobRole,
+  STAFF_JOB_ROLES,
   isStaffPermission,
   resolvePermissions,
   roleDefaultPermissions,
@@ -8,8 +9,11 @@ import {
 } from "@/lib/staff/roles";
 
 describe("staff roles", () => {
-  it("gives kitchen staff only the active-order workflow", () => {
-    expect(roleDefaultPermissions("kitchen")).toEqual(["orders:view", "orders:manage"]);
+  it("offers only the jobs that use this web app", () => {
+    // The kitchen works from the POS monitor. A Workspace role for it would put
+    // a second screen on the same tickets, so it is not one of the jobs here.
+    expect([...STAFF_JOB_ROLES]).toEqual(["cashier", "manager"]);
+    expect(isStaffJobRole("kitchen")).toBe(false);
   });
 
   it("gives refund authority to managers only by default", () => {
@@ -36,6 +40,8 @@ describe("staff roles", () => {
   it("rejects unknown jobs and permissions at the database boundary", () => {
     expect(isStaffJobRole("manager")).toBe(true);
     expect(isStaffJobRole("rider")).toBe(false);
+    // `in` would have said yes to this one.
+    expect(isStaffJobRole("toString")).toBe(false);
     expect(isStaffPermission("orders:view")).toBe(true);
     expect(isStaffPermission("deliveries:view")).toBe(false);
   });
@@ -44,7 +50,9 @@ describe("staff roles", () => {
     expect(
       workspaceLandingPath({
         role: "staff",
-        permissions: roleDefaultPermissions("kitchen"),
+        permissions: resolvePermissions("cashier", [
+          { permission: "dashboard:view", granted: false },
+        ]),
       }),
     ).toBe("/workspace/orders");
     expect(

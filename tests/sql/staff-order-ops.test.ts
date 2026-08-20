@@ -148,7 +148,7 @@ describe("staff_set_order_status", () => {
   /**
    * 0024 moved this function from "has this person been denied orders:manage"
    * to "does this person have it", which is the question every RLS policy asks
-   * through current_staff_has_permission(). The two agree while all three job
+   * through current_staff_has_permission(). The two agree while both job
    * roles carry the permission by default, so the tests below lock down what
    * has to keep being true rather than reproducing a break that is not
    * reachable yet: every role that should be able to work the board still can,
@@ -156,7 +156,7 @@ describe("staff_set_order_status", () => {
    * and the function is genuinely asking the resolver.
    */
   it("lets every job role that should work the board still work it", async () => {
-    const roles = ["cashier", "kitchen", "manager"];
+    const roles = ["cashier", "manager"];
     for (const [index, role] of roles.entries()) {
       const id = await addOrder(db, `NY-ROLE-${role.slice(0, 3).toUpperCase()}`, {
         pickupCode: `100${index}`,

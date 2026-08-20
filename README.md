@@ -269,11 +269,12 @@ Phase 2 so far:
 - Staff and admins see a Workspace link in the storefront header instead of a
   customer Account link. `/workspace/profile` shows their own email, role,
   branch access, and resolved permissions inside the protected Workspace.
-- Workspace landing and navigation follow resolved permissions. Kitchen staff
-  land on Orders instead of entering a Dashboard redirect loop, and links to
-  unavailable sections are not rendered.
-- `lib/staff/roles.ts` defines cashier, kitchen and manager defaults plus
-  per-person permission overrides. Admin permission checks remain absolute.
+- Workspace landing and navigation follow resolved permissions. Anyone whose
+  permissions do not reach the Dashboard lands on Orders instead of entering a
+  redirect loop, and links to unavailable sections are not rendered.
+- `lib/staff/roles.ts` defines cashier and manager defaults plus per-person
+  permission overrides. Admin permission checks remain absolute. There is no
+  kitchen role: that station works from the POS system's own monitor.
 - Every workspace render validates the Auth user, then re-reads the active
   `profiles` row and permission overrides through RLS. Deactivating a profile
   therefore takes effect without waiting for a token to expire.

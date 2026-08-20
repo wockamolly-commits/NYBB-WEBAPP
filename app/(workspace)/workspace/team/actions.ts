@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { STAFF_JOB_ROLES } from "@/lib/staff/roles";
 import { getStaffProfile } from "@/lib/staff/session";
 import type { WorkspaceAccessActionState } from "@/lib/staff/team-types";
 import { createStaffClient } from "@/lib/supabase/server";
 
 const accessSchema = z.object({
   email: z.email({ error: "Enter a valid email address." }).trim().toLowerCase(),
-  staffRole: z.enum(["cashier", "kitchen", "manager"]),
+  staffRole: z.enum(STAFF_JOB_ROLES),
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
 });
 

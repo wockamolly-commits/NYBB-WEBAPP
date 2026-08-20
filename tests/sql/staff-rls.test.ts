@@ -45,7 +45,7 @@ describe("Workspace row security", () => {
       select '${STAFF_ID}', 'staff', 'cashier', 'Cashier', id
       from branches where slug = 'pilot';
       insert into profiles (id, role, staff_role, display_name, branch_id, phone)
-      select '${COLLEAGUE_ID}', 'staff', 'kitchen', 'Colleague', id, '09170000002'
+      select '${COLLEAGUE_ID}', 'staff', 'manager', 'Colleague', id, '09170000002'
       from branches where slug = 'pilot';
 
       insert into menu_categories (slug, name) values ('wings', 'Wings');
@@ -125,7 +125,7 @@ describe("Workspace row security", () => {
     `);
   });
 
-  it("applies role defaults to catalog reads and denies bare writes", async () => {
+  it("applies resolved permissions to catalog reads and denies bare writes", async () => {
     expect(
       await asAuthenticated<{ count: number }>(
         db,
@@ -133,7 +133,13 @@ describe("Workspace row security", () => {
       ),
     ).toEqual([{ count: 1 }]);
 
-    await db.exec(`update profiles set staff_role = 'kitchen' where id = '${STAFF_ID}'`);
+    // Both job roles read the catalog by default, so the denial this asserts
+    // is reached the way it is reached in production: one person, one
+    // permission taken away.
+    await db.exec(`
+      insert into staff_permission_overrides (profile_id, permission, granted)
+      values ('${STAFF_ID}', 'menu:view', false)
+    `);
     expect(
       await asAuthenticated<{ count: number }>(
         db,

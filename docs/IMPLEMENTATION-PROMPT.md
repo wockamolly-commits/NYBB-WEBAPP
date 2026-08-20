@@ -897,10 +897,12 @@ here was built as specified.
 7. **`menu_options.price_cents` is nullable and null is load-bearing.** It means the option has no
    flat price at all and the variation decides. Every Level of Hotness row above "No heat" is null.
 
-8. **`user_role` is `admin | staff`, with a separate `staff_role` of `cashier | kitchen |
-   manager`.** Section 13's four roles do not all belong in the RLS primitive: policies only ever
-   need to know whether a session may touch operational data. The job is what supplies default
-   permissions.
+8. **`user_role` is `admin | staff`, with a separate `staff_role` of `cashier | manager`.**
+   Section 13's roles do not all belong in the RLS primitive: policies only ever need to know
+   whether a session may touch operational data. The job is what supplies default permissions.
+   A `kitchen` value shipped alongside those two and was removed by `0050` on 2026-08-20: the
+   kitchen works from the POS system's own monitor, and a Workspace login for it would be a
+   second screen on the same tickets.
 
 9. **Nothing is seeded that only the owner can answer.** `store_hours` is empty and
    `branch_is_open_at()` fails closed, so a branch with unknown hours is shut rather than guessing.
@@ -1022,7 +1024,7 @@ mechanism serves the same need. **Remove** means delete it and do not build a su
 | Analytics | **Modify** | See section 20. |
 | Audit log | **Keep as-is** | |
 | Team invites with 48h expiry | **Keep as-is** | |
-| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `kitchen` and `manager`. |
+| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `manager`. (A `kitchen` role was added here too, and retired on 2026-08-20: the POS monitor already serves that station.) |
 | Owner settings form | **Modify** | Add slot capacity and prep minutes. Drop delivery settings. |
 | Store availability, high-demand mode | **Keep as-is** | |
 | Staff web push for new orders | **Keep as-is** | Verified working on Android tablets in the reference. |
@@ -1219,9 +1221,10 @@ live the panel becomes read-only confirmation; until then it is the re-key surfa
 
 **Permissions.** Inherit the model exactly: a job role supplies defaults, per-user override rows
 force a single permission on or off, and effective permissions are computed by
-`resolvePermissions()`. Roles for NYBB: `cashier` (orders, menu availability), `kitchen` (orders
-view and advance only), `manager` (adds analytics, vouchers, menu configure), plus the Super Admin
-bootstrapped from `SUPER_ADMIN_EMAIL`.
+`resolvePermissions()`. Roles for NYBB: `cashier` (orders, menu availability), `manager` (adds
+analytics, vouchers, menu configure), plus the Super Admin bootstrapped from `SUPER_ADMIN_EMAIL`.
+There is no kitchen role. The station already has the POS system's monitor, so a second screen on
+the same tickets would only split the work in two.
 
 **Owner-editable without a developer:** menu items and prices, availability and sold-out holds,
 weekly hours, prep minutes, slot capacity, promo codes, feature flags, staff and permissions. If

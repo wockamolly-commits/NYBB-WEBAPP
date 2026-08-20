@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import type { User } from "@supabase/supabase-js";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
-import { isStaffJobRole, type StaffJobRole } from "./roles";
+import { isStaffJobRole, STAFF_JOB_ROLES, type StaffJobRole } from "./roles";
 
 export type StaffEmailAccess =
   | { kind: "super_admin" }
@@ -14,7 +14,7 @@ const accessRowsSchema = z.array(
   z.object({
     profile_id: z.uuid(),
     profile_role: z.enum(["admin", "staff"]),
-    profile_staff_role: z.enum(["cashier", "kitchen", "manager"]).nullable(),
+    profile_staff_role: z.enum(STAFF_JOB_ROLES).nullable(),
   }),
 );
 

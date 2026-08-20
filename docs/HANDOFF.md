@@ -26,6 +26,31 @@ files, 242 of them against a real Postgres, and migrations now run to `0044`) ar
 customer OTP template uses `{{ .Token }}`, sign-in and sign-out work, and account/profile rows were
 verified against staging. Central Bloc, IT Park, Lahug is the owner-selected pilot branch.
 
+**There is no Kitchen role, as of `0050` on 2026-08-20.** The kitchen works from the POS
+system's own monitor. A Workspace login for it would put a second screen beside the first one
+showing the same tickets: two places to mark the same order done, work repeated at both, and a
+queue that stalls whenever the two disagree. The owner asked for it to go. `staff_role` is now
+`cashier | manager` in the type itself, not merely on the page, so no caller can store the old
+value. Postgres cannot drop an enum value, so `0050` rebuilds the type and drops and recreates the
+four functions that name it (`current_staff_role`, `resolve_active_staff_email`,
+`admin_list_workspace_access`, `admin_set_workspace_access`) plus
+`current_staff_has_permission`, whose stored body would otherwise fail on its first call at
+`'kitchen'::staff_role`. Any profile still holding the role is set to cashier and deactivated,
+with an audit row, rather than converted: cashier can pause a counter and change availability, and
+a silent promotion is not a migration's business. The live database had none.
+
+**`0050` is applied as of 2026-08-20 and is therefore frozen.** Verified against the real database:
+the type reads `cashier,manager`, `staff_role_retired` is gone, all five recreated functions are
+present, and both existing profiles are untouched.
+
+**Trap 15 had happened again, and `db push` would have walked into it.** `0045` through `0049` were
+all present in the live database (each one's function and column sampled directly) while
+`supabase_migrations.schema_migrations` still stopped at `0044`, so the CLI listed five applied
+migrations as pending and would have re-run them ahead of `0050`. The fix was the documented one,
+`supabase migration repair --status applied 0045 0046 0047 0048 0049 --db-url ...`, before pushing.
+**Check `npx supabase migration list` against reality before every push**, not just after a
+dashboard edit: whatever route applied those five did not write the history either.
+
 **`npm run typecheck` is new, and it is the only thing that reads `tests/`.** `next build`
 typechecks the application and nothing else, so fourteen type errors accumulated in the test suite
 over a fortnight without one red run, and two of them were mocks whose call signatures no longer
@@ -556,8 +581,9 @@ Spec section 27. In order:
   route verifies the Auth user, rechecks current database access, transfers only an authorized
   session into the Workspace cookie family, and returns everyone else to `/account` with a denial
   notice.
-- `lib/staff/roles.ts` defines cashier, kitchen and manager defaults. Effective permissions are
-  role defaults plus the existing per-person override rows.
+- `lib/staff/roles.ts` defines cashier and manager defaults. Effective permissions are role
+  defaults plus the existing per-person override rows. A `kitchen` role shipped here and was
+  retired by `0050` on 2026-08-20.
 - `lib/staff/session.ts` is the staff data access layer. Every workspace request verifies the Auth
   user and re-reads the active profile plus overrides through the staff session and RLS. The
   service-role client is not used for workspace page data.
@@ -609,8 +635,8 @@ Spec section 27. In order:
   access. Only an active admin can execute their logic. Anonymous execution and direct
   authenticated writes to `profiles` are denied. Self-demotion and changes to another admin are
   rejected in the database.
-- `/workspace/team` is visible only to the configured Super Admin. It grants cashier, kitchen or
-  manager access to an existing Auth account, changes roles, revokes access and restores access.
+- `/workspace/team` is visible only to the configured Super Admin. It grants cashier or manager
+  access to an existing Auth account, changes roles, revokes access and restores access.
   A person without an Auth account must sign in once through the regular website before they can
   be granted access.
 - Staging and local migration history now continue through `0022`. Direct database verification

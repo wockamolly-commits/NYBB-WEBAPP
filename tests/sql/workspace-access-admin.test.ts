@@ -81,11 +81,11 @@ describe("Workspace access administration", () => {
     expect(
       await scalar<boolean>(db, `select is_active from profiles where id = '${TARGET_ID}'`),
     ).toBe(false);
-    await db.exec(`select admin_set_workspace_access('team@example.com', 'kitchen', true)`);
+    await db.exec(`select admin_set_workspace_access('team@example.com', 'cashier', true)`);
 
     expect(
       await scalar<string>(db, `select staff_role::text from profiles where id = '${TARGET_ID}'`),
-    ).toBe("kitchen");
+    ).toBe("cashier");
     expect(
       await scalar<string>(
         db,

@@ -67,6 +67,7 @@ describe("migrations", () => {
       "0047",
       "0048",
       "0049",
+      "0050",
     ]);
   });
 
@@ -209,6 +210,24 @@ describe("migrations", () => {
     ).toBe(true);
   });
 
+  it("offers only the jobs that use this web app", async () => {
+    // The kitchen has the POS system's own monitor. 0050 took the value out of
+    // the type rather than hiding it on the page, so a caller that is not that
+    // page cannot store it either.
+    expect(
+      await scalar<string>(
+        db,
+        `select string_agg(e.enumlabel, ',' order by e.enumsortorder)
+         from pg_enum e
+         join pg_type t on t.oid = e.enumtypid
+         where t.typname = 'staff_role'`,
+      ),
+    ).toBe("cashier,manager");
+    await expect(
+      db.exec(`select 'kitchen'::staff_role`),
+    ).rejects.toThrow(/invalid input value/);
+  });
+
   it("resolve only active staff emails", async () => {
     await db.exec(`
       insert into auth.users (id, email)
@@ -218,7 +237,7 @@ describe("migrations", () => {
       insert into profiles (id, role, staff_role, display_name, is_active)
       values
         ('71000000-0000-4000-8000-000000000001', 'staff', 'cashier', 'Active', true),
-        ('71000000-0000-4000-8000-000000000002', 'staff', 'kitchen', 'Inactive', false);
+        ('71000000-0000-4000-8000-000000000002', 'staff', 'manager', 'Inactive', false);
     `);
 
     expect(

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { STAFF_JOB_ROLES } from "@/lib/staff/roles";
 import { createReadOnlyStaffClient } from "@/lib/supabase/server";
 import type { WorkspaceMember } from "./team-types";
 
@@ -10,7 +11,7 @@ const memberRowsSchema = z.array(
     email: z.email(),
     display_name: z.string().min(1),
     profile_role: z.enum(["admin", "staff"]),
-    profile_staff_role: z.enum(["cashier", "kitchen", "manager"]).nullable(),
+    profile_staff_role: z.enum(STAFF_JOB_ROLES).nullable(),
     branch_id: z.uuid().nullable(),
     is_active: z.boolean(),
     created_at: z.iso.datetime({ offset: true }),

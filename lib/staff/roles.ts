@@ -1,19 +1,33 @@
-export const STAFF_ROLES = {
+/**
+ * The jobs that need this web app.
+ *
+ * There is deliberately no Kitchen role. The kitchen already works from the POS
+ * system's own monitor, so a Workspace login for it would put a second screen
+ * beside the first one showing the same tickets: two places to mark the same
+ * order, and a queue that stalls whenever the two disagree. Anyone who needs
+ * this app has it as Cashier or Manager.
+ *
+ * This tuple is the list, in the order the Workspace access page offers it.
+ * STAFF_ROLES and ROLE_PERMISSIONS are keyed by it, so a role added or removed
+ * here is a type error everywhere it has not been accounted for.
+ */
+export const STAFF_JOB_ROLES = ["cashier", "manager"] as const;
+
+export type StaffJobRole = (typeof STAFF_JOB_ROLES)[number];
+
+export const STAFF_ROLES: Record<
+  StaffJobRole,
+  { label: string; description: string }
+> = {
   cashier: {
     label: "Cashier",
     description: "Receive orders, manage the counter, and update availability.",
-  },
-  kitchen: {
-    label: "Kitchen",
-    description: "See active tickets and move food through preparation.",
   },
   manager: {
     label: "Manager",
     description: "Run orders, menu, promotions, reporting, and store settings.",
   },
-} as const;
-
-export type StaffJobRole = keyof typeof STAFF_ROLES;
+};
 
 export type StaffPermission =
   | "dashboard:view"
@@ -41,7 +55,6 @@ const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
     "pos:manage",
     "store:availability",
   ],
-  kitchen: ["orders:view", "orders:manage"],
   manager: [
     "dashboard:view",
     "orders:view",
@@ -89,7 +102,7 @@ export type WorkspaceAccessSummary = {
 };
 
 export function isStaffJobRole(value: unknown): value is StaffJobRole {
-  return typeof value === "string" && value in STAFF_ROLES;
+  return STAFF_JOB_ROLES.includes(value as StaffJobRole);
 }
 
 export function isStaffPermission(value: unknown): value is StaffPermission {
