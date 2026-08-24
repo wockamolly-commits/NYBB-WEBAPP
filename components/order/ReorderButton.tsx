@@ -82,7 +82,14 @@ export function ReorderButton({
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button type="button" tone={tone} variant="secondary" onClick={run} disabled={pending}>
+      <Button
+        type="button"
+        tone={tone}
+        variant="secondary"
+        onClick={run}
+        disabled={pending}
+        aria-busy={pending || undefined}
+      >
         {pending ? (
           <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
         ) : (
