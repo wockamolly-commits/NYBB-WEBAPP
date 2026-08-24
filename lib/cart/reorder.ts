@@ -71,6 +71,17 @@ export type ReorderResult = {
   skipped: SkippedLine[];
 };
 
+/**
+ * What the reorder Server Action hands back.
+ *
+ * Declared here rather than in the actions file because a "use server" module
+ * may export nothing but async functions. A type exported from one passes
+ * typecheck and unit tests, then fails npm run build.
+ */
+export type ReorderActionResult =
+  | { ok: true; lines: CartLine[]; skipped: SkippedLine[] }
+  | { ok: false; error: string };
+
 /** Trimmed and case folded. Neither is a menu change. */
 function same(left: string, right: string): boolean {
   return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
