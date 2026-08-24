@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { CustomerPushOptIn } from "@/components/order/CustomerPushOptIn";
 import { OrderTracker } from "@/components/order/OrderTracker";
 import { OrderTrackingLiveRefresh } from "@/components/order/OrderTrackingLiveRefresh";
+import { ReorderButton } from "@/components/order/ReorderButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { getOrderByTracking } from "@/lib/orders/reader";
+import { isTerminalStatus } from "@/lib/orders/status";
 import {
   TRACKING_TOKEN_PARAM,
   normalizeShortCode,
@@ -80,6 +82,15 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
             shortCode={lookup.order.shortCode}
             trackingToken={typeof token === "string" ? token : null}
           />
+          {isTerminalStatus(lookup.order.status) ? (
+            <div className="mt-8">
+              <ReorderButton
+                shortCode={lookup.order.shortCode}
+                token={typeof token === "string" ? token : undefined}
+                tone="light"
+              />
+            </div>
+          ) : null}
         </>
       ) : null}
 
