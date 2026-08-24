@@ -281,6 +281,29 @@ what it misses is this project's own stricter floor. Whoever picks it up should 
 and the remove button as one change, since the second is sized from the first, and re-check the
 cart row at 320 to 375px afterwards.
 
+## 8c. Recorded: Label in Name on the quick-add button
+
+Introduced deliberately on 2026-08-24 while fixing a worse problem, and recorded here rather than
+left for someone to find.
+
+`QuickAddButton` carries a stable `aria-label` of "Add {item} to your cart" in every state, while
+its visible label changes from "Add" to "Added" after a successful press. In that second state the
+accessible name no longer contains the visible label text, which is a narrow miss against WCAG
+2.5.3 Label in Name (Level A). A voice control user saying "click Added" would not match it.
+
+The stable label was chosen to fix something worse. Previously the accessible name followed the
+visible label into the past tense, so the control announced itself as "Added French Fries to your
+cart" while still being a live button that would add another. That is a statement about a completed
+action serving as the name of an action still available, which is more misleading than the naming
+mismatch that replaced it.
+
+Two ways out if this is ever worth revisiting, both design decisions rather than technical ones:
+keep the visible label as "Add" permanently and let the check icon and the live region carry the
+confirmation, which satisfies 2.5.3 cleanly, or word the visible and accessible labels so one
+contains the other. The first is probably right. It was not taken here because changing the visible
+confirmation for sighted users is a product decision, not a defect fix, and this pass was scoped to
+approved findings.
+
 ## 9. Out of scope
 
 - Any migration, including a slug-returning function for reorder.
