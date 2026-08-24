@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { itemPriceRange } from "@/lib/catalog/pricing";
+import { canQuickAdd } from "@/lib/menu/quick-add";
 import type { MenuItem } from "@/lib/menu/types";
 import { formatPesoRange } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { NoPhotoTile } from "./NoPhotoTile";
+import { QuickAddButton } from "./QuickAddButton";
 
 /**
  * A menu board tile.
@@ -38,6 +40,11 @@ export function ProductTile({
 }) {
   const image = item.image;
   const { fromCents, toCents } = itemPriceRange(item);
+  // Decided here, not just inside QuickAddButton: whether the button renders
+  // decides whether the price needs room for it, and a tile that reserved
+  // that space for a button that never appeared would read as a misaligned
+  // grid on the roughly two thirds of the menu that is not quick-addable.
+  const quickAddable = canQuickAdd(item);
 
   return (
     // h-full and the column below are what make a row of tiles agree.
@@ -50,7 +57,7 @@ export function ProductTile({
     // the card a full height flex column lets the grid equalise them, and the
     // price is then pinned to the bottom so every price in a row sits on one
     // line, whatever the names above them did.
-    <article className={cn("group h-full", className)}>
+    <article className={cn("group relative h-full", className)}>
       {/* The whole tile is the target, not just the name. A 900px photograph
           that does nothing when tapped is the most common way a menu grid
           feels broken on a phone. */}
@@ -93,12 +100,36 @@ export function ProductTile({
           <h3 className="text-sm leading-snug font-medium text-balance">{item.name}</h3>
 
           {/* mt-auto, so the price sits on the floor of the card rather than
-              wherever the name happened to stop. */}
-          <p className="font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm">
+              wherever the name happened to stop. pr-16 only when a button is
+              actually reserving that corner; see quickAddable above. */}
+          <p
+            className={cn(
+              "font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm",
+              quickAddable && "pr-16",
+            )}
+          >
             {formatPesoRange(fromCents, toCents)}
           </p>
         </div>
+
+        {/* The stretched link. The whole tile stays the target, while leaving
+            room for a real sibling button that a nested <button> could never
+            be. Resolves against the <article> above, the nearest positioned
+            ancestor, and this Link's own overflow-hidden clips it to the same
+            box, so the whole tile remains the tap target. */}
+        <span aria-hidden className="absolute inset-0" />
       </Link>
+
+      {quickAddable ? (
+        // Sibling of the Link, never a child. A button inside an anchor is
+        // invalid HTML and every browser guesses differently about which one
+        // a tap meant. z-10 lives here, on the positioned wrapper, rather than
+        // on a div nested inside QuickAddButton, so the stacking is owned by
+        // the component that owns the positioning.
+        <div className="absolute right-2 bottom-2 z-10 sm:right-3 sm:bottom-3">
+          <QuickAddButton item={item} />
+        </div>
+      ) : null}
     </article>
   );
 }
