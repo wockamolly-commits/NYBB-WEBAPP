@@ -101,12 +101,12 @@ export default async function AccountPage({
                     className="hover:bg-nybb-ink/5 focus-visible:bg-nybb-ink/5 grid min-h-20 flex-1 grid-cols-[1fr_auto] items-center gap-4 rounded-md px-3 py-4 transition-colors sm:grid-cols-[9rem_1fr_auto]"
                   >
                     <span className="font-mono-tabular text-sm font-semibold">{order.shortCode}</span>
-                    <span className="text-nybb-ink/60 col-start-1 text-sm sm:col-start-2">
+                    <span className="text-nybb-ink/75 col-start-1 text-sm sm:col-start-2">
                       {orderDate.format(new Date(order.placedAt))}
                     </span>
                     <span className="row-span-2 text-right sm:row-span-1">
                       <span className="font-display block text-sm">{statusLabel[order.status]}</span>
-                      <span className="font-mono-tabular text-nybb-ink/60 mt-1 block text-xs">
+                      <span className="font-mono-tabular text-nybb-ink/75 mt-1 block text-xs">
                         {formatPeso(order.totalCents)}
                       </span>
                     </span>

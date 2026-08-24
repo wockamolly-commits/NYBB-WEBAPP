@@ -80,7 +80,7 @@ export function ProductTile({
               placeholder="blur"
               blurDataURL={image.blurDataURL}
               priority={priority}
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
           ) : (
             <NoPhotoTile name={item.name} className="absolute inset-0" />
@@ -111,13 +111,6 @@ export function ProductTile({
             {formatPesoRange(fromCents, toCents)}
           </p>
         </div>
-
-        {/* The stretched link. The whole tile stays the target, while leaving
-            room for a real sibling button that a nested <button> could never
-            be. Resolves against the <article> above, the nearest positioned
-            ancestor, and this Link's own overflow-hidden clips it to the same
-            box, so the whole tile remains the tap target. */}
-        <span aria-hidden className="absolute inset-0" />
       </Link>
 
       {quickAddable ? (

@@ -77,7 +77,7 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
             <>
               <h1 className="font-display heading-minor mt-6">
                 {item.code ? (
-                  <span className="font-mono-tabular text-nybb-ink/50 mr-3 text-base">
+                  <span className="font-mono-tabular text-nybb-ink/75 mr-3 text-base">
                     {item.code}
                   </span>
                 ) : null}
@@ -98,7 +98,7 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
                   left ambiguous and that the catalog had to interpret, and it
                   stays visible until the owner confirms the reading. */}
               {item.pricingNote ? (
-                <p className="border-nybb-ink/25 text-nybb-ink/60 mt-5 max-w-prose rounded-md border border-dashed p-3 text-xs leading-relaxed">
+                <p className="border-nybb-ink/25 text-nybb-ink/75 mt-5 max-w-prose rounded-md border border-dashed p-3 text-xs leading-relaxed">
                   {item.pricingNote}
                 </p>
               ) : null}

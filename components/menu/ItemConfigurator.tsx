@@ -125,6 +125,16 @@ export function ItemConfigurator({
   const [added, setAdded] = useState<{ key: string; ok: boolean; quantity: number } | null>(
     null,
   );
+  // Quantity resets to one after every successful add (below), so pressing
+  // "Add to cart" twice in a row with nothing changed renders the exact same
+  // string both times. React's text reconciler only writes to the DOM when
+  // the rendered string actually differs, so an unchanged string is silent to
+  // a screen reader on the second press even though the cart genuinely grew.
+  // Keying the live region on this counter forces React to remount a fresh
+  // node every press, guaranteeing a DOM mutation regardless of whether the
+  // text repeats. QuickAddButton uses the same counter-keyed approach for the
+  // same reason; keep them matching if either changes.
+  const [addCount, setAddCount] = useState(0);
   const currentKey = lineKey({
     itemSlug: item.slug,
     variationSlug: selection.variationSlug,
@@ -144,6 +154,7 @@ export function ItemConfigurator({
     });
 
     setAdded({ key: currentKey, ok, quantity: selection.quantity });
+    setAddCount((count) => count + 1);
     // Back to one, so a second tap on a screen that already says "3 added"
     // does not quietly make it six.
     if (ok) setSelection((current) => ({ ...current, quantity: MIN_QUANTITY }));
@@ -401,8 +412,12 @@ export function ItemConfigurator({
               itself coming and going under the button.
 
               Whether checkout can complete an order is a fact resolved above
-              rather than asserted here; see lib/menu/ordering-copy.ts for why. */}
+              rather than asserted here; see lib/menu/ordering-copy.ts for why.
+
+              Keyed on addCount so a repeated identical add still mutates the
+              DOM; see the comment by addCount's declaration above. */}
           <p
+            key={addCount}
             aria-live="polite"
             className="text-nybb-bone/65 mt-3 text-sm leading-relaxed"
           >
