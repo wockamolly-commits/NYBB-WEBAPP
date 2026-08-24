@@ -117,16 +117,16 @@ Step 5 is the one that stops a half-built wings line reaching the cart.
 
 ### 3.5 Where the code lives
 
-- `lib/cart/reorder.ts` — pure. Takes `MenuCategory[]` plus a list of past lines
+- `lib/cart/reorder.ts`: pure. Takes `MenuCategory[]` plus a list of past lines
   in a source-neutral shape and returns `{ lines: CartLine[]; skipped: SkippedLine[] }`.
   No React, no browser, no Supabase, so it is directly testable. This is the
   same split `lib/cart/lines.ts` and `lib/staff/board.ts` already use.
-- `lib/orders/past-lines.ts` — server. Reads a past order's lines into that
+- `lib/orders/past-lines.ts`: server. Reads a past order's lines into that
   neutral shape, from either source:
   - signed in: a PostgREST select on `order_items` and `order_item_options`,
     which RLS already permits for the caller's own orders;
   - guest: the items array `get_order_by_tracking` already returns.
-- `app/actions/reorder.ts` — a Server Action taking a short code and, for
+- `app/actions/reorder.ts`: a Server Action taking a short code and, for
   guests, the tracking token the page already holds in `?t=`. Returns the
   rebuilt lines and the skip report. It writes nothing.
 
@@ -136,7 +136,7 @@ Step 5 is the one that stops a half-built wings line reaching the cart.
   already looking at, so it widens nothing. Two rules carry over unchanged and
   are not negotiable: the token never reaches a log line, and it travels in the
   action's POST body rather than in any URL.
-- `components/order/ReorderButton.tsx` — client. Calls the action, merges the
+- `components/order/ReorderButton.tsx`: client. Calls the action, merges the
   returned lines into the cart, stashes the report, navigates to `/cart`.
 
 The cart lives in `localStorage`, so only the client may write it. The action
