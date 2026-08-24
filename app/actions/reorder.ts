@@ -61,7 +61,25 @@ export async function reorder(input: {
     return { ok: false, error: "That order could not be read." };
   }
 
-  const { categories } = await getStorefrontMenu();
+  // Guarded, unlike the page components that call getStorefrontMenu()
+  // unguarded elsewhere in this codebase. Those are fine: a throw there
+  // reaches Next's error boundary and renders an error page, a reasonable
+  // outcome for a page. This is a Server Action invoked from a client
+  // transition inside startTransition, and a throw here rejects the promise
+  // instead of returning the typed result the button is built to render. Do
+  // not "tidy" this back to match the page call sites; the difference is
+  // deliberate.
+  let categories;
+  try {
+    ({ categories } = await getStorefrontMenu());
+  } catch (error) {
+    // The token is out of scope by this point in the function and stays out
+    // of scope here: only the underlying error is logged, never anything
+    // from the caller's input.
+    console.error("[reorder] menu read failed:", error);
+    return { ok: false, error: "That order could not be read." };
+  }
+
   const { lines, skipped } = rebuildCartLines(categories, past);
 
   return { ok: true, lines, skipped };
