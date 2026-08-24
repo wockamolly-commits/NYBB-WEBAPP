@@ -87,7 +87,6 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
               <ReorderButton
                 shortCode={lookup.order.shortCode}
                 token={typeof token === "string" ? token : undefined}
-                tone="light"
               />
             </div>
           ) : null}

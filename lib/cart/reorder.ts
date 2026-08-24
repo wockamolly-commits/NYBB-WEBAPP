@@ -1,10 +1,6 @@
-import {
-  MAX_QUANTITY,
-  MIN_QUANTITY,
-  selectionProblem,
-  unitPriceCents,
-} from "@/lib/menu/line-pricing";
+import { selectionProblem, unitPriceCents } from "@/lib/menu/line-pricing";
 import type { MenuCategory, MenuItem } from "@/lib/menu/types";
+import { clampQuantity } from "./lines";
 import type { CartLine } from "./types";
 
 /**
@@ -87,6 +83,16 @@ function same(left: string, right: string): boolean {
   return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
 }
 
+/**
+ * The first name match across every category, in menu order.
+ *
+ * All 31 catalog item names are distinct today, and nothing here enforces
+ * that. The menu becomes owner-editable in Phase 4; if two items ever share a
+ * name, this returns whichever comes first in the menu rather than the one
+ * that was actually bought, which is the one outcome spec 3.2 promises never
+ * happens. Worth an owner-editable-menu uniqueness check before that phase
+ * ships, not a defect in the catalog as it stands.
+ */
 function findItem(categories: MenuCategory[], name: string): MenuItem | null {
   for (const category of categories) {
     for (const item of category.items) {
@@ -94,11 +100,6 @@ function findItem(categories: MenuCategory[], name: string): MenuItem | null {
     }
   }
   return null;
-}
-
-function clampQuantity(quantity: number): number {
-  if (!Number.isFinite(quantity)) return MIN_QUANTITY;
-  return Math.min(Math.max(Math.trunc(quantity), MIN_QUANTITY), MAX_QUANTITY);
 }
 
 export function rebuildCartLines(

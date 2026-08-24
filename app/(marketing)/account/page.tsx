@@ -111,7 +111,7 @@ export default async function AccountPage({
                       </span>
                     </span>
                   </Link>
-                  <ReorderButton shortCode={order.shortCode} tone="light" />
+                  <ReorderButton shortCode={order.shortCode} />
                 </li>
               ))}
             </ol>

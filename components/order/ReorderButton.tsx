@@ -25,13 +25,9 @@ import type { SkippedLine } from "@/lib/cart/reorder";
 export function ReorderButton({
   shortCode,
   token,
-  label = "Order this again",
-  tone = "light",
 }: {
   shortCode: string;
   token?: string;
-  label?: string;
-  tone?: "light" | "dark";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -84,7 +80,7 @@ export function ReorderButton({
     <div className="flex flex-col items-start gap-2">
       <Button
         type="button"
-        tone={tone}
+        tone="light"
         variant="secondary"
         onClick={run}
         disabled={pending}
@@ -95,7 +91,7 @@ export function ReorderButton({
         ) : (
           <RotateCcw aria-hidden className="size-4" />
         )}
-        {pending ? "Bringing it back" : label}
+        {pending ? "Bringing it back" : "Order this again"}
         <span className="sr-only"> (order {shortCode})</span>
       </Button>
       {error ? (
