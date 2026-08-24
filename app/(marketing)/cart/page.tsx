@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CartView } from "@/components/cart/CartView";
+import { ReorderNotice } from "@/components/cart/ReorderNotice";
 import { StoreBar } from "@/components/store/StoreBar";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
@@ -54,6 +55,7 @@ export default async function CartPage() {
         <StoreBar selection={selection} returnTo="/cart" className="mt-8" />
       ) : null}
 
+      <ReorderNotice />
       <CartView
         categories={categories}
         storeName={selection.selected?.shortName ?? null}
