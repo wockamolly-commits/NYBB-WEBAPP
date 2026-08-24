@@ -54,9 +54,29 @@ export function takeReorderReport(storage?: Storage): ReorderReport | null {
   const store = session(storage);
   if (!store) return null;
 
-  const raw = store.getItem(REORDER_REPORT_KEY);
+  // A store obtained successfully can still throw from its own methods: some
+  // browsers with site data blocked hand back a usable sessionStorage
+  // reference and then throw SecurityError from getItem, not from acquiring
+  // sessionStorage in the first place. That case is not covered by session()
+  // above, so it is handled here.
+  let raw: string | null;
+  try {
+    raw = store.getItem(REORDER_REPORT_KEY);
+  } catch {
+    return null;
+  }
   if (raw === null) return null;
-  store.removeItem(REORDER_REPORT_KEY);
+
+  // Read-once: clear before parsing, so a report that turns out to be
+  // unparseable is still consumed rather than left to be re-read on the next
+  // visit. A throw here means the value cannot be cleared, but it also means
+  // it cannot reliably be read again either, so there is nothing further to
+  // do beyond falling through to parse the value already in hand.
+  try {
+    store.removeItem(REORDER_REPORT_KEY);
+  } catch {
+    // Nothing more to do here; see comment above.
+  }
 
   try {
     const parsed: unknown = JSON.parse(raw);
