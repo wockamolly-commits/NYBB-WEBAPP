@@ -416,8 +416,9 @@ export function ItemConfigurator({
                     href="/contact"
                     className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
                   >
-                    Branch numbers
+                    Call the counter you want to collect from
                   </Link>
+                  .
                 </>
               )
             ) : confirmation.ok ? (

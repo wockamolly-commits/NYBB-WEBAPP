@@ -18,6 +18,6 @@ export function orderingCopy(canOrder: boolean): OrderingCopy {
     canOrder,
     message: canOrder
       ? "Add what you want, then choose a pickup window at checkout."
-      : "Online ordering is not open on this site yet, so call the counter you want to collect from.",
+      : "Online ordering is not open on this site yet.",
   };
 }

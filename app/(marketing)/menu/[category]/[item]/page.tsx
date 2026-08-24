@@ -112,11 +112,11 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
 
 /**
  * The live ordering answer, resolved inside the page's existing Suspense
- * boundary so the product pages stay statically generated.
+ * boundary, so the read stays scoped to the fragment that needs it.
  *
- * generateStaticParams plus dynamicParams = false is what makes these pages
- * cheap. Reading the payment rails at the top level would make the whole route
- * dynamic to render one sentence, so the sentence waits here instead.
+ * Reading the payment rails at the top level would block the whole page shell
+ * on a request the rest of the page does not need, to render one sentence, so
+ * the sentence waits here and streams in behind the fallback instead.
  */
 async function ConfiguratorWithOrdering({
   item,
