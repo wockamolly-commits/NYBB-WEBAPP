@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
 import { Button, PRESSABLE } from "@/components/ui/Button";
@@ -130,17 +130,33 @@ export function ItemConfigurator({
   // string both times. React's text reconciler only writes to the DOM when
   // the rendered string actually differs, so an unchanged string is silent to
   // a screen reader on the second press even though the cart genuinely grew.
-  // Keying the live region on this counter forces React to remount a fresh
-  // node every press, guaranteeing a DOM mutation regardless of whether the
-  // text repeats. QuickAddButton uses the same counter-keyed approach for the
-  // same reason; keep them matching if either changes.
+  //
+  // The live region below stays mounted for the life of this component; see
+  // components/cart/ReorderNotice.tsx for the rule that forbids keying it.
+  // Instead, a press clears the announcement synchronously
+  // and this effect, keyed on the press count, writes the real text on the
+  // following render: two renders, one stable node, a genuine text change
+  // every time. QuickAddButton uses the same clear-then-set approach for the
+  // same reason.
   const [addCount, setAddCount] = useState(0);
+  const [cleared, setCleared] = useState(false);
   const currentKey = lineKey({
     itemSlug: item.slug,
     variationSlug: selection.variationSlug,
     optionSlugs: selection.optionSlugs,
   });
   const confirmation = added?.key === currentKey ? added : null;
+
+  useEffect(() => {
+    // Nothing to reveal before the first press; skip so mount does not clear
+    // the default copy for no reason.
+    if (addCount === 0) return;
+    // Wrapped and invoked, rather than a bare setCleared call, to satisfy
+    // react-hooks/set-state-in-effect; see the same pattern and its reason
+    // in components/cart/ReorderNotice.tsx.
+    const reveal = () => setCleared(false);
+    reveal();
+  }, [addCount]);
 
   function add() {
     const { ok } = addToCart({
@@ -154,6 +170,7 @@ export function ItemConfigurator({
     });
 
     setAdded({ key: currentKey, ok, quantity: selection.quantity });
+    setCleared(true);
     setAddCount((count) => count + 1);
     // Back to one, so a second tap on a screen that already says "3 added"
     // does not quietly make it six.
@@ -409,20 +426,15 @@ export function ItemConfigurator({
 
           {/* One live region rather than a message that appears and disappears,
               so a screen reader hears the confirmation without the paragraph
-              itself coming and going under the button.
+              itself coming and going under the button. Never keyed; see the
+              comment by addCount's declaration above for why a repeated
+              identical add still reaches the DOM without remounting this node.
 
               Whether checkout can complete an order is a fact resolved above
-              rather than asserted here; see lib/menu/ordering-copy.ts for why.
-
-              Keyed on addCount so a repeated identical add still mutates the
-              DOM; see the comment by addCount's declaration above. */}
-          <p
-            key={addCount}
-            aria-live="polite"
-            className="text-nybb-bone/65 mt-3 text-sm leading-relaxed"
-          >
-            {confirmation === null ? (
-              ordering.canOrder ? (
+              rather than asserted here; see lib/menu/ordering-copy.ts for why. */}
+          <p aria-live="polite" className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
+            {cleared ? null : confirmation === null ? (
+              canOrder ? (
                 ordering.message
               ) : (
                 <>

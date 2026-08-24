@@ -7,15 +7,17 @@
  * customer commits to an order. /menu had the same bug and it was fixed there
  * with a comment recording why: the sentence was true on the day it was typed
  * and false in whichever environment did not match it.
+ *
+ * Just the message: whether an order can be completed is already a `canOrder`
+ * prop in scope wherever this is called, so echoing it back here would carry
+ * no information a caller doesn't already have.
  */
 export type OrderingCopy = {
-  canOrder: boolean;
   message: string;
 };
 
 export function orderingCopy(canOrder: boolean): OrderingCopy {
   return {
-    canOrder,
     message: canOrder
       ? "Add what you want, then choose a pickup window at checkout."
       : "Online ordering is not open on this site yet.",

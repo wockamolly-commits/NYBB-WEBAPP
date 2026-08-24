@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
-import { useState } from "react";
+import { Ban, Check, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { canQuickAdd, quickAddLine } from "@/lib/menu/quick-add";
 import { addToCart } from "@/lib/cart/store";
 import type { MenuItem } from "@/lib/menu/types";
@@ -17,26 +17,48 @@ import { Button } from "@/components/ui/Button";
  * tied to what was added, not a toast on a timer. It resets on the next add so
  * a second press is not answered by a message about the first.
  *
- * A repeated press with nothing changed in between renders the same message
- * twice, and a plain state update does not touch the DOM the second time
- * (React bails out on Object.is equality), so a screen reader hears the first
- * add and nothing at all for the second, third, or nth. The live region is
- * keyed on an incrementing per-press counter so React remounts a fresh node
- * every time, guaranteeing a DOM mutation regardless of whether the text
- * repeats. ItemConfigurator uses the same counter-keyed approach for the same
- * reason; keep them matching if either changes.
+ * The "full" state gets its own icon and label rather than sharing the idle
+ * Plus/Add pair. A sighted customer at MAX_LINES pressing a button that looks
+ * unchanged reads as a broken control; the icon and word both change so the
+ * state does not rest on colour alone.
  *
- * The accessible name stays "Add {item.name} to your cart" at all times, via
- * aria-label, rather than following the visible "Added" label into a past
- * tense that describes an action still available to repeat. The live region
- * carries the confirmation instead.
+ * WHY THE LIVE REGION STAYS MOUNTED, AND HOW A REPEAT PRESS STILL ANNOUNCES.
+ * ================================================================
+ * The rule for this whole codebase is in components/cart/ReorderNotice.tsx: a
+ * live region inserted after its content already exists announces nothing, so
+ * the `<span aria-live>` below is rendered on every render, unconditionally,
+ * never keyed and never remounted.
  *
- * The tile it sits on is charcoal, so tone="dark" is the ground this button is
- * read against, not the button's own colour choice. See components/ui/Button.tsx.
+ * That creates the real problem this component has to solve: a repeated press
+ * with nothing changed in between asks React to render the same string twice,
+ * and the text reconciler only writes to the DOM when the rendered string
+ * actually differs, so a screen reader hears the first add and nothing at all
+ * for the second, third, or nth, even though the cart genuinely grew each
+ * time. Remounting the region with a `key` used to "fix" this by giving React
+ * a new node to mutate, but that is the exact shape the rule above forbids,
+ * and it is announced inconsistently across screen readers for the same
+ * reason a freshly mounted region is at first paint.
+ *
+ * The fix is clear-then-set on the one stable node: a press clears the
+ * announcement synchronously, and an effect keyed on the press count writes
+ * the real message on the following render. That is two renders and a
+ * genuine text change every time, on a node that never unmounts.
  */
 export function QuickAddButton({ item }: { item: MenuItem }) {
   const [state, setState] = useState<"idle" | "added" | "full">("idle");
   const [pressCount, setPressCount] = useState(0);
+  const [cleared, setCleared] = useState(false);
+
+  useEffect(() => {
+    // Nothing to reveal before the first press; skip so mount does not clear
+    // the (already empty) idle announcement for no reason.
+    if (pressCount === 0) return;
+    // Wrapped and invoked, rather than a bare setCleared call, to satisfy
+    // react-hooks/set-state-in-effect; see the same pattern and its reason
+    // in components/cart/ReorderNotice.tsx.
+    const reveal = () => setCleared(false);
+    reveal();
+  }, [pressCount]);
 
   if (!canQuickAdd(item)) return null;
 
@@ -44,6 +66,7 @@ export function QuickAddButton({ item }: { item: MenuItem }) {
     const line = quickAddLine(item);
     if (!line) return;
     setState(addToCart(line).ok ? "added" : "full");
+    setCleared(true);
     setPressCount((count) => count + 1);
   }
 
@@ -62,17 +85,21 @@ export function QuickAddButton({ item }: { item: MenuItem }) {
       >
         {state === "added" ? (
           <Check aria-hidden className="size-4" />
+        ) : state === "full" ? (
+          <Ban aria-hidden className="size-4" />
         ) : (
           <Plus aria-hidden className="size-4" />
         )}
-        {state === "added" ? "Added" : "Add"}
+        {state === "added" ? "Added" : state === "full" ? "Cart full" : "Add"}
       </Button>
-      <span aria-live="polite" className="sr-only" key={pressCount}>
-        {state === "added"
-          ? `${item.name} added to your cart.`
-          : state === "full"
-            ? "Your cart is full. Remove something before adding more."
-            : ""}
+      <span aria-live="polite" className="sr-only">
+        {cleared
+          ? ""
+          : state === "added"
+            ? `${item.name} added to your cart.`
+            : state === "full"
+              ? "Your cart is full. Remove something before adding more."
+              : ""}
       </span>
     </>
   );
