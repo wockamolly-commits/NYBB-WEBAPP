@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ItemConfigurator } from "@/components/menu/ItemConfigurator";
 import { TextLink } from "@/components/ui/TextLink";
+import { getStoreSelection } from "@/lib/branches/selection";
 import { itemPriceRange } from "@/lib/catalog/pricing";
+import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { formatPesoRange } from "@/lib/format";
 import { findCategory, getStorefrontMenu } from "@/lib/menu";
+import type { MenuItem } from "@/lib/menu/types";
 
 type Params = { category: string; item: string };
 
@@ -68,7 +71,7 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
           </div>
         }
       >
-        <ItemConfigurator
+        <ConfiguratorWithOrdering
           item={item}
           details={
             <>
@@ -105,4 +108,29 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
       </Suspense>
     </div>
   );
+}
+
+/**
+ * The live ordering answer, resolved inside the page's existing Suspense
+ * boundary so the product pages stay statically generated.
+ *
+ * generateStaticParams plus dynamicParams = false is what makes these pages
+ * cheap. Reading the payment rails at the top level would make the whole route
+ * dynamic to render one sentence, so the sentence waits here instead.
+ */
+async function ConfiguratorWithOrdering({
+  item,
+  details,
+}: {
+  item: MenuItem;
+  details: React.ReactNode;
+}) {
+  const [selection, orderingOpen] = await Promise.all([
+    getStoreSelection(),
+    onlineOrderingOpen(),
+  ]);
+  // Both halves, the same test every other screen in this flow applies.
+  const canOrder = orderingOpen && selection.stores.some((store) => store.orderable);
+
+  return <ItemConfigurator item={item} details={details} canOrder={canOrder} />;
 }

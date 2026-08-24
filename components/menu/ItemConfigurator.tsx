@@ -21,6 +21,7 @@ import {
   toggleOption,
   unitPriceCents,
 } from "@/lib/menu/line-pricing";
+import { orderingCopy } from "@/lib/menu/ordering-copy";
 import { previewImage } from "@/lib/menu/preview";
 import type { MenuItem, MenuOption, MenuOptionGroup } from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ function upcharge(option: MenuOption, variationSlug: string): string | null {
 export function ItemConfigurator({
   item,
   details,
+  canOrder,
 }: {
   item: MenuItem;
   /**
@@ -74,6 +76,8 @@ export function ItemConfigurator({
    * arrives here as a slot rather than being re-implemented on the client.
    */
   details?: React.ReactNode;
+  /** Whether an order can actually be completed on this deployment right now. */
+  canOrder: boolean;
 }) {
   const searchParams = useSearchParams();
 
@@ -112,6 +116,8 @@ export function ItemConfigurator({
   // An item with one price and no add-ons has nothing above the quantity row,
   // so the divider there would be a rule with nothing to divide.
   const hasChoices = item.variations.length > 1 || item.optionGroups.length > 0;
+
+  const ordering = orderingCopy(canOrder);
 
   // The confirmation is tied to the line that was added, not to a timer. Change
   // the flavour and it goes, because "Added to cart" sitting under a different
@@ -394,25 +400,26 @@ export function ItemConfigurator({
               so a screen reader hears the confirmation without the paragraph
               itself coming and going under the button.
 
-              What is true today: the cart works, checkout does not. Pickup
-              times need the pilot branch and its hours, which are still with
-              the owner, so this says so instead of pretending. */}
+              Whether checkout can complete an order is a fact resolved above
+              rather than asserted here; see lib/menu/ordering-copy.ts for why. */}
           <p
             aria-live="polite"
             className="text-nybb-bone/65 mt-3 text-sm leading-relaxed"
           >
             {confirmation === null ? (
-              <>
-                Build your order now. Checkout opens once pickup times are
-                published; until then,{" "}
-                <Link
-                  href="/contact"
-                  className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
-                >
-                  call the branch
-                </Link>{" "}
-                you want to collect from.
-              </>
+              ordering.canOrder ? (
+                ordering.message
+              ) : (
+                <>
+                  {ordering.message}{" "}
+                  <Link
+                    href="/contact"
+                    className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                  >
+                    Branch numbers
+                  </Link>
+                </>
+              )
             ) : confirmation.ok ? (
               <>
                 <span className="text-nybb-bone">
