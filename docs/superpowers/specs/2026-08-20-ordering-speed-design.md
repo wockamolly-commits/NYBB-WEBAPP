@@ -254,9 +254,19 @@ two variations does not; one variation with an optional group does not.
 `npm run build` is part of the loop, per AGENTS.md, because the Server Action
 boundary only fails there.
 
-## 8b. Recorded and deliberately not fixed: the cart's 44px floor
+## 8b. The cart's 44px floor: found, deliberately deferred, then fixed
 
-Found by the design pass on 2026-08-24, raised with the owner, and left alone on purpose.
+Found by the design pass on 2026-08-24, raised with the owner, left alone on purpose at the time,
+and fixed on 2026-08-25 when the owner asked for it. The history is kept rather than overwritten,
+because the reasoning for deferring was sound and is worth reading before anyone reopens this.
+
+**Resolved.** Both controls are now 44px. `QuantityStepper`'s `sm` box went 40px to 44px and keeps
+its narrower 36px readout, which is the part of that row that could actually give. `Button`'s `icon`
+size went 42px to 44px, which also lifted the workspace shell and the hero video, both of which had
+been carrying the same sub-floor square. Verified in a browser at 320px and 375px: every stepper and
+remove button reports 44x44, with no horizontal scroll and nothing spilling offscreen.
+
+What follows is the original record.
 
 The cart line's quantity stepper measures 40x40px and its line-remove button 42x42px, both under
 the 44px minimum interactive height this project states for itself in `DESIGN.md` ("everywhere")

@@ -130,11 +130,17 @@ const button = cva(
         // The full-width commitment at the bottom of a card. Taller and wider
         // rather than louder, because it is already the only fill in view.
         lg: "min-h-12 px-7",
-        // 42px square: the stepper's 40px button plus the 1px border on each
-        // side of the group holding it. One number rather than a height plus
-        // a border, which border-box would take straight back out and leave
-        // this two pixels short of its neighbour.
-        icon: "size-[2.625rem] px-0",
+        // Square, and on the same 44px floor as everything else here.
+        //
+        // This used to be 42px, derived from the quantity stepper's outer
+        // height when that stepper's own buttons were 40px. Deriving one
+        // control's size from another control's mistake carried the mistake
+        // into three screens: the cart, the workspace shell and the hero
+        // video, all of which had a sub-floor icon button. The stepper's
+        // buttons are now 44px too, so its group stands 2px taller than this
+        // square; centred in a flex row that difference is not visible, and
+        // matching a neighbour was never worth being under the floor for.
+        icon: "size-11 px-0",
       },
       block: {
         true: "w-full",
