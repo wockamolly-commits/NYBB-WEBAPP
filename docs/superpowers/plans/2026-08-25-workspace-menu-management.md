@@ -2691,3 +2691,94 @@ git commit -m "fix(menu): let the storefront render items created in the workspa
 - Drag reordering. `staff_reorder_menu` takes an ordered array and is ready for it; the screens use number fields.
 
 **One finding to report if it surfaced.** Task 11 step 5 asks whether the storage bucket's policies admit an `authenticated` insert. If they do not, that needs a storage policy in `0055` and it is a separate piece of work, not a reason to reach for a service role key.
+
+---
+
+## Task 13: The storefront reads the branch the customer chose
+
+Added 2026-08-25, during execution, from a Task 2 review finding. Not part of
+the original twelve.
+
+**Files:**
+- Modify: `lib/menu/storefront.ts`
+- Modify: `app/(marketing)/menu/page.tsx`
+- Modify: `app/(marketing)/menu/[category]/page.tsx`
+- Modify: `app/(marketing)/menu/[category]/[item]/page.tsx`
+- Modify: `app/(marketing)/cart/page.tsx`
+- Modify: `app/(marketing)/checkout/page.tsx`
+- Test: `tests/unit/menu-reader.test.ts` (extend)
+
+**Interfaces:** none new. `getStorefrontMenu(branchSlug?: string)` already takes
+the argument; nothing passes it.
+
+**Why this exists.** `place_order` resolves the branch from the slug in the
+checkout payload, so it gates on the counter the customer actually chose.
+`get_storefront_menu` is called with no argument at all twelve call sites, so
+after Task 2 it resolves the active branch with the lowest `sort_order`. While
+one branch trades those are the same counter and everything agrees. The day a
+second branch goes live they diverge, and a customer who chose the second
+branch is shown the first branch's availability and then refused at checkout.
+
+That is the failure `place_order`'s section 7 comment names: a filter the menu
+is missing refuses something a customer can see. Task 2 closed the version of
+it that was live immediately; this closes the version that arrives with the
+second branch.
+
+**Why it was not folded into Task 2.** The menu routes use
+`generateStaticParams`, so making the menu depend on a per customer store
+selection changes what can be prerendered and what has to be resolved per
+request. That is an architectural change to the storefront's caching, not a
+line in a migration, and it deserves its own review.
+
+**The selection already exists.** `getStoreSelection()` in
+`lib/branches/selection` is already called by `app/(marketing)/menu/page.tsx`
+alongside `getStorefrontMenu()`. The slug is sitting right there, unused.
+
+**Before writing anything**, read `node_modules/next/dist/docs/` on caching and
+`generateStaticParams`. A per customer value inside a statically generated
+route is exactly the case the Next docs are worth reading for, and getting it
+wrong caches one customer's branch for everyone.
+
+**The decision this task has to make first**, and record in the spec: whether
+the menu becomes per request for everyone, or stays static and resolves
+availability on the client, or splits into a static shell plus a dynamic
+availability fragment the way the item page already handles its ordering
+notice. Present the options and take the smallest one that is correct.
+
+- [ ] **Step 1: Write the failing test**
+
+Extend `tests/unit/menu-reader.test.ts` to assert `getStorefrontMenu` forwards
+a slug it is given, and forwards null when it is not, so the plumbing is pinned
+before the call sites change.
+
+- [ ] **Step 2: Decide the caching shape and record it**
+
+Write the decision and its reasoning into the spec's section 7.1 residual note,
+replacing that note. One short paragraph.
+
+- [ ] **Step 3: Pass the chosen slug at the five buying call sites**
+
+`/menu`, `/menu/[category]`, `/menu/[category]/[item]`, `/cart`, `/checkout`.
+Leave `/about` and `/` alone: neither sells anything, and neither should pay
+for a per customer read.
+
+`app/actions/reorder.ts:74` also calls it. Reorder builds a cart against the
+customer's selected store, so it takes the slug too.
+
+- [ ] **Step 4: Verify in the browser**
+
+Activate a second branch, hold an item at one of them, and confirm the menu
+hides it for a customer who chose that branch and shows it for one who chose
+the other. This is the assertion the whole task exists for.
+
+- [ ] **Step 5: Run the full verification set and commit**
+
+Run: `npm run typecheck && npm run lint && npx vitest run && npm run build`
+
+Check the build output: whichever caching shape Step 2 chose, confirm the
+routes report what that decision predicted.
+
+```bash
+git add "app/(marketing)" lib/menu/storefront.ts app/actions/reorder.ts tests/unit/menu-reader.test.ts
+git commit -m "feat(menu): resolve storefront availability against the chosen branch"
+```

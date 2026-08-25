@@ -282,7 +282,27 @@ long expired rows is housekeeping, not correctness, and is out of scope.
 ### 7.1 Two readers change, not one
 
 `get_storefront_menu(p_branch_slug)` already resolves a branch for pricing.
-Availability follows the same resolution and the same function.
+Availability follows the same resolution, through the same resolver
+`place_order` uses, `resolve_pickup_branch_id()`. With no slug that falls back
+to the active branch, lowest `sort_order` first, and it returns null only when
+no branch is active at all. A null branch hides nothing, which is right:
+with nothing trading there is no counter whose stock could be out.
+
+**Corrected 2026-08-25, during implementation.** This section first said only
+"the same resolution and the same function", and the plan built it as a bare
+slug lookup where a null slug hid nothing. Every one of the twelve
+`getStorefrontMenu()` call sites passes no slug, while `place_order` resolves a
+real branch on every order, so as first written the menu hid nothing and
+checkout refused items the menu had just shown. Sharing the resolver makes the
+two agree by construction.
+
+**One residual, which section 12 carries as remaining work.** The storefront
+does not yet pass the customer's chosen branch into `getStorefrontMenu()`,
+while `place_order` honours the slug in the checkout payload. With one branch
+active those resolve to the same counter. With two, a customer who chose the
+second would be shown the first's holds. Wiring the chosen slug through the
+storefront touches `generateStaticParams` and per store caching, so it is its
+own piece of work rather than a line in this one.
 
 `place_order` gates too. Its section 7 carries this comment:
 
@@ -422,5 +442,8 @@ errors appear only there.
 - Bulk import or export of the menu.
 - Reordering by drag. Sort order is a number field in this pass.
 - Deleting long expired hold rows. See section 7.
+- Passing the customer's chosen branch slug into `getStorefrontMenu()`, so the
+  menu and the checkout gate resolve the same counter once a second branch
+  trades. See the residual noted in 7.1.
 - Any change to `get_order_by_tracking` or the order snapshot columns. A receipt
   keeps saying what was sold, and editing the menu must not rewrite history.

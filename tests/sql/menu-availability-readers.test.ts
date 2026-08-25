@@ -67,11 +67,36 @@ describe("hold aware storefront readers", () => {
     expect(await menuSlugs(db, "other")).toEqual(["chicken-wings", "fries"]);
   });
 
-  it("hides nothing when no branch has been chosen", async () => {
+  it("hides an item held at the branch a no-slug call resolves to", async () => {
+    // get_storefront_menu with no slug prices against the active branch,
+    // lowest sort_order first (resolve_price_list_id). Availability has to
+    // follow the same branch, via resolve_pickup_branch_id, which is the
+    // resolver place_order also uses. Asking the resolver directly rather
+    // than assuming which of 'pilot' or 'other' it lands on keeps this
+    // test honest about the seed order.
+    //
+    // Written straight into the table rather than through
+    // staff_set_menu_item_hold, because the resolved branch is not
+    // necessarily 'pilot', the only branch this cashier is scoped to.
+    const wings = await itemId(db, "chicken-wings");
+    const resolved = await scalar<string>(db, "select resolve_pickup_branch_id(null)::text");
+    await db.exec(
+      `insert into menu_item_branch_holds (item_id, branch_id, kind)
+       values ('${wings}', '${resolved}', 'indefinite')`,
+    );
+
+    expect(await menuSlugs(db, null)).toEqual(["fries"]);
+  });
+
+  it("hides nothing when no branch is active at all", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await db.exec("update branches set is_active = false");
 
+    // With nothing trading there is no counter whose stock could be out, so
+    // resolve_pickup_branch_id(null) returns null and the availability call
+    // sees a null branch, which hides nothing.
     expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
   });
 
@@ -84,13 +109,36 @@ describe("hold aware storefront readers", () => {
     expect(menu.map((category) => category.slug)).toEqual(["wings"]);
   });
 
-  it("shows a held item again once its hold has expired", async () => {
+  it("shows a held item again once its hold is lifted", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', now() - interval '1 second' + interval '2 seconds')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
     expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
 
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', null)`);
     expect(await menuSlugs(db, "pilot")).toEqual(["chicken-wings", "fries"]);
+  });
+
+  it("treats a timed hold as available again once its end has passed", async () => {
+    // No sleeping: the hold is set with a real future end, then
+    // menu_item_is_available is asked about two fixed instants rather than
+    // waited on, so the assertion cannot flake against the wall clock.
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    const holdEnd = await scalar<string>(db, "select (now() + interval '1 day')::text");
+    await asUser(
+      db, CASHIER,
+      `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', '${holdEnd}'::timestamptz)`,
+    );
+
+    expect(
+      await scalar<boolean>(db, `select menu_item_is_available('${wings}', '${pilot}', now())`),
+    ).toBe(false);
+    expect(
+      await scalar<boolean>(
+        db,
+        `select menu_item_is_available('${wings}', '${pilot}', '${holdEnd}'::timestamptz + interval '1 hour')`,
+      ),
+    ).toBe(true);
   });
 });

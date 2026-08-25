@@ -24,14 +24,15 @@ with list as (
   select resolve_price_list_id(p_branch_slug) as id
 ),
 
--- The branch the customer is ordering from, when they have chosen one. Empty
--- when they have not, which makes the availability call below see a null branch
--- and hide nothing. See the comment on menu_item_is_available.
+-- The branch whose holds apply. resolve_pickup_branch_id() is the same
+-- resolver place_order uses, so the two readers cannot disagree about which
+-- counter a customer is ordering from. With no slug it falls back to the
+-- active branch, lowest sort_order first, exactly as the price list resolver
+-- beside it does. It returns null only when no branch is active at all, and a
+-- null branch hides nothing, which is right: with nothing trading there is no
+-- counter whose stock could be out.
 branch as (
-  select b.id
-  from branches b
-  where p_branch_slug is not null
-    and b.slug = p_branch_slug
+  select resolve_pickup_branch_id(p_branch_slug) as id
 ),
 
 -- Variations, priced. A single-price item still has exactly one of these.
