@@ -52,8 +52,8 @@ the four reasons in section 2.
 - **`menu_items` has no availability hold columns.** Only `is_active`. The hold
   is new work, not a port.
 
-- **Migrations are frozen at 0050 and live.** `0051` and `0052` are written by
-  this work and applied only when the owner says so.
+- **Migrations are frozen at 0050 and live.** `0051` through `0054` are written
+  by this work and applied only when the owner says so.
 
 - **The server prices everything.** Section 30. Nothing here sends, computes or
   restores a price the server did not give it. The page edits the numbers the
@@ -196,17 +196,30 @@ heat. Wing flavours carry their own photography, and the same upload used for
 items serves them, because a flavour with no photo leaves a hole in the flavour
 grid.
 
-## 6. The write surface, migration 0051
+## 6. The write surface, migrations 0053 and 0054
 
-Nine functions, each `SECURITY DEFINER`, each following the shape `0025`
+Ten functions, each `SECURITY DEFINER`, each following the shape `0025`
 established: resolve the permission, validate the input, take the row `for
 update`, write, insert the audit row, return.
+
+They land across four migrations rather than one, because
+`staff_set_menu_item_hold` writes a table that does not exist until `0051`, and
+because the two reader changes in 7.1 are the one part of this feature that
+touches customer checkout and deserve their own reviewable file:
+
+| Migration | Contents |
+|---|---|
+| `0051_menu_item_branch_holds.sql` | The holds table, `menu_item_is_available()`, `staff_set_menu_item_hold()`. |
+| `0052_menu_availability_readers.sql` | `get_storefront_menu()` and `place_order()` gate on holds. |
+| `0053_staff_menu_catalog_writes.sql` | Categories, option groups, options, reorder, deletes. |
+| `0054_staff_menu_item_writes.sql` | Items with their variations and links, images, heat prices. |
 
 | Function | Permission | Notes |
 |---|---|---|
 | `staff_save_menu_category` | `menu:configure` | Insert or update by null id. |
 | `staff_save_menu_item` | `menu:configure` | Item, its variations and its option group links in one call. |
 | `staff_set_menu_item_image` | `menu:configure` | All five image columns together. Called after the upload succeeds. |
+| `staff_set_menu_option_image` | `menu:configure` | The same for a wing flavour. Six parameters, not seven: `menu_options` has no `image_treatment`. |
 | `staff_save_menu_option_group` | `menu:configure` | |
 | `staff_save_menu_option` | `menu:configure` | Including `heat_percent` and a nullable `price_cents`. |
 | `staff_set_option_variation_prices` | `menu:configure` | The heat grid, one option's row at a time. |
@@ -232,7 +245,7 @@ Errors are raised as the codes this codebase already uses (`FORBIDDEN`,
 `BRANCH_FORBIDDEN`, `INVALID_INPUT`) and the Server Action maps them to
 sentences, the way `app/(workspace)/workspace/availability/actions.ts` does.
 
-## 7. Per branch holds, migration 0052
+## 7. Per branch holds, migrations 0051 and 0052
 
 ```sql
 create table menu_item_branch_holds (
@@ -294,9 +307,14 @@ the pipeline in `scripts/lib/image-pipeline.ts`: crop to the tile square, resize
 to `TILE_WIDTH`, encode WebP, and render a 12 by 12 WebP as the blur
 placeholder. `sharp` is already a dependency.
 
-It writes all five image columns through `staff_set_menu_item_image`. Writing
-`image_url` alone renders a broken tile here, because `lib/menu/storefront.ts`
-expects width, height and the placeholder alongside it.
+It writes all five image columns through `staff_set_menu_item_image`, or the
+option's five through `staff_set_menu_option_image`. Writing `image_url` alone
+renders a broken tile here, because `lib/menu/storefront.ts` expects width,
+height and the placeholder alongside it.
+
+The same component and the same processing serve both. A wing flavour's photo
+drives the flavour grid and is what `previewImage()` swaps into the hero when a
+customer picks one, so a flavour with no photo leaves a hole in two places.
 
 Every upload lands at a fresh `randomUUID()` path. `next.config.ts` holds
 optimized menu images for a year and its comment explains why that is safe: a
@@ -356,8 +374,10 @@ app/(workspace)/workspace/menu/
 lib/staff/menu.ts              the read, assembled from eight selects
 lib/staff/menu-types.ts        shared types, imported by client components
 
-supabase/migrations/0051_staff_menu_management.sql
-supabase/migrations/0052_menu_item_branch_holds.sql
+supabase/migrations/0051_menu_item_branch_holds.sql
+supabase/migrations/0052_menu_availability_readers.sql
+supabase/migrations/0053_staff_menu_catalog_writes.sql
+supabase/migrations/0054_staff_menu_item_writes.sql
 ```
 
 The reference's single 2,475 line component is not reproduced. The Workspace's
