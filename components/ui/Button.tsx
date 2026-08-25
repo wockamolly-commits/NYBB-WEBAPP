@@ -134,12 +134,18 @@ const button = cva(
         //
         // This used to be 42px, derived from the quantity stepper's outer
         // height when that stepper's own buttons were 40px. Deriving one
-        // control's size from another control's mistake carried the mistake
-        // into three screens: the cart, the workspace shell and the hero
-        // video, all of which had a sub-floor icon button. The stepper's
-        // buttons are now 44px too, so its group stands 2px taller than this
-        // square; centred in a flex row that difference is not visible, and
-        // matching a neighbour was never worth being under the floor for.
+        // control's size from another control's mistake spread it: of the
+        // three call sites, the cart and the hero video both rendered a
+        // sub-floor square. The workspace shell did not, because it passes
+        // className="size-11" and has done since it was built, which is worth
+        // noticing rather than tidying away: somebody hit this and worked
+        // around it locally instead of fixing the token, so the token stayed
+        // wrong and two other screens kept paying for it.
+        //
+        // The stepper's buttons are now 44px too, so its group stands 2px
+        // taller than this square; centred in a flex row that difference is
+        // not visible, and matching a neighbour was never worth being under
+        // the floor for.
         icon: "size-11 px-0",
       },
       block: {

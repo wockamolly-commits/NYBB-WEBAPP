@@ -262,8 +262,14 @@ because the reasoning for deferring was sound and is worth reading before anyone
 
 **Resolved.** Both controls are now 44px. `QuantityStepper`'s `sm` box went 40px to 44px and keeps
 its narrower 36px readout, which is the part of that row that could actually give. `Button`'s `icon`
-size went 42px to 44px, which also lifted the workspace shell and the hero video, both of which had
-been carrying the same sub-floor square. Verified in a browser at 320px and 375px: every stepper and
+size went 42px to 44px, which also lifted the hero video's control.
+
+Corrected 2026-08-25, after checking rather than assuming: this originally claimed the workspace
+shell was lifted too. It was not. That button passes `className="size-11"` and has done since the
+workspace was built, so it was already 44px and the token change did not move it. The interesting
+part is why that matters: someone met this defect, worked around it locally, and the shared token
+stayed wrong, so the cart and the hero video went on paying for it. A local override that silences
+a symptom is how a shared defect survives. Verified in a browser at 320px and 375px: every stepper and
 remove button reports 44x44, with no horizontal scroll and nothing spilling offscreen.
 
 What follows is the original record.
