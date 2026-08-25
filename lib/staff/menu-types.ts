@@ -129,5 +129,5 @@ export const HOLD_KIND_LABELS: Record<HoldKind, string> = {
 export function holdSummary(holds: ManagedHold[]): string | null {
   if (holds.length === 0) return null;
   const names = holds.map((hold) => hold.branchShortName).join(", ");
-  return holds.length === 1 ? `Sold out at ${names}` : `Sold out at ${names}`;
+  return `Sold out at ${names}`;
 }

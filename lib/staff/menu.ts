@@ -165,11 +165,15 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
  * The whole catalog for the workspace, in one round trip's worth of parallel
  * selects.
  *
- * No service role client and no RPC. 0022 revoked only the three write
- * privileges, so an ordinary staff session reads these tables and the RLS
- * policy on each one resolves menu:view. If a caller without that permission
- * reaches here, they get empty arrays from the database rather than an error,
- * which is why the page checks the permission too.
+ * No service role client and no RPC. 0022_staff_authorization_hardening.sql
+ * recreated the read policy on each menu table (categories, items,
+ * variations, option groups, options, item option groups) as
+ * current_staff_has_permission('menu:view'), so an ordinary staff session
+ * reads them under that gate. branches is the one exception: its policy is
+ * still is_staff() with no permission check (0009_rls.sql, untouched by
+ * 0022). If a caller without menu:view reaches here, the menu tables come
+ * back empty rather than erroring, which is why the page checks the
+ * permission too.
  *
  * Returns null when any select failed, so the page can render its designed
  * unavailable state instead of a half built tree.
