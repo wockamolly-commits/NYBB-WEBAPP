@@ -322,6 +322,25 @@ describe("place_order, what it will not sell", () => {
     await db.exec("update menu_categories set is_active = true where slug = 'ribs'");
   });
 
+  it("refuses a line whose item is held at the ordering branch", async () => {
+    // get_storefront_menu hides a held item, so place_order has to refuse it
+    // too, on the same call to menu_item_is_available. 0052 is the migration
+    // that keeps the two in step.
+    const itemId = await scalar<string>(
+      db,
+      "select id::text from menu_items where slug = 'chicken-wings'",
+    );
+    const branchId = await scalar<string>(db, "select id::text from branches where slug = 'pilot'");
+    await db.exec(
+      `insert into menu_item_branch_holds (item_id, branch_id, kind)
+       values ('${itemId}', '${branchId}', 'indefinite')`,
+    );
+    await expect(place(db, order([WINGS], slot))).rejects.toThrow(/ITEM_UNAVAILABLE/);
+    await db.exec(
+      `delete from menu_item_branch_holds where item_id = '${itemId}' and branch_id = '${branchId}'`,
+    );
+  });
+
   it("refuses a size that item does not come in", async () => {
     await expect(
       place(db, order([{ ...WINGS, variation_slug: "regular" }], slot)),
