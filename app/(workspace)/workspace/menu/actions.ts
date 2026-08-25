@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { manilaWallClockIso } from "@/lib/staff/manila-dates";
 import type { MenuActionState } from "@/lib/staff/menu-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -45,8 +46,9 @@ const holdSchema = z
 /**
  * Pause or resume one item at one counter.
  *
- * The form sends a local datetime string for a timed hold; it is turned into an
- * instant here, and the RPC refuses one that has already passed.
+ * The form sends a wall clock datetime string, the counter's own clock, not
+ * the server process's. manilaWallClockIso turns it into an instant, and the
+ * RPC refuses one that has already passed.
  */
 export async function setMenuItemHold(
   _previous: MenuActionState,
@@ -69,11 +71,8 @@ export async function setMenuItemHold(
   let until: string | null = null;
   if (kind === "today" || kind === "until") {
     if (!unavailableUntil) return { status: "error", message: "Choose when this item comes back." };
-    const parsedDate = new Date(unavailableUntil);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return { status: "error", message: "Choose when this item comes back." };
-    }
-    until = parsedDate.toISOString();
+    until = manilaWallClockIso(unavailableUntil);
+    if (!until) return { status: "error", message: "Choose when this item comes back." };
   }
 
   const supabase = await createStaffClient();

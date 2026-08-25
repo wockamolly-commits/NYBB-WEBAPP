@@ -78,16 +78,42 @@ export function ItemHoldControl({
   const [until, setUntil] = useState(() => endOfManilaDayInputValue());
   const [pickedBranchId, setPickedBranchId] = useState<string | null>(null);
 
-  // A hold this control can act on directly. A roving manager has no fixed
-  // counter, so for them there is no single "the acting branch" until they
-  // pick one below, and the create-hold form is what renders.
-  const existingHold = actingBranchId
-    ? item.holds.find((hold) => hold.branchId === actingBranchId)
+  // A cashier's counter is fixed. A roving manager or admin has none, so the
+  // branch they pick below stands in for it, and both personas are then
+  // looked up against the same single value: no separate "roving manager"
+  // branch of this logic to fall out of sync with the cashier's.
+  const actingBranch = actingBranchId ?? pickedBranchId;
+  const existingHold = actingBranch
+    ? item.holds.find((hold) => hold.branchId === actingBranch)
     : undefined;
+
+  const branchOptions: readonly WorkspaceSelectOption<string>[] = branches.map((branch) => ({
+    value: branch.id,
+    label: branch.shortName,
+  }));
+
+  // Rendered wherever a branch has to be chosen. Absent for a cashier, who
+  // has nothing to choose, present for a roving manager in both the create
+  // form and the held view below, so they can see and act on whichever
+  // counter they land on.
+  const branchPicker = actingBranchId ? null : (
+    <WorkspaceSelect
+      id={`menu-hold-branch-${item.id}`}
+      name="branchId"
+      label="Which counter"
+      options={branchOptions}
+      defaultValue={pickedBranchId}
+      placeholder="Choose a counter"
+      onValueChange={setPickedBranchId}
+      disabled={pending}
+      className="min-w-40"
+    />
+  );
 
   if (existingHold) {
     return (
       <div>
+        {branchPicker ? <div className="mb-3">{branchPicker}</div> : null}
         <p className="text-nybb-bone/70 text-sm">
           Sold out at {existingHold.branchShortName}
           {existingHold.unavailableUntil ? `, until ${formatManilaInstant(existingHold.unavailableUntil)}` : ", until someone puts it back"}.
@@ -110,11 +136,7 @@ export function ItemHoldControl({
     );
   }
 
-  const branchOptions: readonly WorkspaceSelectOption<string>[] = branches.map((branch) => ({
-    value: branch.id,
-    label: branch.shortName,
-  }));
-  const canSubmit = actingBranchId !== null || pickedBranchId !== null;
+  const canSubmit = actingBranch !== null;
 
   return (
     <div>
@@ -123,16 +145,7 @@ export function ItemHoldControl({
         {actingBranchId ? (
           <input type="hidden" name="branchId" value={actingBranchId} />
         ) : (
-          <WorkspaceSelect
-            id={`menu-hold-branch-${item.id}`}
-            name="branchId"
-            label="Which counter"
-            options={branchOptions}
-            placeholder="Choose a counter"
-            onValueChange={(value) => setPickedBranchId(value)}
-            disabled={pending}
-            className="min-w-40"
-          />
+          branchPicker
         )}
         <WorkspaceSelect
           id={`menu-hold-kind-${item.id}`}
