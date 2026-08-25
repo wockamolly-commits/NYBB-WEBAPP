@@ -2,7 +2,7 @@
 
 import { Check, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
 import { PRESSABLE } from "@/components/ui/Button";
 import { branchFormatLabel } from "@/lib/catalog";
@@ -68,6 +68,32 @@ export function StoreList({
   const [pending, startChoosing] = useTransition();
   const [choosing, setChoosing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const navigated = useRef(false);
+
+  /**
+   * The navigation waits for the transition to settle rather than happening
+   * inside it.
+   *
+   * `chooseStore` sets the branch cookie and calls revalidatePath, and either
+   * one on its own makes Next re-render the route the action was called from
+   * and commit that as a seeded navigation. A push issued in the same tick
+   * races that commit, and when it loses the customer is returned to the page
+   * they just chose from, having apparently done nothing.
+   *
+   * This page usually won that race, because nothing here delays the push. The
+   * same pattern in ReorderButton did not, because writing the restored lines
+   * into the cart put enough synchronous work in front of the push to lose it,
+   * which is why that bug tracked the number of items in the order. Winning by
+   * a margin that depends on how much work happens to sit in front of you is
+   * not winning, so this waits instead.
+   */
+  useEffect(() => {
+    if (!leaving || pending || navigated.current) return;
+    navigated.current = true;
+    const go = () => router.push(next);
+    go();
+  }, [leaving, pending, router, next]);
 
   function choose(store: Store) {
     if (pending) return;
@@ -81,10 +107,16 @@ export function StoreList({
         // The list said this counter was available and the server disagreed,
         // which means it changed underneath the page. Re-render it from the
         // truth rather than leaving a card that lies.
+        //
+        // This one stays inside the transition. It refreshes the route the
+        // action was already going to re-render, so it agrees with the
+        // action's own commit rather than competing with it, and being
+        // discarded would cost nothing.
         router.refresh();
         return;
       }
-      router.push(next);
+      // Not router.push. See the effect above.
+      setLeaving(true);
     });
   }
 

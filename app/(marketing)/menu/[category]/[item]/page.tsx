@@ -3,9 +3,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ItemConfigurator } from "@/components/menu/ItemConfigurator";
 import { TextLink } from "@/components/ui/TextLink";
+import { getStoreSelection } from "@/lib/branches/selection";
 import { itemPriceRange } from "@/lib/catalog/pricing";
+import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { formatPesoRange } from "@/lib/format";
 import { findCategory, getStorefrontMenu } from "@/lib/menu";
+import type { MenuItem } from "@/lib/menu/types";
 
 type Params = { category: string; item: string };
 
@@ -68,13 +71,13 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
           </div>
         }
       >
-        <ItemConfigurator
+        <ConfiguratorWithOrdering
           item={item}
           details={
             <>
               <h1 className="font-display heading-minor mt-6">
                 {item.code ? (
-                  <span className="font-mono-tabular text-nybb-ink/50 mr-3 text-base">
+                  <span className="font-mono-tabular text-nybb-ink/75 mr-3 text-base">
                     {item.code}
                   </span>
                 ) : null}
@@ -95,7 +98,7 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
                   left ambiguous and that the catalog had to interpret, and it
                   stays visible until the owner confirms the reading. */}
               {item.pricingNote ? (
-                <p className="border-nybb-ink/25 text-nybb-ink/60 mt-5 max-w-prose rounded-md border border-dashed p-3 text-xs leading-relaxed">
+                <p className="border-nybb-ink/25 text-nybb-ink/75 mt-5 max-w-prose rounded-md border border-dashed p-3 text-xs leading-relaxed">
                   {item.pricingNote}
                 </p>
               ) : null}
@@ -105,4 +108,29 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
       </Suspense>
     </div>
   );
+}
+
+/**
+ * The live ordering answer, resolved inside the page's existing Suspense
+ * boundary, so the read stays scoped to the fragment that needs it.
+ *
+ * Reading the payment rails at the top level would block the whole page shell
+ * on a request the rest of the page does not need, to render one sentence, so
+ * the sentence waits here and streams in behind the fallback instead.
+ */
+async function ConfiguratorWithOrdering({
+  item,
+  details,
+}: {
+  item: MenuItem;
+  details: React.ReactNode;
+}) {
+  const [selection, orderingOpen] = await Promise.all([
+    getStoreSelection(),
+    onlineOrderingOpen(),
+  ]);
+  // Both halves, the same test every other screen in this flow applies.
+  const canOrder = orderingOpen && selection.stores.some((store) => store.orderable);
+
+  return <ItemConfigurator item={item} details={details} canOrder={canOrder} />;
 }
