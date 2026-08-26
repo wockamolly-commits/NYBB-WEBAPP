@@ -18,21 +18,27 @@ import { createStaffClient } from "@/lib/supabase/server";
  * customer sitting on a category page keeps the old prices until the segment
  * expires.
  *
- * The two item editor routes are in this list rather than in saveMenuItem
- * alone, because they go stale on writes that are not theirs. Renaming a
- * category on the categories screen changes what the item editor's category
- * picker should offer, and deleting an item leaves its own editor route
- * holding a record that no longer exists. That is the same gap Task 6 found
- * for the sub pages, so it is fixed the same way, once, here. Listing
- * "/workspace/menu/items/[id]" as a page covers every saved item, which is
- * why saveMenuItem does not repeat the call for the id it just wrote.
+ * "/workspace/menu/items/new" is in this list because it goes stale on writes
+ * that are not its own: its category picker and its option group checkboxes
+ * are built from the whole catalog, so a category renamed on the categories
+ * screen changes what it should offer. That is the gap Task 6 found for the
+ * sub pages. It is safe to name here because nothing deletes the record that
+ * route stands on; there is no record.
+ *
+ * "/workspace/menu/items/[id]" is deliberately NOT here, and ruling R24 is
+ * why. deleteMenuEntity calls this function, and revalidating the route the
+ * caller is standing on makes Next re-render it inside the action's own
+ * response. For a delete that means the item page runs notFound() because the
+ * item is gone, the editor unmounts, and the effect that would have sent the
+ * person back to the menu never runs: they get a 404 instead. saveMenuItem
+ * revalidates the one id it just wrote, by itself, where a delete cannot
+ * reach it.
  */
 function refreshMenu() {
   revalidatePath("/workspace/menu");
   revalidatePath("/workspace/menu/categories");
   revalidatePath("/workspace/menu/options");
   revalidatePath("/workspace/menu/items/new");
-  revalidatePath("/workspace/menu/items/[id]", "page");
   revalidatePath("/menu");
   revalidatePath("/menu/[category]", "page");
   revalidatePath("/menu/[category]/[item]", "page");
@@ -348,7 +354,7 @@ export async function saveMenuItem(
   }
 
   const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("staff_save_menu_item", {
+  const { data, error } = await supabase.rpc("staff_save_menu_item", {
     p_id: parsed.data.id || null,
     p_category_id: parsed.data.categoryId,
     p_name: parsed.data.name,
@@ -371,9 +377,13 @@ export async function saveMenuItem(
     return { status: "error", message: friendlyMenuError(error.message) };
   }
 
-  // The saved item's own editor route is refreshed by refreshMenu, which
-  // lists "/workspace/menu/items/[id]" as a page. See the note on it.
+  // The one id this call wrote, revalidated here rather than in refreshMenu.
+  // Ruling R24: refreshMenu also runs on a delete, and invalidating the item
+  // route from there would re-render a deleted item's own page into a 404
+  // before its editor could navigate away. A save cannot hit that, because
+  // the row it revalidates is the row it just wrote.
   refreshMenu();
+  if (typeof data === "string") revalidatePath(`/workspace/menu/items/${data}`);
   return { status: "success", message: parsed.data.id ? "Item saved." : "Item added." };
 }
 
