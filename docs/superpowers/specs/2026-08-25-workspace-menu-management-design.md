@@ -84,6 +84,19 @@ The consequence to accept: the day a second price list is created, this page
 edits the base prices only and the override rows become invisible to it. That is
 a known, deliberate gap and the trigger for a follow-up.
 
+**Corrected 2026-08-26, during implementation (Ruling R22).** This section first
+leaned on `resolve_price_list_id(null)` raising once a second list exists, so
+that the page would stop rather than guess. It does not raise. Reading
+`0011:66-78`, a null slug returns the first active branch's list ordered by
+`sort_order, slug`, and reaches the single-list rule only when no branch is
+active at all. That holds today, with every branch seeded inactive, and fails
+the moment the pilot goes live: with two lists and a live branch, heat prices
+would be written silently to whichever branch sorts first.
+
+`staff_set_option_variation_prices` therefore counts the lists itself and raises
+`MULTIPLE_PRICE_LISTS` when there is more than one. The invariant this section
+describes is now enforced rather than assumed.
+
 ### 3.2 Availability holds are per branch
 
 A hold is scoped to (item, branch). A Central Bloc cashier who runs out of wings

@@ -2005,13 +2005,18 @@ git commit -m "feat(menu): option group editor with three way option pricing"
 | At least one variation, at most 30 | `VARIATIONS_REQUIRED` |
 | Exactly one variation is `isDefault` among the active ones | `ONE_DEFAULT_REQUIRED` |
 | A variation id that is sent must belong to this item | `VARIATION_NOT_ON_ITEM` |
-| A variation that is referenced by `order_items` may be deactivated but not removed | `VARIATION_IN_ORDERS` |
 | The category exists | `CATEGORY_NOT_FOUND` |
 | Every option group id exists | `GROUP_NOT_FOUND` |
 
-**Why variations are deactivated rather than deleted.** `order_items` snapshots the variation text but also carries the id. Removing a row a past order points at either breaks the foreign key or silently rewrites history. Check the real constraint in `0005_orders.sql` before choosing between `on delete restrict` behaviour and an explicit guard; the guard above assumes a restrict.
+**Why variations are deactivated rather than deleted.** `order_items` snapshots the variation text but also carries the id. Removing a row a past order points at either breaks the foreign key or silently rewrites history.
 
-**`staff_set_option_variation_prices` and the price list.** It resolves the list with `resolve_price_list_id(null)`, which returns the only price list when exactly one exists and **raises when a second one is created**. That is the behaviour we want: the day someone adds a second list, this function stops rather than silently writing heat prices to the wrong one. Say so in a comment, and name it as the trigger for the follow up work in spec section 3.1.
+**Corrected 2026-08-26, during implementation (Ruling R21).** This section previously also listed a `VARIATION_IN_ORDERS` guard. There is no delete path for a variation, because the payload carries no removal verb and Ruling R4 deactivates anything absent, so that raise could never fire and must not be written. The protection it was meant to provide lives one level up: deleting the item cascades to its variations, and `staff_delete_menu_entity` guards that with `ITEM_IN_ORDERS`.
+
+**`staff_set_option_variation_prices` and the price list.**
+
+**Corrected 2026-08-26, during implementation (Ruling R22).** This section previously claimed `resolve_price_list_id(null)` raises once a second price list exists. It does not. Reading `0011:66-78`, a null slug returns the first active branch's list ordered by `sort_order, slug`, and only falls through to the single-list rule when **no** branch is active. That is true today, with every branch seeded inactive, and stops being true the moment the pilot goes live: with two lists and a live branch it would silently write heat prices to whichever branch sorts first.
+
+So the function counts the lists itself and raises `MULTIPLE_PRICE_LISTS` when there is more than one, before resolving anything. This screen does not edit per list overrides (spec section 3.1), so refusing is the honest behaviour, and checking here makes the stated invariant real rather than assumed.
 
 `p_prices` is an object keyed by variation id with a price in centavos, or null to clear that pairing:
 
