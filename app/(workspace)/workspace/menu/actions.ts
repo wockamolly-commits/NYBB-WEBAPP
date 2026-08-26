@@ -12,15 +12,27 @@ import { createStaffClient } from "@/lib/supabase/server";
  *
  * revalidatePath without a "layout" type only invalidates the exact path
  * given, never a route beneath it, so each workspace editor screen for this
- * feature has to be listed here by itself. The two dynamic storefront routes
- * are named as page paths, which is what revalidatePath needs for a route
- * with a parameter. Without them a customer sitting on a category page keeps
- * the old prices until the segment expires.
+ * feature has to be listed here by itself. The dynamic routes, two on the
+ * storefront and the item editor in here, are named as page paths, which is
+ * what revalidatePath needs for a route with a parameter. Without them a
+ * customer sitting on a category page keeps the old prices until the segment
+ * expires.
+ *
+ * The two item editor routes are in this list rather than in saveMenuItem
+ * alone, because they go stale on writes that are not theirs. Renaming a
+ * category on the categories screen changes what the item editor's category
+ * picker should offer, and deleting an item leaves its own editor route
+ * holding a record that no longer exists. That is the same gap Task 6 found
+ * for the sub pages, so it is fixed the same way, once, here. Listing
+ * "/workspace/menu/items/[id]" as a page covers every saved item, which is
+ * why saveMenuItem does not repeat the call for the id it just wrote.
  */
 function refreshMenu() {
   revalidatePath("/workspace/menu");
   revalidatePath("/workspace/menu/categories");
   revalidatePath("/workspace/menu/options");
+  revalidatePath("/workspace/menu/items/new");
+  revalidatePath("/workspace/menu/items/[id]", "page");
   revalidatePath("/menu");
   revalidatePath("/menu/[category]", "page");
   revalidatePath("/menu/[category]/[item]", "page");
@@ -35,6 +47,12 @@ function friendlyMenuError(message: string | undefined): string {
   if (message?.includes("ITEM_NOT_FOUND")) return "That item no longer exists. Refresh the page.";
   if (message?.includes("CATEGORY_HAS_ITEMS")) return "Move or delete this category's items before deleting it.";
   if (message?.includes("ITEM_IN_ORDERS")) return "Past orders reference this item, so it cannot be deleted. Mark it unavailable instead.";
+  if (message?.includes("VARIATIONS_REQUIRED")) return "An item needs at least one size, even if it only has one price.";
+  if (message?.includes("ONE_DEFAULT_REQUIRED")) return "Choose exactly one size as the default.";
+  if (message?.includes("INVALID_VARIATIONS")) return "Check the sizes. Each one needs a name, a short name and a price.";
+  if (message?.includes("VARIATION_NOT_ON_ITEM")) return "One of those sizes belongs to a different item. Refresh the page.";
+  if (message?.includes("CATEGORY_NOT_FOUND")) return "That category no longer exists. Choose another.";
+  if (message?.includes("GROUP_NOT_FOUND")) return "One of those option groups no longer exists. Refresh the page.";
   if (message?.includes("OPTION_IN_ORDERS")) return "Past orders reference this option, so it cannot be deleted. Mark it unavailable instead.";
   if (message?.includes("GROUP_STILL_LINKED")) return "Unlink this option group from its items before deleting it.";
   if (message?.includes("PRICE_RANGE")) return "Check the price.";
@@ -258,6 +276,105 @@ export async function saveMenuOption(
 
   refreshMenu();
   return { status: "success", message: parsed.data.id ? "Option saved." : "Option added." };
+}
+
+/**
+ * One size of one item, as the editor sends it.
+ *
+ * An empty id is a size that does not exist yet; the action turns it into
+ * null and staff_save_menu_item mints the row and its slug. A slug is never
+ * sent, on a create or on a rename.
+ *
+ * isActive false is how the screen expresses "take this size off the menu".
+ * The row stays in the payload rather than dropping out of it, because the
+ * RPC has no delete path for a variation (ruling R4) and a row it does not
+ * see is deactivated anyway. Sending the removal explicitly is what lets a
+ * mistake be undone before saving instead of after.
+ *
+ * The bounds are the RPC's own, or tighter. name stops at 80 because
+ * staff_save_menu_item raises INVALID_INPUT above that, and a limit only the
+ * database knows would surface as "Check the details and try again" with
+ * nothing pointing at the name.
+ */
+const variationInputSchema = z.object({
+  id: z.union([z.uuid(), z.literal("")]).default(""),
+  label: z.string().trim().min(1).max(60),
+  shortLabel: z.string().trim().min(1).max(20),
+  priceCents: z.number().int().min(0).max(10_000_000),
+  isDefault: z.boolean(),
+  isActive: z.boolean(),
+});
+
+const itemSchema = z.object({
+  id: z.union([z.uuid(), z.literal("")]).default(""),
+  categoryId: z.uuid(),
+  name: z.string().trim().min(2).max(80),
+  code: z.string().trim().max(16).default(""),
+  description: z.string().trim().max(500).default(""),
+  isFeatured: z.boolean(),
+  isActive: z.boolean(),
+  variations: z.array(variationInputSchema).min(1).max(30),
+  optionGroupIds: z.array(z.uuid()).max(30),
+});
+
+/**
+ * Create or update one item, its sizes and its option group links, in one
+ * audited call.
+ *
+ * The form posts a single field, payload, carrying JSON, rather than a set of
+ * indexed field names. Variations nest, and rebuilding a nested list out of
+ * FormData keys is where a form like this usually breaks: a key that only
+ * exists in one branch of a conditional goes missing from the submission and
+ * nothing in typecheck, lint or the test suite can see it.
+ *
+ * The order of the variations array is the sort order the RPC writes.
+ */
+export async function saveMenuItem(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? "{}"));
+  } catch {
+    return { status: "error", message: "The item form could not be read. Refresh and try again." };
+  }
+  const parsed = itemSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: "Check the item details and its sizes." };
+
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_save_menu_item", {
+    p_id: parsed.data.id || null,
+    p_category_id: parsed.data.categoryId,
+    p_name: parsed.data.name,
+    p_code: parsed.data.code || null,
+    p_description: parsed.data.description || null,
+    p_is_featured: parsed.data.isFeatured,
+    p_is_active: parsed.data.isActive,
+    p_variations: parsed.data.variations.map((variation) => ({
+      id: variation.id || null,
+      label: variation.label,
+      shortLabel: variation.shortLabel,
+      priceCents: variation.priceCents,
+      isDefault: variation.isDefault,
+      isActive: variation.isActive,
+    })),
+    p_option_group_ids: parsed.data.optionGroupIds,
+  });
+  if (error) {
+    console.error("[workspace] item save failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  // The saved item's own editor route is refreshed by refreshMenu, which
+  // lists "/workspace/menu/items/[id]" as a page. See the note on it.
+  refreshMenu();
+  return { status: "success", message: parsed.data.id ? "Item saved." : "Item added." };
 }
 
 const deleteSchema = z.object({
