@@ -6,20 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import type { ManagedCategory, MenuActionState } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuCategory } from "../actions";
+import { MenuStatusMessage } from "../MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
-
-function StatusMessage({ state }: { state: MenuActionState }) {
-  if (state.status === "idle" || !state.message) return null;
-  return (
-    <p
-      role={state.status === "error" ? "alert" : "status"}
-      className={state.status === "error" ? "text-nybb-orange mt-3 text-sm" : "text-nybb-yellow mt-3 text-sm"}
-    >
-      {state.message}
-    </p>
-  );
-}
 
 function itemCountLabel(count: number): string {
   return `${count} item${count === 1 ? "" : "s"}`;
@@ -88,7 +77,7 @@ function CategoryRow({ category }: { category: ManagedCategory }) {
       <p className="text-nybb-bone/55 mt-2 text-xs">
         One line under the category header. A description, not marketing copy.
       </p>
-      <StatusMessage state={saveState} />
+      <MenuStatusMessage state={saveState} />
 
       <form
         action={deleteAction}
@@ -115,7 +104,7 @@ function CategoryRow({ category }: { category: ManagedCategory }) {
           </span>
         ) : null}
       </form>
-      <StatusMessage state={deleteState} />
+      <MenuStatusMessage state={deleteState} />
     </article>
   );
 }
@@ -159,7 +148,7 @@ function NewCategoryRow() {
       <p className="text-nybb-bone/55 mt-2 text-xs">
         One line under the category header. A description, not marketing copy.
       </p>
-      <StatusMessage state={state} />
+      <MenuStatusMessage state={state} />
     </article>
   );
 }

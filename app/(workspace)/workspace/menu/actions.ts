@@ -20,6 +20,7 @@ import { createStaffClient } from "@/lib/supabase/server";
 function refreshMenu() {
   revalidatePath("/workspace/menu");
   revalidatePath("/workspace/menu/categories");
+  revalidatePath("/workspace/menu/options");
   revalidatePath("/menu");
   revalidatePath("/menu/[category]", "page");
   revalidatePath("/menu/[category]/[item]", "page");
@@ -147,6 +148,116 @@ export async function saveMenuCategory(
 
   refreshMenu();
   return { status: "success", message: parsed.data.id ? "Category saved." : "Category added." };
+}
+
+const optionGroupSchema = z.object({
+  id: z.union([z.uuid(), z.literal("")]).default(""),
+  name: z.string().trim().min(2).max(100),
+  description: z.string().trim().max(300).default(""),
+  isActive: z.enum(["true", "false"]).transform((value) => value === "true"),
+});
+
+/**
+ * Create or update one option group. staff_save_menu_option_group mints and
+ * preserves the slug itself; nothing here ever sends one.
+ */
+export async function saveMenuOptionGroup(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  const parsed = optionGroupSchema.safeParse({
+    id: formData.get("id") ?? "",
+    name: formData.get("name"),
+    description: formData.get("description") ?? "",
+    isActive: formData.get("isActive") ?? "true",
+  });
+  if (!parsed.success) return { status: "error", message: "Check the group name and description." };
+
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_save_menu_option_group", {
+    p_id: parsed.data.id || null,
+    p_name: parsed.data.name,
+    p_description: parsed.data.description || null,
+    p_is_active: parsed.data.isActive,
+  });
+  if (error) {
+    console.error("[workspace] option group save failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  refreshMenu();
+  return { status: "success", message: parsed.data.id ? "Group saved." : "Group added." };
+}
+
+/**
+ * pricing is the three way choice, not a number.
+ *
+ * "bySize" sends null, which means this option is priced through
+ * menu_option_variation_prices on each item that links the group. It does not
+ * mean free, and turning it into 0 here would silently make every heat level
+ * free on every wing size.
+ */
+const optionSchema = z
+  .object({
+    id: z.union([z.uuid(), z.literal("")]).default(""),
+    groupId: z.uuid(),
+    name: z.string().trim().min(1).max(100),
+    description: z.string().trim().max(300).default(""),
+    pricing: z.enum(["free", "flat", "bySize"]),
+    priceCents: z.coerce.number().int().min(0).max(10_000_000).default(0),
+    heatPercent: z.union([z.coerce.number().int().min(0).max(100), z.literal("")]).default(""),
+    isActive: z.enum(["true", "false"]).transform((value) => value === "true"),
+  })
+  .transform((value) => ({
+    ...value,
+    resolvedPriceCents:
+      value.pricing === "bySize" ? null : value.pricing === "free" ? 0 : value.priceCents,
+    resolvedHeatPercent: value.heatPercent === "" ? null : value.heatPercent,
+  }));
+
+export async function saveMenuOption(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  const parsed = optionSchema.safeParse({
+    id: formData.get("id") ?? "",
+    groupId: formData.get("groupId"),
+    name: formData.get("name"),
+    description: formData.get("description") ?? "",
+    pricing: formData.get("pricing"),
+    priceCents: formData.get("priceCents") ?? 0,
+    heatPercent: formData.get("heatPercent") ?? "",
+    isActive: formData.get("isActive") ?? "true",
+  });
+  if (!parsed.success) return { status: "error", message: "Check the option name and price." };
+
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_save_menu_option", {
+    p_id: parsed.data.id || null,
+    p_group_id: parsed.data.groupId,
+    p_name: parsed.data.name,
+    p_description: parsed.data.description || null,
+    p_price_cents: parsed.data.resolvedPriceCents,
+    p_heat_percent: parsed.data.resolvedHeatPercent,
+    p_is_active: parsed.data.isActive,
+  });
+  if (error) {
+    console.error("[workspace] option save failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  refreshMenu();
+  return { status: "success", message: parsed.data.id ? "Option saved." : "Option added." };
 }
 
 const deleteSchema = z.object({

@@ -14,6 +14,7 @@ import {
   type MenuActionState,
 } from "@/lib/staff/menu-types";
 import { setMenuItemHold } from "./actions";
+import { MenuStatusMessage } from "./MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
 
@@ -50,18 +51,6 @@ function formatManilaInstant(iso: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso));
-}
-
-function StatusMessage({ state }: { state: MenuActionState }) {
-  if (state.status === "idle" || !state.message) return null;
-  return (
-    <p
-      role={state.status === "error" ? "alert" : "status"}
-      className={state.status === "error" ? "text-nybb-orange mt-3 text-sm" : "text-nybb-yellow mt-3 text-sm"}
-    >
-      {state.message}
-    </p>
-  );
 }
 
 export function ItemHoldControl({
@@ -131,7 +120,7 @@ export function ItemHoldControl({
             Put back on the menu
           </Button>
         </form>
-        <StatusMessage state={state} />
+        <MenuStatusMessage state={state} />
       </div>
     );
   }
@@ -182,7 +171,7 @@ export function ItemHoldControl({
           Mark sold out
         </Button>
       </form>
-      <StatusMessage state={state} />
+      <MenuStatusMessage state={state} />
     </div>
   );
 }
