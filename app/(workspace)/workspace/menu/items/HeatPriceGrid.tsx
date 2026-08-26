@@ -186,7 +186,11 @@ export function HeatPriceGrid({
         Leave a size blank to remove its price. A price of 0 is kept and means free, it is not
         the same as blank.
       </p>
-      <div className="mt-4 space-y-4">
+      <p className="text-nybb-bone/55 mt-1 text-xs">
+        These columns are the saved sizes on this item. Save the item above before a size you just
+        added or renamed shows up or updates here.
+      </p>
+      <div className="space-y-4">
         {qualifyingOptions.map((option) => (
           <HeatPriceOptionRow
             key={option.id}
