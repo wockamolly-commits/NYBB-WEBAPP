@@ -337,10 +337,30 @@ enumerate the slugs that exist rather than the ones one counter can serve
 today. `dynamicParams` stays true, so a slug it did not enumerate still
 renders.
 
-`/` and `/about` also still pass nothing, and that is deliberate: neither
-sells, so neither has availability to get wrong, and neither should buy a round
-trip to resolve a counter in order to print a count or a headline price that is
-the same at all of them.
+`/about` still passes nothing, and that is deliberate. The test is not whether
+a page takes money but whether it names a specific item a customer can be sent
+to and then refused. `/about` links only to `/menu`, never to an item page, and
+what it takes from the menu is three counts for one sentence. Holds attach to
+items rather than to options, so those counts do not move between counters.
+
+**`/` does pass the slug, corrected in review.** The first version of this
+change left the landing page unslugged on the reasoning that it sells nothing.
+That reasoning is wrong here, and worse, leaving it unslugged introduced a
+defect rather than preserving one. `app/(marketing)/page.tsx` renders a
+`ProductTile` per featured item and every tile links to an item page. Before
+this task the tile and the item page resolved through the same unslugged call,
+so they could not disagree except in a narrow race between two page loads.
+Once the item page started resolving against the customer's chosen branch, a
+featured item that is not held at the default branch still rendered as a tile
+while being held at the branch that customer picked, which is a deterministic
+404 reached from the front page. The slug was free to pass: the page already
+called `getStoreSelection()` on the same line. It is now sequenced ahead of the
+menu read like every other buying surface.
+
+The rule the storefront now follows, stated once: **a surface that names
+specific purchasable items resolves them against the chosen counter.** Whether
+it takes payment is irrelevant. `tests/unit/menu-branch-call-sites.test.ts`
+enforces it, including on files nobody has written yet.
 
 `place_order` gates too. Its section 7 carries this comment:
 
@@ -482,10 +502,9 @@ errors appear only there.
 - Deleting long expired hold rows. See section 7.
 - ~~Passing the customer's chosen branch slug into `getStorefrontMenu()`.~~
   Done in Task 13, 2026-08-26, after the caching question turned out to be
-  settled by the root layout's `connection()` call. See 7.1.
-- Gating the landing page's featured tiles on the chosen counter. `/` links to
-  item pages that now 404 when the item is held at that counter, which is the
-  same mismatch it already had against the default branch, and is a marketing
-  surface question rather than a correctness one.
+  settled by the root layout's `connection()` call. See 7.1. The landing page
+  is included: it was briefly listed here as out of scope on the reasoning that
+  it sells nothing, and review established that its featured tiles make it a
+  buying surface for this purpose. It passes the slug.
 - Any change to `get_order_by_tracking` or the order snapshot columns. A receipt
   keeps saying what was sold, and editing the menu must not rewrite history.

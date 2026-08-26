@@ -91,6 +91,20 @@ export const getStoreSelection = cache(async (): Promise<StoreSelection> => {
  * Null is a real answer rather than a missing one: `resolve_pickup_branch_id`
  * and `place_order` both take null and pick the first active branch, which is
  * exactly right when there is only one and the customer has not been asked.
+ *
+ * WHICH OF THE TWO SPELLINGS TO USE, SINCE BOTH APPEAR ON THE STOREFRONT.
+ *
+ * Use this helper where the slug is all a caller wants: `generateMetadata` on
+ * the category and item routes, and the reorder Server Action. Read
+ * `selection.selected?.slug` off the value directly where the caller already
+ * holds a `StoreSelection` for something else, which on `/`, `/menu`, `/cart`
+ * and `/checkout` it does, because those screens also render a StoreBar and
+ * compute `canOrder` from the full store list.
+ *
+ * That is a convention rather than an inconsistency. `getStoreSelection` is
+ * memoised per request, so the two cost the same; picking by what the caller
+ * already has in hand is what keeps either one from reading as a redundant
+ * second lookup.
  */
 export async function selectedBranchSlug(): Promise<string | null> {
   const { selected } = await getStoreSelection();
