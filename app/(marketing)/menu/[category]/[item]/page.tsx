@@ -19,7 +19,14 @@ export async function generateStaticParams(): Promise<Params[]> {
   );
 }
 
-export const dynamicParams = false;
+/**
+ * An unknown slug renders on demand rather than 404ing at the edge, because the
+ * menu is owner editable from the Workspace and an item created there would
+ * otherwise be unreachable until the next deploy. generateStaticParams still
+ * prerenders every item that exists at build. A slug that is genuinely not an
+ * item still 404s, through the notFound() below.
+ */
+export const dynamicParams = true;
 
 export async function generateMetadata({
   params,
