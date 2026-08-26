@@ -57,6 +57,7 @@ function friendlyMenuError(message: string | undefined): string {
   if (message?.includes("ONE_DEFAULT_REQUIRED")) return "Choose exactly one size as the default.";
   if (message?.includes("INVALID_VARIATIONS")) return "Check the sizes. Each one needs a name, a short name and a price.";
   if (message?.includes("VARIATION_NOT_ON_ITEM")) return "One of those sizes belongs to a different item. Refresh the page.";
+  if (message?.includes("MULTIPLE_PRICE_LISTS")) return "Per size prices cannot be set while more than one price list exists.";
   if (message?.includes("CATEGORY_NOT_FOUND")) return "That category no longer exists. Choose another.";
   if (message?.includes("GROUP_NOT_FOUND")) return "One of those option groups no longer exists. Refresh the page.";
   if (message?.includes("OPTION_IN_ORDERS")) return "Past orders reference this option, so it cannot be deleted. Mark it unavailable instead.";
@@ -385,6 +386,56 @@ export async function saveMenuItem(
   refreshMenu();
   if (typeof data === "string") revalidatePath(`/workspace/menu/items/${data}`);
   return { status: "success", message: parsed.data.id ? "Item saved." : "Item added." };
+}
+
+const optionPriceSchema = z.object({
+  itemId: z.uuid(),
+  optionId: z.uuid(),
+  /** variation id to centavos. A variation left out has its price cleared. */
+  prices: z.record(z.uuid(), z.number().int().min(0).max(10_000_000)),
+});
+
+/**
+ * Save one option's per size prices on one item: HeatPriceGrid's one row.
+ *
+ * The RPC contract is fixed (Task 8): a variation named in p_prices gets that
+ * price, one omitted from the object has its price row deleted, and 0 is a
+ * real price meaning free, never a clear. The payload is built by
+ * HeatPriceGrid the same way: an empty input drops that variation's key from
+ * the object entirely rather than sending it as 0 or null.
+ */
+export async function setOptionVariationPrices(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? "{}"));
+  } catch {
+    return { status: "error", message: "The price grid could not be read. Refresh and try again." };
+  }
+  const parsed = optionPriceSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: "Check the prices and try again." };
+
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_set_option_variation_prices", {
+    p_item_id: parsed.data.itemId,
+    p_option_id: parsed.data.optionId,
+    p_prices: parsed.data.prices,
+  });
+  if (error) {
+    console.error("[workspace] option variation prices failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  refreshMenu();
+  revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+  return { status: "success", message: "Prices saved." };
 }
 
 const deleteSchema = z.object({

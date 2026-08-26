@@ -80,6 +80,12 @@ export type ManagedItem = {
   optionLinks: ManagedItemOptionLink[];
   /** One per branch that currently holds this item. Empty when nothing holds it. */
   holds: ManagedHold[];
+  /**
+   * What each per size priced option costs on each of this item's sizes,
+   * keyed option id then variation id. Absent pairs are genuinely unpriced and
+   * resolve to the option's own price_cents, which for these options is null.
+   */
+  optionVariationPrices: Record<string, Record<string, number>>;
 };
 
 export type ManagedCategory = {

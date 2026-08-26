@@ -14,6 +14,7 @@ import type {
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuItem } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
+import { HeatPriceGrid } from "./HeatPriceGrid";
 import { SizeRows } from "./SizeRows";
 import {
   MAX_PRICE_CENTS,
@@ -466,8 +467,6 @@ export function ItemEditor({
           )}
         </section>
 
-        {/* Task 10 renders HeatPriceGrid here. */}
-
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Button
             type="submit"
@@ -487,6 +486,14 @@ export function ItemEditor({
         </div>
         <MenuStatusMessage state={saveState} />
       </form>
+
+      {/* Outside the item's own <form>, deliberately. HeatPriceGrid renders
+          one <form> per option row, each with its own Server Action, and a
+          <form> nested inside another <form> is invalid HTML: the browser
+          would not submit it independently, defeating the whole point of a
+          per row save. Task 9 left the render marker inside the item form;
+          it moves out here for that reason. */}
+      <HeatPriceGrid idPrefix={uid} item={item} optionGroups={optionGroups} />
 
       {item ? (
         <form

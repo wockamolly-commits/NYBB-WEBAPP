@@ -73,4 +73,14 @@ describe("assembleManagedMenu", () => {
     expect(menu.categories[0]?.items[0]?.holds).toEqual([]);
     expect(holdSummary([])).toBeNull();
   });
+
+  it("nests an option price under the item that owns the variation", () => {
+    const menu = assembleManagedMenu({
+      ...rows,
+      optionPrices: [{ option_id: "opt-insane", variation_id: "var-half", price_cents: 4000 }],
+    });
+    expect(menu.categories[0]?.items[0]?.optionVariationPrices).toEqual({
+      "opt-insane": { "var-half": 4000 },
+    });
+  });
 });

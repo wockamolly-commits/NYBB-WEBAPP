@@ -12,7 +12,7 @@ import type {
 } from "./menu-types";
 
 /**
- * The eight rowsets this screen is built from, exactly as PostgREST returns
+ * The nine rowsets this screen is built from, exactly as PostgREST returns
  * them. Kept snake_case on purpose: this is the boundary, and renaming happens
  * once, in assembleManagedMenu, where it can be tested.
  */
@@ -25,7 +25,6 @@ export type ManagedMenuRows = {
   links: Array<{ item_id: string; group_id: string; is_required: boolean; min_select: number; max_select: number; sort_order: number }>;
   holds: Array<{ item_id: string; branch_id: string; kind: string; unavailable_until: string | null }>;
   branches: Array<{ id: string; short_name: string }>;
-  /** Populated in Task 10. Every caller passes [] until then. */
   optionPrices: Array<{ option_id: string; variation_id: string; price_cents: number }>;
 };
 
@@ -42,6 +41,10 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
   const branchNames = new Map(rows.branches.map((branch) => [branch.id, branch.short_name]));
 
   const variationsByItem = new Map<string, ManagedVariation[]>();
+  // Built alongside variationsByItem rather than in a second pass over
+  // rows.variations, so folding optionPrices onto the item that owns each
+  // variation is a single map lookup below.
+  const itemIdByVariation = new Map<string, string>();
   for (const row of rows.variations) {
     const list = variationsByItem.get(row.item_id) ?? [];
     list.push({
@@ -55,6 +58,21 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
       sortOrder: row.sort_order,
     });
     variationsByItem.set(row.item_id, list);
+    itemIdByVariation.set(row.id, row.item_id);
+  }
+
+  // Nested option id -> variation id -> price cents, per item. A price whose
+  // variation is not on any item this menu knows about (should not happen,
+  // but the map lookup guards it) is skipped rather than thrown.
+  const optionPricesByItem = new Map<string, Record<string, Record<string, number>>>();
+  for (const row of rows.optionPrices) {
+    const itemId = itemIdByVariation.get(row.variation_id);
+    if (!itemId) continue;
+    const forItem = optionPricesByItem.get(itemId) ?? {};
+    const forOption = forItem[row.option_id] ?? {};
+    forOption[row.variation_id] = Number(row.price_cents);
+    forItem[row.option_id] = forOption;
+    optionPricesByItem.set(itemId, forItem);
   }
 
   const linksByItem = new Map<string, ManagedItem["optionLinks"]>();
@@ -104,6 +122,7 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
       variations: (variationsByItem.get(row.id) ?? []).sort(bySortOrder),
       optionLinks: (linksByItem.get(row.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
       holds: holdsByItem.get(row.id) ?? [],
+      optionVariationPrices: optionPricesByItem.get(row.id) ?? {},
     });
     itemsByCategory.set(row.category_id, list);
   }
@@ -180,7 +199,7 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
  */
 export async function getManagedMenu(): Promise<ManagedMenu | null> {
   const supabase = await createStaffClient();
-  const [categories, items, variations, groups, options, links, holds, branches] = await Promise.all([
+  const [categories, items, variations, groups, options, links, holds, branches, optionPrices] = await Promise.all([
     supabase.from("menu_categories").select("id, slug, name, blurb, is_active, sort_order").order("sort_order").order("name"),
     supabase.from("menu_items").select("id, category_id, slug, name, code, description, image_url, is_featured, is_active, sort_order").order("sort_order").order("name"),
     supabase.from("item_variations").select("id, item_id, slug, label, short_label, price_cents, is_default, is_active, sort_order").order("sort_order"),
@@ -189,9 +208,12 @@ export async function getManagedMenu(): Promise<ManagedMenu | null> {
     supabase.from("menu_item_option_groups").select("item_id, group_id, is_required, min_select, max_select, sort_order").order("sort_order"),
     supabase.from("menu_item_branch_holds").select("item_id, branch_id, kind, unavailable_until"),
     supabase.from("branches").select("id, short_name").order("sort_order").order("short_name"),
+    supabase.from("menu_option_variation_prices").select("option_id, variation_id, price_cents"),
   ]);
 
-  const failed = [categories, items, variations, groups, options, links, holds, branches].find((result) => result.error);
+  const failed = [categories, items, variations, groups, options, links, holds, branches, optionPrices].find(
+    (result) => result.error,
+  );
   if (failed?.error) {
     console.error("[workspace] menu read failed:", failed.error.message);
     return null;
@@ -206,6 +228,6 @@ export async function getManagedMenu(): Promise<ManagedMenu | null> {
     links: links.data ?? [],
     holds: holds.data ?? [],
     branches: branches.data ?? [],
-    optionPrices: [],
+    optionPrices: optionPrices.data ?? [],
   });
 }
