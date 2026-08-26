@@ -249,6 +249,13 @@ describe("item write RPCs", () => {
     await expect(saveAs(db, MANAGER, { category, variations: many })).rejects.toThrow(/VARIATIONS_REQUIRED/);
   });
 
+  it("accepts exactly thirty variations, the upper bound VARIATIONS_REQUIRED allows", async () => {
+    const category = await categoryId(db);
+    const thirty = Array.from({ length: 30 }, (_, index) => variation({ shortLabel: `S${index}`, isDefault: index === 0 }));
+    const created = await save(db, { category, name: "Thirty Sizes", variations: thirty });
+    expect(await scalar<number>(db, `select count(*)::int from item_variations where item_id = '${created}'`)).toBe(30);
+  });
+
   it("refuses zero defaults and more than one default among the active variations", async () => {
     const category = await categoryId(db);
     await expect(
@@ -344,6 +351,17 @@ describe("item write RPCs", () => {
     ))[0];
     expect(link).toEqual({ is_required: true, min_select: 1, max_select: 1, sort_order: 10 });
     expect(await scalar<number>(db, `select count(*)::int from menu_item_option_groups where item_id = '${item}'`)).toBe(2);
+
+    // The item row and every variation above are unchanged from the seed; only
+    // the link set grew. Read as the roving manager, because catalog audit
+    // rows carry a null branch_id and a branch-assigned profile could not see
+    // them (audit:view AND current_staff_can_access_branch(branch_id), false
+    // on null). If the no-op check ignored option_group_ids this save would
+    // look like a no-op and write nothing here.
+    const audit = await asUser<{ action: string }>(
+      db, MANAGER, `select action from audit_logs where target_id = '${item}' order by id`,
+    );
+    expect(audit.map((row) => row.action)).toEqual(["menu.item.updated"]);
   });
 
   it("refuses a variation id that belongs to another item", async () => {
@@ -353,14 +371,20 @@ describe("item write RPCs", () => {
       saveAs(db, MANAGER, {
         id: fries,
         category: await categoryId(db, "sides"),
-        name: "Fries",
+        name: "Curly Fries",
         variations: [{ ...variation(), id: await variationId(db, wings, "half") }],
       }),
     ).rejects.toThrow(/VARIATION_NOT_ON_ITEM/);
+
+    // The update at 0054:341-348 writes the renamed item row before the check
+    // at :355 raises. Correctness rests on the raise rolling that back, not on
+    // validate-then-write ordering, so the name must still be the seeded one.
+    expect(await scalar<string>(db, `select name from menu_items where id = '${fries}'`)).toBe("Fries");
   });
 
   it("refuses a variation id on an item that is being created", async () => {
     const wings = await itemId(db, "buffalo-wings");
+    const before = await scalar<number>(db, "select count(*)::int from menu_items");
     await expect(
       saveAs(db, MANAGER, {
         category: await categoryId(db),
@@ -368,6 +392,11 @@ describe("item write RPCs", () => {
         variations: [{ ...variation(), id: await variationId(db, wings, "half") }],
       }),
     ).rejects.toThrow(/VARIATION_NOT_ON_ITEM/);
+
+    // The insert at 0054:322-332 mints the item's slug and writes its row
+    // before the check at :355 raises. A rollback is the only thing standing
+    // between this and a half created item: a minted slug, no variations.
+    expect(await scalar<number>(db, "select count(*)::int from menu_items")).toBe(before);
   });
 
   it("deactivates a variation the payload leaves out and never deletes it", async () => {
