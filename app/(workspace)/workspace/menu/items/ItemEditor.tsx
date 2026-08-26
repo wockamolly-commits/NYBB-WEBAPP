@@ -15,6 +15,7 @@ import type {
 import { deleteMenuEntity, saveMenuItem } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
 import { HeatPriceGrid } from "./HeatPriceGrid";
+import { ImageField } from "./ImageField";
 import { SizeRows } from "./SizeRows";
 import {
   MAX_PRICE_CENTS,
@@ -417,7 +418,13 @@ export function ItemEditor({
           </p>
         </section>
 
-        {/* Task 11 renders ImageField here. */}
+        {/* ImageField carries its own <form>, and a <form> nested inside this
+            one is invalid HTML: the browser flattens it and the Upload
+            button would submit the item form instead of its own. Same
+            constraint HeatPriceGrid already documents below. It renders as a
+            sibling, right after this form closes, rather than in this slot;
+            this comment is what Task 9 left here and stays as the marker of
+            where "Photo" sits in the reading order. */}
 
         <SizeRows
           idPrefix={uid}
@@ -486,6 +493,19 @@ export function ItemEditor({
         </div>
         <MenuStatusMessage state={saveState} />
       </form>
+
+      <section className="bg-nybb-charcoal mt-4 rounded-md p-5">
+        <p className="type-caps text-nybb-bone/55">Photo</p>
+        {item ? (
+          <div className="mt-4">
+            <ImageField target={{ kind: "item", itemId: item.id }} imageUrl={item.imageUrl} />
+          </div>
+        ) : (
+          <p className="text-nybb-bone/55 mt-2 text-xs">
+            Add the item first. Its photograph can be uploaded once it has been saved.
+          </p>
+        )}
+      </section>
 
       {/* Outside the item's own <form>, deliberately. HeatPriceGrid renders
           one <form> per option row, each with its own Server Action, and a

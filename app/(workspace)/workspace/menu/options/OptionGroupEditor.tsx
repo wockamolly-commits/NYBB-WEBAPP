@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Plus, Save, Settings2, Trash2 } from "lucide-react";
+import { Camera, LoaderCircle, Plus, Save, Settings2, Trash2 } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
@@ -13,6 +13,7 @@ import type {
   MenuActionState,
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuOption, saveMenuOptionGroup } from "../actions";
+import { ImageField } from "../items/ImageField";
 import { MenuStatusMessage } from "../MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
@@ -235,6 +236,13 @@ function OptionRow({
   const [amount, setAmount] = useState(() => centsToPesosInput(option.priceCents));
   const [heatPercent, setHeatPercent] = useState(option.heatPercent !== null ? String(option.heatPercent) : "");
   const [isActive, setIsActive] = useState(option.isActive);
+  // Closed by default. Nine wing flavours carry photography and a dozen heat
+  // and dip options never will, so an image field open on every row would
+  // make this screen mostly empty boxes; see the note on OptionGroupCard's
+  // own "Advanced" disclosure for the same reasoning. It opens on its own
+  // when the option already has a photo, so nobody has to click to confirm
+  // one is there.
+  const [showPhoto, setShowPhoto] = useState(option.imageUrl !== null);
   const pending = savePending || deletePending;
 
   return (
@@ -275,9 +283,26 @@ function OptionRow({
           Amounts are set on each item that uses this group, not here.
         </p>
       ) : null}
-      {/* Option photography is Task 11's work (staff_set_menu_option_image), not this
-          screen's. Nothing renders here yet; leaving this comment as the marker. */}
       <MenuStatusMessage state={saveState} />
+
+      <div className="mt-3">
+        <Button
+          type="button"
+          tone="dark"
+          variant="ghost"
+          onClick={() => setShowPhoto((current) => !current)}
+          aria-expanded={showPhoto}
+          className="min-h-11"
+        >
+          <Camera aria-hidden className="size-4" />
+          {showPhoto ? "Hide photo" : "Photo"}
+        </Button>
+        {showPhoto ? (
+          <div className="mt-3">
+            <ImageField target={{ kind: "option", optionId: option.id }} imageUrl={option.imageUrl} />
+          </div>
+        ) : null}
+      </div>
 
       <form
         action={deleteAction}

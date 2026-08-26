@@ -1,8 +1,21 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
+import {
+  MENU_IMAGE_BUCKET,
+  MENU_IMAGE_CACHE_CONTROL,
+  MENU_IMAGE_CONTENT_TYPE,
+  MENU_IMAGE_EXTENSION,
+  MENU_IMAGE_MAX_BYTES,
+  MENU_IMAGE_SIZE_MESSAGE,
+  MENU_IMAGE_TYPE_MESSAGE,
+  isDecodableImageType,
+  processMenuImage,
+  type MenuImageCrop,
+} from "@/lib/staff/menu-image";
 import type { MenuActionState } from "@/lib/staff/menu-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -51,6 +64,7 @@ function friendlyMenuError(message: string | undefined): string {
   if (message?.includes("HOLD_NEEDS_AN_END")) return "Choose when this item comes back.";
   if (message?.includes("HOLD_END_IN_PAST")) return "Choose a time in the future for this item to come back.";
   if (message?.includes("ITEM_NOT_FOUND")) return "That item no longer exists. Refresh the page.";
+  if (message?.includes("OPTION_NOT_FOUND")) return "That option no longer exists. Refresh the page.";
   if (message?.includes("CATEGORY_HAS_ITEMS")) return "Move or delete this category's items before deleting it.";
   if (message?.includes("ITEM_IN_ORDERS")) return "Past orders reference this item, so it cannot be deleted. Mark it unavailable instead.";
   if (message?.includes("VARIATIONS_REQUIRED")) return "An item needs at least one size, even if it only has one price.";
@@ -475,4 +489,237 @@ export async function deleteMenuEntity(
 
   refreshMenu();
   return { status: "success", message: "Deleted." };
+}
+
+/**
+ * A crop control's value, read off FormData and made safe.
+ *
+ * zoom and offsetY arrive from a range input's value or from a preview
+ * request rebuilt on every keystroke, so a momentarily empty or out of range
+ * string is normal, not a sign of a broken request. processMenuImage's own
+ * cropWindow already clamps both to what the source can carry (see the
+ * comment on MenuImageCrop); this only has to survive a value that fails to
+ * parse as a number at all, and NaN is exactly what clamp's own guard treats
+ * as the lowest allowed value. Rejecting the upload here instead would fail
+ * on a stale form rather than just clamping the crop, which is not a mistake
+ * worth losing a photograph over.
+ */
+function cropValue(raw: FormDataEntryValue | null, fallback: number): number {
+  if (typeof raw !== "string" || raw.trim() === "") return fallback;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+/** The file field every image action reads, checked the same way in each. */
+function imageFile(formData: FormData): { ok: true; file: File } | { ok: false; error: string } {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Choose a photograph first." };
+  }
+  if (!isDecodableImageType(file.type)) return { ok: false, error: MENU_IMAGE_TYPE_MESSAGE };
+  if (file.size > MENU_IMAGE_MAX_BYTES) return { ok: false, error: MENU_IMAGE_SIZE_MESSAGE };
+  return { ok: true, file };
+}
+
+/**
+ * Process one uploaded photograph and land it at a fresh Storage path.
+ *
+ * Shared by uploadMenuItemImage and uploadMenuOptionImage: the type and size
+ * check, the crop, the encode and the upload path are identical for both.
+ * Only the RPC that points a menu row at the result differs (seven arguments
+ * for an item, six for an option, and menu_options carries no treatment), so
+ * that call stays in each exported action rather than in here.
+ *
+ * "use server" files may only export async functions (AGENTS.md rule 1), so
+ * this stays module private.
+ *
+ * The path is `${year}/${randomUUID()}.webp`, unique on every call, uploaded
+ * with upsert: false. next.config.ts holds optimized menu images for a year,
+ * which is only safe because a replacement always produces a new URL; writing
+ * over an existing path would leave a stale image cached for that whole year.
+ */
+async function uploadMenuImageObject(
+  supabase: Awaited<ReturnType<typeof createStaffClient>>,
+  file: File,
+  crop: MenuImageCrop,
+): Promise<
+  | { ok: true; url: string; width: number; height: number; blurDataURL: string }
+  | { ok: false; error: string }
+> {
+  let processed;
+  try {
+    processed = await processMenuImage(file, crop);
+  } catch (cause) {
+    console.error("[workspace] menu image processing failed:", cause);
+    return { ok: false, error: "That file could not be read as an image." };
+  }
+
+  const objectPath = `${new Date().getUTCFullYear()}/${randomUUID()}.${MENU_IMAGE_EXTENSION}`;
+  const { error: uploadError } = await supabase.storage
+    .from(MENU_IMAGE_BUCKET)
+    .upload(objectPath, processed.data, {
+      contentType: MENU_IMAGE_CONTENT_TYPE,
+      cacheControl: MENU_IMAGE_CACHE_CONTROL,
+      upsert: false,
+    });
+  if (uploadError) {
+    console.error("[workspace] menu image upload failed:", uploadError.message);
+    return { ok: false, error: "The photograph could not be uploaded. Try again." };
+  }
+
+  const { data: publicUrl } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(objectPath);
+
+  return {
+    ok: true,
+    url: publicUrl.publicUrl,
+    width: processed.width,
+    height: processed.height,
+    blurDataURL: processed.blurDataURL,
+  };
+}
+
+/**
+ * The real server crop, as a data URL, for the zoom and offset controls in
+ * ImageField to show while the person is still choosing them.
+ *
+ * Shared by the item and the option upload paths: it processes a file and
+ * returns pixels, and knows nothing about what menu row the image is for.
+ * It writes nothing and touches no storage, but it still checks
+ * menu:configure, because running sharp against an upload is real server
+ * work and is not offered to a session that could not use the result anyway.
+ */
+export async function previewMenuImage(
+  formData: FormData,
+): Promise<{ ok: true; dataUrl: string } | { ok: false; error: string }> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { ok: false, error: "You do not have access to change the menu." };
+  }
+
+  const fileResult = imageFile(formData);
+  if (!fileResult.ok) return fileResult;
+
+  const crop: MenuImageCrop = {
+    zoom: cropValue(formData.get("zoom"), 1),
+    offsetY: cropValue(formData.get("offsetY"), 0),
+  };
+
+  try {
+    const processed = await processMenuImage(fileResult.file, crop);
+    return {
+      ok: true,
+      dataUrl: `data:${MENU_IMAGE_CONTENT_TYPE};base64,${processed.data.toString("base64")}`,
+    };
+  } catch (cause) {
+    console.error("[workspace] menu image preview failed:", cause);
+    return { ok: false, error: "That file could not be read as an image." };
+  }
+}
+
+const itemImageSchema = z.object({ itemId: z.uuid() });
+
+/**
+ * Replace one item's product photograph.
+ *
+ * All five image columns go on every call: staff_set_menu_item_image (0054)
+ * rejects a non-null URL that arrives without a width and height, or with a
+ * dimension below 1, so an item upload sends p_width, p_height,
+ * p_blur_data_url, p_treatment and p_source every time, never a subset.
+ * treatment is always "cutout": every uploaded photograph is a tile, the same
+ * choice processMenuImage itself makes (there is no scene or mark path for an
+ * upload). source is "uploaded", separating this from the archive's own
+ * "ingested" rows.
+ */
+export async function uploadMenuItemImage(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const parsed = itemImageSchema.safeParse({ itemId: formData.get("itemId") });
+  if (!parsed.success) return { status: "error", message: "That item could not be identified." };
+
+  const fileResult = imageFile(formData);
+  if (!fileResult.ok) return { status: "error", message: fileResult.error };
+
+  const supabase = await createStaffClient();
+  const uploaded = await uploadMenuImageObject(supabase, fileResult.file, {
+    zoom: cropValue(formData.get("zoom"), 1),
+    offsetY: cropValue(formData.get("offsetY"), 0),
+  });
+  if (!uploaded.ok) return { status: "error", message: uploaded.error };
+
+  const { error } = await supabase.rpc("staff_set_menu_item_image", {
+    p_item_id: parsed.data.itemId,
+    p_image_url: uploaded.url,
+    p_width: uploaded.width,
+    p_height: uploaded.height,
+    p_blur_data_url: uploaded.blurDataURL,
+    p_treatment: "cutout",
+    p_source: "uploaded",
+  });
+  if (error) {
+    console.error("[workspace] item image save failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  refreshMenu();
+  revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+  return { status: "success", message: "Photo saved." };
+}
+
+const optionImageSchema = z.object({ optionId: z.uuid() });
+
+/**
+ * Replace one option's photograph, the flavour and heat grid's own tile.
+ *
+ * Same permission check, same validation, same processing, same fresh path
+ * as uploadMenuItemImage. The one difference is the RPC: staff_set_menu_option_image
+ * (0053) takes six arguments, not seven, because menu_options carries no
+ * image_treatment column. Unlike the item RPC, it has no guard against an
+ * incomplete row, so sending less than all five image fields on every call
+ * would silently produce a broken tile rather than a loud failure; all five
+ * still go every time, for that reason and to keep both upload paths reading
+ * the same way.
+ */
+export async function uploadMenuOptionImage(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:configure")) {
+    return { status: "error", message: "You do not have access to change the menu." };
+  }
+
+  const parsed = optionImageSchema.safeParse({ optionId: formData.get("optionId") });
+  if (!parsed.success) return { status: "error", message: "That option could not be identified." };
+
+  const fileResult = imageFile(formData);
+  if (!fileResult.ok) return { status: "error", message: fileResult.error };
+
+  const supabase = await createStaffClient();
+  const uploaded = await uploadMenuImageObject(supabase, fileResult.file, {
+    zoom: cropValue(formData.get("zoom"), 1),
+    offsetY: cropValue(formData.get("offsetY"), 0),
+  });
+  if (!uploaded.ok) return { status: "error", message: uploaded.error };
+
+  const { error } = await supabase.rpc("staff_set_menu_option_image", {
+    p_option_id: parsed.data.optionId,
+    p_image_url: uploaded.url,
+    p_width: uploaded.width,
+    p_height: uploaded.height,
+    p_blur_data_url: uploaded.blurDataURL,
+    p_source: "uploaded",
+  });
+  if (error) {
+    console.error("[workspace] option image save failed:", error.message);
+    return { status: "error", message: friendlyMenuError(error.message) };
+  }
+
+  refreshMenu();
+  return { status: "success", message: "Photo saved." };
 }

@@ -1,4 +1,12 @@
 import type { NextConfig } from "next";
+// Imported rather than repeated. This file and the two writers,
+// app/(workspace)/workspace/menu/actions.ts and
+// scripts/ingest-legacy-images.ts, have to name the same bucket: a pattern
+// that does not match is not a warning, it is next/image refusing to optimize
+// every menu photograph. The script and this file DID disagree, with the
+// script writing to "menu" and this pattern permitting "menu-images", and
+// nothing could catch it because no code path read both.
+import { MENU_IMAGE_BUCKET } from "./lib/staff/menu-image-limits";
 
 const remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,7 +16,7 @@ if (supabaseHost) {
   remotePatterns.push({
     protocol: "https",
     hostname: supabaseHost,
-    pathname: "/storage/v1/object/public/menu-images/**",
+    pathname: `/storage/v1/object/public/${MENU_IMAGE_BUCKET}/**`,
   });
 }
 

@@ -72,7 +72,38 @@ describe("migrations", () => {
       "0052",
       "0053",
       "0054",
+      "0055",
     ]);
+  });
+
+  // 0055. Storage has its own policies and nothing in 0009 or 0010 reaches
+  // them, so without this the workspace upload fails as `authenticated` and
+  // the only way through would be a service role client in a request path a
+  // browser can reach. The bucket name is the one next.config.ts optimizes;
+  // getting it wrong renders every uploaded tile broken rather than failing.
+  it("let a menu:configure session upload into the menu images bucket", async () => {
+    expect(
+      await scalar<number>(
+        db,
+        `select count(*)::int from storage.buckets
+          where id = 'menu-images' and public`,
+      ),
+    ).toBe(1);
+
+    const policies = await db.query<{ cmd: string; roles: string; qual: string }>(`
+      select cmd, roles::text as roles, coalesce(with_check, '') as qual
+      from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+    `);
+    expect(policies.rows).toHaveLength(1);
+    const [policy] = policies.rows;
+    expect(policy.cmd).toBe("INSERT");
+    expect(policy.roles).toContain("authenticated");
+    expect(policy.qual).toContain("current_staff_has_permission");
+    // Insert only. An update policy would allow an overwrite in place, and
+    // next.config.ts caches an optimized menu image for a year on the promise
+    // that a replacement always produces a new URL.
+    expect(policy.qual).toContain("menu-images");
   });
 
   it("enable row level security on every table", async () => {
