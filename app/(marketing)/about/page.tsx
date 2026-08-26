@@ -25,6 +25,11 @@ export default async function AboutPage() {
   // Counted from the live menu, not hardcoded. A page that says "nine
   // flavours" while the menu sells ten is the kind of thing nobody notices
   // until a customer does.
+  //
+  // No branch slug, deliberately. This page sells nothing, so it has no
+  // availability to get wrong, and asking which counter the customer chose
+  // would buy a second round trip to print a number that is the same at all of
+  // them. The buying surfaces pass the slug; this one has no reason to.
   const { categories } = await getStorefrontMenu();
   const wings = findItem(categories, WINGS_ITEM_SLUG);
   const flavours = findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? [];

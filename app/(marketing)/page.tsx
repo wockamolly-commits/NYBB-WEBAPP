@@ -119,6 +119,11 @@ const steps = [
 ];
 
 export default async function Home() {
+  // The menu read takes no branch slug, unlike every buying surface. This page
+  // sells nothing: it counts, quotes a headline price that is the same at
+  // every counter, and points at /menu. Sequencing the counter read ahead of
+  // the menu read to gate a marquee tile would cost the landing page a round
+  // trip for an answer the next screen resolves properly anyway.
   const [{ categories }, selection, orderingOpen] = await Promise.all([
     getStorefrontMenu(),
     getStoreSelection(),

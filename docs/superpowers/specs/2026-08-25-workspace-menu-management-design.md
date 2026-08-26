@@ -309,13 +309,38 @@ real branch on every order, so as first written the menu hid nothing and
 checkout refused items the menu had just shown. Sharing the resolver makes the
 two agree by construction.
 
-**One residual, which section 12 carries as remaining work.** The storefront
-does not yet pass the customer's chosen branch into `getStorefrontMenu()`,
-while `place_order` honours the slug in the checkout payload. With one branch
-active those resolve to the same counter. With two, a customer who chose the
-second would be shown the first's holds. Wiring the chosen slug through the
-storefront touches `generateStaticParams` and per store caching, so it is its
-own piece of work rather than a line in this one.
+**The residual is closed. Task 13, 2026-08-26.** Every buying surface now
+passes the customer's chosen slug into `getStorefrontMenu()`: `/menu`,
+`/menu/[category]`, `/menu/[category]/[item]` (both its page body and its
+`generateMetadata`), `/cart`, `/checkout` and the `reorder` Server Action. The
+menu and the checkout gate therefore resolve the same counter, and they will
+still agree on the day a second branch trades.
+
+**The caching question it was deferred for turned out to be already answered.**
+The worry was that a per customer value inside a statically generated route
+would cache one customer's branch for everyone. It cannot here: `app/layout.tsx`
+awaits `connection()` in the root layout, so nothing under it is prerendered,
+and section 23 already records why (the nonce-based CSP in section 22 requires
+dynamic rendering, and the security requirement won). There is no static shell
+to protect, so passing a per customer slug costs nothing in caching terms and
+the shape of the change is simply "read the counter, then read the menu it is
+about". No client side availability pass and no static shell plus dynamic
+fragment split were needed. The one real cost is a sequential read where there
+used to be a parallel one, because the counter has to be known before there is
+a menu to ask for. `getStoreSelection()` is memoised per request with React's
+`cache()` to keep that to a single round trip per request rather than one per
+call site.
+
+`generateStaticParams` deliberately still passes nothing. It runs during
+`next build`, where there is no customer and no cookie, and its job is to
+enumerate the slugs that exist rather than the ones one counter can serve
+today. `dynamicParams` stays true, so a slug it did not enumerate still
+renders.
+
+`/` and `/about` also still pass nothing, and that is deliberate: neither
+sells, so neither has availability to get wrong, and neither should buy a round
+trip to resolve a counter in order to print a count or a headline price that is
+the same at all of them.
 
 `place_order` gates too. Its section 7 carries this comment:
 
@@ -455,8 +480,12 @@ errors appear only there.
 - Bulk import or export of the menu.
 - Reordering by drag. Sort order is a number field in this pass.
 - Deleting long expired hold rows. See section 7.
-- Passing the customer's chosen branch slug into `getStorefrontMenu()`, so the
-  menu and the checkout gate resolve the same counter once a second branch
-  trades. See the residual noted in 7.1.
+- ~~Passing the customer's chosen branch slug into `getStorefrontMenu()`.~~
+  Done in Task 13, 2026-08-26, after the caching question turned out to be
+  settled by the root layout's `connection()` call. See 7.1.
+- Gating the landing page's featured tiles on the chosen counter. `/` links to
+  item pages that now 404 when the item is held at that counter, which is the
+  same mismatch it already had against the default branch, and is a marketing
+  surface question rather than a correctness one.
 - Any change to `get_order_by_tracking` or the order snapshot columns. A receipt
   keeps saying what was sold, and editing the menu must not rewrite history.

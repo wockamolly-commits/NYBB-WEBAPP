@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ItemConfigurator } from "@/components/menu/ItemConfigurator";
 import { TextLink } from "@/components/ui/TextLink";
-import { getStoreSelection } from "@/lib/branches/selection";
+import { getStoreSelection, selectedBranchSlug } from "@/lib/branches/selection";
 import { itemPriceRange } from "@/lib/catalog/pricing";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { formatPesoRange } from "@/lib/format";
@@ -12,6 +12,14 @@ import type { MenuItem } from "@/lib/menu/types";
 
 type Params = { category: string; item: string };
 
+/**
+ * No branch slug here, and that is not an oversight.
+ *
+ * This runs during `next build`, where there is no customer, no cookie and no
+ * request to read one from. Its job is to enumerate the items that exist, not
+ * the ones one counter can serve today, so it asks the way the database
+ * answers with nobody chosen.
+ */
 export async function generateStaticParams(): Promise<Params[]> {
   const { categories } = await getStorefrontMenu();
   return categories.flatMap((category) =>
@@ -34,7 +42,12 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { category: categorySlug, item: itemSlug } = await params;
-  const { categories } = await getStorefrontMenu();
+  // The customer's counter, here too. An item held at the branch they chose is
+  // absent from this read, and an item held somewhere else is present: a title
+  // taken from a menu read against the wrong branch is either missing for a
+  // page that renders or present for a page that 404s. The selection is
+  // memoised per request, so this and the page body share one answer.
+  const { categories } = await getStorefrontMenu(await selectedBranchSlug());
   const item = findCategory(categories, categorySlug)?.items.find(
     (candidate) => candidate.slug === itemSlug,
   );
@@ -51,7 +64,12 @@ export async function generateMetadata({
 
 export default async function ItemPage({ params }: { params: Promise<Params> }) {
   const { category: categorySlug, item: itemSlug } = await params;
-  const { categories } = await getStorefrontMenu();
+  // Two sequential reads, and they cannot be one Promise.all: the counter has
+  // to be known before there is a menu to ask for. That is the cost of this
+  // page 404ing on an item the chosen branch has held, rather than selling one
+  // the till will refuse. The read is memoised for the request, so the store
+  // selection ConfiguratorWithOrdering asks for below is already resolved.
+  const { categories } = await getStorefrontMenu(await selectedBranchSlug());
 
   const category = findCategory(categories, categorySlug);
   const item = category?.items.find((candidate) => candidate.slug === itemSlug);

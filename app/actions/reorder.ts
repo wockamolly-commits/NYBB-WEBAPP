@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { selectedBranchSlug } from "@/lib/branches/selection";
 import { rebuildCartLines, type ReorderActionResult } from "@/lib/cart/reorder";
 import { getStorefrontMenu } from "@/lib/menu";
 import {
@@ -69,9 +70,15 @@ export async function reorder(input: {
   // instead of returning the typed result the button is built to render. Do
   // not "tidy" this back to match the page call sites; the difference is
   // deliberate.
+  // Against the counter this customer has chosen, the same one checkout will
+  // send to place_order. Reorder exists to put a past order back in the cart,
+  // and a line rebuilt from a branch the customer is not buying from is a line
+  // the till refuses. rebuildCartLines already reports what it could not find,
+  // so an item held at the chosen counter is dropped and named rather than
+  // silently added.
   let categories;
   try {
-    ({ categories } = await getStorefrontMenu());
+    ({ categories } = await getStorefrontMenu(await selectedBranchSlug()));
   } catch (error) {
     // The token is out of scope by this point in the function and stays out
     // of scope here: only the underlying error is logged, never anything

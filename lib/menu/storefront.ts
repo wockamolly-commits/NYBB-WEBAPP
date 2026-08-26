@@ -155,7 +155,26 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
   }));
 }
 
-export async function getStorefrontMenu(branchSlug?: string): Promise<StorefrontMenu> {
+/**
+ * The menu as one counter can currently serve it.
+ *
+ * `branchSlug` is the counter the customer chose, and it is not decoration.
+ * The RPC gates availability on it: an item held at that branch is absent from
+ * what comes back. Passing nothing resolves the active branch with the lowest
+ * sort_order, which is right only while one branch trades. The day a second
+ * one goes live, a no-slug call shows the first branch's availability to a
+ * customer buying from the second, and `place_order` (which resolves the
+ * branch from the slug in the checkout payload) then refuses an item the menu
+ * had offered. Every buying surface therefore passes the chosen slug.
+ *
+ * Null is a real answer rather than a missing one, exactly as in
+ * `selectedBranchSlug()`: nobody has chosen yet, so let the database resolve
+ * the default. `generateStaticParams` passes nothing for the same reason from
+ * the other direction, since it runs at build with no customer to ask.
+ */
+export async function getStorefrontMenu(
+  branchSlug?: string | null,
+): Promise<StorefrontMenu> {
   if (!supabaseConfigured()) {
     return { categories: staticMenu(), source: "static" };
   }

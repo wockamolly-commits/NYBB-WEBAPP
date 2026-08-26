@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { listStores } from "./reader";
 import type { Store } from "./types";
 
@@ -56,7 +57,18 @@ export type StoreSelection = {
   onlyOrderable: Store | null;
 };
 
-export async function getStoreSelection(): Promise<StoreSelection> {
+/**
+ * Memoised for the length of one request, the way the session reads in
+ * `lib/auth/session.ts` are.
+ *
+ * Every buying surface now resolves the chosen counter before it reads the
+ * menu, and a route can ask more than once: the category and item pages ask in
+ * `generateMetadata` and again in the page body. Without this that is a second
+ * `get_orderable_branches` round trip for an answer that cannot have changed
+ * between the two. `cache` is per request, so two customers never share one
+ * cookie's answer.
+ */
+export const getStoreSelection = cache(async (): Promise<StoreSelection> => {
   const [stores, jar] = await Promise.all([listStores(), cookies()]);
   const chosen = jar.get(BRANCH_COOKIE)?.value ?? null;
 
@@ -71,7 +83,7 @@ export async function getStoreSelection(): Promise<StoreSelection> {
     wasDropped: Boolean(chosen) && selected === null,
     onlyOrderable: orderable.length === 1 ? orderable[0] : null,
   };
-}
+});
 
 /**
  * The branch slug to send to the server, or null to let it resolve the default.

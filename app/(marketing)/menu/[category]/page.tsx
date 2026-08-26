@@ -4,6 +4,7 @@ import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { ProductTile } from "@/components/menu/ProductTile";
+import { selectedBranchSlug } from "@/lib/branches/selection";
 import { optionPriceCents } from "@/lib/catalog/pricing";
 import {
   findCategory,
@@ -16,6 +17,14 @@ import { formatPeso, formatPesoCompact } from "@/lib/format";
 
 type Params = { category: string };
 
+/**
+ * No branch slug here, and that is not an oversight.
+ *
+ * This runs during `next build`, where there is no customer, no cookie and no
+ * request to read one from. Its job is to enumerate the categories that exist,
+ * not the ones one counter can serve today, so it asks the way the database
+ * answers with nobody chosen.
+ */
 export async function generateStaticParams(): Promise<Params[]> {
   const { categories } = await getStorefrontMenu();
   return categories.map((category) => ({ category: category.slug }));
@@ -36,7 +45,11 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { category: slug } = await params;
-  const { categories } = await getStorefrontMenu();
+  // The customer's counter, here too. A category whose every item is held at
+  // the chosen branch does not come back, and a title built from a menu read
+  // against a different branch would name a page that then 404s. The read is
+  // memoised per request, so this and the page body below share one answer.
+  const { categories } = await getStorefrontMenu(await selectedBranchSlug());
   const category = findCategory(categories, slug);
   if (!category) return {};
 
@@ -49,7 +62,7 @@ export default async function CategoryPage({
   params: Promise<Params>;
 }) {
   const { category: slug } = await params;
-  const { categories } = await getStorefrontMenu();
+  const { categories } = await getStorefrontMenu(await selectedBranchSlug());
   const category = findCategory(categories, slug);
   if (!category) notFound();
 
