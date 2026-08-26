@@ -68,6 +68,150 @@ function usedByLabel(linkedItemIds: string[], itemNameById: Map<string, string>)
 }
 
 /**
+ * The name, description, pricing, amount, heat and active fields shared by
+ * an existing option's row and the blank "new option" row. Used once by
+ * each, inside their own <form>, so this is the only place the price and
+ * heat wiring exist.
+ *
+ * Both priceCents and heatPercent follow the identical pattern: one
+ * unconditional hidden input that always reaches FormData under the field's
+ * real name, and a visible input, rendered only when relevant, that carries
+ * no name of its own and is purely for editing. Whether the visible control
+ * is mounted can never change what gets submitted, because only the hidden
+ * input has a name. This is deliberate: a heat field that is hidden because
+ * the group has no heat yet must still submit whatever value it already
+ * holds (usually none), not silently omit the field and have the server
+ * read that omission as "clear it".
+ */
+function OptionFieldset({
+  idPrefix,
+  nameLabel,
+  nameDefaultValue,
+  descriptionDefaultValue,
+  pricing,
+  onPricingChange,
+  amount,
+  onAmountChange,
+  showHeat,
+  heatPercent,
+  onHeatPercentChange,
+  isActive,
+  onIsActiveChange,
+  disabled,
+}: {
+  idPrefix: string;
+  nameLabel: string;
+  nameDefaultValue: string;
+  descriptionDefaultValue: string;
+  pricing: PricingMode;
+  onPricingChange: (mode: PricingMode) => void;
+  amount: string;
+  onAmountChange: (value: string) => void;
+  showHeat: boolean;
+  heatPercent: string;
+  onHeatPercentChange: (value: string) => void;
+  isActive: boolean;
+  onIsActiveChange: (checked: boolean) => void;
+  disabled: boolean;
+}) {
+  // Whatever the amount field holds is only meaningful when pricing is
+  // "flat". Free and priced-by-size both send a fixed value here instead of
+  // whatever the amount state contains, and the server transform ignores
+  // this field for both cases anyway, deriving resolvedPriceCents from
+  // pricing alone. Two independent guards against the same mistake.
+  const priceCentsToSend = pricing === "flat" ? String(pesosToCents(amount)) : "0";
+
+  return (
+    <>
+      <div className="min-w-40 flex-1">
+        <WorkspaceFieldLabel htmlFor={`${idPrefix}-name`}>{nameLabel}</WorkspaceFieldLabel>
+        <WorkspaceInput
+          id={`${idPrefix}-name`}
+          name="name"
+          defaultValue={nameDefaultValue}
+          maxLength={100}
+          required
+          disabled={disabled}
+        />
+      </div>
+      <div className="min-w-48 flex-1">
+        <WorkspaceFieldLabel htmlFor={`${idPrefix}-description`}>Description</WorkspaceFieldLabel>
+        <WorkspaceInput
+          id={`${idPrefix}-description`}
+          name="description"
+          defaultValue={descriptionDefaultValue}
+          maxLength={300}
+          disabled={disabled}
+        />
+      </div>
+      <WorkspaceSelect
+        id={`${idPrefix}-pricing`}
+        name="pricing"
+        label="Pricing"
+        options={pricingOptions}
+        defaultValue={pricing}
+        onValueChange={(value) => {
+          if (value) onPricingChange(value);
+        }}
+        disabled={disabled}
+        className="min-w-44"
+      />
+      {pricing === "flat" ? (
+        <div className="w-32">
+          <WorkspaceFieldLabel htmlFor={`${idPrefix}-amount`}>Amount (PHP)</WorkspaceFieldLabel>
+          <WorkspaceInput
+            id={`${idPrefix}-amount`}
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="0.01"
+            value={amount}
+            onChange={(event) => onAmountChange(event.target.value)}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
+      {/* Unconditional: see the note on OptionFieldset. priceCentsToSend is
+          "0" whenever pricing is not "flat", and the server transform never
+          reads this field except in that one branch, so this can never send
+          a stray amount for a free or priced-by-size option. */}
+      <input type="hidden" name="priceCents" value={priceCentsToSend} />
+      {showHeat ? (
+        <div className="w-28">
+          <WorkspaceFieldLabel htmlFor={`${idPrefix}-heat`}>Heat %</WorkspaceFieldLabel>
+          <WorkspaceInput
+            id={`${idPrefix}-heat`}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={100}
+            step="1"
+            value={heatPercent}
+            onChange={(event) => onHeatPercentChange(event.target.value)}
+            disabled={disabled}
+          />
+        </div>
+      ) : null}
+      {/* Unconditional, same reasoning as priceCents above: this must reach
+          FormData whether or not the visible control is mounted, or hiding
+          the field (because the group has no heat open yet) would read as
+          "clear this option's heat" and wipe an already saved value. */}
+      <input type="hidden" name="heatPercent" value={heatPercent} />
+      <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(event) => onIsActiveChange(event.target.checked)}
+          disabled={disabled}
+        />
+        <span className="text-sm">Offered</span>
+      </label>
+      <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
+    </>
+  );
+}
+
+/**
  * One existing option: an inline save form and a guarded delete form, each
  * its own useActionState, matching CategoryRow's established pattern so a
  * failure on one never clears the other.
@@ -93,96 +237,27 @@ function OptionRow({
   const [isActive, setIsActive] = useState(option.isActive);
   const pending = savePending || deletePending;
 
-  // Whatever the amount field holds is only meaningful when pricing is
-  // "flat". Free and priced-by-size both send a fixed value here instead of
-  // whatever the (possibly hidden, possibly stale) amount input contains,
-  // and the server transform ignores this field for both cases anyway,
-  // deriving resolvedPriceCents from pricing alone. Two independent guards
-  // against the same mistake.
-  const priceCentsToSend = pricing === "flat" ? String(pesosToCents(amount)) : "0";
-
   return (
     <div className="border-nybb-bone/10 first:border-t-0 first:pt-0 border-t pt-4">
       <form action={saveAction} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="id" value={option.id} />
         <input type="hidden" name="groupId" value={groupId} />
-        <div className="min-w-40 flex-1">
-          <WorkspaceFieldLabel htmlFor={`option-name-${option.id}`}>Name</WorkspaceFieldLabel>
-          <WorkspaceInput
-            id={`option-name-${option.id}`}
-            name="name"
-            defaultValue={option.name}
-            maxLength={100}
-            required
-            disabled={pending}
-          />
-        </div>
-        <div className="min-w-48 flex-1">
-          <WorkspaceFieldLabel htmlFor={`option-description-${option.id}`}>Description</WorkspaceFieldLabel>
-          <WorkspaceInput
-            id={`option-description-${option.id}`}
-            name="description"
-            defaultValue={option.description ?? ""}
-            maxLength={300}
-            disabled={pending}
-          />
-        </div>
-        <WorkspaceSelect
-          id={`option-pricing-${option.id}`}
-          name="pricing"
-          label="Pricing"
-          options={pricingOptions}
-          defaultValue={pricing}
-          onValueChange={(value) => {
-            if (value) setPricing(value);
-          }}
+        <OptionFieldset
+          idPrefix={`option-${option.id}`}
+          nameLabel="Name"
+          nameDefaultValue={option.name}
+          descriptionDefaultValue={option.description ?? ""}
+          pricing={pricing}
+          onPricingChange={setPricing}
+          amount={amount}
+          onAmountChange={setAmount}
+          showHeat={showHeat}
+          heatPercent={heatPercent}
+          onHeatPercentChange={setHeatPercent}
+          isActive={isActive}
+          onIsActiveChange={setIsActive}
           disabled={pending}
-          className="min-w-44"
         />
-        {pricing === "flat" ? (
-          <div className="w-32">
-            <WorkspaceFieldLabel htmlFor={`option-amount-${option.id}`}>Amount (PHP)</WorkspaceFieldLabel>
-            <WorkspaceInput
-              id={`option-amount-${option.id}`}
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              disabled={pending}
-            />
-          </div>
-        ) : null}
-        <input type="hidden" name="priceCents" value={priceCentsToSend} />
-        {showHeat ? (
-          <div className="w-28">
-            <WorkspaceFieldLabel htmlFor={`option-heat-${option.id}`}>Heat %</WorkspaceFieldLabel>
-            <WorkspaceInput
-              id={`option-heat-${option.id}`}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              step="1"
-              value={heatPercent}
-              onChange={(event) => setHeatPercent(event.target.value)}
-              disabled={pending}
-            />
-          </div>
-        ) : (
-          <input type="hidden" name="heatPercent" value={heatPercent} />
-        )}
-        <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(event) => setIsActive(event.target.checked)}
-            disabled={pending}
-          />
-          <span className="text-sm">Offered</span>
-        </label>
-        <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
         <Button type="submit" tone="dark" variant="primary" disabled={pending} className="min-h-11">
           {savePending ? (
             <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
@@ -236,76 +311,27 @@ function NewOptionRow({ groupId, showHeat }: { groupId: string; showHeat: boolea
   const [amount, setAmount] = useState("");
   const [heatPercent, setHeatPercent] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const priceCentsToSend = pricing === "flat" ? String(pesosToCents(amount)) : "0";
 
   return (
     <div className="border-nybb-bone/10 first:border-t-0 first:pt-0 border-t pt-4">
       <form action={action} className="flex flex-wrap items-end gap-3">
         <input type="hidden" name="groupId" value={groupId} />
-        <div className="min-w-40 flex-1">
-          <WorkspaceFieldLabel htmlFor={`new-option-name-${groupId}`}>New option</WorkspaceFieldLabel>
-          <WorkspaceInput id={`new-option-name-${groupId}`} name="name" maxLength={100} required disabled={pending} />
-        </div>
-        <div className="min-w-48 flex-1">
-          <WorkspaceFieldLabel htmlFor={`new-option-description-${groupId}`}>Description</WorkspaceFieldLabel>
-          <WorkspaceInput id={`new-option-description-${groupId}`} name="description" maxLength={300} disabled={pending} />
-        </div>
-        <WorkspaceSelect
-          id={`new-option-pricing-${groupId}`}
-          name="pricing"
-          label="Pricing"
-          options={pricingOptions}
-          defaultValue={pricing}
-          onValueChange={(value) => {
-            if (value) setPricing(value);
-          }}
+        <OptionFieldset
+          idPrefix={`new-option-${groupId}`}
+          nameLabel="New option"
+          nameDefaultValue=""
+          descriptionDefaultValue=""
+          pricing={pricing}
+          onPricingChange={setPricing}
+          amount={amount}
+          onAmountChange={setAmount}
+          showHeat={showHeat}
+          heatPercent={heatPercent}
+          onHeatPercentChange={setHeatPercent}
+          isActive={isActive}
+          onIsActiveChange={setIsActive}
           disabled={pending}
-          className="min-w-44"
         />
-        {pricing === "flat" ? (
-          <div className="w-32">
-            <WorkspaceFieldLabel htmlFor={`new-option-amount-${groupId}`}>Amount (PHP)</WorkspaceFieldLabel>
-            <WorkspaceInput
-              id={`new-option-amount-${groupId}`}
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-              disabled={pending}
-            />
-          </div>
-        ) : null}
-        <input type="hidden" name="priceCents" value={priceCentsToSend} />
-        {showHeat ? (
-          <div className="w-28">
-            <WorkspaceFieldLabel htmlFor={`new-option-heat-${groupId}`}>Heat %</WorkspaceFieldLabel>
-            <WorkspaceInput
-              id={`new-option-heat-${groupId}`}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              step="1"
-              value={heatPercent}
-              onChange={(event) => setHeatPercent(event.target.value)}
-              disabled={pending}
-            />
-          </div>
-        ) : (
-          <input type="hidden" name="heatPercent" value={heatPercent} />
-        )}
-        <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(event) => setIsActive(event.target.checked)}
-            disabled={pending}
-          />
-          <span className="text-sm">Offered</span>
-        </label>
-        <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
         <Button type="submit" tone="dark" variant="primary" disabled={pending} className="min-h-11">
           {pending ? (
             <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
