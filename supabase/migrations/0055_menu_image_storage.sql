@@ -40,6 +40,24 @@
 -- year-long TTL cannot survive. A delete policy is not needed either; the old
 -- object is orphaned, not removed, and cleaning those up is an operator job
 -- with the service role, the same as the ingest.
+--
+-- WHY THE BUCKET ALSO CARRIES A FILE SIZE LIMIT AND A MIME TYPE LIST.
+--
+-- The insert policy above only checks who may write, gated on
+-- menu:configure. It says nothing about what they write. Without a bound
+-- here, any session holding that permission can PUT arbitrary bytes of any
+-- type straight into a public bucket through the Storage REST API, bypassing
+-- every check in actions.ts (isDecodableImageType, MENU_IMAGE_MAX_BYTES, the
+-- sharp decode itself): those all run inside processMenuImage's own call
+-- path, which is not the only door into this bucket.
+--
+-- The bound here is not the client's 5 MB upload ceiling. This bucket never
+-- receives a source photograph; it only ever receives the WebP
+-- processMenuImage already produced (the workspace path) or renderDerivative
+-- produced (the ingest path), both a single 900px square tile at quality
+-- 80-82. That is reliably a few hundred KB; 2 MB leaves generous headroom
+-- above the worst case without reopening the door a raw upload would need.
+-- image/webp is the only type either writer ever puts here.
 
 -- storage.buckets and storage.objects belong to Supabase's Storage service and
 -- do not exist in a bare Postgres. tests/sql/harness.ts shims them so the
@@ -52,8 +70,8 @@ begin
     return;
   end if;
 
-  insert into storage.buckets (id, name, public)
-  values ('menu-images', 'menu-images', true)
+  insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('menu-images', 'menu-images', true, 2097152, array['image/webp'])
   on conflict (id) do nothing;
 
   -- Same permission the RPCs that write image_url check, so the two halves of

@@ -2,7 +2,7 @@
 
 import { Eye, LoaderCircle, Upload as UploadIcon } from "lucide-react";
 import Image from "next/image";
-import { useActionState, useId, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel } from "@/components/ui/WorkspaceField";
 import {
@@ -41,11 +41,20 @@ export type ImageFieldTarget =
 const MIN_MAGNIFICATION = 1;
 const MAX_MAGNIFICATION = 4;
 
-function zoomPercentLabel(magnification: number): string {
-  const percent = Math.round(
-    ((magnification - MIN_MAGNIFICATION) / (MAX_MAGNIFICATION - MIN_MAGNIFICATION)) * 100,
-  );
-  return `zoomed in ${percent} percent`;
+/**
+ * Announces the actual magnification, not a position on the slider.
+ *
+ * An earlier version normalised 1x-4x onto 0-100 and read that out as
+ * "zoomed in N percent", which satisfied the rule that a range needs an
+ * aria-valuetext in words without saying anything true: at 2.5x it announced
+ * "zoomed in 50 percent", a number with no relationship to how much closer
+ * the crop actually is. Rounded to one decimal place because sighted people
+ * read the same slider to a tenth of a step; a screen reader user should not
+ * get coarser information than that.
+ */
+function zoomLabel(magnification: number): string {
+  const rounded = Math.round(magnification * 10) / 10;
+  return rounded === MIN_MAGNIFICATION ? "no zoom" : `zoomed to ${rounded} times`;
 }
 
 function offsetLabel(offsetY: number): string {
@@ -87,6 +96,7 @@ export function ImageField({
   const [offsetY, setOffsetY] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewAnnouncement, setPreviewAnnouncement] = useState("");
   const [previewPending, startPreview] = useTransition();
 
   const pending = uploadPending || previewPending;
@@ -96,10 +106,44 @@ export function ImageField({
   const zoom = 1 / magnification;
   const shownUrl = previewUrl ?? imageUrl;
 
+  /**
+   * Puts the field back to "nothing chosen" once an upload actually lands.
+   *
+   * hasFile and previewUrl are this component's own state and do not follow
+   * a successful submission on their own: without this, Upload and Preview
+   * stayed enabled against a file input that now held nothing, and pressing
+   * either printed "Choose a photograph first" against a screen that still
+   * showed the old preview.
+   *
+   * This is the same "adjust state when something external changes" shape
+   * ItemEditor.tsx uses for re-seeding its size rows: a setState call made
+   * directly in the render body, guarded by comparing against the last
+   * uploadState object this component has already reacted to, rather than
+   * in an effect. useActionState hands back a new object on every action
+   * call, including a second success in a row, so the object identity
+   * itself is what marks "this is a result I have not handled yet".
+   */
+  const [settledUploadState, setSettledUploadState] = useState(uploadState);
+  if (uploadState !== settledUploadState && uploadState.status === "success") {
+    setSettledUploadState(uploadState);
+    setHasFile(false);
+    setPreviewUrl(null);
+    setPreviewAnnouncement("");
+  }
+
+  // The DOM node's own value is imperative state React does not track, so
+  // clearing it belongs in an effect rather than the render body above: it
+  // is a synchronization with an external system, not a derived value.
+  useEffect(() => {
+    if (uploadState.status !== "success") return;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [uploadState]);
+
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setPreviewUrl(null);
     setPreviewError(null);
+    setPreviewAnnouncement("");
 
     if (!file) {
       setHasFile(false);
@@ -129,16 +173,28 @@ export function ImageField({
       return;
     }
     setPreviewError(null);
+    setPreviewAnnouncement("");
     startPreview(async () => {
       const formData = new FormData();
       formData.set("file", file);
       formData.set("zoom", String(zoom));
       formData.set("offsetY", String(offsetY));
-      const result = await previewMenuImage(formData);
-      if (result.ok) {
-        setPreviewUrl(result.dataUrl);
-      } else {
-        setPreviewError(result.error);
+      // previewMenuImage's own failures come back as { ok: false }, printed
+      // in place like every other failure in this component. A transport
+      // failure (offline, a 413, a 500) instead throws inside this
+      // transition and, unwrapped, would reach the nearest error boundary
+      // and take the whole screen down over what is only a preview.
+      try {
+        const result = await previewMenuImage(formData);
+        if (result.ok) {
+          setPreviewUrl(result.dataUrl);
+          setPreviewAnnouncement("Preview updated to match the crop.");
+        } else {
+          setPreviewError(result.error);
+        }
+      } catch (cause) {
+        console.error("[workspace] menu image preview request failed:", cause);
+        setPreviewError("The preview could not be generated. Try again.");
       }
     });
   }
@@ -182,7 +238,7 @@ export function ImageField({
               accept={MENU_IMAGE_ACCEPT}
               onChange={handleFileChange}
               disabled={pending}
-              className="text-nybb-bone/55 mt-2 block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-nybb-bone/10 file:px-3.5 file:py-2 file:text-sm file:text-nybb-bone disabled:opacity-60"
+              className="text-nybb-bone/55 mt-2 flex min-h-11 w-full items-center text-xs file:mr-3 file:rounded-md file:border-0 file:bg-nybb-bone/10 file:px-3.5 file:py-2 file:text-sm file:text-nybb-bone disabled:opacity-60"
             />
             {fileError ? (
               <p role="alert" className="text-nybb-orange mt-2 text-xs">
@@ -205,7 +261,7 @@ export function ImageField({
                   setMagnification(Number(event.target.value));
                   setPreviewUrl(null);
                 }}
-                aria-valuetext={zoomPercentLabel(magnification)}
+                aria-valuetext={zoomLabel(magnification)}
                 disabled={pending || !hasFile}
                 className="mt-3 min-h-11 w-full"
               />
@@ -266,6 +322,14 @@ export function ImageField({
               {previewError}
             </p>
           ) : null}
+          {/* The image swap itself is silent to a screen reader (the tile is
+              alt=""), and this is the one interaction whose entire purpose is
+              to show a result. Without this, choosing Preview crop and
+              having it actually work told a non-sighted person nothing
+              happened at all. */}
+          <p aria-live="polite" aria-atomic="true" className="sr-only">
+            {previewAnnouncement}
+          </p>
           <MenuStatusMessage state={uploadState} />
         </form>
       </div>

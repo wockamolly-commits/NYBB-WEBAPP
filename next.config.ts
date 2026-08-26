@@ -65,6 +65,20 @@ const nextConfig: NextConfig = {
     remotePatterns,
     minimumCacheTTL: IMAGE_MINIMUM_CACHE_TTL,
   },
+  experimental: {
+    serverActions: {
+      // The framework default is 1 MB, covering the whole multipart request
+      // body, not just the file inside it. MENU_IMAGE_MAX_BYTES (5 MB)
+      // advertises and checks a 5 MB photograph on both sides of the upload,
+      // but without this every request over 1 MB, which is most phone
+      // photographs, was rejected before uploadMenuItemImage or
+      // uploadMenuOptionImage ever ran: no friendly message printed, because
+      // no action body executed. 6mb rather than 5mb leaves room for the
+      // multipart boundaries and part headers the raw body carries beside
+      // the file, per the framework docs' own 10-20 KB rule of thumb.
+      bodySizeLimit: "6mb",
+    },
+  },
   async headers() {
     return [
       {

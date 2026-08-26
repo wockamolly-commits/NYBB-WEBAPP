@@ -1,8 +1,7 @@
 import "server-only";
 
 import sharp from "sharp";
-
-export {
+import {
   MENU_IMAGE_ACCEPT,
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -13,6 +12,22 @@ export {
   MENU_IMAGE_TYPE_MESSAGE,
   isDecodableImageType,
 } from "./menu-image-limits";
+
+// Imported above rather than only re-exported, because processMenuImage
+// itself now reads MENU_IMAGE_TYPE_MESSAGE (see DECODABLE_SHARP_FORMATS
+// below). `export { X } from "./m"` does not bind X locally, so a bare
+// re-export would have made the constant unusable in this file.
+export {
+  MENU_IMAGE_ACCEPT,
+  MENU_IMAGE_BUCKET,
+  MENU_IMAGE_CACHE_CONTROL,
+  MENU_IMAGE_CONTENT_TYPE,
+  MENU_IMAGE_EXTENSION,
+  MENU_IMAGE_MAX_BYTES,
+  MENU_IMAGE_SIZE_MESSAGE,
+  MENU_IMAGE_TYPE_MESSAGE,
+  isDecodableImageType,
+};
 
 /**
  * One uploaded photograph, turned into the tile the storefront draws.
@@ -55,6 +70,21 @@ const BRAND_BACKGROUND = "#ef6212";
  */
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 1;
+
+/**
+ * The formats sharp may actually decode into a menu tile, keyed on sharp's
+ * own `metadata().format`, not on the upload's declared Content-Type.
+ *
+ * isDecodableImageType in menu-image-limits.ts checks file.type, which is
+ * whatever the multipart part header claims and nothing more: a request
+ * that declares "image/png" while its bytes are actually an SVG passes that
+ * check, and sharp will still decode and rasterise it, which is exactly the
+ * input the No-SVG ruling in that file exists to keep out. This is the same
+ * check made a second time against data sharp has already read, the same
+ * way the type and size limits themselves are checked again on the server
+ * rather than trusted from the client.
+ */
+const DECODABLE_SHARP_FORMATS = new Set(["jpeg", "png", "webp", "avif"]);
 
 export type ProcessedMenuImage = {
   /** The encoded WebP. */
@@ -132,6 +162,17 @@ export async function processMenuImage(
   options: MenuImageCrop,
 ): Promise<ProcessedMenuImage> {
   const input = Buffer.from(await file.arrayBuffer());
+
+  // Checked against the RAW input, before rotate().toBuffer() below touches
+  // it. That call re-encodes whatever it is handed, and for an SVG source
+  // sharp's default re-encode target is PNG: reading meta.format from its
+  // *output* instead of here would see "png" and wave the very SVG the
+  // No-SVG ruling exists to keep out straight through, having already
+  // rasterised it before the check ever ran.
+  const sourceFormat = (await sharp(input).metadata()).format;
+  if (!sourceFormat || !DECODABLE_SHARP_FORMATS.has(sourceFormat)) {
+    throw new Error(MENU_IMAGE_TYPE_MESSAGE);
+  }
 
   // rotate() before reading the size, so a portrait photograph tagged sideways
   // is measured the way it will be drawn rather than the way it was stored.

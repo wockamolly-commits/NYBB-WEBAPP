@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
+import { MENU_IMAGE_BUCKET } from "@/lib/staff/menu-image-limits";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
@@ -82,13 +83,26 @@ describe("migrations", () => {
   // browser can reach. The bucket name is the one next.config.ts optimizes;
   // getting it wrong renders every uploaded tile broken rather than failing.
   it("let a menu:configure session upload into the menu images bucket", async () => {
-    expect(
-      await scalar<number>(
-        db,
-        `select count(*)::int from storage.buckets
-          where id = 'menu-images' and public`,
-      ),
-    ).toBe(1);
+    const buckets = await db.query<{
+      id: string;
+      public: boolean;
+      file_size_limit: number | null;
+      allowed_mime_types: string[] | null;
+    }>(`select id, public, file_size_limit, allowed_mime_types from storage.buckets`);
+    expect(buckets.rows).toHaveLength(1);
+    const [bucket] = buckets.rows;
+    // Checked against the constant, not a second literal of this test's own:
+    // MENU_IMAGE_BUCKET is what next.config.ts, the two upload actions and
+    // the ingest script all actually read. This migration's SQL is the one
+    // place that cannot import it and has to be kept in sync by hand, so
+    // this is the one check that would catch it drifting.
+    expect(bucket.id).toBe(MENU_IMAGE_BUCKET);
+    expect(bucket.public).toBe(true);
+    // The bound is on the processed tile this bucket actually receives
+    // (a single 900px WebP square), not the client's larger raw-upload
+    // ceiling. See the migration's own comment for the reasoning.
+    expect(bucket.file_size_limit).toBe(2 * 1024 * 1024);
+    expect(bucket.allowed_mime_types).toEqual(["image/webp"]);
 
     const policies = await db.query<{ cmd: string; roles: string; qual: string }>(`
       select cmd, roles::text as roles, coalesce(with_check, '') as qual

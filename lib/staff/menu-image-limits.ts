@@ -15,11 +15,18 @@
 /**
  * The Storage bucket every menu photograph lives in.
  *
- * This name is load bearing in three places and they have to agree: this
- * upload path, scripts/ingest-legacy-images.ts, and the remotePattern in
- * next.config.ts that decides whether next/image will optimize the URL at all.
- * They disagreed until this was written down once. next.config.ts imports this
- * value rather than repeating the string.
+ * This name has to agree everywhere it appears, and it appears in five
+ * places: this constant; the two upload actions in actions.ts, which import
+ * it; next.config.ts's remotePattern, which decides whether next/image will
+ * optimize the URL at all, also imported; scripts/ingest-legacy-images.ts,
+ * also imported; and supabase/migrations/0055_menu_image_storage.sql, which
+ * writes the literal "menu-images" twice, once for the bucket row and once
+ * for the Storage policy's bucket_id check, because SQL cannot import a
+ * TypeScript constant. Everything on the JavaScript side reads this one
+ * value and cannot drift from it. The SQL migration is the one place a
+ * rename here would silently stop being true, which is why
+ * tests/sql/schema.test.ts checks the bucket row's id against this constant
+ * rather than against a second literal of its own.
  */
 export const MENU_IMAGE_BUCKET = "menu-images";
 

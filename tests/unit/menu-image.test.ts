@@ -108,12 +108,16 @@ describe("processMenuImage", () => {
   });
 
   it("clamps a zoom that would crop outside the source", async () => {
-    await expect(
-      processMenuImage(await sampleFile(), { zoom: 0.01, offsetY: 0 }),
-    ).resolves.toBeTruthy();
-    await expect(
-      processMenuImage(await sampleFile(), { zoom: 99, offsetY: 0 }),
-    ).resolves.toBeTruthy();
+    // Pinned, not just "does not throw": on the default 1600x900 sample the
+    // short side is 900, so MIN_ZOOM (0.25) gives a 225px window and
+    // MAX_ZOOM (1) gives the full 900px window. Asserting only that these
+    // resolve would let MIN_ZOOM or MAX_ZOOM drift in menu-image.ts without
+    // any test noticing that the 1x-4x slider in ImageField.tsx had silently
+    // stopped matching what it clamps to.
+    const tooClose = await processMenuImage(await sampleFile(), { zoom: 0.01, offsetY: 0 });
+    expect(tooClose.width).toBe(225);
+    const tooFar = await processMenuImage(await sampleFile(), { zoom: 99, offsetY: 0 });
+    expect(tooFar.width).toBe(900);
     await expect(
       processMenuImage(await sampleFile(), { zoom: Number.NaN, offsetY: 12 }),
     ).resolves.toBeTruthy();
@@ -125,6 +129,21 @@ describe("processMenuImage", () => {
     expect(meta.hasAlpha).toBe(false);
     // Orange, not whatever happened to be behind the tile.
     expect(await meanRed(processed.data)).toBeGreaterThan(200);
+  });
+
+  it("refuses an SVG whose upload declares a different type", async () => {
+    // file.type is whatever the multipart part header claims, not what the
+    // bytes actually are. isDecodableImageType alone would let this through
+    // ("image/png" passes it), which is exactly the input the No-SVG ruling
+    // in menu-image-limits.ts exists to keep out: sharp can and will
+    // rasterise an SVG regardless of what the request called it. This pins
+    // that processMenuImage itself, not just the client's declared type,
+    // is what stops it.
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>',
+    );
+    const file = new File([new Uint8Array(svg)], "sneaky.png", { type: "image/png" });
+    await expect(processMenuImage(file, { zoom: 1, offsetY: 0 })).rejects.toThrow();
   });
 
   it("names the types it can decode and the size it accepts", () => {
