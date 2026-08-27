@@ -48,14 +48,28 @@
 --    Until that screen exists the write surface should be the nine functions
 --    something actually reaches.
 --
--- 6. The audit read policy admits a null branch_id to anyone holding
---    audit:view. The owner's answer, 2026-08-27, to the question the review
---    raised: a manager assigned to one counter holds menu:configure with no
---    branch scope at all, changes every price at all nine counters, and then
---    could not see one of those changes in the audit log, including their own,
---    because every catalog audit row carries a null branch and
---    staff_can_access_branch reads 'mango-avenue' = null as NULL rather than
---    true. See the block above section 6 below for what else this admits.
+-- 6. The audit read policy admits a business wide row, except one about a
+--    person, to anyone holding audit:view. The owner's answer, 2026-08-27, to
+--    the question the review raised: a manager assigned to one counter holds
+--    menu:configure with no branch scope at all, changes every price at all
+--    nine counters, and then could not see one of those changes in the audit
+--    log, including their own, because every catalog audit row carries a null
+--    branch and staff_can_access_branch reads 'mango-avenue' = null as NULL
+--    rather than true.
+--
+--    Ruled wide first, then narrowed the same day, and the second ruling is
+--    what is written below. A wide null arm turned out to admit more than the
+--    question described: seven staff administration actions also write a null
+--    branch_id, their diffs carry to_jsonb(profiles_row), and profiles has a
+--    phone column. 0023:88-92 says in its own words that a manager reading
+--    another site's staff, phone numbers included, is the exposure it closed,
+--    so the wide form would have reopened it one layer down, through the diff
+--    rather than through the profiles policy. Two of those seven pass their
+--    action as a variable rather than a literal, so no grep for action strings
+--    finds them; the discriminator is target_table <> 'profiles', because the
+--    target table is what actually says whether a row is about a person and an
+--    action list is stale the moment somebody adds an action. Section 6 below
+--    carries the full enumeration.
 --
 -- WHY THERE ARE NO GRANTS BELOW EXCEPT THE REVOKE.
 --
@@ -639,7 +653,8 @@ revoke execute on function staff_reorder_menu(text, uuid[])
   from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- 6. A business wide audit row is readable by anyone holding audit:view.
+-- 6. A business wide audit row, except one about a person, is readable by
+--    anyone holding audit:view.
 -- ---------------------------------------------------------------------------
 
 -- THE PROBLEM THIS ANSWERS.
@@ -656,24 +671,18 @@ revoke execute on function staff_reorder_menu(text, uuid[])
 -- their own "marked sold out" rows and not their own "changed the price"
 -- rows. That reads as a bug to the person using it.
 --
--- The owner's ruling, 2026-08-27: a null branch_id already means business
--- wide by 0023's own definition, and business wide records are not one site's
--- secret. So admit them, and close the asymmetry from the price side rather
--- than by making holds business wide. Holds keep their real branch and a
--- branch manager keeps seeing only their own counter's, which is unchanged.
---
--- WHAT ELSE THIS ADMITS, ENUMERATED FROM THE MIGRATIONS RATHER THAN ASSUMED.
+-- WHAT A NULL BRANCH ACTUALLY MEANS, ENUMERATED RATHER THAN ASSUMED.
 --
 -- The policy cannot tell a deliberately business wide row from an accidentally
--- unscoped one, so every action that writes a null branch_id is in scope. All
--- of them, found by reading every insert into audit_logs in every migration
--- (both the bare and the public-qualified spelling) and checking against the
+-- unscoped one, so admitting null admits everything that writes null. Found by
+-- reading every insert into audit_logs in every migration, in both the bare
+-- and the public-qualified spelling, and checking each against the
 -- audit_logs_set_branch trigger, which fills a branch only when target_table
 -- is 'orders':
 --
 --   a. Sixteen menu.* catalog actions, from 0053, 0054 and this file. The
---      target. menu.item.held and menu.item.released are not among them: they
---      carry a real branch and are unaffected.
+--      target of the ruling. menu.item.held and menu.item.released are not
+--      among them: they carry a real branch and are unaffected.
 --   b. store.order_intake_changed (0025), explicitly null because pausing
 --      intake is business wide. A branch manager seeing why their own counter
 --      stopped taking orders is an improvement.
@@ -684,25 +693,39 @@ revoke execute on function staff_reorder_menu(text, uuid[])
 --      staff.super_admin_revoked_by_configuration (0022). All seven target
 --      'profiles' and none supplies a branch_id, so all seven are null.
 --
--- Group (d) was not part of the question as it was put, and it is the part to
--- look at before this is applied. Those diffs carry to_jsonb(profiles_row),
--- and profiles has a phone column (0007). 0023's own comment says it scoped
--- the profiles read policy precisely so that "the same widening that let a
--- manager read another site's trail also let them read another site's staff,
--- phone numbers included" could not happen. This policy does not touch the
--- profiles policy, so the actor name beside such a row still will not resolve
--- for a branch manager, but the diff inside the row would carry another
--- counter's staff record. If that is not wanted, the narrower form is to add
--- "and target_table <> 'profiles'" to the null arm, and that is the owner's
--- call to make, not this migration's.
+-- Group (d) was not part of the question as it was first put, and a wide null
+-- arm would have admitted it. Those diffs carry to_jsonb(profiles_row), and
+-- profiles has a phone column (0007:18). 0023:88-92 says in its own words that
+-- this is the exposure it closed when it scoped the profiles read policy, and
+-- a wide null arm here would have reopened it through the diff, one layer
+-- down, while the profiles policy itself still held.
+--
+-- THE OWNER'S RULING, 2026-08-27, AFTER THAT WAS FOUND.
+--
+-- The narrow form. A branch assigned manager sees menu configuration changes,
+-- which was the whole point, and does not see staff record changes.
+--
+-- WHY target_table AND NOT A LIST OF ACTIONS.
+--
+-- An action list is stale the moment somebody adds an action: the next RPC
+-- that audits a profile change is admitted by a policy nobody thought to
+-- update, and nothing fails to say so. The target table is the thing that
+-- actually answers the question being asked, which is whether this row is
+-- about a person. Every row about a person carries target_table = 'profiles'
+-- by construction, including the two in group (d) that pass their action as a
+-- variable rather than a literal and so cannot be found by grepping for
+-- strings at all.
 --
 -- Everything genuinely per counter already carries a real branch and is
--- untouched: store.hours_changed, store.hours_cleared,
--- store.branch_settings_changed, every refund.* and every order.*.
+-- reached by the second arm exactly as before: store.hours_changed,
+-- store.hours_cleared, store.branch_settings_changed, every refund.* and
+-- every order.*.
 --
 -- audit:view is manager and admin only in 0050's permission lists, never
 -- cashier, so this changes what a manager sees and nothing at all about what
--- a cashier sees.
+-- a cashier sees. A roving manager and an admin carry no branch themselves,
+-- so current_staff_can_access_branch(null) is true for them and the first arm
+-- costs them nothing: they still read the profiles rows through the second.
 --
 -- Restated whole rather than altered, because a policy has no alter that can
 -- add a disjunct. The permission half is unchanged from 0023.
@@ -710,5 +733,8 @@ drop policy if exists "authorized staff read audit log" on audit_logs;
 create policy "authorized staff read audit log" on audit_logs
   for select using (
     current_staff_has_permission('audit:view')
-    and (branch_id is null or current_staff_can_access_branch(branch_id))
+    and (
+      (branch_id is null and target_table <> 'profiles')
+      or current_staff_can_access_branch(branch_id)
+    )
   );
