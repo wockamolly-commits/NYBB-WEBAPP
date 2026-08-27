@@ -139,7 +139,7 @@ function OptionFieldset({
         name="pricing"
         label="Pricing"
         options={pricingOptions}
-        defaultValue={pricing}
+        value={pricing}
         onValueChange={(value) => {
           if (value) onPricingChange(value);
         }}

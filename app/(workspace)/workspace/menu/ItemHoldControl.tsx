@@ -91,7 +91,7 @@ export function ItemHoldControl({
       name="branchId"
       label="Which counter"
       options={branchOptions}
-      defaultValue={pickedBranchId}
+      value={pickedBranchId}
       placeholder="Choose a counter"
       onValueChange={setPickedBranchId}
       disabled={pending}
@@ -141,7 +141,7 @@ export function ItemHoldControl({
           name="kind"
           label="Sold out"
           options={holdKindOptions}
-          defaultValue={kind}
+          value={kind}
           onValueChange={(value) => {
             if (!value) return;
             setKind(value);

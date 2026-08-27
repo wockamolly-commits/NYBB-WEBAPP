@@ -16,6 +16,7 @@ export function WorkspaceSelect<Value extends string>({
   name,
   label,
   options,
+  value,
   defaultValue,
   placeholder,
   onValueChange,
@@ -27,9 +28,18 @@ export function WorkspaceSelect<Value extends string>({
   label: string;
   options: readonly WorkspaceSelectOption<Value>[];
   /**
-   * Omit (or pass null) to render the control with no preselected value. Used
-   * by a roving manager's counter picker, where choosing a default for them
-   * would be a silent guess.
+   * The current selection, for a caller that holds it in state. Pass this
+   * rather than `defaultValue` whenever the value can change after the first
+   * render: `defaultValue` is read once, so feeding state into it leaves the
+   * two copies to drift and Base UI warns that an uncontrolled Select changed
+   * its default. `null` is a valid controlled value and means nothing is
+   * selected. Mutually exclusive with `defaultValue`.
+   */
+  value?: Value | null;
+  /**
+   * The starting selection for a control that manages itself afterwards, such
+   * as a plain form field read on submit. Omit (or pass null) to render with
+   * no preselected value. Do not pass state here; use `value` for that.
    */
   defaultValue?: Value | null;
   /** Shown in the trigger while nothing is selected. */
@@ -43,7 +53,9 @@ export function WorkspaceSelect<Value extends string>({
       id={id}
       name={name}
       items={options}
-      defaultValue={defaultValue ?? null}
+      {...(value === undefined
+        ? { defaultValue: defaultValue ?? null }
+        : { value })}
       onValueChange={onValueChange}
       disabled={disabled}
     >
