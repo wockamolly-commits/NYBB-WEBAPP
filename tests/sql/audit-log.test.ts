@@ -136,20 +136,35 @@ describe("Audit log scope", () => {
     ).toBe(1);
   });
 
-  it("keeps a branch manager out of another branch's trail", async () => {
-    expect(await actions(db, BRANCH_MANAGER)).toEqual(["order.claimed"]);
-    expect(
-      await actingAs<{ target_id: string }>(
-        db,
-        BRANCH_MANAGER,
-        "select target_id from audit_logs",
-      ),
-    ).toEqual([{ target_id: pilotOrderId }]);
+  // 0056, on the owner's ruling of 2026-08-27, reversing what 0023 shipped.
+  //
+  // A manager assigned to one counter holds menu:configure with no branch
+  // scope at all, so they change every price at all nine counters. Every
+  // catalog audit row carries a null branch_id, because one catalog serves
+  // every counter, and staff_can_access_branch reads 'pilot' = null as NULL
+  // rather than true. So that person could not see a single one of their own
+  // configuration changes, while their own holds, which carry a real branch,
+  // showed up beside them. A null branch_id already means business wide by
+  // 0023's own definition, so it is now readable by anyone holding audit:view.
+  it("shows a branch manager the business wide records", async () => {
+    const visible = await actions(db, BRANCH_MANAGER);
+    expect(visible).toContain("workspace.access_granted");
+    expect(visible).toContain("order.started");
   });
 
-  it("keeps a branch manager out of the company records too", async () => {
-    const visible = await actions(db, BRANCH_MANAGER);
-    expect(visible).not.toContain("workspace.access_granted");
+  // The half that matters, and the reason the null arm is a disjunct rather
+  // than a removal. Widening business wide records must not become a general
+  // unscoping: another counter's own rows carry that counter's branch_id and
+  // are still invisible here.
+  it("still keeps a branch manager out of another branch's rows", async () => {
+    const rows = await actingAs<{ target_id: string }>(
+      db,
+      BRANCH_MANAGER,
+      "select target_id from audit_logs where target_table = 'orders' order by id",
+    );
+    const targets = rows.map((row) => row.target_id);
+    expect(targets).toContain(pilotOrderId);
+    expect(targets).not.toContain(otherOrderId);
   });
 
   it("shows every site and the company records to an unassigned manager", async () => {

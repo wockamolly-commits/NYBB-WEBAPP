@@ -48,6 +48,15 @@
 --    Until that screen exists the write surface should be the nine functions
 --    something actually reaches.
 --
+-- 6. The audit read policy admits a null branch_id to anyone holding
+--    audit:view. The owner's answer, 2026-08-27, to the question the review
+--    raised: a manager assigned to one counter holds menu:configure with no
+--    branch scope at all, changes every price at all nine counters, and then
+--    could not see one of those changes in the audit log, including their own,
+--    because every catalog audit row carries a null branch and
+--    staff_can_access_branch reads 'mango-avenue' = null as NULL rather than
+--    true. See the block above section 6 below for what else this admits.
+--
 -- WHY THERE ARE NO GRANTS BELOW EXCEPT THE REVOKE.
 --
 -- Every signature here is byte-identical to the one in the migration that
@@ -628,3 +637,78 @@ $$;
 -- revoke from public alone removes a privilege nobody held.
 revoke execute on function staff_reorder_menu(text, uuid[])
   from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 6. A business wide audit row is readable by anyone holding audit:view.
+-- ---------------------------------------------------------------------------
+
+-- THE PROBLEM THIS ANSWERS.
+--
+-- current_staff_has_permission gives menu:configure to manager with no branch
+-- scope at all (0050). Every catalog write RPC in 0053 and 0054 writes a null
+-- branch_id, because one catalog serves all nine counters and 0023 already
+-- reads a null branch as business wide. The read policy from 0023 is
+-- audit:view and current_staff_can_access_branch(branch_id), and that resolves
+-- to "p.branch_id is null or p.branch_id = p_branch_id" (0037). For a manager
+-- assigned to a counter and a row with no branch that is 'mango-avenue' = null,
+-- which is NULL, which is not true, so the row is filtered out. Meanwhile
+-- staff_set_menu_item_hold writes a real branch_id, so the same person sees
+-- their own "marked sold out" rows and not their own "changed the price"
+-- rows. That reads as a bug to the person using it.
+--
+-- The owner's ruling, 2026-08-27: a null branch_id already means business
+-- wide by 0023's own definition, and business wide records are not one site's
+-- secret. So admit them, and close the asymmetry from the price side rather
+-- than by making holds business wide. Holds keep their real branch and a
+-- branch manager keeps seeing only their own counter's, which is unchanged.
+--
+-- WHAT ELSE THIS ADMITS, ENUMERATED FROM THE MIGRATIONS RATHER THAN ASSUMED.
+--
+-- The policy cannot tell a deliberately business wide row from an accidentally
+-- unscoped one, so every action that writes a null branch_id is in scope. All
+-- of them, found by reading every insert into audit_logs in every migration
+-- (both the bare and the public-qualified spelling) and checking against the
+-- audit_logs_set_branch trigger, which fills a branch only when target_table
+-- is 'orders':
+--
+--   a. Sixteen menu.* catalog actions, from 0053, 0054 and this file. The
+--      target. menu.item.held and menu.item.released are not among them: they
+--      carry a real branch and are unaffected.
+--   b. store.order_intake_changed (0025), explicitly null because pausing
+--      intake is business wide. A branch manager seeing why their own counter
+--      stopped taking orders is an improvement.
+--   c. workspace.kitchen_role_retired (0050), a one off migration event.
+--   d. workspace.access_granted, access_reactivated, access_revoked,
+--      role_changed and access_confirmed (0050, superseding 0019), and
+--      staff.super_admin_bootstrapped and
+--      staff.super_admin_revoked_by_configuration (0022). All seven target
+--      'profiles' and none supplies a branch_id, so all seven are null.
+--
+-- Group (d) was not part of the question as it was put, and it is the part to
+-- look at before this is applied. Those diffs carry to_jsonb(profiles_row),
+-- and profiles has a phone column (0007). 0023's own comment says it scoped
+-- the profiles read policy precisely so that "the same widening that let a
+-- manager read another site's trail also let them read another site's staff,
+-- phone numbers included" could not happen. This policy does not touch the
+-- profiles policy, so the actor name beside such a row still will not resolve
+-- for a branch manager, but the diff inside the row would carry another
+-- counter's staff record. If that is not wanted, the narrower form is to add
+-- "and target_table <> 'profiles'" to the null arm, and that is the owner's
+-- call to make, not this migration's.
+--
+-- Everything genuinely per counter already carries a real branch and is
+-- untouched: store.hours_changed, store.hours_cleared,
+-- store.branch_settings_changed, every refund.* and every order.*.
+--
+-- audit:view is manager and admin only in 0050's permission lists, never
+-- cashier, so this changes what a manager sees and nothing at all about what
+-- a cashier sees.
+--
+-- Restated whole rather than altered, because a policy has no alter that can
+-- add a disjunct. The permission half is unchanged from 0023.
+drop policy if exists "authorized staff read audit log" on audit_logs;
+create policy "authorized staff read audit log" on audit_logs
+  for select using (
+    current_staff_has_permission('audit:view')
+    and (branch_id is null or current_staff_can_access_branch(branch_id))
+  );
