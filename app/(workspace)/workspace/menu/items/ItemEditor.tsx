@@ -418,13 +418,15 @@ export function ItemEditor({
           </p>
         </section>
 
-        {/* ImageField carries its own <form>, and a <form> nested inside this
-            one is invalid HTML: the browser flattens it and the Upload
-            button would submit the item form instead of its own. Same
-            constraint HeatPriceGrid already documents below. It renders as a
-            sibling, right after this form closes, rather than in this slot;
-            this comment is what Task 9 left here and stays as the marker of
-            where "Photo" sits in the reading order. */}
+        {/* ImageField used to carry its own <form>, which could not nest
+            inside this one (the browser flattens a nested form and its
+            Upload button would submit the item instead), so it renders as a
+            sibling right after this form closes. It no longer has a form:
+            React 19 resets an uncontrolled form after every form action, and
+            that emptied the file input, so the field posts its upload
+            directly instead. The placement stays as it is, and this comment
+            stays as the marker of where "Photo" sits in the reading order.
+            HeatPriceGrid below still has the original constraint. */}
 
         <SizeRows
           idPrefix={uid}

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveMenuImage } from "@/lib/menu/resolve-image";
+import { menuImageOriginalFor } from "@/lib/staff/menu-image-limits";
 import { createStaffClient } from "@/lib/supabase/server";
 import type {
   HoldKind,
@@ -225,7 +226,19 @@ function managedImage(row: {
     treatment: row.image_treatment ?? null,
     source: row.image_source,
   });
-  return resolved ? { src: resolved.src, origin: resolved.origin } : null;
+  if (!resolved) return null;
+  return {
+    src: resolved.src,
+    origin: resolved.origin,
+    // An uploaded row keeps its uncropped original at a path derived from the
+    // tile's. An archive row's src is already the source it was cut from, so
+    // it is its own editable picture. Whether the object is really there is
+    // the editor's problem, not this reader's: asking Storage for every row
+    // on every menu render would be a request per photograph to answer a
+    // question that only matters once somebody presses a button.
+    editableSrc:
+      resolved.origin === "uploaded" ? menuImageOriginalFor(resolved.src) : resolved.src,
+  };
 }
 
 export async function getManagedMenu(): Promise<ManagedMenu | null> {

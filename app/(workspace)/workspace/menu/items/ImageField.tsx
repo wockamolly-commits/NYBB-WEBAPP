@@ -1,8 +1,15 @@
 "use client";
 
-import { Eye, LoaderCircle, Upload as UploadIcon } from "lucide-react";
+import { Eye, LoaderCircle, Pencil, Upload as UploadIcon } from "lucide-react";
 import Image from "next/image";
-import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useState,
+  useTransition,
+} from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel } from "@/components/ui/WorkspaceField";
 import { MENU_IMAGE_FLATTEN_BACKGROUND, cropPreviewLayout } from "@/lib/staff/menu-image-crop";
@@ -66,8 +73,21 @@ function offsetLabel(offsetY: number): string {
     : `crop shifted ${percent} percent toward the bottom`;
 }
 
-/** The chosen file and the object URL the browser draws it from. */
-type ChosenPhoto = { file: File; objectUrl: string };
+/**
+ * The crop as one comparable value, for telling "this is what was saved" from
+ * "this has been adjusted since". Two floats, so a string is enough and
+ * cheaper to reason about than remembering a pair.
+ */
+function cropSignature(zoom: number, offsetY: number): string {
+  return `${zoom}|${offsetY}`;
+}
+
+/**
+ * The file being cropped, the object URL the browser draws it from, and where
+ * it came from: picked off this machine, or reopened from the row's own
+ * photograph.
+ */
+type ChosenPhoto = { file: File; objectUrl: string; from: "disk" | "saved" };
 
 /** How big the browser found the chosen photograph to be, once decoded. */
 type SourceSize = { width: number; height: number };
@@ -121,7 +141,6 @@ export function ImageField({
   const uploadAction = target.kind === "item" ? uploadMenuItemImage : uploadMenuOptionImage;
   const [uploadState, formAction, uploadPending] = useActionState(uploadAction, initialState);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<ChosenPhoto | null>(null);
   const [sourceSize, setSourceSize] = useState<SourceSize | null>(null);
   const [undrawable, setUndrawable] = useState(false);
@@ -132,8 +151,9 @@ export function ImageField({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [previewPending, startPreview] = useTransition();
+  const [reopenPending, startReopen] = useTransition();
 
-  const pending = uploadPending || previewPending;
+  const pending = uploadPending || previewPending || reopenPending;
   // zoom, the field the server reads, is the window multiplier: the inverse
   // of the magnification this control shows. See the comment above
   // MIN_MAGNIFICATION.
@@ -176,7 +196,9 @@ export function ImageField({
     shownKind === "render"
       ? "The exact file that will be uploaded."
       : shownKind === "live"
-        ? "Live crop of the chosen photograph."
+        ? chosen?.from === "saved"
+          ? "Live crop of this row's own photograph."
+          : "Live crop of the chosen photograph."
         : shownKind === "saved"
           ? image?.origin === "archive"
             ? "The archive photograph this row shows now. Uploading replaces it."
@@ -187,35 +209,47 @@ export function ImageField({
             "Nothing here and nothing on the menu page either.";
 
   /**
-   * Puts the field back to "nothing chosen" once an upload actually lands.
+   * Remembers the crop that was committed, and changes nothing else.
    *
-   * The chosen file and the rendered preview are this component's own state
-   * and do not follow a successful submission on their own: without this,
-   * Upload and the preview button stayed enabled against a file input that
-   * now held nothing, and pressing either printed "Choose a photograph first"
-   * against a screen that still showed the old preview.
+   * THE FIELD DOES NOT TEAR ITSELF DOWN WHEN A SAVE LANDS.
+   *
+   * It used to. A successful upload dropped the chosen file and an effect
+   * emptied the file input, and since both sliders, the preview and Upload
+   * are all gated on having a file, every control went dead the instant the
+   * photograph saved. Editing the same picture a second time meant finding
+   * it on disk and choosing it again, which read, correctly, as being able
+   * to edit a menu photograph exactly once.
+   *
+   * The reset was there for a real reason, which it addressed backwards: the
+   * buttons must not stay enabled against an input that no longer holds a
+   * file. That is now true because nothing empties the input, so the file,
+   * the crop and the controls all survive the save and the next adjustment
+   * is one drag away.
    *
    * This is the same "adjust state when something external changes" shape
    * ItemEditor.tsx uses for re-seeding its size rows: a setState call made
    * directly in the render body, guarded by comparing against the last
-   * uploadState object this component has already reacted to, rather than
-   * in an effect. useActionState hands back a new object on every action
-   * call, including a second success in a row, so the object identity
-   * itself is what marks "this is a result I have not handled yet".
-   *
-   * Nothing here revokes the object URL. That is the job of the effect below,
-   * which is keyed on the URL itself, because revoking is a side effect and
-   * the render body is not where side effects belong.
+   * uploadState object this component has already reacted to. useActionState
+   * hands back a new object on every action call, including a second success
+   * in a row, so the object identity itself is what marks "this is a result
+   * I have not handled yet". Which is exactly what repeated editing needs.
    */
   const [settledUploadState, setSettledUploadState] = useState(uploadState);
+  const [savedCrop, setSavedCrop] = useState<string | null>(null);
   if (uploadState !== settledUploadState && uploadState.status === "success") {
     setSettledUploadState(uploadState);
-    setChosen(null);
-    setSourceSize(null);
-    setUndrawable(false);
-    setRenderedUrl(null);
-    setAnnouncement("");
+    setSavedCrop(cropSignature(zoom, offsetY));
+    setAnnouncement("Photograph saved. Adjust the crop and upload again to replace it.");
   }
+
+  /**
+   * Whether the crop has moved since the last save, which decides whether the
+   * success line under the form is still telling the truth. Leaving "saved"
+   * standing over a tile that now shows a different crop is how somebody
+   * closes the page believing they saved an adjustment they did not.
+   */
+  const adjustedSinceSave =
+    savedCrop !== null && savedCrop !== cropSignature(zoom, offsetY);
 
   /**
    * Hands every object URL back when it stops being shown.
@@ -231,18 +265,17 @@ export function ImageField({
     return () => URL.revokeObjectURL(objectUrl);
   }, [chosen]);
 
-  // The DOM node's own value is imperative state React does not track, so
-  // clearing it belongs in an effect rather than the render body above: it
-  // is a synchronization with an external system, not a derived value.
-  useEffect(() => {
-    if (uploadState.status !== "success") return;
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  }, [uploadState]);
-
+  /**
+   * Back to having no photograph in hand. savedCrop goes with it: it only
+   * means anything relative to a file that is still loaded, and leaving it
+   * behind would keep the "adjusted since the last upload" line standing
+   * over a field holding nothing.
+   */
   function clearChoice() {
     setChosen(null);
     setSourceSize(null);
     setUndrawable(false);
+    setSavedCrop(null);
   }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -277,7 +310,8 @@ export function ImageField({
     setOffsetY(0);
     setSourceSize(null);
     setUndrawable(false);
-    setChosen({ file, objectUrl: URL.createObjectURL(file) });
+    setSavedCrop(null);
+    setChosen({ file, objectUrl: URL.createObjectURL(file), from: "disk" });
     setAnnouncement("Photograph chosen. The tile now shows its crop.");
   }
 
@@ -315,6 +349,98 @@ export function ImageField({
     setSourceSize(null);
   }
 
+  /**
+   * What to send, built from this component's own state.
+   *
+   * NOT read back out of the form. React 19 resets an uncontrolled form as
+   * part of every form action it runs (react-dom calls requestFormReset on
+   * the form fiber and then the action), which empties the file input the
+   * moment an upload lands. A second Upload then posted a form with no file
+   * in it and came back "Choose a photograph first", which is why a menu
+   * photograph could be edited exactly once: the framework was clearing the
+   * only copy of the file. Holding the File in state and posting it directly
+   * is what makes the second, third and tenth adjustment work the same as
+   * the first.
+   */
+  function uploadPayload(file: File): FormData {
+    const formData = new FormData();
+    if (target.kind === "item") formData.set("itemId", target.itemId);
+    else formData.set("optionId", target.optionId);
+    formData.set("file", file);
+    formData.set("zoom", String(zoom));
+    formData.set("offsetY", String(offsetY));
+    return formData;
+  }
+
+  /**
+   * Sends the upload itself, from a button rather than a form submission.
+   *
+   * The trade is deliberate: a Server Action driven by <form action> keeps
+   * working with JavaScript switched off, and this does not. Nothing else on
+   * this screen does either, because the crop it uploads is chosen with two
+   * range controls against a preview the browser draws, so there was no
+   * working no-JavaScript path here to give up.
+   */
+  function handleUpload() {
+    const file = chosen?.file;
+    if (!file) {
+      setPreviewError("Choose a photograph first.");
+      return;
+    }
+    setPreviewError(null);
+    // Inside a transition, which useActionState requires of a caller that is
+    // not a form's action prop. Without it React warns and uploadPending
+    // stops tracking the action, so the button would neither spin nor
+    // disable while the photograph is on its way.
+    startTransition(() => {
+      formAction(uploadPayload(file));
+    });
+  }
+
+  /**
+   * Loads the row's own photograph back into the editor.
+   *
+   * This is what makes a menu photograph editable more than once. Without it
+   * the sliders are dead on every visit until somebody finds the original
+   * file on their machine again, because the crop lives in this component's
+   * state and a page load starts with none.
+   *
+   * It fetches the uncropped original, not the tile on display. The two are
+   * different files, and cropping the tile again could only tighten it.
+   */
+  function handleReopen() {
+    const source = image?.editableSrc;
+    if (!source) return;
+    setPreviewError(null);
+    setRenderedUrl(null);
+    startReopen(async () => {
+      try {
+        const response = await fetch(source, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const blob = await response.blob();
+        const file = new File([blob], "current-photograph.webp", {
+          type: blob.type || "image/webp",
+        });
+        setMagnification(MIN_MAGNIFICATION);
+        setOffsetY(0);
+        setSourceSize(null);
+        setUndrawable(false);
+        setSavedCrop(null);
+        setFileError(null);
+        setChosen({ file, objectUrl: URL.createObjectURL(file), from: "saved" });
+        setAnnouncement("The saved photograph is open for editing.");
+      } catch (cause) {
+        console.error("[workspace] reopening the saved photograph failed:", cause);
+        // The likeliest cause by far, and the one worth naming: every
+        // photograph uploaded before originals were kept has a tile in the
+        // bucket and nothing beside it.
+        setPreviewError(
+          "The uncropped original for this photograph is not stored, so it cannot be reframed. Choose the file again to replace it.",
+        );
+      }
+    });
+  }
+
   function handlePreview() {
     const file = chosen?.file;
     if (!file) {
@@ -324,10 +450,7 @@ export function ImageField({
     setPreviewError(null);
     setAnnouncement("");
     startPreview(async () => {
-      const formData = new FormData();
-      formData.set("file", file);
-      formData.set("zoom", String(zoom));
-      formData.set("offsetY", String(offsetY));
+      const formData = uploadPayload(file);
       // previewMenuImage's own failures come back as { ok: false }, printed
       // in place like every other failure in this component. A transport
       // failure (offline, a 413, a 500) instead throws inside this
@@ -434,19 +557,37 @@ export function ImageField({
       </div>
 
       <div className="min-w-56 flex-1 space-y-3">
-        <form action={formAction}>
-          {target.kind === "item" ? (
-            <input type="hidden" name="itemId" value={target.itemId} />
-          ) : (
-            <input type="hidden" name="optionId" value={target.optionId} />
-          )}
-          <input type="hidden" name="zoom" value={String(zoom)} />
-          <input type="hidden" name="offsetY" value={String(offsetY)} />
+        <div>
+          {image && !chosen ? (
+            <div className="mb-4">
+              <Button
+                type="button"
+                tone="dark"
+                variant="secondary"
+                onClick={handleReopen}
+                disabled={pending || !image.editableSrc}
+                className="min-h-11"
+              >
+                {reopenPending ? (
+                  <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <Pencil aria-hidden className="size-4" />
+                )}
+                Reframe this photograph
+              </Button>
+              <p className="text-nybb-bone/55 mt-2 text-xs">
+                {image.editableSrc
+                  ? "Opens the uncropped photograph so the crop can be moved, then uploaded again."
+                  : "This photograph was uploaded before originals were kept, so it cannot be reframed. Choose the file again to replace it."}
+              </p>
+            </div>
+          ) : null}
 
           <div>
-            <WorkspaceFieldLabel htmlFor={`${uid}-file`}>Choose a photograph</WorkspaceFieldLabel>
+            <WorkspaceFieldLabel htmlFor={`${uid}-file`}>
+              {image ? "Or choose a different photograph" : "Choose a photograph"}
+            </WorkspaceFieldLabel>
             <input
-              ref={fileInputRef}
               id={`${uid}-file`}
               type="file"
               name="file"
@@ -518,7 +659,8 @@ export function ImageField({
               Check final render
             </Button>
             <Button
-              type="submit"
+              type="button"
+              onClick={handleUpload}
               tone="dark"
               variant="primary"
               disabled={pending || !chosen}
@@ -545,8 +687,14 @@ export function ImageField({
           <p aria-live="polite" aria-atomic="true" className="sr-only">
             {announcement}
           </p>
-          <MenuStatusMessage state={uploadState} />
-        </form>
+          {adjustedSinceSave && uploadState.status === "success" ? (
+            <p role="status" className="text-nybb-bone/55 mt-3 text-sm">
+              Adjusted since the last upload. Press Upload to replace the saved photograph.
+            </p>
+          ) : (
+            <MenuStatusMessage state={uploadState} />
+          )}
+        </div>
       </div>
     </div>
   );

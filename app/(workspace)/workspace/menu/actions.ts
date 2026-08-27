@@ -13,7 +13,9 @@ import {
   MENU_IMAGE_SIZE_MESSAGE,
   MENU_IMAGE_TYPE_MESSAGE,
   isDecodableImageFile,
+  menuImageOriginalFor,
   processMenuImage,
+  renderEditableOriginal,
   type MenuImageCrop,
 } from "@/lib/staff/menu-image";
 import type { MenuActionState } from "@/lib/staff/menu-types";
@@ -571,6 +573,32 @@ async function uploadMenuImageObject(
   if (uploadError) {
     console.error("[workspace] menu image upload failed:", uploadError.message);
     return { ok: false, error: "The photograph could not be uploaded. Try again." };
+  }
+
+  // The uncropped picture, beside the tile, so the crop can be changed later.
+  //
+  // Best effort on purpose. A failure here costs the ability to re-frame this
+  // photograph without choosing the file again, which the editor says plainly
+  // when it cannot find one. Failing the whole upload over it would cost the
+  // photograph itself, which is worse, and the tile is already safely stored
+  // by this point.
+  const originalPath = menuImageOriginalFor(objectPath);
+  if (originalPath) {
+    try {
+      const original = await renderEditableOriginal(file);
+      const { error: originalError } = await supabase.storage
+        .from(MENU_IMAGE_BUCKET)
+        .upload(originalPath, original, {
+          contentType: MENU_IMAGE_CONTENT_TYPE,
+          cacheControl: MENU_IMAGE_CACHE_CONTROL,
+          upsert: false,
+        });
+      if (originalError) {
+        console.error("[workspace] menu image original upload failed:", originalError.message);
+      }
+    } catch (cause) {
+      console.error("[workspace] menu image original could not be rendered:", cause);
+    }
   }
 
   const { data: publicUrl } = supabase.storage.from(MENU_IMAGE_BUCKET).getPublicUrl(objectPath);

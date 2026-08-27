@@ -4,7 +4,7 @@ import {
   cropWindow,
   type MenuImageCrop,
 } from "@/lib/staff/menu-image-crop";
-import { isDecodableImageFile } from "@/lib/staff/menu-image-limits";
+import { isDecodableImageFile, menuImageOriginalFor } from "@/lib/staff/menu-image-limits";
 
 /**
  * The editor draws its live crop in the browser and the upload cuts the real
@@ -126,5 +126,39 @@ describe("isDecodableImageFile", () => {
   it("refuses a declared type that is not decodable, whatever the name", () => {
     expect(isDecodableImageFile("shot.png", "image/svg+xml")).toBe(false);
     expect(isDecodableImageFile("shot.jpg", "application/pdf")).toBe(false);
+  });
+});
+
+describe("menuImageOriginalFor", () => {
+  /**
+   * The editable original is found by deriving its name from the tile's
+   * rather than by storing a second column. These are the cases that keeps
+   * honest: a tile gets a sibling, something that is not one of this app's
+   * tiles gets nothing, and deriving twice does not stack suffixes.
+   */
+  it("names the original beside a tile", () => {
+    expect(menuImageOriginalFor("2026/abc.webp")).toBe("2026/abc.original.webp");
+    expect(menuImageOriginalFor("https://s.test/menu-images/2026/abc.webp")).toBe(
+      "https://s.test/menu-images/2026/abc.original.webp",
+    );
+  });
+
+  it("is idempotent, so a derived name never gains a second suffix", () => {
+    const once = menuImageOriginalFor("2026/abc.webp");
+    expect(once).not.toBeNull();
+    expect(menuImageOriginalFor(once as string)).toBe(once);
+  });
+
+  /**
+   * An archive photograph lives at /img/name.hash.webp and is not a bucket
+   * object at all. It ends in .webp, so it does derive a name, which is
+   * exactly why lib/staff/menu.ts never asks for one: it sends an archive
+   * row's own src instead. What must not derive a name is anything that is
+   * not a webp, because no such tile is ever written.
+   */
+  it("returns nothing for a path this app did not write as a tile", () => {
+    expect(menuImageOriginalFor("2026/abc.jpg")).toBeNull();
+    expect(menuImageOriginalFor("2026/abc")).toBeNull();
+    expect(menuImageOriginalFor("")).toBeNull();
   });
 });
