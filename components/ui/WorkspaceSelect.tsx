@@ -16,7 +16,9 @@ export function WorkspaceSelect<Value extends string>({
   name,
   label,
   options,
+  value,
   defaultValue,
+  placeholder,
   onValueChange,
   disabled,
   className,
@@ -25,7 +27,23 @@ export function WorkspaceSelect<Value extends string>({
   name: string;
   label: string;
   options: readonly WorkspaceSelectOption<Value>[];
-  defaultValue: Value;
+  /**
+   * The current selection, for a caller that holds it in state. Pass this
+   * rather than `defaultValue` whenever the value can change after the first
+   * render: `defaultValue` is read once, so feeding state into it leaves the
+   * two copies to drift and Base UI warns that an uncontrolled Select changed
+   * its default. `null` is a valid controlled value and means nothing is
+   * selected. Mutually exclusive with `defaultValue`.
+   */
+  value?: Value | null;
+  /**
+   * The starting selection for a control that manages itself afterwards, such
+   * as a plain form field read on submit. Omit (or pass null) to render with
+   * no preselected value. Do not pass state here; use `value` for that.
+   */
+  defaultValue?: Value | null;
+  /** Shown in the trigger while nothing is selected. */
+  placeholder?: string;
   onValueChange?: (value: Value | null) => void;
   disabled?: boolean;
   className?: string;
@@ -35,7 +53,9 @@ export function WorkspaceSelect<Value extends string>({
       id={id}
       name={name}
       items={options}
-      defaultValue={defaultValue}
+      {...(value === undefined
+        ? { defaultValue: defaultValue ?? null }
+        : { value })}
       onValueChange={onValueChange}
       disabled={disabled}
     >
@@ -52,7 +72,7 @@ export function WorkspaceSelect<Value extends string>({
             "data-disabled:border-nybb-bone/15 data-disabled:text-nybb-bone/35",
           )}
         >
-          <Select.Value className="flex min-w-0 flex-1 items-center truncate px-3.5 py-2.5" />
+          <Select.Value className="flex min-w-0 flex-1 items-center truncate px-3.5 py-2.5" placeholder={placeholder} />
           <Select.Icon className="border-nybb-bone/15 text-nybb-orange grid w-11 shrink-0 place-items-center border-l">
             <ChevronDown
               aria-hidden

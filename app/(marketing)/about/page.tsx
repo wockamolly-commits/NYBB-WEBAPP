@@ -25,6 +25,18 @@ export default async function AboutPage() {
   // Counted from the live menu, not hardcoded. A page that says "nine
   // flavours" while the menu sells ten is the kind of thing nobody notices
   // until a customer does.
+  //
+  // No branch slug, deliberately, and the reason is narrower than "this page
+  // sells nothing". The landing page sells nothing either and still passes the
+  // slug, because it renders tiles that link to individual item pages and
+  // would otherwise advertise an item the customer's counter has held.
+  //
+  // This page links only to /menu, never to an item page, so it names no
+  // specific item a customer could be sent to and refused. What it takes from
+  // the menu is three counts for a sentence, and holds attach to items rather
+  // than to options, so the flavour and heat counts do not move between
+  // counters anyway. Nothing here can disagree with a page downstream, so it
+  // does not buy the round trip.
   const { categories } = await getStorefrontMenu();
   const wings = findItem(categories, WINGS_ITEM_SLUG);
   const flavours = findOptionGroup(wings, WING_FLAVOUR_GROUP_SLUG)?.options ?? [];

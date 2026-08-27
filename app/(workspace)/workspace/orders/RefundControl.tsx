@@ -74,7 +74,7 @@ export function RefundControl({ orderId, amountCents }: { orderId: string; amoun
           name={`refund-reason-${orderId}`}
           label="Reason"
           options={refundReasonOptions}
-          defaultValue={reason}
+          value={reason}
           onValueChange={(value) => value && setReason(value)}
           disabled={pending}
         />

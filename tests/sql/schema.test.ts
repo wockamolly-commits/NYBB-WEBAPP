@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
+import { MENU_IMAGE_BUCKET } from "@/lib/staff/menu-image-limits";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
@@ -68,7 +69,56 @@ describe("migrations", () => {
       "0048",
       "0049",
       "0050",
+      "0051",
+      "0052",
+      "0053",
+      "0054",
+      "0055",
+      "0056",
     ]);
+  });
+
+  // 0055. Storage has its own policies and nothing in 0009 or 0010 reaches
+  // them, so without this the workspace upload fails as `authenticated` and
+  // the only way through would be a service role client in a request path a
+  // browser can reach. The bucket name is the one next.config.ts optimizes;
+  // getting it wrong renders every uploaded tile broken rather than failing.
+  it("let a menu:configure session upload into the menu images bucket", async () => {
+    const buckets = await db.query<{
+      id: string;
+      public: boolean;
+      file_size_limit: number | null;
+      allowed_mime_types: string[] | null;
+    }>(`select id, public, file_size_limit, allowed_mime_types from storage.buckets`);
+    expect(buckets.rows).toHaveLength(1);
+    const [bucket] = buckets.rows;
+    // Checked against the constant, not a second literal of this test's own:
+    // MENU_IMAGE_BUCKET is what next.config.ts, the two upload actions and
+    // the ingest script all actually read. This migration's SQL is the one
+    // place that cannot import it and has to be kept in sync by hand, so
+    // this is the one check that would catch it drifting.
+    expect(bucket.id).toBe(MENU_IMAGE_BUCKET);
+    expect(bucket.public).toBe(true);
+    // The bound is on the processed tile this bucket actually receives
+    // (a single 900px WebP square), not the client's larger raw-upload
+    // ceiling. See the migration's own comment for the reasoning.
+    expect(bucket.file_size_limit).toBe(2 * 1024 * 1024);
+    expect(bucket.allowed_mime_types).toEqual(["image/webp"]);
+
+    const policies = await db.query<{ cmd: string; roles: string; qual: string }>(`
+      select cmd, roles::text as roles, coalesce(with_check, '') as qual
+      from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+    `);
+    expect(policies.rows).toHaveLength(1);
+    const [policy] = policies.rows;
+    expect(policy.cmd).toBe("INSERT");
+    expect(policy.roles).toContain("authenticated");
+    expect(policy.qual).toContain("current_staff_has_permission");
+    // Insert only. An update policy would allow an overwrite in place, and
+    // next.config.ts caches an optimized menu image for a year on the promise
+    // that a replacement always produces a new URL.
+    expect(policy.qual).toContain("menu-images");
   });
 
   it("enable row level security on every table", async () => {

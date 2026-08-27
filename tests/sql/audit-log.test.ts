@@ -13,6 +13,9 @@ const BRANCH_MANAGER = "75000000-0000-4000-8000-000000000001";
 const ROVING_MANAGER = "75000000-0000-4000-8000-000000000002";
 const BRANCH_CASHIER = "75000000-0000-4000-8000-000000000003";
 const SUPER_ADMIN = "75000000-0000-4000-8000-000000000004";
+// audit_logs.target_id is text and carries no foreign key, so this stands in
+// for a menu item without the fixture needing a whole catalog.
+const MENU_ITEM_TARGET = "75000000-0000-4000-8000-0000000000aa";
 
 async function actingAs<T>(
   db: PGlite,
@@ -106,7 +109,12 @@ describe("Audit log scope", () => {
         ('${SUPER_ADMIN}', 'workspace.access_granted', 'profiles',
          '${BRANCH_CASHIER}', '{"after": {"is_active": true}}'::jsonb),
         ('${SUPER_ADMIN}', 'order.started', 'orders', 'not-a-uuid',
-         '{"note": "a target id that is not an order"}'::jsonb);
+         '{"note": "a target id that is not an order"}'::jsonb),
+        -- A catalog change: business wide by construction, because one
+        -- catalog serves all nine counters. This is the row the 0056 ruling
+        -- exists to make visible to the manager who made it.
+        ('${BRANCH_MANAGER}', 'menu.item.option_prices_set', 'menu_items',
+         '${MENU_ITEM_TARGET}', '{"after": {"price_cents": 3000}}'::jsonb);
     `);
   }, 120_000);
 
@@ -136,24 +144,71 @@ describe("Audit log scope", () => {
     ).toBe(1);
   });
 
-  it("keeps a branch manager out of another branch's trail", async () => {
-    expect(await actions(db, BRANCH_MANAGER)).toEqual(["order.claimed"]);
-    expect(
-      await actingAs<{ target_id: string }>(
-        db,
-        BRANCH_MANAGER,
-        "select target_id from audit_logs",
-      ),
-    ).toEqual([{ target_id: pilotOrderId }]);
+  // 0056, on the owner's ruling of 2026-08-27, refining what 0023 shipped.
+  //
+  // A manager assigned to one counter holds menu:configure with no branch
+  // scope at all, so they change every price at all nine counters. Every
+  // catalog audit row carries a null branch_id, because one catalog serves
+  // every counter, and staff_can_access_branch reads 'pilot' = null as NULL
+  // rather than true. So that person could not see a single one of their own
+  // configuration changes, while their own holds, which carry a real branch,
+  // showed up beside them.
+  //
+  // The four cases below are the whole policy. Weakening any one of them
+  // changes who can read what.
+
+  // 1. The ruling working: a business wide row that is not about a person.
+  it("shows a branch manager a business wide catalog change", async () => {
+    const visible = await actions(db, BRANCH_MANAGER);
+    expect(visible).toContain("menu.item.option_prices_set");
+    expect(visible).toContain("order.started");
   });
 
-  it("keeps a branch manager out of the company records too", async () => {
-    const visible = await actions(db, BRANCH_MANAGER);
-    expect(visible).not.toContain("workspace.access_granted");
+  // 2. The hole staying shut, and the case that would have leaked under the
+  // wide form this replaced. A row about a person carries
+  // to_jsonb(profiles_row) in its diff and profiles has a phone column, which
+  // 0023:88-92 names as the exposure it closed. The assertion is written to
+  // print what leaked rather than that a count was wrong, because this is the
+  // one a future reader is most likely to weaken by accident.
+  it("keeps a branch manager out of a staff record change", async () => {
+    const rows = await actingAs<{ action: string; target_table: string }>(
+      db,
+      BRANCH_MANAGER,
+      "select action, target_table from audit_logs where target_table = 'profiles' order by action",
+    );
+    expect(
+      rows.map((row) => `${row.action} on ${row.target_table}`),
+      "a branch assigned manager can read an audit row about a person. Those diffs carry to_jsonb(profiles_row) and profiles has a phone column, so this leaks another counter's staff record. See 0023:88-92 and section 6 of 0056",
+    ).toEqual([]);
+  });
+
+  // 3. The widening not becoming a general unscoping. Another counter's own
+  // rows carry that counter's branch_id and are still invisible.
+  it("still keeps a branch manager out of another branch's rows", async () => {
+    const rows = await actingAs<{ target_id: string }>(
+      db,
+      BRANCH_MANAGER,
+      "select target_id from audit_logs where target_table = 'orders' order by id",
+    );
+    const targets = rows.map((row) => row.target_id);
+    expect(targets).toContain(pilotOrderId);
+    expect(targets).not.toContain(otherOrderId);
+  });
+
+  // 4. Nothing taken away from the people who could already see everything.
+  // A roving manager carries no branch, so current_staff_can_access_branch(null)
+  // is true for them and the second arm reaches the profiles rows the first
+  // arm excludes.
+  it("shows a roving manager all three kinds, profiles rows included", async () => {
+    const visible = await actions(db, ROVING_MANAGER);
+    expect(visible).toContain("menu.item.option_prices_set");
+    expect(visible).toContain("workspace.access_granted");
+    expect(visible).toContain("order.claimed");
   });
 
   it("shows every site and the company records to an unassigned manager", async () => {
     expect(await actions(db, ROVING_MANAGER)).toEqual([
+      "menu.item.option_prices_set",
       "order.claimed",
       "order.claimed",
       "order.started",
@@ -162,7 +217,7 @@ describe("Audit log scope", () => {
   });
 
   it("shows the whole trail to the Super Admin", async () => {
-    expect((await actions(db, SUPER_ADMIN)).length).toBe(4);
+    expect((await actions(db, SUPER_ADMIN)).length).toBe(5);
   });
 
   it("shows nothing to a role without the audit permission", async () => {

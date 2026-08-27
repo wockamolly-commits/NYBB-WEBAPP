@@ -32,6 +32,23 @@ export function manilaDateEndExclusiveIso(value: string): string | null {
   return new Date(new Date(start).getTime() + 24 * 60 * 60 * 1000).toISOString();
 }
 
+/**
+ * A `<input type="datetime-local">` value, "YYYY-MM-DDTHH:mm" with seconds
+ * optional, carries no offset of its own. It is a Manila wall clock reading,
+ * what the counter's own clock says, not what the server process's timezone
+ * happens to be, so turning it into an instant belongs here with the rest of
+ * this file's Manila arithmetic rather than inlined in a Server Action.
+ */
+export function manilaWallClockIso(value: string): string | null {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(value);
+  if (!match) return null;
+  const [, datePart, hour, minute, second = "00"] = match;
+  if (!isValidWorkspaceDate(datePart)) return null;
+  if (Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59) return null;
+  const instant = new Date(`${datePart}T${hour}:${minute}:${second}+08:00`);
+  return Number.isNaN(instant.getTime()) ? null : instant.toISOString();
+}
+
 /** First value of a repeated query parameter, trimmed to a usable string. */
 export function firstSearchValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";

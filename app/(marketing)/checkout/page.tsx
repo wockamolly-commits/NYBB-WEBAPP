@@ -22,13 +22,20 @@ export const metadata: Metadata = {
  * place they came from on the cart screen; and the counter, because it decides
  * which set of windows the other two are even about.
  *
- * THE COUNTER IS RESOLVED BEFORE THE SLOTS, NOT ALONGSIDE THEM.
+ * THE COUNTER IS RESOLVED BEFORE THE SLOTS AND THE MENU, NOT ALONGSIDE THEM.
  *
  * This is the one sequential read on the page and it has to be. `getPickupSlots`
  * used to be called with no argument, so `resolve_pickup_branch_id(null)`
  * picked the first active branch by sort_order and the customer collected from
  * whichever shop that happened to be. Passing the chosen slug is what makes
  * the grid on this screen the grid of the counter named above it.
+ *
+ * The menu read now takes the same slug, and for the sharper version of the
+ * same fault. `get_storefront_menu` hides an item held at the branch it is
+ * given, and `place_order` resolves the branch from the slug in the payload it
+ * is sent. Reading the menu against one branch and placing the order against
+ * another is precisely how this screen would price a line the till then
+ * refuses.
  *
  * Nothing is cached. Spec section 23 is explicit that order data never is, and
  * a cached window is worse than a stale price: it offers a minute of a
@@ -38,7 +45,7 @@ export default async function CheckoutPage() {
   const selection = await getStoreSelection();
 
   const [{ categories }, slots, customer, profile, paymentMethods] = await Promise.all([
-    getStorefrontMenu(),
+    getStorefrontMenu(selection.selected?.slug),
     getPickupSlots(selection.selected?.slug),
     getCurrentCustomer(),
     getCustomerProfile(),

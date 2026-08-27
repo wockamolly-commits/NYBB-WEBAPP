@@ -31,9 +31,15 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { branches } from "../lib/catalog/branches";
 import { categories } from "../lib/catalog/menu";
+import { MENU_IMAGE_BUCKET } from "../lib/staff/menu-image-limits";
 import { renderDerivative, sources } from "./lib/image-pipeline";
 
-const BUCKET = "menu";
+// Imported rather than repeated. This name is load bearing in next.config.ts,
+// which decides whether next/image will optimize the URL this script writes
+// at all, and in the workspace upload actions. It used to be a local literal,
+// "menu", which disagreed with next.config.ts's "menu-images" pattern and
+// nothing could catch it because no code path read both.
+const BUCKET = MENU_IMAGE_BUCKET;
 
 const argv = process.argv.slice(2);
 const DRY_RUN = argv.includes("--dry-run");
