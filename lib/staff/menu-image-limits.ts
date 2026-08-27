@@ -108,6 +108,39 @@ export function isDecodableImageFile(name: string, type: string): boolean {
   return hasDecodableImageExtension(name);
 }
 
+/**
+ * How the editable original is named, given the tile it belongs to.
+ *
+ * A tile lands at `${year}/${uuid}.webp` and its original at
+ * `${year}/${uuid}.original.webp`. A derived name rather than a column
+ * because the tile's URL is already stored on the row, and one string
+ * operation gets from it to the other in both directions. There is no
+ * migration in this, and nothing to keep in step by hand.
+ *
+ * WHY AN ORIGINAL IS KEPT AT ALL.
+ *
+ * The tile is a 900px square cut out of whatever was uploaded, so the parts
+ * outside the crop stop existing the moment it is written. Reopening a saved
+ * photograph to move the crop needs the picture the crop was taken from, and
+ * without it a menu photograph can be framed exactly once, forever.
+ */
+const MENU_IMAGE_ORIGINAL_INFIX = "original";
+
+/**
+ * The original's path or URL for a tile's, or null when the argument is not
+ * a tile path this app wrote.
+ *
+ * Returning null rather than guessing matters: an archive photograph's src is
+ * a committed file under /img, not a bucket object, and appending a suffix to
+ * it would name something that has never existed.
+ */
+export function menuImageOriginalFor(tile: string): string | null {
+  const suffix = `.${MENU_IMAGE_EXTENSION}`;
+  if (!tile.endsWith(suffix)) return null;
+  if (tile.endsWith(`.${MENU_IMAGE_ORIGINAL_INFIX}${suffix}`)) return tile;
+  return `${tile.slice(0, -suffix.length)}.${MENU_IMAGE_ORIGINAL_INFIX}${suffix}`;
+}
+
 /** The sentence both the client and the server print for a file we refuse. */
 export const MENU_IMAGE_TYPE_MESSAGE =
   "Choose a JPEG, PNG, WebP or AVIF photograph. Other file types cannot be used.";

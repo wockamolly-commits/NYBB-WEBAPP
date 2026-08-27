@@ -95,6 +95,9 @@ describe("assembleManagedMenu", () => {
     expect(item?.image).toEqual({
       src: catalogImageBySource(ARCHIVE_SOURCE_PATH)?.src,
       origin: "archive",
+      // An archive photograph is its own source: it is a committed file, not
+      // a crop this app cut, so reframing starts from the same picture.
+      editableSrc: catalogImageBySource(ARCHIVE_SOURCE_PATH)?.src,
     });
 
     const option = menu.optionGroups[0]?.options.find((row) => row.slug === "archive-option");
@@ -104,7 +107,13 @@ describe("assembleManagedMenu", () => {
   it("prefers the uploaded photograph over the archive one", () => {
     const menu = assembleManagedMenu(photoRows);
     const item = menu.categories[0]?.items.find((row) => row.slug === "uploaded-photo");
-    expect(item?.image).toEqual({ src: "https://storage.test/2026/abc.webp", origin: "uploaded" });
+    expect(item?.image).toEqual({
+      src: "https://storage.test/2026/abc.webp",
+      origin: "uploaded",
+      // The uncropped original, beside the tile, so the crop can be changed
+      // on a later visit rather than only at the moment of upload.
+      editableSrc: "https://storage.test/2026/abc.original.webp",
+    });
   });
 
   it("reports no photograph only when there is genuinely none", () => {

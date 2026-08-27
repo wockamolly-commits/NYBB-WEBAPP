@@ -17,6 +17,7 @@ import {
   MENU_IMAGE_TYPE_MESSAGE,
   isDecodableImageFile,
   isDecodableImageType,
+  menuImageOriginalFor,
 } from "./menu-image-limits";
 
 // Imported above rather than only re-exported, because processMenuImage
@@ -36,6 +37,7 @@ export {
   MENU_IMAGE_TYPE_MESSAGE,
   isDecodableImageFile,
   isDecodableImageType,
+  menuImageOriginalFor,
 };
 
 /**
@@ -91,6 +93,47 @@ export type ProcessedMenuImage = {
   /** A 12x12 WebP as a data URI, for next/image's blur placeholder. */
   blurDataURL: string;
 };
+
+/**
+ * The longest side an editable original is kept at.
+ *
+ * Not the file as uploaded. A phone photograph is several thousand pixels
+ * wide and would sit in the bucket costing money to hold a detail no 900px
+ * tile can show. 2000 leaves room to crop in hard (a quarter of the short
+ * side, the tightest crop the editor allows) and still feed a full 900px
+ * tile, which is the only thing the original has to be good for.
+ */
+const EDITABLE_ORIGINAL_MAX = 2000;
+
+/**
+ * The whole photograph, uncropped, kept so the crop can be changed later.
+ *
+ * rotate() with no argument does two jobs here, as it does for the tile: it
+ * applies the EXIF orientation, and it drops the metadata. The second is not
+ * optional. menu-images is a public bucket, a phone photograph carries GPS
+ * coordinates, and an original stored with its metadata intact would publish
+ * the owner's kitchen's location to anybody who guessed the URL. The tile has
+ * always been stripped; the original has to be stripped for the same reason.
+ *
+ * No flatten. Transparency is preserved so that reopening a cutout and
+ * re-cropping it does not bake the brand orange into the source, which would
+ * then be flattened onto the brand orange again on every later edit.
+ */
+export async function renderEditableOriginal(file: File): Promise<Buffer> {
+  const input = Buffer.from(await file.arrayBuffer());
+  const sourceFormat = (await sharp(input).metadata()).format;
+  if (!sourceFormat || !DECODABLE_SHARP_FORMATS.has(sourceFormat)) {
+    throw new Error(MENU_IMAGE_TYPE_MESSAGE);
+  }
+  return sharp(input)
+    .rotate()
+    .resize(EDITABLE_ORIGINAL_MAX, EDITABLE_ORIGINAL_MAX, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 90, effort: 5 })
+    .toBuffer();
+}
 
 /**
  * Crop, resize, flatten and encode one uploaded photograph.

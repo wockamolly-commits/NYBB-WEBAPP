@@ -59,6 +59,17 @@ export type ManagedOption = {
 export type ManagedImage = {
   src: string;
   origin: MenuImageOrigin;
+  /**
+   * The picture a new crop is taken from, which is not the same file as src.
+   *
+   * src is the finished 900px tile. Cropping that again could only ever
+   * tighten it, because everything outside the crop was discarded when it was
+   * written. This is the uncropped photograph: the original kept beside an
+   * upload, or, for an archive row, the committed derivative that is itself
+   * the source. Null when neither exists, which is every photograph uploaded
+   * before originals were kept.
+   */
+  editableSrc: string | null;
 };
 
 export type ManagedOptionGroup = {
