@@ -231,7 +231,7 @@ function OptionRow({
   // own "Advanced" disclosure for the same reasoning. It opens on its own
   // when the option already has a photo, so nobody has to click to confirm
   // one is there.
-  const [showPhoto, setShowPhoto] = useState(option.imageUrl !== null);
+  const [showPhoto, setShowPhoto] = useState(option.image !== null);
   const pending = savePending || deletePending;
 
   return (
@@ -288,7 +288,7 @@ function OptionRow({
         </Button>
         {showPhoto ? (
           <div className="mt-3">
-            <ImageField target={{ kind: "option", optionId: option.id }} imageUrl={option.imageUrl} />
+            <ImageField target={{ kind: "option", optionId: option.id }} image={option.image} />
           </div>
         ) : null}
       </div>

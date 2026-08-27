@@ -498,7 +498,7 @@ export function ItemEditor({
         <p className="type-caps text-nybb-bone/55">Photo</p>
         {item ? (
           <div className="mt-4">
-            <ImageField target={{ kind: "item", itemId: item.id }} imageUrl={item.imageUrl} />
+            <ImageField target={{ kind: "item", itemId: item.id }} image={item.image} />
           </div>
         ) : (
           <p className="text-nybb-bone/55 mt-2 text-xs">

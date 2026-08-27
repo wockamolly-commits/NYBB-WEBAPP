@@ -13,7 +13,7 @@ import {
   MENU_IMAGE_TYPE_MESSAGE,
   isDecodableImageFile,
 } from "@/lib/staff/menu-image-limits";
-import type { MenuActionState } from "@/lib/staff/menu-types";
+import type { ManagedImage, MenuActionState } from "@/lib/staff/menu-types";
 import { previewMenuImage, uploadMenuItemImage, uploadMenuOptionImage } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
 
@@ -85,8 +85,9 @@ type SourceSize = { width: number; height: number };
  * position move it as they are dragged, with no round trip.
  *
  * That is not a decorative nicety, it is the feature. Before it, this
- * component held no pixels of the chosen file at all: the tile showed
- * previewUrl ?? imageUrl, previewUrl was null until somebody pressed the
+ * component held no pixels of the chosen file at all: the tile showed the
+ * server preview or the saved photograph, the preview was null until
+ * somebody pressed the
  * preview button, and every slider move set it back to null. Choosing a photo
  * appeared to do nothing, adjusting the crop was done blind, and the only
  * reliable way to see the result was to upload it and look at what landed.
@@ -104,10 +105,17 @@ type SourceSize = { width: number; height: number };
  */
 export function ImageField({
   target,
-  imageUrl,
+  image,
 }: {
   target: ImageFieldTarget;
-  imageUrl: string | null;
+  /**
+   * The photograph this row is showing today, uploaded or from the archive,
+   * resolved by lib/menu/resolve-image.ts. Not the image_url column: most
+   * rows have none and are showing an archive photograph regardless, and a
+   * field that read the column alone told the owner they had no picture on
+   * the very rows a customer was looking at one.
+   */
+  image: ManagedImage | null;
 }) {
   const uid = useId();
   const uploadAction = target.kind === "item" ? uploadMenuItemImage : uploadMenuOptionImage;
@@ -160,7 +168,7 @@ export function ImageField({
     ? "render"
     : showsLive
       ? "live"
-      : imageUrl
+      : image
         ? "saved"
         : "empty";
 
@@ -170,8 +178,13 @@ export function ImageField({
       : shownKind === "live"
         ? "Live crop of the chosen photograph."
         : shownKind === "saved"
-          ? "The photograph saved for this row."
-          : null;
+          ? image?.origin === "archive"
+            ? "The archive photograph this row shows now. Uploading replaces it."
+            : "The photograph uploaded for this row."
+          : // "No photo yet" is now a claim about the menu, not just about
+            // this field, so it says so. It used to appear on rows the
+            // storefront was drawing an archive photograph for.
+            "Nothing here and nothing on the menu page either.";
 
   /**
    * Puts the field back to "nothing chosen" once an upload actually lands.
@@ -360,7 +373,7 @@ export function ImageField({
         >
           {shownKind === "render" || shownKind === "saved" ? (
             <Image
-              src={renderedUrl ?? imageUrl ?? ""}
+              src={renderedUrl ?? image?.src ?? ""}
               alt=""
               fill
               unoptimized={Boolean(renderedUrl)}

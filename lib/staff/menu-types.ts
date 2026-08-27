@@ -1,3 +1,5 @@
+import type { MenuImageOrigin } from "@/lib/menu/resolve-image";
+
 /**
  * Every type the menu management screens share.
  *
@@ -40,9 +42,23 @@ export type ManagedOption = {
    */
   priceCents: number | null;
   heatPercent: number | null;
-  imageUrl: string | null;
+  image: ManagedImage | null;
   isActive: boolean;
   sortOrder: number;
+};
+
+/**
+ * A menu row's photograph as the workspace needs to think about it.
+ *
+ * origin is not decoration. An archive photograph is one this repository
+ * ships and the storefront is already drawing; an uploaded one is a file in
+ * Storage for this row alone. The workspace used to know only about the
+ * second kind and so reported "no photo" for every row showing the first.
+ * See lib/menu/resolve-image.ts.
+ */
+export type ManagedImage = {
+  src: string;
+  origin: MenuImageOrigin;
 };
 
 export type ManagedOptionGroup = {
@@ -72,7 +88,7 @@ export type ManagedItem = {
   name: string;
   code: string | null;
   description: string | null;
-  imageUrl: string | null;
+  image: ManagedImage | null;
   isFeatured: boolean;
   isActive: boolean;
   sortOrder: number;

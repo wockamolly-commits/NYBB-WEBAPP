@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { catalogImageBySource } from "@/lib/catalog/images";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
 import { staticMenu } from "./static";
-import type { MenuCategory, MenuImage, StorefrontMenu } from "./types";
+import { menuImageOf, resolveMenuImage } from "./resolve-image";
+import type { MenuCategory, StorefrontMenu } from "./types";
 
 /**
  * The one place the storefront gets a menu.
@@ -87,40 +87,6 @@ const categoriesSchema = z.array(
   }),
 );
 
-type PartialImage = z.infer<typeof partialImageSchema>;
-
-/**
- * Fill in a picture the database knows about but cannot serve yet.
- *
- * Falls back to the committed derivative that came from the same archive file.
- * Once the Storage ingest has run, `src` is populated and this returns the
- * database's own URL untouched, so the fallback retires itself.
- */
-function resolveImage(image: PartialImage): MenuImage | null {
-  if (image?.src && image.width && image.height && image.blurDataURL) {
-    return {
-      src: image.src,
-      width: image.width,
-      height: image.height,
-      blurDataURL: image.blurDataURL,
-      treatment: image.treatment,
-      source: image.source,
-    };
-  }
-
-  const local = catalogImageBySource(image?.source);
-  if (!local) return null;
-
-  return {
-    src: local.src,
-    width: local.width,
-    height: local.height,
-    blurDataURL: local.blurDataURL,
-    treatment: local.treatment,
-    source: local.source,
-  };
-}
-
 function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
   return categories.map((category) => ({
     slug: category.slug,
@@ -134,7 +100,7 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
       categorySlug: item.categorySlug,
       featured: item.featured,
       pricingNote: item.pricingNote ?? null,
-      image: resolveImage(item.image),
+      image: menuImageOf(resolveMenuImage(item.image)),
       variations: item.variations,
       optionGroups: item.optionGroups.map((group) => ({
         slug: group.slug,
@@ -148,7 +114,7 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
           priceCents: option.priceCents,
           variationPriceCents: option.variationPriceCents,
           heatPercent: option.heatPercent ?? null,
-          image: resolveImage(option.image),
+          image: menuImageOf(resolveMenuImage(option.image)),
         })),
       })),
     })),
