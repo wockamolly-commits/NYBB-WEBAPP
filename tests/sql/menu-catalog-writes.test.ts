@@ -15,6 +15,22 @@ async function asUser<T>(db: PGlite, id: string, sql: string): Promise<readonly 
 }
 
 /**
+ * The same acting person, without the `authenticated` role.
+ *
+ * Only staff_reorder_menu needs this, and only since 0056 revoked its execute
+ * grant: nothing in the app calls it, so leaving it reachable exposed a write
+ * nobody could use. The function itself is unchanged and its behaviour is
+ * still worth pinning, because the grant comes back with the screen that
+ * calls it. Running it as the database owner exercises the body and its
+ * permission check exactly as a restored grant would, and the case below
+ * asserts the grant really is gone.
+ */
+async function asOwner<T>(db: PGlite, id: string, sql: string): Promise<readonly T[]> {
+  await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$ select '${id}'::uuid $$;`);
+  return (await db.query<T>(sql)).rows;
+}
+
+/**
  * The catalog is shared by all nine branches, so every audit row these
  * functions write carries a null branch_id. 0023 reads a null branch as
  * business wide and only a profile that carries no branch itself can select
@@ -78,11 +94,22 @@ describe("catalog write RPCs", () => {
       "staff_save_menu_option_group(uuid, text, text, boolean)",
       "staff_save_menu_option(uuid, uuid, text, text, bigint, int, boolean)",
       "staff_set_menu_option_image(uuid, text, int, int, text, text)",
-      "staff_reorder_menu(text, uuid[])",
       "staff_delete_menu_entity(text, uuid)",
     ]) {
       expect(await scalar<boolean>(db, `select has_function_privilege('authenticated', '${signature}', 'execute')`)).toBe(true);
       expect(await scalar<boolean>(db, `select has_function_privilege('anon', '${signature}', 'execute')`)).toBe(false);
+    }
+  });
+
+  // 0053 granted it, 0056 took the grant back. Nothing in the app calls
+  // staff_reorder_menu, and a function no screen reaches should not be a door
+  // a manager's own token can open at POST /rest/v1/rpc/. The function and the
+  // four cases below stay, because the grant returns with the screen that
+  // calls it. This case is what fails when somebody restores the grant without
+  // the screen.
+  it("keeps staff_reorder_menu unreachable while no screen calls it", async () => {
+    for (const role of ["authenticated", "anon"]) {
+      expect(await scalar<boolean>(db, `select has_function_privilege('${role}', 'staff_reorder_menu(text, uuid[])', 'execute')`)).toBe(false);
     }
   });
 
@@ -106,7 +133,7 @@ describe("catalog write RPCs", () => {
     await expect(asUser(db, CASHIER, `select staff_save_menu_option_group(null, 'Dips', null, true)`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_save_menu_option(null, '${await groupId(db)}', 'Garlic', null, 2000, null, true)`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_set_menu_option_image('${await optionId(db)}', 'a/b.jpg', 800, 600, null, null)`)).rejects.toThrow(/FORBIDDEN/);
-    await expect(asUser(db, CASHIER, `select staff_reorder_menu('category', array['${await categoryId(db)}'::uuid])`)).rejects.toThrow(/FORBIDDEN/);
+    await expect(asOwner(db, CASHIER, `select staff_reorder_menu('category', array['${await categoryId(db)}'::uuid])`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_delete_menu_entity('category', '${await categoryId(db)}')`)).rejects.toThrow(/FORBIDDEN/);
   });
 
@@ -187,6 +214,23 @@ describe("catalog write RPCs", () => {
     await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '00000000-0000-4000-8000-0000000000ff', 'Nuclear', null, null, null, true)`)).rejects.toThrow(/GROUP_NOT_FOUND/);
   });
 
+  // 0056, mirroring the guard staff_set_menu_item_image has carried since
+  // 0054. A url with no dimensions renders a broken tile in the flavour grid,
+  // and the workspace client always sending all five columns is an argument
+  // about the client, not about the other caller: this function is granted to
+  // authenticated and any manager's own token can post to it directly.
+  // Clearing the image is still allowed, because a null url has no tile.
+  it("refuses an option image url that arrives without its dimensions", async () => {
+    const option = await optionId(db);
+    for (const dimensions of ["null, null", "1200, null", "null, 900", "0, 900", "1200, -1"]) {
+      await expect(
+        asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'menu/abc.jpg', ${dimensions}, null, null)`),
+      ).rejects.toThrow(/INVALID_INPUT/);
+    }
+    await asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', null, null, null, null, null)`);
+    expect(await scalar<string | null>(db, `select image_url from menu_options where id = '${option}'`)).toBe(null);
+  });
+
   it("writes every image column together and records the change", async () => {
     const option = await optionId(db);
     await asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'menu/abc.jpg', 1200, 900, 'data:image/png;base64,AAAA', '2024/05/Classic-Buffalo.jpg')`);
@@ -211,7 +255,7 @@ describe("catalog write RPCs", () => {
   it("reorders by the position of each id in the array", async () => {
     const ids = await asUser<{ id: string }>(db, MANAGER, "select id::text from menu_categories order by sort_order");
     const reversed = [...ids].reverse().map((row) => row.id);
-    await asUser(db, MANAGER, `select staff_reorder_menu('category', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
+    await asOwner(db, MANAGER, `select staff_reorder_menu('category', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
     const after = await asUser<{ id: string }>(db, MANAGER, "select id::text from menu_categories order by sort_order");
     expect(after.map((row) => row.id)).toEqual(reversed);
     expect(await scalar<number>(db, "select min(sort_order) from menu_categories")).toBe(10);
@@ -220,23 +264,23 @@ describe("catalog write RPCs", () => {
   it("reorders option groups, which the screen that lists them needs", async () => {
     const ids = await asUser<{ id: string }>(db, MANAGER, "select id::text from menu_option_groups order by sort_order");
     const reversed = [...ids].reverse().map((row) => row.id);
-    await asUser(db, MANAGER, `select staff_reorder_menu('optionGroup', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
+    await asOwner(db, MANAGER, `select staff_reorder_menu('optionGroup', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
     const after = await asUser<{ id: string }>(db, MANAGER, "select id::text from menu_option_groups order by sort_order");
     expect(after.map((row) => row.id)).toEqual(reversed);
   });
 
   it("reorders items and options too, and refuses anything else", async () => {
-    await asUser(db, MANAGER, `select staff_reorder_menu('item', array['${await itemId(db)}'::uuid])`);
+    await asOwner(db, MANAGER, `select staff_reorder_menu('item', array['${await itemId(db)}'::uuid])`);
     expect(await scalar<number>(db, "select sort_order from menu_items")).toBe(10);
-    await asUser(db, MANAGER, `select staff_reorder_menu('option', array['${await optionId(db)}'::uuid])`);
+    await asOwner(db, MANAGER, `select staff_reorder_menu('option', array['${await optionId(db)}'::uuid])`);
     expect(await scalar<number>(db, `select sort_order from menu_options where slug = 'classic-buffalo'`)).toBe(10);
-    await expect(asUser(db, MANAGER, `select staff_reorder_menu('variation', array['${await itemId(db)}'::uuid])`)).rejects.toThrow(/INVALID_INPUT/);
+    await expect(asOwner(db, MANAGER, `select staff_reorder_menu('variation', array['${await itemId(db)}'::uuid])`)).rejects.toThrow(/INVALID_INPUT/);
   });
 
   it("writes one audit row for a whole reorder", async () => {
     const ids = await asUser<{ id: string }>(db, MANAGER, "select id::text from menu_categories order by sort_order");
     const reversed = [...ids].reverse().map((row) => row.id);
-    await asUser(db, MANAGER, `select staff_reorder_menu('category', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
+    await asOwner(db, MANAGER, `select staff_reorder_menu('category', array[${reversed.map((id) => `'${id}'::uuid`).join(",")}])`);
     const rows = await asUser<{ action: string; diff: { entity: string; ids: string[] } }>(db, MANAGER, "select action, diff from audit_logs order by id");
     expect(rows.map((row) => row.action)).toEqual(["menu.reordered"]);
     expect(rows[0]?.diff.entity).toBe("category");

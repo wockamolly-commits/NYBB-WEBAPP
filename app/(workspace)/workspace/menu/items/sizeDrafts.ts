@@ -53,11 +53,18 @@ export function centsToPesosInput(cents: number): string {
 
 /**
  * The one place pesos, what the owner types, becomes centavos, what the
- * database stores. Every price on the item screen passes through here, and
- * nothing else there multiplies or divides a money value.
+ * database stores. Every price on every menu screen passes through here: the
+ * sizes on the item editor and the flat amount on OptionGroupEditor, which
+ * imports it rather than keeping a second copy. Nothing else in the workspace
+ * multiplies or divides a money value.
+ *
+ * This module is client-safe and carries no "use server", which is what lets
+ * a client component import it.
  *
  * A blank or unparsable input is 0, not an error. A free size is a real thing
- * and the RPC accepts 0, so there is nothing to refuse here. A price above
+ * and the RPC accepts 0, so there is nothing to refuse here. The option
+ * editor relies on the same reading: its amount field is only rendered when
+ * pricing is "flat", so an empty flat amount saves as a flat 0. A price above
  * MAX_PRICE_CENTS is refused, but by the form's gate, which can point at the
  * field, rather than silently here.
  */

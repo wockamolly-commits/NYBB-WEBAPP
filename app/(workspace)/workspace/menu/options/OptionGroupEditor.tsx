@@ -14,6 +14,7 @@ import type {
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuOption, saveMenuOptionGroup } from "../actions";
 import { ImageField } from "../items/ImageField";
+import { pesosToCents } from "../items/sizeDrafts";
 import { MenuStatusMessage } from "../MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
@@ -48,18 +49,6 @@ function centsToPesosInput(cents: number | null): string {
   if (!cents || cents <= 0) return "";
   const pesos = cents / 100;
   return Number.isInteger(pesos) ? String(pesos) : pesos.toFixed(2);
-}
-
-/**
- * The one place pesos, what the owner types, becomes centavos, what the
- * database stores. A blank or unparsable input is 0 pesos, not an error: the
- * field is only ever rendered when pricing is "flat", so an empty flat
- * amount should save as a flat 0 rather than crash the form.
- */
-function pesosToCents(pesos: string): number {
-  const value = Number.parseFloat(pesos);
-  if (!Number.isFinite(value) || value < 0) return 0;
-  return Math.round(value * 100);
 }
 
 function usedByLabel(linkedItemIds: string[], itemNameById: Map<string, string>): string {

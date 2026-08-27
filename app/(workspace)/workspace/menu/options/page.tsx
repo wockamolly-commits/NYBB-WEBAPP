@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/Button";
 import { getManagedMenu } from "@/lib/staff/menu";
 import { requireStaffPermission } from "@/lib/staff/session";
+import { MenuUnavailable } from "../MenuUnavailable";
 import { OptionGroupEditor } from "./OptionGroupEditor";
 
 export const metadata: Metadata = { title: "Option groups" };
@@ -29,12 +30,7 @@ export default async function WorkspaceMenuOptionsPage() {
       {menu ? (
         <OptionGroupEditor optionGroups={menu.optionGroups} categories={menu.categories} />
       ) : (
-        <div role="alert" className="border-nybb-bone/30 mt-7 rounded-md border border-dashed p-5">
-          <p className="font-display heading-panel">The menu is unavailable</p>
-          <p className="text-nybb-bone/60 mt-2 text-sm">
-            Your session is still valid. The workspace could not read the catalog, so try again.
-          </p>
-        </div>
+        <MenuUnavailable />
       )}
     </div>
   );

@@ -3,11 +3,10 @@
  *
  * A null menu is a failed read, not an empty catalog and not a missing
  * record, so the screen has to say the session is fine and the data is not.
- * The menu index, the categories screen and the option groups screen each
- * carry a verbatim copy of this block; the two item routes use this one
- * instead of adding a fourth and a fifth, in the spirit of ruling R17. The
- * three older copies are worth migrating to this component, but they belong
- * to other tasks' files and are not this task's to change.
+ * Ruling R17, and this is now the only copy: the menu index, the categories
+ * screen and the option groups screen each carried a verbatim one until the
+ * whole-branch review, which is where the "not this task's files to change"
+ * reasoning ran out. All five menu routes import this.
  */
 export function MenuUnavailable() {
   return (

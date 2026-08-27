@@ -3,6 +3,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { getManagedMenu } from "@/lib/staff/menu";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
 import { MenuList } from "./MenuList";
+import { MenuUnavailable } from "./MenuUnavailable";
 
 export const metadata: Metadata = { title: "Menu" };
 
@@ -15,14 +16,7 @@ export default async function WorkspaceMenuPage() {
   };
 
   if (!menu) {
-    return (
-      <div role="alert" className="border-nybb-bone/30 mt-7 rounded-md border border-dashed p-5">
-        <p className="font-display heading-panel">The menu is unavailable</p>
-        <p className="text-nybb-bone/60 mt-2 text-sm">
-          Your session is still valid. The workspace could not read the catalog, so try again.
-        </p>
-      </div>
-    );
+    return <MenuUnavailable />;
   }
 
   return (

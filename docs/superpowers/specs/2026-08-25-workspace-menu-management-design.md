@@ -292,6 +292,28 @@ p_at` inside the function gets the same behaviour with no sweep, no cron and no
 window in which an expired hold is still hiding an item. A periodic delete of
 long expired rows is housekeeping, not correctness, and is out of scope.
 
+**Known consequence: a held item 404s on its public URL, crawlers included.**
+Recorded 2026-08-27 by the whole-branch review, as a decision on the record
+rather than a surprise later. No code change on this branch.
+
+The mechanism, end to end. `get_storefront_menu` omits an item held at the
+resolved branch, so `app/(marketing)/menu/[category]/[item]/page.tsx` cannot
+find it and calls `notFound()`. A request carrying no branch cookie, which is
+every crawler and every first-time visitor, resolves through
+`selectedBranchSlug()` to null and `resolve_pickup_branch_id(null)` to the
+active branch with the lowest `sort_order`. So a hold placed at that one
+counter takes the canonical, indexed URL for that item to HTTP 404 for
+everyone with no cookie, for as long as the hold lasts. For a customer who has
+chosen a store this is defensible. For Google it is not, and before this branch
+a hold could not do it, because holds did not exist.
+
+Two things follow from accepting it for now. First, `today` is the normal hold
+and `indefinite` should be rare: an indefinite hold at the first counter is an
+indefinite 404 on a product page. Second, the fix when it is worth doing is to
+keep the item page rendering and mark the item unavailable, which needs a read
+that does not filter on holds plus the hold state fetched separately. That is
+real work with its own design, not a merge fix.
+
 ### 7.1 Two readers change, not one
 
 `get_storefront_menu(p_branch_slug)` already resolves a branch for pricing.
@@ -498,7 +520,20 @@ errors appear only there.
   reference's Loyverse settings block on its menu page does not come across, and
   neither do its payment type dropdowns.
 - Bulk import or export of the menu.
-- Reordering by drag. Sort order is a number field in this pass.
+- **Reordering, entirely.** Corrected 2026-08-27 by the whole-branch review.
+  This section said "Sort order is a number field in this pass", and that was
+  never true: no screen has a sort-order control, no Zod schema and no RPC
+  signature carries one, and nothing in the repository calls
+  `staff_reorder_menu`. What decides the order today is the `sort_order` values
+  the seed carries. A row created from the workspace appends at
+  `max(sort_order) + 10` and then stays where it landed, so a Drinks category
+  added after launch appears last and no screen can move it.
+  `staff_reorder_menu` is built, audited and covered by four SQL tests, and it
+  keeps its four cases because it is the right shape for the controls the list
+  screens will grow. Its `execute` grant is revoked in `0056` until something
+  calls it, so the reachable write surface is nine functions and not ten.
+  Wiring up-and-down buttons on the three list screens is the next piece of
+  work here, and it needs no migration change.
 - Deleting long expired hold rows. See section 7.
 - ~~Passing the customer's chosen branch slug into `getStorefrontMenu()`.~~
   Done in Task 13, 2026-08-26, after the caching question turned out to be

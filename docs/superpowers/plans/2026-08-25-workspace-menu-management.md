@@ -2688,12 +2688,12 @@ git commit -m "fix(menu): let the storefront render items created in the workspa
 
 ## After the last task
 
-**The migrations are still unapplied.** `0051` through `0054` exist, are covered by SQL tests, and have never been run against the live database. Applying them is the owner's call and is not part of this plan. When it happens, apply them in order and re-run `npx vitest run tests/sql` first.
+**The migrations were applied on 2026-08-27.** Corrected that day: this line used to say `0051` through `0054` had never been run against a live database. `0051` through `0055` were applied to `nybb-staging` on the owner's instruction, which makes them forward-only. Nobody edits them now; a correction is a new file, which is what `0056_menu_management_corrections.sql` is. `0056` is written and deliberately not applied, because applying it is the owner's call the same way applying the first five was.
 
 **Two things this plan deliberately leaves undone**, both recorded in section 12 of the design:
 
 - The per price list override editor. `staff_set_option_variation_prices` raises rather than guessing the moment a second price list exists, which is the trigger.
-- Drag reordering. `staff_reorder_menu` takes an ordered array and is ready for it; the screens use number fields.
+- Reordering, entirely. Corrected 2026-08-27 by the whole-branch review: this line said "the screens use number fields", and no screen has one. Nothing this plan produced can change a `sort_order`, and nothing in the repository calls `staff_reorder_menu`. Ordering is whatever `sort_order` values the seed carries; a row created from the workspace appends at `max(sort_order) + 10` and stays there. `staff_reorder_menu` and its four SQL tests stay as they are, and `0056` revokes its `execute` grant until a screen calls it. See section 12 of the design.
 
 **One finding to report if it surfaced.** Task 11 step 5 asks whether the storage bucket's policies admit an `authenticated` insert. If they do not, that needs a storage policy in `0055` and it is a separate piece of work, not a reason to reach for a service role key.
 

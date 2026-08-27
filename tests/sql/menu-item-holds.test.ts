@@ -106,6 +106,29 @@ describe("menu item branch holds", () => {
     ).rejects.toThrow(/HOLD_END_IN_PAST/);
   });
 
+  // 0056. An indefinite hold has no end, so it stores none whatever the
+  // caller sent alongside it. menu_item_is_available never read the column for
+  // this kind, so nothing behaved differently; the row simply read as if it
+  // expired at six, which is the wrong thing for a future reader to conclude.
+  // Sending the value twice must still be a no-op, so the comparison has to be
+  // against what gets stored rather than against what arrived.
+  it("stores no end date on an indefinite hold, whatever the caller sends", async () => {
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await asUser(
+      db, CASHIER,
+      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '2 hours')`,
+    );
+    expect(await scalar<string | null>(db, "select unavailable_until from menu_item_branch_holds")).toBe(null);
+    expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}')`)).toBe(false);
+
+    await asUser(
+      db, CASHIER,
+      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '9 hours')`,
+    );
+    expect(await scalar<number>(db, "select count(*)::int from audit_logs")).toBe(1);
+  });
+
   it("lifts a hold when kind is null, and leaves no row behind", async () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
