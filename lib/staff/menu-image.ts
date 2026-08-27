@@ -2,6 +2,11 @@ import "server-only";
 
 import sharp from "sharp";
 import {
+  MENU_IMAGE_FLATTEN_BACKGROUND,
+  cropWindow,
+  type MenuImageCrop,
+} from "./menu-image-crop";
+import {
   MENU_IMAGE_ACCEPT,
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -10,6 +15,7 @@ import {
   MENU_IMAGE_MAX_BYTES,
   MENU_IMAGE_SIZE_MESSAGE,
   MENU_IMAGE_TYPE_MESSAGE,
+  isDecodableImageFile,
   isDecodableImageType,
 } from "./menu-image-limits";
 
@@ -17,6 +23,8 @@ import {
 // itself now reads MENU_IMAGE_TYPE_MESSAGE (see DECODABLE_SHARP_FORMATS
 // below). `export { X } from "./m"` does not bind X locally, so a bare
 // re-export would have made the constant unusable in this file.
+export type { MenuImageCrop };
+
 export {
   MENU_IMAGE_ACCEPT,
   MENU_IMAGE_BUCKET,
@@ -26,6 +34,7 @@ export {
   MENU_IMAGE_MAX_BYTES,
   MENU_IMAGE_SIZE_MESSAGE,
   MENU_IMAGE_TYPE_MESSAGE,
+  isDecodableImageFile,
   isDecodableImageType,
 };
 
@@ -59,30 +68,18 @@ export {
 /** Square product tiles, the same width scripts/lib/image-pipeline.ts uses. */
 export const TILE_WIDTH = 900;
 
-/** The cutout ground from the pipeline. Uploads are flattened onto it. */
-const BRAND_BACKGROUND = "#ef6212";
-
-/**
- * How far the crop window may shrink, as a fraction of the source's short
- * side. A quarter is four times magnification, which is already more than a
- * 900px tile can carry from anything but a very large original, and a floor
- * is what stops a stray value producing a one pixel crop.
- */
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 1;
-
 /**
  * The formats sharp may actually decode into a menu tile, keyed on sharp's
  * own `metadata().format`, not on the upload's declared Content-Type.
  *
- * isDecodableImageType in menu-image-limits.ts checks file.type, which is
- * whatever the multipart part header claims and nothing more: a request
- * that declares "image/png" while its bytes are actually an SVG passes that
- * check, and sharp will still decode and rasterise it, which is exactly the
- * input the No-SVG ruling in that file exists to keep out. This is the same
- * check made a second time against data sharp has already read, the same
- * way the type and size limits themselves are checked again on the server
- * rather than trusted from the client.
+ * isDecodableImageFile in menu-image-limits.ts judges the declared type and
+ * the file name, both of which are whatever the multipart part header claims
+ * and nothing more: a request that declares "image/png" while its bytes are
+ * actually an SVG passes that check, and sharp will still decode and
+ * rasterise it, which is exactly the input the No-SVG ruling in that file
+ * exists to keep out. This is the same check made a second time against data
+ * sharp has already read, the same way the type and size limits themselves
+ * are checked again on the server rather than trusted from the client.
  */
 const DECODABLE_SHARP_FORMATS = new Set(["jpeg", "png", "webp", "avif"]);
 
@@ -94,56 +91,6 @@ export type ProcessedMenuImage = {
   /** A 12x12 WebP as a data URI, for next/image's blur placeholder. */
   blurDataURL: string;
 };
-
-export type MenuImageCrop = {
-  /**
-   * A multiplier on the crop window's side length, so a SMALLER number is a
-   * closer crop. 1 takes the largest square the source allows.
-   *
-   * The control in ImageField.tsx is a magnification instead, which is what a
-   * person means by zoom, and it sends 1 / magnification. Keeping the
-   * primitive as a window multiplier is what makes the clamp below legible:
-   * the window has to fit inside the source, and that is a statement about
-   * side length.
-   */
-  zoom: number;
-  /**
-   * Where the window sits vertically, -1 at the top edge of the source and 1
-   * at the bottom, across whatever travel the window's size leaves. 0 is
-   * centred, and is the whole travel when the window fills the short side.
-   */
-  offsetY: number;
-};
-
-function clamp(value: number, low: number, high: number): number {
-  if (!Number.isFinite(value)) return low;
-  return Math.min(high, Math.max(low, value));
-}
-
-/**
- * The square crop window, inside the source by construction.
- *
- * Both inputs are clamped rather than rejected. They arrive from a range
- * control and from a Server Action's form data, so an out of range value is a
- * stale form or a hand-built request, not something worth failing an upload
- * over. The archive pipeline makes the same choice for the same reason.
- */
-function cropWindow(width: number, height: number, crop: MenuImageCrop) {
-  const full = Math.min(width, height);
-  const zoom = clamp(crop.zoom, MIN_ZOOM, MAX_ZOOM);
-  const size = clamp(Math.round(full * zoom), 1, full);
-
-  const offsetY = clamp(crop.offsetY, -1, 1);
-  const travelY = height - size;
-  const travelX = width - size;
-
-  return {
-    left: Math.round(travelX / 2),
-    top: Math.round((travelY * (offsetY + 1)) / 2),
-    width: size,
-    height: size,
-  };
-}
 
 /**
  * Crop, resize, flatten and encode one uploaded photograph.
@@ -188,14 +135,14 @@ export async function processMenuImage(
   const rendered = await sharp(upright)
     .extract(window)
     .resize(targetWidth, undefined, { fit: "inside", withoutEnlargement: true })
-    .flatten({ background: BRAND_BACKGROUND })
+    .flatten({ background: MENU_IMAGE_FLATTEN_BACKGROUND })
     .webp({ quality: 80, effort: 5 })
     .toBuffer({ resolveWithObject: true });
 
   const placeholder = await sharp(upright)
     .extract(window)
     .resize(12, 12, { fit: "fill" })
-    .flatten({ background: BRAND_BACKGROUND })
+    .flatten({ background: MENU_IMAGE_FLATTEN_BACKGROUND })
     .webp({ quality: 40 })
     .toBuffer();
 

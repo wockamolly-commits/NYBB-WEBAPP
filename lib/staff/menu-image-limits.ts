@@ -52,11 +52,60 @@ const DECODABLE_IMAGE_TYPES = [
   "image/avif",
 ] as const;
 
-/** What the file input offers, so the picker does not show files we refuse. */
-export const MENU_IMAGE_ACCEPT = DECODABLE_IMAGE_TYPES.join(",");
+/**
+ * The same four formats by file name, because a browser does not always know
+ * their types.
+ *
+ * file.type is not read from the bytes. The browser asks the operating system
+ * what the extension means, and Windows answers from a registry entry that
+ * nothing necessarily wrote: .avif and .webp routinely have none, so the
+ * picker hands over a File whose type is the empty string. Judging such a
+ * file on its declared type alone refused a perfectly good AVIF photograph
+ * with a message telling the person to choose an AVIF photograph.
+ *
+ * jpg and jpeg both appear because both are in daily use. No entry here has
+ * any bearing on what is actually decoded: processMenuImage checks sharp's
+ * reading of the real bytes, and that is the boundary.
+ */
+const DECODABLE_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "avif"] as const;
+
+/**
+ * What the file input offers, so the picker does not show files we refuse.
+ *
+ * Types and extensions both, for the reason above: a picker filtering on
+ * image/avif alone greys out .avif files on a machine that does not know the
+ * type, leaving the person unable to select a file this app accepts.
+ */
+export const MENU_IMAGE_ACCEPT = [
+  ...DECODABLE_IMAGE_TYPES,
+  ...DECODABLE_IMAGE_EXTENSIONS.map((extension) => `.${extension}`),
+].join(",");
 
 export function isDecodableImageType(type: string): boolean {
   return (DECODABLE_IMAGE_TYPES as readonly string[]).includes(type);
+}
+
+function hasDecodableImageExtension(name: string): boolean {
+  const extension = name.toLowerCase().split(".").pop();
+  if (!extension || extension === name.toLowerCase()) return false;
+  return (DECODABLE_IMAGE_EXTENSIONS as readonly string[]).includes(extension);
+}
+
+/**
+ * Whether this app is willing to try to decode this file at all.
+ *
+ * The declared type decides it whenever there is one, so a file announcing
+ * itself as an SVG or a PDF is still refused however it is named, and the
+ * No-SVG ruling above still holds. The name is consulted only when the
+ * browser declared nothing, which is the case this exists for.
+ *
+ * Both the editor and the two upload actions ask this one question, because a
+ * client that accepted a file the server then refused would be worse than
+ * either rule alone.
+ */
+export function isDecodableImageFile(name: string, type: string): boolean {
+  if (type) return isDecodableImageType(type);
+  return hasDecodableImageExtension(name);
 }
 
 /** The sentence both the client and the server print for a file we refuse. */

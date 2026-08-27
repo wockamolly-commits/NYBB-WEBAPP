@@ -12,7 +12,7 @@ import {
   MENU_IMAGE_MAX_BYTES,
   MENU_IMAGE_SIZE_MESSAGE,
   MENU_IMAGE_TYPE_MESSAGE,
-  isDecodableImageType,
+  isDecodableImageFile,
   processMenuImage,
   type MenuImageCrop,
 } from "@/lib/staff/menu-image";
@@ -516,7 +516,13 @@ function imageFile(formData: FormData): { ok: true; file: File } | { ok: false; 
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: "Choose a photograph first." };
   }
-  if (!isDecodableImageType(file.type)) return { ok: false, error: MENU_IMAGE_TYPE_MESSAGE };
+  // By name as well as by declared type: a browser on a machine with no
+  // registry entry for .avif or .webp sends an empty type for a file this
+  // app accepts. See isDecodableImageFile. processMenuImage checks the real
+  // bytes afterwards either way, and that is the boundary.
+  if (!isDecodableImageFile(file.name, file.type)) {
+    return { ok: false, error: MENU_IMAGE_TYPE_MESSAGE };
+  }
   if (file.size > MENU_IMAGE_MAX_BYTES) return { ok: false, error: MENU_IMAGE_SIZE_MESSAGE };
   return { ok: true, file };
 }
