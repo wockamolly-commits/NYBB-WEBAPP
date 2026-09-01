@@ -2,18 +2,35 @@ import { expect, test } from "@playwright/test";
 import { serviceClient } from "./fixtures/menu-photo";
 
 /**
- * The delete confirmation.
+ * Deleting a menu item: the question it asks, and where it lands.
  *
- * This replaced window.confirm, which meant the gate stopped being the
- * browser's and started being this project's: a control that has to open, hold
- * focus, dismiss three different ways, and only actually delete on the one
- * press that says so. Every one of those is a "the button is there but does
- * nothing" failure waiting to happen, and none of them is visible to
- * tests/unit, which has no DOM.
+ * TWO DEFECTS, ONE FLOW, SO ONE SPEC.
+ *
+ * The gate used to be window.confirm. Replacing it with the app's own dialog
+ * meant the gate stopped being the browser's and started being this project's:
+ * a control that has to open, hold focus, dismiss three different ways, and
+ * only actually delete on the one press that says so. Every one of those is a
+ * "the button is there but does nothing" failure waiting to happen.
+ *
+ * The landing was the second defect, and it outlived the first fix for it.
+ * Deleting an item deleted the item and then showed the storefront's "You took
+ * a wrong turn" page on the item's own address. The delete worked; only the
+ * landing was wrong, which is the worst version of it, because nothing on
+ * screen says the item is gone and the natural read is that the whole thing
+ * failed. The item route is built from the row the delete removes, that route
+ * re-renders inside the action's own response, notFound() fires, and the
+ * editor unmounts before any effect of its own could navigate. The redirect
+ * therefore comes from the server, where it does not need the component to
+ * outlive its data.
+ *
+ * The two belong in one spec because they are one press. A test that confirms
+ * the dialog but never looks at the address bar is how the 404 came back.
  *
  * The three ways out are each checked against the database, not against the
  * screen. A dialog that closes and deletes anyway looks exactly like a dialog
  * that closes.
+ *
+ * None of this is visible to tests/unit, which has no DOM.
  *
  * This suite creates the item it deletes and cleans up whatever survives.
  */
@@ -113,4 +130,10 @@ test("the dialog's own Delete is what actually deletes", async ({ page }) => {
   await expect
     .poll(itemStillExists, { message: "the item should be gone", timeout: 20_000 })
     .toBe(false);
+
+  // And it lands back on the menu. A delete that works and then shows the
+  // storefront's 404 on the item's own address reads as a delete that failed,
+  // which is the worst version of it.
+  await expect(page).toHaveURL(/\/workspace\/menu$/, { timeout: 20_000 });
+  await expect(page.getByText("You took a wrong turn", { exact: false })).toHaveCount(0);
 });

@@ -215,8 +215,7 @@ export function ItemEditor({
    *
    * A create has nowhere to stay: saveMenuItem returns a message, not the new
    * id, so this route cannot turn into the new item's edit route, and sitting
-   * here means the next press of Save creates a second item. A delete has
-   * nothing left to edit. Both land back on the menu, where the result shows.
+   * here means the next press of Save creates a second item.
    *
    * The push waits for the action's transition to finish rather than running
    * inside it. A push issued in the same tick as a Server Action's response
@@ -224,13 +223,15 @@ export function ItemEditor({
    * called from, and loses. See the longer note on ReorderButton, where that
    * was measured rather than guessed.
    *
-   * A delete only reaches this at all because refreshMenu does not revalidate
-   * "/workspace/menu/items/[id]". If it did, this route would re-render inside
-   * the action's own response, notFound() would fire on the deleted item and
-   * unmount this component, and the person would land on a 404 rather than
-   * here. Ruling R24.
+   * A delete is not handled here, and used to be. It could not work from a
+   * client effect: the delete removes the row this route is built from, the
+   * route re-renders inside the action's own response, and notFound() unmounts
+   * this component before any effect of its own gets a turn. That is the 404
+   * people were landing on. deleteMenuEntity redirects from the server now,
+   * which does not depend on this component still existing. deleteState is
+   * still read below, for the deletes that fail and therefore stay.
    */
-  const leaving = deleteState.status === "success" || (!item && saveState.status === "success");
+  const leaving = !item && saveState.status === "success";
   const navigated = useRef(false);
   useEffect(() => {
     if (!leaving || pending || navigated.current) return;
