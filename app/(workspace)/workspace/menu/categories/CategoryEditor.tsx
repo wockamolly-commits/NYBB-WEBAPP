@@ -3,6 +3,7 @@
 import { LoaderCircle, Plus, Save, Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import type { ManagedCategory, MenuActionState } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuCategory } from "../actions";
@@ -56,8 +57,7 @@ function CategoryRow({ category }: { category: ManagedCategory }) {
           />
         </div>
         <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
+          <WorkspaceCheckbox
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
             disabled={pending}
@@ -127,8 +127,7 @@ function NewCategoryRow() {
           <WorkspaceInput id="new-category-blurb" name="blurb" maxLength={200} disabled={pending} />
         </div>
         <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
+          <WorkspaceCheckbox
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
             disabled={pending}

@@ -3,6 +3,7 @@
 import { Camera, LoaderCircle, Plus, Save, Settings2, Trash2 } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import { formatPeso } from "@/lib/format";
@@ -188,8 +189,7 @@ function OptionFieldset({
           "clear this option's heat" and wipe an already saved value. */}
       <input type="hidden" name="heatPercent" value={heatPercent} />
       <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-        <input
-          type="checkbox"
+        <WorkspaceCheckbox
           checked={isActive}
           onChange={(event) => onIsActiveChange(event.target.checked)}
           disabled={disabled}
@@ -409,8 +409,7 @@ function OptionGroupCard({
           />
         </div>
         <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
+          <WorkspaceCheckbox
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
             disabled={pending}
@@ -500,8 +499,7 @@ function NewOptionGroupCard() {
           <WorkspaceInput id="new-group-description" name="description" maxLength={300} disabled={pending} />
         </div>
         <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-          <input
-            type="checkbox"
+          <WorkspaceCheckbox
             checked={isActive}
             onChange={(event) => setIsActive(event.target.checked)}
             disabled={pending}

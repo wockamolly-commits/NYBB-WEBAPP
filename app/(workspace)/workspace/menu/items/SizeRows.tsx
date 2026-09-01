@@ -2,6 +2,7 @@
 
 import { Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { WorkspaceRadio } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { formatPeso } from "@/lib/format";
 import { MAX_PRICE_CENTS, pesosToCents, sizeName, type SizeDraft } from "./sizeDrafts";
@@ -152,8 +153,7 @@ export function SizeRows({
                     />
                   </div>
                   <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-                    <input
-                      type="radio"
+                    <WorkspaceRadio
                       // A shared name is what makes these one group for the
                       // keyboard. The action reads `payload` only, so the
                       // field this puts in FormData is ignored.

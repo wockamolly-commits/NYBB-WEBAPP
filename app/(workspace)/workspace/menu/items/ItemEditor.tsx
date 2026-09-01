@@ -4,6 +4,7 @@ import { LoaderCircle, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import type {
@@ -393,8 +394,7 @@ export function ItemEditor({
 
           <div className="mt-4 flex flex-wrap gap-4">
             <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-              <input
-                type="checkbox"
+              <WorkspaceCheckbox
                 checked={isFeatured}
                 onChange={(event) => setIsFeatured(event.target.checked)}
                 disabled={disabled}
@@ -402,8 +402,7 @@ export function ItemEditor({
               <span className="text-sm">Featured</span>
             </label>
             <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
-              <input
-                type="checkbox"
+              <WorkspaceCheckbox
                 checked={isActive}
                 onChange={(event) => setIsActive(event.target.checked)}
                 disabled={disabled}
@@ -457,8 +456,7 @@ export function ItemEditor({
                   key={group.id}
                   className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2"
                 >
-                  <input
-                    type="checkbox"
+                  <WorkspaceCheckbox
                     checked={selectedGroupIds.has(group.id)}
                     onChange={(event) => toggleGroup(group.id, event.target.checked)}
                     disabled={disabled}
