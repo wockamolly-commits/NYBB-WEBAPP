@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
 import {
@@ -40,14 +41,19 @@ import { createStaffClient } from "@/lib/supabase/server";
  * sub pages. It is safe to name here because nothing deletes the record that
  * route stands on; there is no record.
  *
- * "/workspace/menu/items/[id]" is deliberately NOT here, and ruling R24 is
- * why. deleteMenuEntity calls this function, and revalidating the route the
- * caller is standing on makes Next re-render it inside the action's own
- * response. For a delete that means the item page runs notFound() because the
- * item is gone, the editor unmounts, and the effect that would have sent the
- * person back to the menu never runs: they get a 404 instead. saveMenuItem
+ * "/workspace/menu/items/[id]" is deliberately NOT here. saveMenuItem
  * revalidates the one id it just wrote, by itself, where a delete cannot
  * reach it.
+ *
+ * Leaving it out does NOT by itself keep a delete off a 404, which is what
+ * ruling R24 assumed and what shipped broken. revalidatePath invalidates the
+ * path it is given together with every ancestor layout it sits under, so
+ * revalidatePath("/workspace/menu") reaches "/workspace/menu/items/[id]"
+ * through the layout the two share. The route a delete was pressed on
+ * re-renders inside the action's own response either way, notFound() fires on
+ * the row that has just gone, and the editor unmounts before any effect of
+ * its own could navigate. deleteMenuEntity redirects from the server for that
+ * reason: it does not need the component to outlive its data.
  */
 function refreshMenu() {
   revalidatePath("/workspace/menu");
@@ -490,6 +496,14 @@ export async function deleteMenuEntity(
   }
 
   refreshMenu();
+
+  // An item is the only one of the four with a route of its own, so its
+  // delete is the only one that destroys the page it was pressed on. The
+  // redirect belongs here rather than in the editor because by the time the
+  // action's response is applied that editor is already gone: see refreshMenu
+  // on why the route re-renders regardless of what this revalidates.
+  if (parsed.data.entity === "item") redirect("/workspace/menu");
+
   return { status: "success", message: "Deleted." };
 }
 
