@@ -1,8 +1,9 @@
 "use client";
 
-import { Camera, LoaderCircle, Plus, Save, Settings2, Trash2 } from "lucide-react";
+import { Camera, LoaderCircle, Plus, Save, Settings2 } from "lucide-react";
 import { useActionState, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
@@ -213,10 +214,13 @@ function OptionFieldset({
 function OptionRow({
   option,
   groupId,
+  groupName,
   showHeat,
 }: {
   option: ManagedOption;
   groupId: string;
+  /** Only for the delete confirmation, which names the group the choice sits in. */
+  groupName: string;
   showHeat: boolean;
 }) {
   const [saveState, saveAction, savePending] = useActionState(saveMenuOption, initialState);
@@ -293,25 +297,17 @@ function OptionRow({
         ) : null}
       </div>
 
-      <form
-        action={deleteAction}
-        className="mt-3"
-        onSubmit={(event) => {
-          if (!window.confirm(`Delete "${option.name}"? This cannot be undone.`)) {
-            event.preventDefault();
-          }
-        }}
-      >
+      <form action={deleteAction} className="mt-3">
         <input type="hidden" name="entity" value="option" />
         <input type="hidden" name="id" value={option.id} />
-        <Button type="submit" tone="dark" variant="danger" disabled={pending} className="min-h-11">
-          {deletePending ? (
-            <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Trash2 aria-hidden className="size-4" />
-          )}
-          Delete option
-        </Button>
+        <ConfirmDeleteButton
+          label="Delete option"
+          name={option.name}
+          meta={groupName}
+          consequence="The choice disappears from this group, and from every item that offers the group. An option any past order references cannot be deleted, so mark it unavailable instead."
+          disabled={pending}
+          pending={deletePending}
+        />
       </form>
       <MenuStatusMessage state={deleteState} />
     </div>
@@ -429,25 +425,17 @@ function OptionGroupCard({
       <p className="text-nybb-bone/55 mt-2 text-xs">{usedByLabel(group.linkedItemIds, itemNameById)}</p>
       <MenuStatusMessage state={saveState} />
 
-      <form
-        action={deleteAction}
-        className="border-nybb-bone/15 mt-4 border-t pt-4"
-        onSubmit={(event) => {
-          if (!window.confirm(`Delete "${group.name}"? This cannot be undone.`)) {
-            event.preventDefault();
-          }
-        }}
-      >
+      <form action={deleteAction} className="border-nybb-bone/15 mt-4 border-t pt-4">
         <input type="hidden" name="entity" value="optionGroup" />
         <input type="hidden" name="id" value={group.id} />
-        <Button type="submit" tone="dark" variant="danger" disabled={pending} className="min-h-11">
-          {deletePending ? (
-            <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Trash2 aria-hidden className="size-4" />
-          )}
-          Delete group
-        </Button>
+        <ConfirmDeleteButton
+          label="Delete group"
+          name={group.name}
+          meta={`${group.options.length} option${group.options.length === 1 ? "" : "s"}`}
+          consequence="The group and every choice inside it go together. A group still linked to an item cannot be deleted, so unlink it everywhere first."
+          disabled={pending}
+          pending={deletePending}
+        />
         {linkedCount > 0 ? (
           <span className="text-nybb-bone/55 ml-3 text-xs">
             Linked to {linkedCount} item{linkedCount === 1 ? "" : "s"}. Unlink them first.
@@ -473,7 +461,13 @@ function OptionGroupCard({
           ) : null}
         </div>
         {group.options.map((option) => (
-          <OptionRow key={option.id} option={option} groupId={group.id} showHeat={showHeat} />
+          <OptionRow
+            key={option.id}
+            option={option}
+            groupId={group.id}
+            groupName={group.name}
+            showHeat={showHeat}
+          />
         ))}
         <NewOptionRow groupId={group.id} showHeat={showHeat} />
       </div>

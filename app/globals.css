@@ -570,6 +570,87 @@
     background: color-mix(in oklab, var(--color-nybb-bone) 30%, transparent);
   }
 
+  /* The workspace's one confirmation surface.
+     ================================================================
+     Worn by a native <dialog> opened with showModal(), so the top layer,
+     the focus trap, Escape and the inert page behind it are the browser's
+     job rather than this project's. The element stays a descendant of
+     .workspace-shell in the DOM even while it paints in the top layer, so
+     everything above still applies to the controls inside it.
+
+     The border is deliberate and is not a violation of The Value Not
+     Shadow Rule. That rule forbids an edge on a surface already separated
+     by lightness; charcoal over an ink backdrop measures 1.1:1, which is
+     no separation at all, so this takes a real edge at the 40% bone the
+     system states for a boundary on dark. A shadow would do nothing here:
+     there is nothing under a near black page for it to darken.
+
+     The backdrop is Char at 82%. Not blurred: the chrome in this system is
+     solid rather than translucent, and a blur would be the one place in the
+     app that softens the ground instead of covering it. */
+  .confirm-dialog {
+    width: 100%;
+    max-width: min(30rem, calc(100vw - 2rem));
+    margin: auto;
+    padding: 0;
+    border: 1px solid color-mix(in oklab, var(--color-nybb-bone) 40%, transparent);
+    border-radius: 0.4rem;
+    background: var(--color-nybb-charcoal);
+    color: var(--color-nybb-bone);
+  }
+
+  .confirm-dialog::backdrop {
+    background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
+  }
+
+  /* The one piece of motion here, and it is 140ms of it.
+     ================================================================
+     A dialog is the one arrival in this system that earns a transition:
+     it is not a section fading in as somebody scrolls past, it is a
+     surface interrupting the page, and appearing between two frames reads
+     as a rendering fault rather than as an answer to the button. The panel
+     rises 0.5rem, which is the distance that says "this came from the
+     control" without becoming an animation somebody watches.
+
+     allow-discrete on display and overlay is what lets a <dialog> animate
+     at all, and @starting-style is where the entry values live. The global
+     prefers-reduced-motion block at the end of this file already flattens
+     the duration, and the end state of both properties is the resting one,
+     so a reduced motion visitor gets the panel placed rather than moved. */
+  .confirm-dialog,
+  .confirm-dialog::backdrop {
+    opacity: 0;
+    transition:
+      opacity 140ms ease-out,
+      transform 140ms ease-out,
+      overlay 140ms ease-out allow-discrete,
+      display 140ms ease-out allow-discrete;
+  }
+
+  .confirm-dialog {
+    transform: translateY(0.5rem);
+  }
+
+  .confirm-dialog[open],
+  .confirm-dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  .confirm-dialog[open] {
+    transform: translateY(0);
+  }
+
+  @starting-style {
+    .confirm-dialog[open],
+    .confirm-dialog[open]::backdrop {
+      opacity: 0;
+    }
+
+    .confirm-dialog[open] {
+      transform: translateY(0.5rem);
+    }
+  }
+
   /* Billboard headings. Uppercase and tight, because the display face
      is drawn for signage and loosens visibly at body tracking. */
   .font-display {

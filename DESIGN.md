@@ -542,6 +542,41 @@ The Workspace shell also themes the browser surfaces around those controls: care
 scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin
 screens therefore inherit one control language even before they need a dedicated component.
 
+### The delete confirmation
+
+The Workspace's one interrupting surface, and the only dialog in the system. It is a native
+`<dialog>` opened with `showModal()`, so the top layer, the focus trap, Escape and the inert page
+behind it are the browser's work rather than a hand-rolled trap. It replaced `window.confirm`, which
+was the one surface in the app that nothing in this document could reach: it announces the origin,
+it orders OK before Cancel, and it cannot say which record is about to go.
+
+- **Panel:** Charcoal, `0.4rem`, `1px` bone at 40%. The border is not a breach of The Value, Not
+  Shadow Rule. That rule governs a surface already separated by lightness; Charcoal over a scrimmed
+  Ink page measures 1.1:1, which is no separation at all, so the panel takes a real edge instead. A
+  shadow would darken nothing on a near-black ground.
+- **Backdrop:** Char at 82%, unblurred. Chrome in this system is solid rather than translucent, and
+  a blur would be the one place in the product that softens the ground instead of covering it.
+- **Name plate:** the record about to be deleted, drawn as the product tile's own plate. Ink,
+  `0.4rem`, an identifier in mono caps above the name in the display face. It answers the only
+  question a person has at this moment, which is whether this is the right record.
+- **The one red thing is the confirm button.** The micro-label is signage yellow, doing its stated
+  job. The heading, the name and the consequence are all bone. Red is not type in this system and
+  it is not type here.
+- **Motion:** 140ms. The panel rises `0.5rem` and the backdrop fades, through `@starting-style` and
+  `allow-discrete`. This is the one arrival that earns a transition, because a surface interrupting
+  the page and appearing between two frames reads as a rendering fault rather than as an answer to
+  the button.
+- **Order:** Cancel first in the DOM, so the safe answer holds focus and Enter deletes nothing. The
+  row reverses on a phone, which puts Cancel where the thumb rests and moves the destructive button
+  out of that arc.
+
+### Named Rules
+
+**The Destructive Fill Is Earned Rule.** The `danger` button tier is quiet at rest because it sits
+on a screen that exists for something else. `dangerSolid`, the Red Deep fill, belongs only to a
+control that is already the answer to a question the person was asked. A delete that has to be
+found by hovering is a worse dialog, not a politer one.
+
 ### Selection controls
 
 A distinct family from buttons. Size chips, flavour tiles, option rows and pickup windows carry

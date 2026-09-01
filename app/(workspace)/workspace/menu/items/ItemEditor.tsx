@@ -1,9 +1,10 @@
 "use client";
 
-import { LoaderCircle, Save, Trash2 } from "lucide-react";
+import { LoaderCircle, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
@@ -516,25 +517,17 @@ export function ItemEditor({
       <HeatPriceGrid idPrefix={uid} item={item} optionGroups={optionGroups} />
 
       {item ? (
-        <form
-          action={deleteAction}
-          className="bg-nybb-charcoal rounded-md p-5"
-          onSubmit={(event) => {
-            if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) {
-              event.preventDefault();
-            }
-          }}
-        >
+        <form action={deleteAction} className="bg-nybb-charcoal rounded-md p-5">
           <input type="hidden" name="entity" value="item" />
           <input type="hidden" name="id" value={item.id} />
-          <Button type="submit" tone="dark" variant="danger" disabled={disabled} className="min-h-11">
-            {deletePending ? (
-              <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-            ) : (
-              <Trash2 aria-hidden className="size-4" />
-            )}
-            Delete item
-          </Button>
+          <ConfirmDeleteButton
+            label="Delete item"
+            name={item.name}
+            meta={item.code ?? undefined}
+            consequence="The item, its sizes and the option groups it offers all go. It leaves the menu at every branch, and past orders keep their own record of it."
+            disabled={disabled}
+            pending={deletePending}
+          />
           <p className="text-nybb-bone/55 mt-2 text-xs">
             An item that any past order references cannot be deleted. Take it off the menu
             instead, which leaves those receipts intact.

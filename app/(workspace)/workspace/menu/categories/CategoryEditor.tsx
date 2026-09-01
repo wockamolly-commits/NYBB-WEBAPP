@@ -1,8 +1,9 @@
 "use client";
 
-import { LoaderCircle, Plus, Save, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, Save } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import type { ManagedCategory, MenuActionState } from "@/lib/staff/menu-types";
@@ -79,25 +80,17 @@ function CategoryRow({ category }: { category: ManagedCategory }) {
       </p>
       <MenuStatusMessage state={saveState} />
 
-      <form
-        action={deleteAction}
-        className="border-nybb-bone/15 mt-4 border-t pt-4"
-        onSubmit={(event) => {
-          if (!window.confirm(`Delete "${category.name}"? This cannot be undone.`)) {
-            event.preventDefault();
-          }
-        }}
-      >
+      <form action={deleteAction} className="border-nybb-bone/15 mt-4 border-t pt-4">
         <input type="hidden" name="entity" value="category" />
         <input type="hidden" name="id" value={category.id} />
-        <Button type="submit" tone="dark" variant="danger" disabled={pending} className="min-h-11">
-          {deletePending ? (
-            <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Trash2 aria-hidden className="size-4" />
-          )}
-          Delete category
-        </Button>
+        <ConfirmDeleteButton
+          label="Delete category"
+          name={category.name}
+          meta={itemCountLabel(itemCount)}
+          consequence="The category goes and nothing else does. A category holding items cannot be deleted at all, so move them first if the count above is not zero."
+          disabled={pending}
+          pending={deletePending}
+        />
         {itemCount > 0 ? (
           <span className="text-nybb-bone/55 ml-3 text-xs">
             Has {itemCountLabel(itemCount)}. Move or delete them first.
