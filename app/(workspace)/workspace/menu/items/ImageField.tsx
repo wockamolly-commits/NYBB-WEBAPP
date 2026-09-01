@@ -7,6 +7,7 @@ import {
   useActionState,
   useEffect,
   useId,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -141,6 +142,7 @@ export function ImageField({
   const uploadAction = target.kind === "item" ? uploadMenuItemImage : uploadMenuOptionImage;
   const [uploadState, formAction, uploadPending] = useActionState(uploadAction, initialState);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<ChosenPhoto | null>(null);
   const [sourceSize, setSourceSize] = useState<SourceSize | null>(null);
   const [undrawable, setUndrawable] = useState(false);
@@ -278,8 +280,15 @@ export function ImageField({
     setSavedCrop(null);
   }
 
-  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
+  /**
+   * Takes a photograph into the editor, from wherever it came.
+   *
+   * Split out from the change handler because the input can already be
+   * holding a file the first time this component runs, and that file has to
+   * go through the same checks and the same crop reset as one chosen while
+   * somebody was watching.
+   */
+  function takeFile(file: File | null) {
     setRenderedUrl(null);
     setPreviewError(null);
     setAnnouncement("");
@@ -314,6 +323,29 @@ export function ImageField({
     setChosen({ file, objectUrl: URL.createObjectURL(file), from: "disk" });
     setAnnouncement("Photograph chosen. The tile now shows its crop.");
   }
+
+  function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    takeFile(event.target.files?.[0] ?? null);
+  }
+
+  /**
+   * Adopts a photograph chosen before this component was listening.
+   *
+   * The field is server-rendered whole, so its file input is on screen and
+   * usable a moment before React attaches anything to it. A photograph picked
+   * in that gap fires a change event at nobody. The input keeps the file
+   * either way, which is what makes the failure so quiet: the filename sits
+   * there in plain sight while every control stays dead, and picking the same
+   * file again fires no second change to recover from. So take whatever is
+   * already in there on the first frame this component owns.
+   */
+  useEffect(() => {
+    const waiting = fileInputRef.current?.files?.[0];
+    if (waiting) takeFile(waiting);
+    // Mount only. This is about the window before the listener existed, and
+    // every choice made after it arrives through handleFileChange.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * Records the decoded size, which is what turns the cover fill into the
@@ -589,6 +621,7 @@ export function ImageField({
             </WorkspaceFieldLabel>
             <input
               id={`${uid}-file`}
+              ref={fileInputRef}
               type="file"
               name="file"
               accept={MENU_IMAGE_ACCEPT}

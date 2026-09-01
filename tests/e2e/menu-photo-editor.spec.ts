@@ -22,6 +22,8 @@ import {
  *  - React 19 emptied the file input under the field, so the second Upload
  *    posted an empty form
  *  - a saved photograph could not be reframed on a later visit at all
+ *  - a photograph picked before the page hydrated was swallowed, leaving the
+ *    filename on screen over a field that had never heard of it
  */
 
 let itemId: string;
@@ -154,4 +156,24 @@ test("keeps the uncropped original beside the tile, which is what reframing need
 
   const response = await page.request.head(original);
   expect(response.status(), `no original stored at ${original}`).toBe(200);
+});
+
+test("takes up a photograph chosen before the page finished loading", async ({ page }) => {
+  // The field is server-rendered complete: the file input is on screen and
+  // usable a while before React attaches a listener to it. A person who picks
+  // a photograph in that window fires a change event into nothing, and because
+  // the input keeps the file afterwards, neither they nor the field has any
+  // way of noticing. The filename sits there and every control stays dead.
+  await page.route("**/*.js", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
+
+  const field = await openEditor(page);
+  await field.fileInput.setInputFiles(TEST_IMAGE_PATH);
+
+  // Once the page is alive it has to adopt what it is already holding.
+  await expect(page.getByText("Live crop of the chosen photograph.")).toBeVisible();
+  await expect(field.zoom).toBeEnabled();
+  await expect(field.upload).toBeEnabled();
 });
