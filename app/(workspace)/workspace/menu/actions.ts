@@ -90,6 +90,12 @@ function friendlyMenuError(message: string | undefined): string {
   return "The menu change could not be saved. Try again.";
 }
 
+/** "Insane", or "Hot and Insane", or "Hot, Wild and Insane". For one sentence. */
+function listNames(names: string[]): string {
+  if (names.length === 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 const holdSchema = z
   .object({
     itemId: z.uuid(),
@@ -410,23 +416,60 @@ export async function saveMenuItem(
   return { status: "success", message: parsed.data.id ? "Item saved." : "Item added." };
 }
 
-const optionPriceSchema = z.object({
-  itemId: z.uuid(),
+/**
+ * One option's per size prices, as one row of the grid.
+ *
+ * The RPC contract is fixed (Task 8): a variation named in `prices` gets that
+ * price, one omitted from the object has its price row deleted, and 0 is a
+ * real price meaning free, never a clear. HeatPriceGrid builds the object the
+ * same way: an empty input drops that variation's key entirely rather than
+ * sending it as 0 or null.
+ *
+ * `name` is carried only so a failure can say which row did not save. It is
+ * never written and never read back out of the database, and nothing but that
+ * one sentence depends on it.
+ */
+const optionPriceRowSchema = z.object({
   optionId: z.uuid(),
+  name: z.string().trim().min(1).max(100),
   /** variation id to centavos. A variation left out has its price cleared. */
   prices: z.record(z.uuid(), z.number().int().min(0).max(10_000_000)),
 });
 
+const optionPriceGridSchema = z.object({
+  itemId: z.uuid(),
+  /**
+   * Only the rows whose prices actually changed. The grid works that out
+   * rather than sending everything, so an untouched row is never rewritten
+   * and never fails. Empty is normal and means the person pressed Save
+   * without changing anything.
+   */
+  options: z.array(optionPriceRowSchema).max(60),
+});
+
 /**
- * Save one option's per size prices on one item: HeatPriceGrid's one row.
+ * The whole per size price grid, saved by its one button.
  *
- * The RPC contract is fixed (Task 8): a variation named in p_prices gets that
- * price, one omitted from the object has its price row deleted, and 0 is a
- * real price meaning free, never a clear. The payload is built by
- * HeatPriceGrid the same way: an empty input drops that variation's key from
- * the object entirely rather than sending it as 0 or null.
+ * WHY THIS LOOPS RATHER THAN WRITING ONE TRANSACTION.
+ *
+ * staff_set_option_variation_prices takes one option, locks the item row, and
+ * writes at most one audit entry for it. There is no bulk form of it, and
+ * PostgREST gives one transaction per call, so a grid of five rows is five
+ * calls.
+ *
+ * The loop does not stop at the first failure, which is the point. Each row is
+ * independently valid or not, and the realistic per row failure is
+ * OPTION_NOT_FOUND: somebody deleted that heat level on the options screen
+ * while this was open. Stopping there would refuse to price the four rows that
+ * are still perfectly fine, so every row is attempted and the message names
+ * the ones that did not land. That is also what keeps the guarantee the per
+ * row Save buttons used to give: a bad row cannot take the good ones with it.
+ *
+ * It is therefore not atomic across rows, and it should not claim to be. What
+ * it is instead is honest about which rows saved, which is the recoverable
+ * version: press Save again once the named row is dealt with.
  */
-export async function setOptionVariationPrices(
+export async function setItemOptionVariationPrices(
   _previous: MenuActionState,
   formData: FormData,
 ): Promise<MenuActionState> {
@@ -436,7 +479,7 @@ export async function setOptionVariationPrices(
   } catch {
     return { status: "error", message: "The price grid could not be read. Refresh and try again." };
   }
-  const parsed = optionPriceSchema.safeParse(raw);
+  const parsed = optionPriceGridSchema.safeParse(raw);
   if (!parsed.success) return { status: "error", message: "Check the prices and try again." };
 
   const profile = await getStaffProfile();
@@ -444,19 +487,45 @@ export async function setOptionVariationPrices(
     return { status: "error", message: "You do not have access to change the menu." };
   }
 
+  if (parsed.data.options.length === 0) {
+    return { status: "success", message: "No price changes to save." };
+  }
+
   const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("staff_set_option_variation_prices", {
-    p_item_id: parsed.data.itemId,
-    p_option_id: parsed.data.optionId,
-    p_prices: parsed.data.prices,
-  });
-  if (error) {
-    console.error("[workspace] option variation prices failed:", error.message);
-    return { status: "error", message: friendlyMenuError(error.message) };
+  const failed: string[] = [];
+  let firstError: string | undefined;
+
+  for (const row of parsed.data.options) {
+    const { error } = await supabase.rpc("staff_set_option_variation_prices", {
+      p_item_id: parsed.data.itemId,
+      p_option_id: row.optionId,
+      p_prices: row.prices,
+    });
+    if (error) {
+      console.error("[workspace] option variation prices failed:", row.optionId, error.message);
+      failed.push(row.name);
+      firstError ??= error.message;
+    }
+  }
+
+  // Every row failed, so nothing was written and the reason is the same for
+  // all of them: no access, a missing item, two price lists. Say that reason
+  // rather than listing five names beside it.
+  if (failed.length === parsed.data.options.length) {
+    return { status: "error", message: friendlyMenuError(firstError) };
   }
 
   refreshMenu();
   revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+
+  if (failed.length > 0) {
+    return {
+      status: "error",
+      message: `Saved, except ${listNames(failed)}. Refresh the page and try ${
+        failed.length === 1 ? "that row" : "those rows"
+      } again.`,
+    };
+  }
   return { status: "success", message: "Prices saved." };
 }
 

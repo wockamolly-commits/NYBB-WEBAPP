@@ -2441,6 +2441,19 @@ export async function setOptionVariationPrices(
 
 `HeatPriceGrid.tsx` renders, per qualifying option, a row of peso inputs, one per active size of this item, with the size's short label as the column header. One Save per option row, because one save per grid would make a typo in one row block every other row.
 
+> **Superseded on 2026-09-01, by the owner.** Five Save buttons doing one job read as
+> redundant on the screen, and they are. The grid now has one Save, one status line, and a
+> single header row of size labels instead of the labels repeating on every row.
+>
+> The objection above still stands and is answered rather than ignored. A typo no longer
+> reaches the server: the grid names the offending option and size and holds the button until
+> it is fixed. And `setItemOptionVariationPrices` does not stop at the first row that fails; it
+> writes every row it can, sends only the rows whose prices actually changed, and names the
+> ones that did not land. The per row isolation the buttons were protecting is kept in the
+> action. It is not atomic across rows and does not claim to be, because the realistic per row
+> failure is an option somebody deleted on another screen, and refusing to price the four good
+> rows over it would be the worse trade. See the note on `HeatPriceForm`.
+
 An empty input clears that pairing, and the helper text says so in words: "Leave blank to remove the price for that size." Do not use 0 to mean cleared; 0 is a real price meaning free.
 
 Above the grid, one sentence naming what it is: these options have no single price, so they cost a different amount on each size.
