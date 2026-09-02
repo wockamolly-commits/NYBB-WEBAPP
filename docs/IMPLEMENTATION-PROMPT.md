@@ -1568,6 +1568,29 @@ Port the voucher engine unchanged. It is complete and well-tested in the referen
 code ships. Applying the first migration alone fails open: the screen shows a discount and the
 customer is charged full price.
 
+**Two traps already waiting in the schema.** The `vouchers` table has two nullable number columns
+where null carries meaning, and neither of them means zero:
+
+```sql
+amount_cents bigint check (amount_cents is null or amount_cents > 0),   -- null = a percentage voucher
+max_uses     int    check (max_uses is null or max_uses > 0),           -- null = unlimited
+```
+
+**Do not read either with `z.coerce.number()`.** Coercion turns null into 0, so a percentage voucher
+would parse as a fixed discount of PHP 0.00, and an unlimited voucher would parse as one usable zero
+times, which silently disables it. `max_uses` is the more dangerous of the two: 0 is a plausible
+looking cap, so nothing downstream would flag it, and the effect is every open promo code refusing to
+redeem. The database cannot catch either, because both mistakes happen after the read.
+
+Parse them as `z.number().nullable()` and branch on the null, the way `resolvedHeatPercent` does in
+`lib/staff/menu-schemas.ts`. The same applies to `expires_at` (null = never expires) and
+`owner_user_id` (null = anyone, a promo code rather than a loyalty reward): both are nullable by
+design, and a default applied on read would change what the row means. `min_order_cents` is
+`not null default 0` and needs none of this.
+
+That is not hypothetical. The identical mistake shipped on `menu_options.heat_percent`, where a blank
+form field coerced to 0 and turned "no heat level" into "0% heat" on every save. See AGENTS.md rule 6.
+
 **Launch promo suggestions for the pitch** (do not implement, put them in the README as a
 go-to-market slide): a first-order pickup code, a slow-hours discount targeting the 2pm to 5pm
 trough, and a "skip the queue" framing rather than a discount, since pickup ordering sells time.

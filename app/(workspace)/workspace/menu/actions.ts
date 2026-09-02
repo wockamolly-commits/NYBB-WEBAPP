@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
+// optionSchema lives outside this file because a "use server" module may only
+// export async functions, so nothing declared here can be unit tested. See the
+// note in menu-schemas.ts: that is how its heat percent branch stayed wrong.
+import { optionSchema } from "@/lib/staff/menu-schemas";
 import {
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -246,32 +250,6 @@ export async function saveMenuOptionGroup(
   refreshMenu();
   return { status: "success", message: parsed.data.id ? "Group saved." : "Group added." };
 }
-
-/**
- * pricing is the three way choice, not a number.
- *
- * "bySize" sends null, which means this option is priced through
- * menu_option_variation_prices on each item that links the group. It does not
- * mean free, and turning it into 0 here would silently make every heat level
- * free on every wing size.
- */
-const optionSchema = z
-  .object({
-    id: z.union([z.uuid(), z.literal("")]).default(""),
-    groupId: z.uuid(),
-    name: z.string().trim().min(1).max(100),
-    description: z.string().trim().max(300).default(""),
-    pricing: z.enum(["free", "flat", "bySize"]),
-    priceCents: z.coerce.number().int().min(0).max(10_000_000).default(0),
-    heatPercent: z.union([z.coerce.number().int().min(0).max(100), z.literal("")]).default(""),
-    isActive: z.enum(["true", "false"]).transform((value) => value === "true"),
-  })
-  .transform((value) => ({
-    ...value,
-    resolvedPriceCents:
-      value.pricing === "bySize" ? null : value.pricing === "free" ? 0 : value.priceCents,
-    resolvedHeatPercent: value.heatPercent === "" ? null : value.heatPercent,
-  }));
 
 export async function saveMenuOption(
   _previous: MenuActionState,
