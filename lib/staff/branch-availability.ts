@@ -100,6 +100,37 @@ export function availabilityStatusLine(hold: ManagedHold | undefined): string {
 }
 
 /**
+ * What the menu list prints under an item that is held somewhere.
+ *
+ * The same sentence the item editor's Now column shows, with the counter's
+ * name in front of it, because on that screen the item is the row and the
+ * branch is the detail. Both are built here so they cannot drift: the menu
+ * list used to say "Sold out at Central Bloc" and stop there, so an item held
+ * until 6pm and an item held indefinitely read identically, and the only way
+ * to tell them apart was to open the editor.
+ */
+export function holdSummary(holds: ManagedHold[]): string | null {
+  if (holds.length === 0) return null;
+  if (holds.length === 1) return branchStatusLine(holds[0]!);
+  // Several counters, so the ends differ and there is no room to print them
+  // all. Name the counters; the editor is where the ends are read.
+  return `Sold out at ${holds.map((hold) => hold.branchShortName).join(", ")}`;
+}
+
+/**
+ * One counter's state with the counter named: "Central Bloc: sold out until
+ * Aug 25, 2026, 6:00 PM".
+ *
+ * Only the first letter is lowered, not the whole sentence. Lowercasing the
+ * lot is the obvious way to write this and it turns the date into "aug 25,
+ * 2026, 6:00 pm", which is why there is a test for it.
+ */
+export function branchStatusLine(hold: ManagedHold): string {
+  const sentence = availabilityStatusLine(hold);
+  return `${hold.branchShortName}: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
+}
+
+/**
  * "Aug 25, 2026, 11:59 PM".
  *
  * Manila, explicitly. The staff reading this are in Cebu and the server is

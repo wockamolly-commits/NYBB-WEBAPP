@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
+import { branchStatusLine, tradingBranches } from "@/lib/staff/branch-availability";
 import { manilaDateEndExclusiveIso } from "@/lib/staff/manila-dates";
 import {
   HOLD_KIND_LABELS,
@@ -13,6 +14,7 @@ import {
   type ManagedItem,
   type MenuActionState,
 } from "@/lib/staff/menu-types";
+import { cn } from "@/lib/utils";
 import { setMenuItemHold } from "./actions";
 import { MenuStatusMessage } from "./MenuStatusMessage";
 
@@ -44,15 +46,6 @@ function endOfManilaDayInputValue(): string {
   return `${manilaDate}T00:00`;
 }
 
-/** "Aug 25, 2026, 11:59 PM", for the line under a held item. */
-function formatManilaInstant(iso: string): string {
-  return new Intl.DateTimeFormat("en-PH", {
-    timeZone: "Asia/Manila",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(iso));
-}
-
 export function ItemHoldControl({
   item,
   branches,
@@ -76,10 +69,13 @@ export function ItemHoldControl({
     ? item.holds.find((hold) => hold.branchId === actingBranch)
     : undefined;
 
-  const branchOptions: readonly WorkspaceSelectOption<string>[] = branches.map((branch) => ({
-    value: branch.id,
-    label: branch.shortName,
-  }));
+  // Trading counters only. The picker used to list all nine, including the
+  // eight that have never opened, so a manager could mark an item sold out at
+  // a branch with no fryer in it. The item editor's "Available at" filters the
+  // same way and from the same function.
+  const branchOptions: readonly WorkspaceSelectOption<string>[] = tradingBranches(branches).map(
+    (branch) => ({ value: branch.id, label: branch.shortName }),
+  );
 
   // Rendered wherever a branch has to be chosen. Absent for a cashier, who
   // has nothing to choose, present for a roving manager in both the create
@@ -95,18 +91,18 @@ export function ItemHoldControl({
       placeholder="Choose a counter"
       onValueChange={setPickedBranchId}
       disabled={pending}
-      className="min-w-40"
     />
   );
 
   if (existingHold) {
     return (
       <div>
-        {branchPicker ? <div className="mb-3">{branchPicker}</div> : null}
-        <p className="text-nybb-bone/70 text-sm">
-          Sold out at {existingHold.branchShortName}
-          {existingHold.unavailableUntil ? `, until ${formatManilaInstant(existingHold.unavailableUntil)}` : ", until someone puts it back"}.
-        </p>
+        {branchPicker ? <div className="mb-3 max-w-56">{branchPicker}</div> : null}
+        {/* The same sentence the item editor's Now column prints, from the
+            same function. This screen used to write its own, so an item held
+            until 6pm and an item held indefinitely read the same here and
+            differently there. */}
+        <p className="text-nybb-bone/70 text-sm">{branchStatusLine(existingHold)}</p>
         <form action={action} className="mt-3">
           <input type="hidden" name="itemId" value={item.id} />
           <input type="hidden" name="branchId" value={existingHold.branchId} />
@@ -129,7 +125,30 @@ export function ItemHoldControl({
 
   return (
     <div>
-      <form action={action} className="flex flex-wrap items-end gap-3">
+      {/* An aligned grid, not a wrapping flex row.
+          ================================================================
+          This was `flex flex-wrap items-end gap-3`, which is the pattern
+          DESIGN.md's workspace table section condemns and for the reason it
+          gives: a wrapping row sizes itself from its own contents, so the
+          same control sat at a different width on every item in the list,
+          and the fields landed in a different place on each card. Down a
+          menu of forty items that reads as a rendering fault rather than as
+          a layout, and it is the whole of why this screen looked sloppy
+          beside the item editor's "Available at".
+
+          Fixed columns instead, so every card's control lines up with the
+          card above it. Both templates are literals rather than a computed
+          string, because Tailwind reads class names statically and cannot
+          see one that is assembled at runtime. */}
+      <form
+        action={action}
+        className={cn(
+          "grid items-end gap-3",
+          actingBranchId
+            ? "sm:grid-cols-[minmax(0,16rem)_minmax(0,11rem)_auto]"
+            : "sm:grid-cols-[minmax(0,11rem)_minmax(0,16rem)_minmax(0,11rem)_auto]",
+        )}
+      >
         <input type="hidden" name="itemId" value={item.id} />
         {actingBranchId ? (
           <input type="hidden" name="branchId" value={actingBranchId} />
@@ -149,7 +168,6 @@ export function ItemHoldControl({
             else if (value === "until") setUntil("");
           }}
           disabled={pending}
-          className="min-w-56"
         />
         <div>
           <WorkspaceFieldLabel htmlFor={`menu-hold-until-${item.id}`}>Comes back</WorkspaceFieldLabel>
@@ -162,7 +180,14 @@ export function ItemHoldControl({
             disabled={pending || kind === "indefinite"}
           />
         </div>
-        <Button type="submit" tone="dark" variant="primary" disabled={pending || !canSubmit} className="min-h-11">
+        <Button
+          type="submit"
+          tone="dark"
+          variant="primary"
+          disabled={pending || !canSubmit}
+          className="min-h-11 w-full sm:w-auto"
+          aria-label={`Mark ${item.name} sold out`}
+        >
           {pending ? (
             <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
           ) : (

@@ -221,3 +221,45 @@ test("takes several counters off in one Save", async ({ page }) => {
   expect(rows).toHaveLength(2);
   expect(rows.every((row) => row.kind === "indefinite")).toBe(true);
 });
+
+test("the menu list and the item editor describe one hold the same way", async ({ page }) => {
+  // The complaint this stands for: the two screens wrote their own sentences,
+  // so the menu list said "Sold out at Central Bloc" for BOTH an indefinite
+  // hold and one ending at 6pm. They now share branchStatusLine, and this is
+  // the assertion that keeps them sharing it.
+  const first = branchNames[0]!;
+  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
+
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Available at", exact: true }),
+  });
+  await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await section.getByRole("button", { name: "Save availability" }).click();
+  await expect(section.getByText("Sold out until someone puts it back")).toBeVisible();
+
+  // Same hold, other screen, same words.
+  await page.goto("/workspace/menu", { waitUntil: "domcontentloaded" });
+  const card = page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
+  await expect(card.getByText(`${first}: sold out until someone puts it back`)).toBeVisible();
+});
+
+test("the counter picker offers only counters that trade", async ({ page }) => {
+  // It used to list all nine branches, so a manager could mark an item sold
+  // out at a branch that has never opened. Skipped for a cashier, whose
+  // counter is fixed and who therefore gets no picker at all.
+  await page.goto("/workspace/menu", { waitUntil: "domcontentloaded" });
+  const card = page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
+  const picker = card.getByRole("combobox", { name: /Which counter/i });
+  if ((await picker.count()) === 0) test.skip(true, "signed in as a cashier, whose counter is fixed");
+
+  await picker.first().click();
+  const { data: shut } = await serviceClient()
+    .from("branches")
+    .select("short_name")
+    .eq("is_active", false);
+  for (const branch of shut ?? []) {
+    await expect(page.getByRole("option", { name: branch.short_name as string })).toHaveCount(0);
+  }
+  await expect(page.getByRole("option", { name: branchNames[0]! })).toBeVisible();
+  await page.keyboard.press("Escape");
+});

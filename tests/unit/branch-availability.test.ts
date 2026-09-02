@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   availabilityStatusLine,
   changedBranches,
+  holdSummary,
   formatManilaInstant,
   sellsHereByBranch,
   soldOutCount,
@@ -148,5 +149,35 @@ describe("formatManilaInstant", () => {
     // 10:00 UTC is 6pm in Cebu. Read back in UTC this says 10am, which is a
     // hold that appears to end eight hours before it does.
     expect(formatManilaInstant("2026-08-25T10:00:00.000Z")).toContain("6:00");
+  });
+});
+
+describe("holdSummary", () => {
+  it("says nothing when nothing is held", () => {
+    expect(holdSummary([])).toBeNull();
+  });
+
+  it("names the counter and reuses the item editor's own sentence", () => {
+    // The two screens describing one hold in their own words is how they came
+    // to disagree. The menu list used to print "Sold out at Central Bloc" for
+    // BOTH an indefinite hold and one ending at 6pm, so the only way to tell
+    // them apart was to open the editor.
+    expect(holdSummary([hold(pilot)])).toBe(
+      "Central Bloc: sold out until someone puts it back",
+    );
+  });
+
+  it("carries the end time through, which the old summary dropped", () => {
+    const line = holdSummary([hold(pilot, "2026-08-25T10:00:00.000Z")]);
+    expect(line).toContain("Central Bloc: sold out until");
+    expect(line).toContain("Aug 25, 2026");
+  });
+
+  it("names the counters and drops the ends once there are several", () => {
+    // Two ends will differ, and a row in a list has no room for both. The
+    // editor is where they are read.
+    expect(holdSummary([hold(pilot), hold(other, "2026-08-25T10:00:00.000Z")])).toBe(
+      "Sold out at Central Bloc, Banilad",
+    );
   });
 });

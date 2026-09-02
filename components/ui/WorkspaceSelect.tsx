@@ -77,6 +77,14 @@ export function WorkspaceSelect<Value extends string>({
           {label}
         </Select.Label>
         <Select.Trigger
+          /* The label is a <div>, not a <label>, because the trigger is a
+             button rather than a form control, and a <label> cannot name one.
+             Base UI gives that div the id `${id}-label` but does not point the
+             trigger at it, so every select in the workspace announced its
+             VALUE and no name: "Choose a counter", with nothing saying what
+             was being chosen. Found while making the two availability screens
+             agree, and it affects every screen that uses this. */
+          aria-labelledby={`${id}-label`}
           className={cn(
             PRESSABLE,
             "group border-nybb-bone/40 bg-nybb-graphite text-nybb-bone mt-2 flex min-h-11 w-full min-w-0 items-stretch justify-between rounded-md border text-left text-base outline-none sm:text-sm",

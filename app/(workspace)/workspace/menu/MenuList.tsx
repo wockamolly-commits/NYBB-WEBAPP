@@ -2,7 +2,8 @@
 
 import { ButtonLink } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
-import { holdSummary, type ManagedMenu } from "@/lib/staff/menu-types";
+import { holdSummary } from "@/lib/staff/branch-availability";
+import type { ManagedMenu } from "@/lib/staff/menu-types";
 import { ItemHoldControl } from "./ItemHoldControl";
 
 const CHIP = "rounded px-2 py-1 text-xs font-semibold uppercase tracking-wider";

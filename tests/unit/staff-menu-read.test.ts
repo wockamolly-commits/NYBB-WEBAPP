@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { catalogImage, catalogImageBySource, imageKeys } from "@/lib/catalog/images";
 import { assembleManagedMenu, type ManagedMenuRows } from "@/lib/staff/menu";
-import { holdSummary } from "@/lib/staff/menu-types";
+import { holdSummary } from "@/lib/staff/branch-availability";
 
 /**
  * An archive photograph that actually ships, taken from the manifest itself.

@@ -710,6 +710,21 @@ menu list, where the person with the empty fryer already is. Two full implementa
 control do not stay identical, and the day they diverge is the day the two screens disagree about
 what an item's state is.
 
+**One State, One Sentence, Wherever It Is Read.** The menu list and the item editor both show
+whether a counter is selling an item, and each wrote its own words for it. The list said "Sold out
+at Central Bloc" for an indefinite hold AND for one ending at 6pm, so the two were indistinguishable
+on the screen a cashier actually works from, while the editor distinguished them. They now build
+that sentence from one function, `branchStatusLine`, and the date formatter they had a copy of each
+is also one function. A second screen describing shared state in its own words is not a wording
+choice, it is a second definition of the state, and it drifts.
+
+The same pass put the list's control on a fixed grid. It was a `flex flex-wrap` row, so it sized
+itself from its own contents and landed differently on every card in a list of forty items, which
+is the fault the workspace table section describes and the whole of why that screen read as sloppy
+beside the editor. What stays different between the two is deliberate and worth naming: the list
+offers the three hold kinds and a time, because a cashier's question is "when does it come back",
+and the editor offers a tick box, because an owner's question is "do we sell this here".
+
 **A Repeated Action Becomes A Column And One Save.** "Available at" shipped first as a Stop selling
 button on every row, acting on the press. That reads fine against one counter and badly against
 nine: taking an item off four of them was four presses, four writes and four audit rows for what

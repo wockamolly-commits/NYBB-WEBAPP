@@ -166,9 +166,7 @@ export const HOLD_KIND_LABELS: Record<HoldKind, string> = {
   indefinite: "Sold out until someone puts it back",
 };
 
-/** What the row says under an item that is held somewhere. */
-export function holdSummary(holds: ManagedHold[]): string | null {
-  if (holds.length === 0) return null;
-  const names = holds.map((hold) => hold.branchShortName).join(", ");
-  return `Sold out at ${names}`;
-}
+// holdSummary used to live here. It moved to lib/staff/branch-availability.ts
+// so that it and the item editor's status line are built from one formatter:
+// two screens describing the same hold in their own words is how they came to
+// disagree about whether a sold out item had an end.
