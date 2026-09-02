@@ -577,6 +577,124 @@ on a screen that exists for something else. `dangerSolid`, the Red Deep fill, be
 control that is already the answer to a question the person was asked. A delete that has to be
 found by hovering is a worse dialog, not a politer one.
 
+**The Repeated Delete Loses Its Words Rule.** A delete that appears once per row takes
+`ConfirmDeleteButton`'s `iconOnly` tier: the trash on the 44px square, no label. Fifteen labelled
+DELETE OPTION buttons down a table is fifteen instances of the rarest and most dangerous action on
+the screen, carried at the same weight as Save. The dialog is unchanged, so nothing is hidden and
+only the repetition is. The accessible name does not shrink with the button: `triggerLabel` names
+the record ("Delete option: Classic Buffalo"), because a screen reader must never meet fifteen
+buttons called the same thing.
+
+### The workspace table
+
+The shape a Workspace screen takes when it manages a list of like records. The option groups screen
+is the reference implementation; it replaced fifteen independent wrapping forms, one per option,
+which measured 7,372px on a 1440 desktop and 14,832px on a phone before anything was even opened.
+
+The failure that layout had is worth naming, because it is the one a form-per-row always has. A
+`flex-wrap` row sizes itself from its own contents, so no two rows can align even in principle: a
+row showing an amount field sits differently from one that is not. And every field carries its own
+label, so the column names get printed once per row, which puts three lines of label text between
+one record's name and the next. That is precisely what stops an eye running down a column, so the
+one thing somebody comes to this screen to do, find a record by name, is the thing the layout
+prevents.
+
+- **One template, two consumers.** The header row and every data row take `grid-template-columns`
+  from a single function and from nothing else. Two separately authored width lists drift on the
+  first change, and a row one pixel out of column with the row above reads as a rendering fault
+  rather than as a layout.
+- **Column names are printed once.** Per-cell labels stay in the DOM and go `lg:sr-only`, never
+  deleted: a grid header cell is not programmatically the label of an input three rows below it,
+  so removing them would leave every field announcing nothing but its value.
+- **Two layouts, one DOM.** Cells are grouped into wrappers carrying `lg:contents`. Below `lg`
+  those wrappers are real and the row stacks into a few sensible lines; from `lg` up
+  `display: contents` dissolves them and their children become direct grid items in header order.
+  Eight columns inside 390px is not a table, it is a horizontal scrollbar.
+- **An optional column belongs to the table, not to a row.** A column that appeared on only the
+  rows using it would not be a column. Whether it is open is group state, seeded from the data and
+  updated by the rows, so opening it reflows the whole table at once.
+- **Chrome collapses, data does not.** The photograph is a 44px thumbnail that opens its editor;
+  the delete is the icon-only tier; the row's own hint lines move up to the group when what they
+  state is a group fact. Every field stays visible and editable.
+- **Rules, not plates.** Rows separate with a `1px` bone-at-15% top rule and the header row draws
+  none of its own, because the first row's rule is already there and a second would double it.
+  There is no zebra: this system separates by value and a table is not an exception.
+
+**The Repeated Save Is Quiet Rule.** A Save button that appears once per row is `secondary` at rest
+and takes `primary` (the brand orange) only while that row holds uncommitted edits. Seventeen orange
+Save buttons was the old screen, and at that count the colour stops meaning "this is the action" and
+starts meaning "this is a form", which is The One Loud Thing Rule failing by repetition rather than
+by hue. Quiet at rest also buys the state for free: exactly one row is orange, and it is the row you
+were working in.
+
+**The Container Is Not A Peer Of Its Rows Rule.** A group's own name belongs in a heading in the
+display face with a summary line under it, not in a text input that looks exactly like the fifteen
+text inputs beneath it. Its fields go behind a disclosure, because they are edited about once in the
+life of the record. The disclosure hides with the `hidden` attribute and never unmounts: a required
+field taken out of the DOM would post an empty value the first time somebody changed something while
+the panel was shut, and `display: none` takes the fields out of the tab order for free. A switch that
+stays outside the disclosure opens it when it makes the record dirty, so the change always has a
+Save on screen.
+
+**The Destructive Control Comes After The Thing It Deletes Rule.** Delete group sits at the foot of
+the card, below the options. It used to sit between the group's fields and its options, ruled off on
+both sides, which is the most isolated and therefore most prominent position on a card, given to the
+one action nobody came here to perform.
+
+Three screens take this table: option groups, categories, and the sizes inside the item editor. It
+has one implementation, `components/ui/WorkspaceTable.tsx`, because three separately authored column
+lists would drift from each other and from this document on the first change.
+
+### The workspace form section
+
+The shape a Workspace form takes when it has more than one part.
+`components/ui/WorkspaceSection.tsx` is the implementation.
+
+From `lg` up a section is two columns: a `16rem` rail carrying the heading and its explanation, and
+a body carrying the controls. Below `lg` it stacks into heading, description, controls, which is the
+order the page already reads in. The rail is wide enough for these explanations to set at a readable
+measure and narrow enough that the body still holds a five column table at `lg`.
+
+**The Section Outranks Its Own Fields Rule.** A section's name is an `<h2>` in the display face at
+panel size in full bone. It used to be a `<p>` set in the same size and family as the field labels
+underneath it and at a *lower* alpha, 55 against 65, so "DETAILS" was the weakest text inside its own
+card and "CATEGORY" outranked it. A form whose sections are quieter than its fields cannot be skimmed
+for the section you want, which is the only way anybody navigates a long form. It also gave the form
+no heading structure at all for a screen reader.
+
+**The Prose Leaves The Control Flow Rule.** Explanation goes in the rail. The item editor carried
+five sections each opening with one to three paragraphs before any control appeared: the note on
+"On the menu" ran to four lines under two checkboxes, and the sizes explanation to five lines before
+the first field. Every visit paid for instruction that is read once, and it was paid in the vertical
+space between the controls somebody came to use. Nothing is dropped and no word is rewritten; the
+rail is a place to put them.
+
+A hint that belongs to one field rather than to the section stays with that field, under the row it
+describes and named by `aria-describedby`, at a capped measure. The code hint used to sit under a
+three field row where it read as a note about all three, and inside its own 128px column it set at
+five words a line.
+
+**The Commit Is The Foot Of The Form, Not A Card After It.** The button that saves a form sits
+after everything it commits, on the same two column grid as the sections above it with the rail
+empty, and inside the last section's own plate rather than on a plate of its own. An inset bone at
+15% rule divides them, the same device that separates an option group's identity from its options.
+Whatever blocks the button is stated beside it at the weight of body copy.
+
+This replaces an earlier rule that asked for a strip of its own on the section geometry, and the
+correction is the interesting half. Alignment alone did not do the work claimed for it. A rail
+carrying nothing, a body column carrying one 44px button, and the same charcoal plate at the same
+width as the four real sections around it: the eye reads "section", finds no heading and no content,
+and the card reads as unfinished rather than as a commit. The 16rem offset only says something when
+a control directly above it wears the same left edge, and in a plate of its own there was nothing
+above it at all. Attached, the button lands under the last control it commits, and the block ends
+the way the per size price grid already ended, with the content and then the one Save that commits
+it.
+
+Two smaller things the same pass fixed, both worth repeating. The blocking reason used to be 12px at
+55% bone, the quietest text on the page, explaining the one control nobody could press. And the
+status line sat in the button's flex row inside a `w-full` wrapper, which is a flex item whether or
+not the message renders, so an idle form paid a row gap for a line that was not there.
+
 ### Selection controls
 
 A distinct family from buttons. Size chips, flavour tiles, option rows and pickup windows carry

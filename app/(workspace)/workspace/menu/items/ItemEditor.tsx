@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import type {
   ManagedCategory,
@@ -327,17 +328,28 @@ export function ItemEditor({
   }
 
   const disabled = pending || leaving;
+  const activeCount = activeSizes.length;
 
   return (
     <div className="mt-7 space-y-4">
-      <form action={saveAction}>
+      <form action={saveAction} className="space-y-4">
         {/* Unconditional, and the only field this form posts. Rendering it
             inside a branch is how a form like this loses its whole body. */}
         <input type="hidden" name="payload" value={payload} />
 
-        <section className="bg-nybb-charcoal rounded-md p-5">
-          <p className="type-caps text-nybb-bone/55">Details</p>
-          <div className="mt-4 flex flex-wrap items-end gap-4">
+        <WorkspaceSection
+          title="Details"
+          description={
+            <p>
+              What the item is called and where it sits on the menu. Renaming it never changes its
+              web address.
+            </p>
+          }
+        >
+          {/* Category first, and on its own line. It is the first thing the
+              save gate refuses without, and a select with a placeholder does
+              not want the width of a name field. */}
+          <div className="max-w-sm">
             <WorkspaceSelect
               // The action reads `payload` and nothing else. This name exists
               // because the control requires one, and what it puts in FormData
@@ -350,9 +362,15 @@ export function ItemEditor({
               placeholder="Choose a category"
               onValueChange={(value) => setCategoryId(value ?? "")}
               disabled={disabled}
-              className="min-w-56 flex-1"
             />
-            <div className="min-w-56 flex-[2]">
+          </div>
+
+          {/* Name and Code on one line, because the code is the name's short
+              handle. They used to be the two ends of a three field row, a
+              thousand pixels apart on a desktop, with the hint that explains
+              the code sitting under all three. */}
+          <div className="mt-4 flex flex-wrap items-start gap-4">
+            <div className="min-w-56 flex-1">
               <WorkspaceFieldLabel htmlFor={`${uid}-name`}>Name</WorkspaceFieldLabel>
               <WorkspaceInput
                 id={`${uid}-name`}
@@ -371,10 +389,16 @@ export function ItemEditor({
                 onChange={(event) => setCode(event.target.value)}
                 maxLength={16}
                 disabled={disabled}
+                aria-describedby={`${uid}-code-hint`}
               />
             </div>
           </div>
-          <p className="text-nybb-bone/55 mt-2 text-xs">
+          {/* Under the row and not inside the 128px column, which set it at
+              five words a line and left a hole under Name the height of the
+              paragraph. It is still named by the field it belongs to, and the
+              row now holds only Name and Code, so a note that opens with "The
+              code" cannot be read as being about anything else. */}
+          <p id={`${uid}-code-hint`} className="text-nybb-bone/65 mt-2 max-w-md text-xs">
             The code is the short handle from the printed menu, like BB1. Leave it empty when the
             item does not have one.
           </p>
@@ -387,14 +411,15 @@ export function ItemEditor({
               onChange={(event) => setDescription(event.target.value)}
               maxLength={500}
               disabled={disabled}
+              aria-describedby={`${uid}-description-hint`}
               className="mt-2 w-full px-3.5 py-2.5 text-base sm:text-sm"
             />
-            <p className="text-nybb-bone/55 mt-2 text-xs">
+            <p id={`${uid}-description-hint`} className="text-nybb-bone/65 mt-2 max-w-md text-xs">
               What a customer reads on the item page. Up to 500 characters.
             </p>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-4">
+          <div className="mt-4 flex flex-wrap gap-3">
             <label className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5">
               <WorkspaceCheckbox
                 checked={isFeatured}
@@ -408,16 +433,51 @@ export function ItemEditor({
                 checked={isActive}
                 onChange={(event) => setIsActive(event.target.checked)}
                 disabled={disabled}
+                aria-describedby={`${uid}-active-hint`}
               />
               <span className="text-sm">On the menu</span>
             </label>
           </div>
-          <p className="text-nybb-bone/55 mt-2 text-xs">
+          {/* Capped at a readable measure. Full bleed in the body column it
+              set at roughly 148 characters a line, which is twice the ceiling
+              for reading copy at any size. */}
+          <p id={`${uid}-active-hint`} className="text-nybb-bone/65 mt-2 max-w-lg text-xs">
             Turning this off takes the item off the menu at every branch, indefinitely, until
-            someone turns it back on. To stop selling it for one shift at one counter, mark it
-            sold out from the menu list instead.
+            someone turns it back on. To stop selling it for one shift at one counter, mark it sold
+            out from the menu list instead.
           </p>
-        </section>
+        </WorkspaceSection>
+
+        <WorkspaceSection
+          title="Sizes"
+          description={
+            <>
+              <p>
+                The size name is what a customer picks, like &quot;Half, 6 pieces&quot;. The short
+                name is what the kitchen ticket prints, like &quot;HALF&quot;.
+              </p>
+              <p>
+                They are two separate fields and neither is worked out from the other. One size is
+                the default, which is the one the item page opens on.
+              </p>
+            </>
+          }
+          aside={`${activeCount} size${activeCount === 1 ? "" : "s"} on the menu`}
+        >
+          <SizeRows
+            idPrefix={uid}
+            radioName={`${uid}-default-size`}
+            sizes={sizes}
+            effectiveDefaultKey={effectiveDefaultKey}
+            announcement={announcement}
+            disabled={disabled}
+            onUpdate={updateSize}
+            onDefaultChange={setDefaultKey}
+            onRemove={removeSize}
+            onRestore={restoreSize}
+            onAdd={addSize}
+          />
+        </WorkspaceSection>
 
         {/* ImageField used to carry its own <form>, which could not nest
             inside this one (the browser flattens a nested form and its
@@ -429,112 +489,163 @@ export function ItemEditor({
             stays as the marker of where "Photo" sits in the reading order.
             HeatPriceGrid below still has the original constraint. */}
 
-        <SizeRows
-          idPrefix={uid}
-          radioName={`${uid}-default-size`}
-          sizes={sizes}
-          effectiveDefaultKey={effectiveDefaultKey}
-          announcement={announcement}
-          disabled={disabled}
-          onUpdate={updateSize}
-          onDefaultChange={setDefaultKey}
-          onRemove={removeSize}
-          onRestore={restoreSize}
-          onAdd={addSize}
-        />
-
-        <section className="bg-nybb-charcoal mt-4 rounded-md p-5">
-          <p className="type-caps text-nybb-bone/55">Options</p>
-          <p className="text-nybb-bone/55 mt-2 text-xs">
-            The groups of choices this item offers, like flavours or heat. What is inside each
-            group is managed on the option groups screen.
-          </p>
-          {optionGroups.length === 0 ? (
-            <p className="text-nybb-bone/55 mt-4 text-sm">No option groups exist yet.</p>
-          ) : (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {optionGroups.map((group) => (
-                <label
-                  key={group.id}
-                  className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2"
-                >
-                  <WorkspaceCheckbox
-                    checked={selectedGroupIds.has(group.id)}
-                    onChange={(event) => toggleGroup(group.id, event.target.checked)}
-                    disabled={disabled}
-                  />
-                  <span className="min-w-0 text-sm">
-                    {group.name}
-                    <span className="text-nybb-bone/55 ml-2 text-xs">
-                      {group.options.length} option{group.options.length === 1 ? "" : "s"}
-                      {group.isActive ? "" : ", off the menu"}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button
-            type="submit"
-            tone="dark"
-            variant="primary"
-            disabled={disabled || problem !== null}
-            className="min-h-11"
+        {/* The form's last section and the commit footer are one plate, which
+            is why they are wrapped rather than being two children of the
+            form's `space-y-4`. See the footer's own comment below. */}
+        <div>
+          <WorkspaceSection
+            title="Options"
+            className="rounded-b-none"
+            description={
+              <p>
+                The groups of choices this item offers, like flavours or heat. What is inside each
+                group is managed on the option groups screen.
+              </p>
+            }
           >
-            {savePending ? (
-              <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+            {optionGroups.length === 0 ? (
+              <p className="text-nybb-bone/65 text-sm">No option groups exist yet.</p>
             ) : (
-              <Save aria-hidden className="size-4" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {optionGroups.map((group) => (
+                  <label
+                    key={group.id}
+                    className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2"
+                  >
+                    <WorkspaceCheckbox
+                      checked={selectedGroupIds.has(group.id)}
+                      onChange={(event) => toggleGroup(group.id, event.target.checked)}
+                      disabled={disabled}
+                    />
+                    <span className="min-w-0 text-sm">
+                      {group.name}
+                      <span className="text-nybb-bone/65 ml-2 text-xs">
+                        {group.options.length} option{group.options.length === 1 ? "" : "s"}
+                        {group.isActive ? "" : ", off the menu"}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
             )}
-            {item ? "Save item" : "Add item"}
-          </Button>
-          {problem ? <p className="text-nybb-bone/55 text-xs">{problem}</p> : null}
+          </WorkspaceSection>
+
+          {/* The commit footer, and the third cut of it.
+              ============================================================
+              It began as a loose button between the Options card and the
+              Photo card, so on the edit route the action that saves the form
+              sat two sections short of the end of the page and the reason it
+              was disabled was set in the quietest text on the screen. That
+              was fixed by giving it a card of its own on the section
+              geometry, on the theory that lining the button up with the
+              controls it commits would make it read as the last row of the
+              form.
+
+              It did not, and the reason is worth keeping. A rail carrying
+              nothing, a body column carrying one 44px button, and the same
+              charcoal plate at the same width as the four real sections
+              around it: the eye reads "section", finds no heading and no
+              content, and the card reads as unfinished. Alignment could not
+              do that job alone, because at `lg` the button was indented
+              16rem into an otherwise empty plate with nothing above it in
+              the same column to align *to*. The offset only says something
+              when a control directly above it wears the same left edge.
+
+              So the footer is the foot of the form's last card rather than a
+              card after it. Same plate, no gap, and an inset bone/15 rule
+              where the section's contents stop and its commit starts, which
+              is the device OptionGroupEditor already uses between a group's
+              identity and its options. The button keeps the body column and
+              now sits directly under the option checkboxes, sharing their
+              left edge, and the block ends the way the per size price grid
+              ends: the content, then the one Save that commits it. */}
+          <div className="bg-nybb-charcoal rounded-b-md px-4 pb-4 sm:px-5 sm:pb-5">
+            <div className="border-nybb-bone/15 border-t pt-4 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-x-8">
+              <div aria-hidden className="hidden lg:block" />
+              <div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                  <Button
+                    type="submit"
+                    tone="dark"
+                    variant="primary"
+                    disabled={disabled || problem !== null}
+                    className="min-h-11"
+                  >
+                    {savePending ? (
+                      <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <Save aria-hidden className="size-4" />
+                    )}
+                    {item ? "Save item" : "Add item"}
+                  </Button>
+                  {problem ? (
+                    // Not an error: nothing has failed and nobody has done
+                    // anything wrong yet. It names the next thing to fill in,
+                    // so it reads as instruction at the weight of body copy
+                    // rather than as the quietest text on the page, which is
+                    // where it used to be.
+                    <p className="text-nybb-bone/65 max-w-md text-sm">{problem}</p>
+                  ) : null}
+                </div>
+                {/* Out of the flex row and unwrapped. It used to sit in the
+                    row inside a `w-full` div, which is a flex item whether or
+                    not the message renders, so an idle form paid `gap-y-3`
+                    for a line that was not there. */}
+                <MenuStatusMessage state={saveState} />
+              </div>
+            </div>
+          </div>
         </div>
-        <MenuStatusMessage state={saveState} />
       </form>
 
-      <section className="bg-nybb-charcoal mt-4 rounded-md p-5">
-        <p className="type-caps text-nybb-bone/55">Photo</p>
+      <WorkspaceSection
+        title="Photo"
+        description={<p>The square tile the storefront draws.</p>}
+      >
         {item ? (
-          <div className="mt-4">
-            <ImageField target={{ kind: "item", itemId: item.id }} image={item.image} />
-          </div>
+          <ImageField target={{ kind: "item", itemId: item.id }} image={item.image} />
         ) : (
-          <p className="text-nybb-bone/55 mt-2 text-xs">
+          // Said once. The rail carried "a photograph can be uploaded once the
+          // item has been saved" and the body carried "add the item first",
+          // which is the same sentence twice in one section.
+          <p className="text-nybb-bone/65 text-sm">
             Add the item first. Its photograph can be uploaded once it has been saved.
           </p>
         )}
-      </section>
+      </WorkspaceSection>
 
       {/* Outside the item's own <form>, deliberately. HeatPriceGrid renders
-          one <form> per option row, each with its own Server Action, and a
-          <form> nested inside another <form> is invalid HTML: the browser
-          would not submit it independently, defeating the whole point of a
-          per row save. Task 9 left the render marker inside the item form;
-          it moves out here for that reason. */}
+          its own <form> with its own Server Action, and a <form> nested inside
+          another <form> is invalid HTML: the browser would not submit it
+          independently, defeating the whole point of a separate save. Task 9
+          left the render marker inside the item form; it moves out here for
+          that reason. */}
       <HeatPriceGrid idPrefix={uid} item={item} optionGroups={optionGroups} />
 
       {item ? (
-        <form action={deleteAction} className="bg-nybb-charcoal rounded-md p-5">
-          <input type="hidden" name="entity" value="item" />
-          <input type="hidden" name="id" value={item.id} />
-          <ConfirmDeleteButton
-            label="Delete item"
-            name={item.name}
-            meta={item.code ?? undefined}
-            consequence="The item, its sizes and the option groups it offers all go. It leaves the menu at every branch, and past orders keep their own record of it."
-            disabled={disabled}
-            pending={deletePending}
-          />
-          <p className="text-nybb-bone/55 mt-2 text-xs">
-            An item that any past order references cannot be deleted. Take it off the menu
-            instead, which leaves those receipts intact.
-          </p>
-          <MenuStatusMessage state={deleteState} />
-        </form>
+        <WorkspaceSection
+          title="Delete"
+          description={
+            <p>
+              An item that any past order references cannot be deleted. Take it off the menu
+              instead, which leaves those receipts intact.
+            </p>
+          }
+        >
+          <form action={deleteAction}>
+            <input type="hidden" name="entity" value="item" />
+            <input type="hidden" name="id" value={item.id} />
+            <ConfirmDeleteButton
+              label="Delete item"
+              name={item.name}
+              meta={item.code ?? undefined}
+              consequence="The item, its sizes and the option groups it offers all go. It leaves the menu at every branch, and past orders keep their own record of it."
+              disabled={disabled}
+              pending={deletePending}
+            />
+            <MenuStatusMessage state={deleteState} />
+          </form>
+        </WorkspaceSection>
       ) : null}
     </div>
   );

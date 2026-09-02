@@ -4,6 +4,7 @@ import { LoaderCircle, Save } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
 import type {
   ManagedItem,
   ManagedOption,
@@ -236,22 +237,26 @@ function HeatPriceForm({
   const headingCell = "text-nybb-bone/55 type-caps border-nybb-bone/10 border-b py-2 font-normal";
 
   return (
-    <section className="bg-nybb-charcoal mt-4 rounded-md p-5">
-      <p className="type-caps text-nybb-bone/55">Per size prices</p>
-      <p className="text-nybb-bone/55 mt-2 text-xs">
-        These options have no single price. They cost a different amount on each size, so each
-        one is priced here instead of on the options screen.
-      </p>
-      <p className="text-nybb-bone/55 mt-1 text-xs">
-        Leave a size blank to remove its price. A price of 0 is kept and means free, it is not
-        the same as blank.
-      </p>
-      <p className="text-nybb-bone/55 mt-1 text-xs">
-        These columns are the saved sizes on this item. Save the item above before a size you just
-        added or renamed shows up or updates here.
-      </p>
-
-      <form action={action} className="mt-4">
+    <WorkspaceSection
+      title="Per size prices"
+      description={
+        <>
+          <p>
+            These options have no single price. They cost a different amount on each size, so each
+            one is priced here instead of on the options screen.
+          </p>
+          <p>
+            Leave a size blank to remove its price. A price of 0 is kept and means free, it is not
+            the same as blank.
+          </p>
+          <p>
+            These columns are the saved sizes on this item. Save the item above before a size you
+            just added or renamed shows up or updates here.
+          </p>
+        </>
+      }
+    >
+      <form action={action}>
         {/* Unconditional, and the only field this form posts. */}
         <input type="hidden" name="payload" value={payload} />
 
@@ -311,7 +316,11 @@ function HeatPriceForm({
                           }))
                         }
                         disabled={pending}
-                        className="mt-0"
+                        // The numeric face, like every other price in the
+                        // workspace. These sit in a column and are read down
+                        // it, which is the whole reason The Numbers Are Mono
+                        // Rule exists.
+                        className="mt-0 font-mono tabular-nums"
                       />
                     </td>
                   ))}
@@ -340,6 +349,6 @@ function HeatPriceForm({
         </div>
         <MenuStatusMessage state={state} />
       </form>
-    </section>
+    </WorkspaceSection>
   );
 }

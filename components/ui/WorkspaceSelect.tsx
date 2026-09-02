@@ -22,6 +22,8 @@ export function WorkspaceSelect<Value extends string>({
   onValueChange,
   disabled,
   className,
+  labelClassName,
+  controlClassName,
 }: {
   id: string;
   name: string;
@@ -47,6 +49,17 @@ export function WorkspaceSelect<Value extends string>({
   onValueChange?: (value: Value | null) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * For a caller that labels this control somewhere else, such as a grid
+   * whose column headers name every cell in the column. Pass `lg:sr-only` to
+   * keep the label in the accessibility tree while the header does the
+   * visible work; a header cell is not programmatically the label of an input
+   * several rows below it, so removing it outright would leave the trigger
+   * announcing only its value.
+   */
+  labelClassName?: string;
+  /** Margin between the label and the trigger, for the same callers. */
+  controlClassName?: string;
 }) {
   return (
     <Select.Root<Value>
@@ -60,13 +73,14 @@ export function WorkspaceSelect<Value extends string>({
       disabled={disabled}
     >
       <div className={cn("min-w-0", className)}>
-        <Select.Label className="type-caps text-nybb-bone/65 block cursor-default">
+        <Select.Label className={cn("type-caps text-nybb-bone/65 block cursor-default", labelClassName)}>
           {label}
         </Select.Label>
         <Select.Trigger
           className={cn(
             PRESSABLE,
             "group border-nybb-bone/40 bg-nybb-graphite text-nybb-bone mt-2 flex min-h-11 w-full min-w-0 items-stretch justify-between rounded-md border text-left text-base outline-none sm:text-sm",
+            controlClassName,
             "hover:not-data-disabled:border-nybb-bone/65 hover:not-data-disabled:bg-nybb-bone/5",
             "data-popup-open:border-nybb-orange data-popup-open:bg-nybb-bone/5",
             "data-disabled:border-nybb-bone/15 data-disabled:text-nybb-bone/35",

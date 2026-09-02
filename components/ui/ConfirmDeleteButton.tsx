@@ -74,6 +74,9 @@ export function ConfirmDeleteButton({
   name,
   meta,
   consequence,
+  iconOnly = false,
+  triggerLabel,
+  form,
   disabled = false,
   pending = false,
   className,
@@ -86,6 +89,41 @@ export function ConfirmDeleteButton({
   meta?: string;
   /** What deleting this actually does, in one or two sentences. */
   consequence: string;
+  /**
+   * Drops the trigger's words and leaves the trash icon on the 44px square.
+   *
+   * For a control that repeats once per row. A labelled delete button beside
+   * every option in a fifteen row grid is fifteen instances of the rarest and
+   * most dangerous action on the screen, which is the opposite of the weight
+   * it should carry. The dialog is unchanged: it still spells the action out,
+   * still names the record, and still opens on Cancel. Nothing is hidden, only
+   * the repetition is.
+   *
+   * The accessible name does not shrink with the button. It comes from
+   * `triggerLabel` when the row needs to say which record it deletes, and from
+   * `label` otherwise, so a screen reader never meets fifteen buttons called
+   * the same thing.
+   */
+  iconOnly?: boolean;
+  /**
+   * The id of the <form> this trigger submits, for a layout where the two
+   * cannot be parent and child.
+   *
+   * The options grid is one grid per row, so a delete form wrapped around
+   * this button would be a second grid container inside the first and the
+   * trash would not sit in the row's last column. Instead the form is a
+   * sibling holding only its hidden fields and this points at it, which is
+   * exactly what the HTML `form` attribute is for: `button.form` resolves
+   * through it, so `confirm()` below still finds and submits the right one.
+   */
+  form?: string;
+  /**
+   * The trigger's accessible name, when `label` alone would be ambiguous
+   * among siblings. "Delete option: Classic Buffalo" on the trigger, while
+   * the dialog it opens still asks "Delete option?" and confirms with the
+   * plain words. Defaults to `label`.
+   */
+  triggerLabel?: string;
   disabled?: boolean;
   pending?: boolean;
   className?: string;
@@ -98,9 +136,13 @@ export function ConfirmDeleteButton({
   function confirm() {
     // Read the form before closing. Closing does not move the button, but
     // taking the reference first keeps this independent of that.
-    const form = triggerRef.current?.form;
+    //
+    // `.form` is the DOM property, which resolves the `form` content
+    // attribute when there is one and walks up to the ancestor <form> when
+    // there is not. Both call shapes therefore land here unchanged.
+    const target = triggerRef.current?.form;
     dialogRef.current?.close();
-    form?.requestSubmit();
+    target?.requestSubmit();
   }
 
   return (
@@ -110,6 +152,9 @@ export function ConfirmDeleteButton({
         type="button"
         tone="dark"
         variant="danger"
+        size={iconOnly ? "icon" : "default"}
+        form={form}
+        aria-label={iconOnly ? (triggerLabel ?? label) : undefined}
         onClick={() => dialogRef.current?.showModal()}
         disabled={disabled || pending}
         className={cn("min-h-11", className)}
@@ -119,7 +164,7 @@ export function ConfirmDeleteButton({
         ) : (
           <Trash2 aria-hidden className="size-4" />
         )}
-        {label}
+        {iconOnly ? null : label}
       </Button>
 
       <dialog
