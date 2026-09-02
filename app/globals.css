@@ -260,6 +260,39 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* The staff workspace owns the document ground, it does not cover it.
+     ================================================================
+     "On every route" above was a claim nobody had checked, and it is the
+     same claim that put the wall drawing on body::before until the 404
+     disproved it. The amber gradient is the customer site's ground. The
+     workspace is not the customer site, and it was only ever hiding the
+     gradient by painting an ink div on top of it.
+
+     A div can only cover the box it is laid out in, and the viewport is
+     not always that box. Opening a Base UI Select scroll locks the page
+     with `scrollbar-gutter: stable; overflow: hidden` on <html>, which
+     takes the scrollbar away and reserves its 15px so the content does
+     not jump sideways. The shell keeps its old width, correctly, but
+     body's gradient is `background-attachment: fixed`, so it paints
+     against the viewport rather than against that box, and the reserved
+     gutter fills with raw Griddle Amber for as long as the popup is
+     open. It arrives in the scrollbar's slot at the exact moment the
+     scrollbar leaves, so what it looks like from the outside is the
+     scrollbar turning orange. Overscroll and zoom expose the same strip
+     for the same reason.
+
+     So the ground is decided by the route rather than by the document.
+     The grain goes with it: it exists to dither this gradient, and it
+     has nothing to dither here. */
+  body:has(.workspace-shell) {
+    background-color: var(--color-nybb-ink);
+    background-image: none;
+  }
+
+  body:has(.workspace-shell)::after {
+    content: none;
+  }
+
   @supports not (overflow: clip) {
     html,
     body {
