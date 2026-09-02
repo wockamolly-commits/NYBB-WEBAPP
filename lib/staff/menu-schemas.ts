@@ -69,3 +69,35 @@ export const optionSchema = z
       value.pricing === "bySize" ? null : value.pricing === "free" ? 0 : value.priceCents,
     resolvedHeatPercent: value.heatPercent === "" ? null : value.heatPercent,
   }));
+
+/**
+ * The "Available at" grid, as its one Save posts it.
+ *
+ * `sellHere` is the tick box: true means this counter sells the item, false
+ * means it does not. The action turns each one into a hold write or a lift,
+ * so this schema deliberately does not carry a hold `kind`. The item editor
+ * only ever writes the indefinite kind, and a kind arriving from the browser
+ * would be a way to set a timed hold from a screen that has no time field.
+ *
+ * `name` is carried only so a failure can say which counter did not save,
+ * exactly as optionPriceRowSchema carries one. It is never written.
+ */
+export const branchAvailabilityRowSchema = z.object({
+  branchId: z.uuid(),
+  name: z.string().trim().min(1).max(120),
+  sellHere: z.boolean(),
+});
+
+export const branchAvailabilityGridSchema = z.object({
+  itemId: z.uuid(),
+  /**
+   * Only the counters whose state actually changed. The grid works that out
+   * rather than posting all nine, so an untouched counter is never rewritten,
+   * never audited and never able to fail. Empty is normal: it means somebody
+   * pressed Save without changing anything.
+   *
+   * Capped at the number of branches that could plausibly exist. A payload
+   * longer than that is not a person ticking boxes.
+   */
+  branches: z.array(branchAvailabilityRowSchema).max(50),
+});

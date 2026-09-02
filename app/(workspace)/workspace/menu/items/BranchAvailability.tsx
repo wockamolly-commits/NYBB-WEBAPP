@@ -1,10 +1,13 @@
 "use client";
 
-import { LoaderCircle, PauseCircle, PlayCircle } from "lucide-react";
-import { useActionState } from "react";
+import { LoaderCircle, Save } from "lucide-react";
+import { useActionState, useId, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
 import {
+  TABLE_MARK_CELL,
+  TABLE_MARK_WORD,
   TABLE_ROW,
   TABLE_ROW_COLUMNS,
   TableHead,
@@ -12,20 +15,16 @@ import {
   tableRowClass,
   tableRowStyle,
 } from "@/components/ui/WorkspaceTable";
-import { cn } from "@/lib/utils";
 import {
   availabilityStatusLine,
-  nextHoldKind,
+  changedBranches,
+  sellsHereByBranch,
   soldOutCount,
   tradingBranches,
 } from "@/lib/staff/branch-availability";
-import type {
-  ManagedBranch,
-  ManagedHold,
-  ManagedItem,
-  MenuActionState,
-} from "@/lib/staff/menu-types";
-import { setMenuItemHold } from "../actions";
+import type { ManagedBranch, ManagedItem, MenuActionState } from "@/lib/staff/menu-types";
+import { cn } from "@/lib/utils";
+import { setMenuItemBranchAvailability } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
@@ -41,17 +40,26 @@ const initialState: MenuActionState = { status: "idle" };
  * because the end of the hold is the whole point of it.
  *
  * This is the owner's view of the same table, and it answers a different
- * question: which counters sell this item at all. So it sets and lifts, and
- * the hold it writes is `indefinite`, "until someone puts it back", which is
- * the only kind that means "we do not sell this here" rather than "we are out
- * right now". Timed holds stay where they belong, on the screen the person
- * with the empty fryer is already looking at.
+ * question: which counters sell this item at all. So the tick box writes the
+ * `indefinite` kind, "until someone puts it back", which is the only one that
+ * means "we do not sell this here" rather than "we are out right now". Timed
+ * holds stay where they belong, on the screen the person with the empty fryer
+ * is already looking at.
  *
  * A second full kind-and-time control here would be two implementations of
  * one thing, and the more dangerous half is that they would drift. What this
  * does instead is READ every kind faithfully, including a timed hold set at
- * the counter an hour ago, and let it be lifted from here. One table, two
- * screens onto it, no second way to say the same thing.
+ * the counter an hour ago, and let it be lifted by ticking the box.
+ *
+ * WHY TICK BOXES AND ONE SAVE, WHICH IS NOT WHAT THIS SHIPPED AS.
+ * ================================================================
+ * It shipped as a Stop selling / Put back button on every row, acting the
+ * moment it was pressed. That reads fine with one counter open and badly with
+ * nine: taking an item off four of them was four presses, four writes and four
+ * audit rows for what the person thought of as a single decision, with no way
+ * to change their mind between the first press and the last. The per size
+ * price grid had the same argument and settled it the same way, and its
+ * reasoning is worth reading beside this one (HeatPriceGrid).
  *
  * Inactive branches are left out. Eight of the nine rows in `branches` have
  * never opened, and "is this item sold at Ayala Center Cebu" is not a question
@@ -66,9 +74,40 @@ export function BranchAvailability({
 }) {
   const trading = tradingBranches(branches);
 
-  // The columns, once, for the header and every row. Two hand written lists
-  // drift on the first change: see WorkspaceTable.
-  const columns = tableColumns("minmax(8rem,1fr)", "minmax(10rem,1.4fr)", "12rem");
+  if (trading.length === 0) {
+    return (
+      <WorkspaceSection title="Available at" description={<p>Which counters sell this item.</p>}>
+        <p className="text-nybb-bone/65 text-sm">
+          No branch is trading yet. Once one opens it appears here.
+        </p>
+      </WorkspaceSection>
+    );
+  }
+
+  return <AvailabilityGrid item={item} trading={trading} />;
+}
+
+/**
+ * Split from the component above so the hooks below are never rendered
+ * conditionally: the no-branch case returns before this exists, rather than
+ * this one calling useState after an early return.
+ */
+function AvailabilityGrid({ item, trading }: { item: ManagedItem; trading: ManagedBranch[] }) {
+  const uid = useId();
+  const [state, action, pending] = useActionState(setMenuItemBranchAvailability, initialState);
+
+  // Seeded from the saved holds, keyed by branch id. Not re-seeded when the
+  // server answers: the page revalidates on a successful save, which sends
+  // fresh holds through as new props, and `changed` below is what goes quiet.
+  const [drafts, setDrafts] = useState<Record<string, boolean>>(() =>
+    sellsHereByBranch(item.holds, trading),
+  );
+
+  const changed = changedBranches(drafts, item.holds, trading);
+  const payload = JSON.stringify({ itemId: item.id, branches: changed });
+  const soldOut = soldOutCount(item.holds, trading);
+
+  const columns = tableColumns("minmax(8rem,1fr)", "minmax(10rem,1.2fr)", "9rem");
 
   return (
     <WorkspaceSection
@@ -76,8 +115,9 @@ export function BranchAvailability({
       description={
         <>
           <p>
-            Which counters sell this item. Taking it off one counter leaves it on every other one,
-            and leaves it on the menu of a customer who has not chosen a store yet.
+            Which counters sell this item. Untick as many as you like and press Save once. Taking
+            it off one counter leaves it on every other one, and leaves it on the menu of a
+            customer who has not chosen a store yet.
           </p>
           <p>
             This is the long running answer. To stop selling it for one shift, mark it sold out
@@ -85,114 +125,90 @@ export function BranchAvailability({
           </p>
         </>
       }
-      aside={
-        trading.length === 0
-          ? undefined
-          : `${soldOutCount(item.holds, trading)} of ${trading.length} sold out`
-      }
+      aside={`${soldOut} of ${trading.length} sold out`}
     >
-      {trading.length === 0 ? (
-        <p className="text-nybb-bone/65 text-sm">
-          No branch is trading yet. Once one opens it appears here.
-        </p>
-      ) : (
-        <div>
-          <TableHead columns={columns}>
-            <div>Counter</div>
-            <div>Status</div>
-            <div />
-          </TableHead>
-          {trading.map((branch) => (
-            <BranchRow
+      <form action={action}>
+        <input type="hidden" name="payload" value={payload} />
+
+        <TableHead columns={columns}>
+          <div>Counter</div>
+          <div>Now</div>
+          <div className="text-center">Selling here</div>
+        </TableHead>
+
+        {trading.map((branch) => {
+          const hold = item.holds.find((candidate) => candidate.branchId === branch.id);
+          const boxId = `${uid}-${branch.id}`;
+          return (
+            <div
               key={branch.id}
-              item={item}
-              branch={branch}
-              hold={item.holds.find((candidate) => candidate.branchId === branch.id)}
-              columns={columns}
-            />
-          ))}
-        </div>
-      )}
-    </WorkspaceSection>
-  );
-}
+              className={cn(tableRowClass("saved"), TABLE_ROW, TABLE_ROW_COLUMNS)}
+              style={tableRowStyle(columns)}
+            >
+              <div className="flex min-h-11 items-center lg:min-h-0">
+                <span className="text-sm">{branch.shortName}</span>
+              </div>
 
-/**
- * One counter.
- *
- * Its own <form> with its own action state, which is why it is a component
- * rather than a loop body: two counters changed in a row must not share one
- * pending flag or one message. The same reason every other row in this
- * codebase is its own form.
- */
-function BranchRow({
-  item,
-  branch,
-  hold,
-  columns,
-}: {
-  item: ManagedItem;
-  branch: ManagedBranch;
-  hold: ManagedHold | undefined;
-  columns: string;
-}) {
-  const [state, action, pending] = useActionState(setMenuItemHold, initialState);
-  const held = hold !== undefined;
+              {/* What is saved right now, which is not what the box shows once
+                  somebody has ticked it. Keeping both means a person can see
+                  what they are changing from, and it is the only place a timed
+                  hold set at the counter can be read. */}
+              <div className="flex min-h-11 items-center lg:min-h-0">
+                <span className={cn("text-sm", hold ? "text-nybb-bone/70" : "text-nybb-bone")}>
+                  {availabilityStatusLine(hold)}
+                </span>
+              </div>
 
-  return (
-    <div className={tableRowClass("saved")}>
-      <form
-        action={action}
-        className={cn(TABLE_ROW, TABLE_ROW_COLUMNS)}
-        style={tableRowStyle(columns)}
-      >
-        <input type="hidden" name="itemId" value={item.id} />
-        <input type="hidden" name="branchId" value={branch.id} />
-        {/* "lift" is the schema's word for deleting the hold row. Setting one
-            from here is always indefinite: see the note on the section. */}
-        <input type="hidden" name="kind" value={nextHoldKind(held)} />
+              <div className={TABLE_MARK_CELL}>
+                <WorkspaceCheckbox
+                  id={boxId}
+                  checked={drafts[branch.id] ?? true}
+                  onChange={(event) =>
+                    setDrafts((current) => ({ ...current, [branch.id]: event.target.checked }))
+                  }
+                  disabled={pending}
+                  // Names its own row. A column of boxes all called "Selling
+                  // here" is a column of identical choices to anyone who
+                  // cannot see which row they are in.
+                  aria-label={`Sell ${item.name} at ${branch.shortName}`}
+                />
+                <label htmlFor={boxId} className={TABLE_MARK_WORD}>
+                  Selling here
+                </label>
+              </div>
+            </div>
+          );
+        })}
 
-        <div className="flex min-h-11 items-center lg:min-h-0">
-          <span className="text-sm">{branch.shortName}</span>
-        </div>
-
-        <div className="flex min-h-11 items-center lg:min-h-0">
-          <span className={cn("text-sm", held ? "text-nybb-bone/70" : "text-nybb-bone")}>
-            {availabilityStatusLine(hold)}
-          </span>
-        </div>
-
-        <div className="flex items-center lg:justify-end">
-          {/* Quiet at rest, like every repeated control in this system. The
-              button that puts an item back is the one worth reaching for, so
-              it takes the primary tone and the one that takes it away does
-              not. Its accessible name carries the counter: a column of
-              buttons all called "Mark sold out" is a column of identical
-              choices to anyone who cannot see which row they are in. */}
+        {/* The commit, after everything it commits, on the rule DESIGN.md
+            states for a form's foot. Quiet until there is something to save,
+            like every repeated control in this system: orange here would mean
+            "this is a form" rather than "this is the action". */}
+        <div className="border-nybb-bone/15 mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 border-t pt-4">
           <Button
             type="submit"
             tone="dark"
-            variant={held ? "primary" : "secondary"}
-            disabled={pending}
-            aria-label={
-              held
-                ? `Put ${item.name} back on the menu at ${branch.shortName}`
-                : `Stop selling ${item.name} at ${branch.shortName}`
-            }
-            className="min-h-11 w-full lg:w-auto"
+            variant={changed.length > 0 ? "primary" : "secondary"}
+            disabled={pending || changed.length === 0}
+            className="min-h-11"
           >
             {pending ? (
               <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
-            ) : held ? (
-              <PlayCircle aria-hidden className="size-4" />
             ) : (
-              <PauseCircle aria-hidden className="size-4" />
+              <Save aria-hidden className="size-4" />
             )}
-            {held ? "Put back" : "Stop selling"}
+            Save availability
           </Button>
+          {changed.length > 0 ? (
+            <p className="text-nybb-bone/65 text-sm">
+              {changed.length === 1
+                ? "1 counter changed."
+                : `${changed.length} counters changed.`}
+            </p>
+          ) : null}
         </div>
+        <MenuStatusMessage state={state} />
       </form>
-      <MenuStatusMessage state={state} />
-    </div>
+    </WorkspaceSection>
   );
 }

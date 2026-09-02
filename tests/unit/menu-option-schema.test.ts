@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { optionSchema } from "@/lib/staff/menu-schemas";
+import { branchAvailabilityGridSchema, optionSchema } from "@/lib/staff/menu-schemas";
 
 /**
  * The parse that decides whether an option has a heat level at all.
@@ -72,5 +72,58 @@ describe("optionSchema pricing", () => {
     expect(parse({ pricing: "flat", priceCents: "3000" }).resolvedPriceCents).toBe(3000);
     expect(parse({ pricing: "free", priceCents: "3000" }).resolvedPriceCents).toBe(0);
     expect(parse({ pricing: "bySize", priceCents: "3000" }).resolvedPriceCents).toBeNull();
+  });
+});
+
+describe("branchAvailabilityGridSchema", () => {
+  const branchId = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+
+  it("parses a grid of ticked and unticked counters", () => {
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: false }],
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.branches[0]?.sellHere).toBe(false);
+  });
+
+  it("accepts an empty list, which is Save pressed with nothing changed", () => {
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("refuses a hold kind smuggled in from the browser", () => {
+    // The kind is decided in the action and never posted. If it were carried
+    // here, a screen with no time field could still set a timed hold, which
+    // would expire on its own and put the item back at a counter that was
+    // meant to stop selling it.
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: false, kind: "today" }],
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.branches[0]).not.toHaveProperty("kind");
+  });
+
+  it("refuses a branch id that is not a uuid", () => {
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId: "central-bloc", name: "Central Bloc", sellHere: false }],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("refuses a sellHere that is a string rather than a boolean", () => {
+    // A form posts strings, so "false" reaching a boolean field would be
+    // truthy and turn "stop selling" into "keep selling". This grid posts
+    // JSON precisely so the type survives.
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: "false" }],
+    });
+    expect(parsed.success).toBe(false);
   });
 });

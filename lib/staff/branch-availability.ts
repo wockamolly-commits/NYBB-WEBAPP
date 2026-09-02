@@ -39,16 +39,51 @@ export function soldOutCount(holds: ManagedHold[], trading: ManagedBranch[]): nu
 }
 
 /**
- * What the button on a counter's row does next.
+ * Whether each trading counter currently sells the item, as the tick boxes
+ * start out.
  *
- * "lift" is the hold schema's word for deleting the row. Setting one from the
- * item editor is always `indefinite`, "until someone puts it back", because
- * this screen answers "do we sell this here" and not "are we out right now".
- * The timed kinds stay on the menu list, where the person with the empty
- * fryer already is. See the note on BranchAvailability.
+ * Keyed by branch id rather than positionally, so a branch appearing or
+ * disappearing between one render and the next cannot shift somebody's ticks
+ * onto the wrong counters.
  */
-export function nextHoldKind(held: boolean): "lift" | "indefinite" {
-  return held ? "lift" : "indefinite";
+export function sellsHereByBranch(
+  holds: ManagedHold[],
+  trading: ManagedBranch[],
+): Record<string, boolean> {
+  const seeded: Record<string, boolean> = {};
+  for (const branch of trading) {
+    seeded[branch.id] = !holds.some((hold) => hold.branchId === branch.id);
+  }
+  return seeded;
+}
+
+/**
+ * The counters the Save button actually has to write.
+ *
+ * Only the changed ones, for the reason the price grid sends only changed
+ * rows: an untouched counter rewritten is a write nobody asked for, an audit
+ * row nobody asked for, and one more thing that can fail and take the save
+ * down with it. Empty is normal and means Save was pressed with nothing
+ * altered, which the action answers without touching the database.
+ *
+ * A draft for a branch that is not trading is ignored rather than sent. It
+ * can only arrive from a stale page whose branch list has since changed, and
+ * writing a hold at a counter this screen is no longer showing would be
+ * invisible to the person who pressed the button.
+ */
+export function changedBranches(
+  drafts: Record<string, boolean>,
+  holds: ManagedHold[],
+  trading: ManagedBranch[],
+): Array<{ branchId: string; name: string; sellHere: boolean }> {
+  const saved = sellsHereByBranch(holds, trading);
+  return trading
+    .filter((branch) => branch.id in drafts && drafts[branch.id] !== saved[branch.id])
+    .map((branch) => ({
+      branchId: branch.id,
+      name: branch.shortName,
+      sellHere: drafts[branch.id]!,
+    }));
 }
 
 /**

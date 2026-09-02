@@ -11,9 +11,9 @@ import { serviceClient } from "./fixtures/menu-photo";
  * hold hides the item at its own branch and nowhere else, and a branch-less
  * menu is not hidden from at all. tests/unit/branch-availability.test.ts
  * proves the decisions the section makes before it renders. Neither can see
- * the thing this feature actually has to do, which is that pressing a button
- * on one row changes that row and no other, and that the row reads back the
- * new state WITHOUT a reload.
+ * the thing this feature actually has to do, which is that ticking boxes and
+ * pressing one Save changes exactly those counters and no others, and that
+ * the rows read back the new state WITHOUT a reload.
  *
  * That last clause is the one with a history. A Server Action writes through
  * an RPC and the page it was pressed on is a Server Component reading the
@@ -135,16 +135,27 @@ test("the global switch names its own scope and points at this section", async (
   await expect(page.getByText(/use Available at below/)).toBeVisible();
 });
 
-test("stops selling at one counter, and says so without a reload", async ({ page }) => {
+test("stops selling at a counter through the tick box, without a reload", async ({ page }) => {
   const first = branchNames[0]!;
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
 
   const section = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Available at", exact: true }),
   });
-  await expect(section.getByText("Available", { exact: true }).first()).toBeVisible();
+  const save = section.getByRole("button", { name: "Save availability" });
 
-  await section.getByRole("button", { name: new RegExp(`Stop selling .* at ${first}`) }).click();
+  // Nothing to commit yet, so the button is quiet and dead. A Save that is
+  // pressable before anything changed writes a row nobody asked for.
+  await expect(save).toBeDisabled();
+
+  await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await expect(save).toBeEnabled();
+  await expect(section.getByText("1 counter changed.")).toBeVisible();
+
+  // Still nothing written: the tick is a draft until Save.
+  expect(await holdRows()).toHaveLength(0);
+
+  await save.click();
 
   // The row itself, with no page.reload(). This is the assertion the
   // revalidatePath on /workspace/menu/items/[id] exists for.
@@ -158,20 +169,55 @@ test("stops selling at one counter, and says so without a reload", async ({ page
   expect(rows[0]?.kind).toBe("indefinite");
 });
 
-test("puts the counter back, and leaves no hold row behind", async ({ page }) => {
+test("puts a counter back by ticking it, and leaves no hold row behind", async ({ page }) => {
   const first = branchNames[0]!;
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
 
   const section = page.locator("section").filter({
     has: page.getByRole("heading", { name: "Available at", exact: true }),
   });
-  await section.getByRole("button", { name: new RegExp(`Stop selling .* at ${first}`) }).click();
+  const box = section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) });
+  const save = section.getByRole("button", { name: "Save availability" });
+
+  await box.uncheck();
+  await save.click();
   await expect(section.getByText("Sold out until someone puts it back")).toBeVisible();
 
-  await section.getByRole("button", { name: new RegExp(`Put .* back on the menu at ${first}`) }).click();
+  // The box has to come back unticked after the save, showing what is now
+  // saved. A box that reset itself to ticked would be the option-checkbox
+  // defect again: the screen disagreeing with the database.
+  await expect(box).not.toBeChecked();
+
+  await box.check();
+  await save.click();
   await expect(section.getByText("Available", { exact: true }).first()).toBeVisible();
 
   // Lifting deletes the row. There is deliberately no is_held boolean beside
   // the timestamp, per 0051, so an emptied table is the whole of "available".
   expect(await holdRows()).toHaveLength(0);
+});
+
+test("takes several counters off in one Save", async ({ page }) => {
+  // The reason the row buttons were replaced. With one branch trading this
+  // asserts the single-counter path and the count sentence; with more it is
+  // the real multi-select case, and both are worth having as branches open.
+  test.skip(branchNames.length < 2, "needs a second trading branch to be a multi-counter test");
+
+  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
+  const section = page.locator("section").filter({
+    has: page.getByRole("heading", { name: "Available at", exact: true }),
+  });
+
+  for (const name of branchNames.slice(0, 2)) {
+    await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${name}`) }).uncheck();
+  }
+  await expect(section.getByText("2 counters changed.")).toBeVisible();
+
+  await section.getByRole("button", { name: "Save availability" }).click();
+  await expect(section.getByText("Sold out until someone puts it back").first()).toBeVisible();
+
+  // One press, two writes, and no counter touched that was not ticked.
+  const rows = await holdRows();
+  expect(rows).toHaveLength(2);
+  expect(rows.every((row) => row.kind === "indefinite")).toBe(true);
 });

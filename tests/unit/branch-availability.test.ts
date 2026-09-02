@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   availabilityStatusLine,
+  changedBranches,
   formatManilaInstant,
-  nextHoldKind,
+  sellsHereByBranch,
   soldOutCount,
   tradingBranches,
 } from "@/lib/staff/branch-availability";
@@ -65,16 +66,63 @@ describe("soldOutCount", () => {
   });
 });
 
-describe("nextHoldKind", () => {
-  it("lifts a hold that exists", () => {
-    expect(nextHoldKind(true)).toBe("lift");
+describe("sellsHereByBranch", () => {
+  it("ticks a counter with no hold and unticks one with a hold", () => {
+    expect(sellsHereByBranch([hold(other)], [pilot, other])).toEqual({
+      "branch-pilot": true,
+      "branch-other": false,
+    });
   });
 
-  it("sets an indefinite hold and never a timed one", () => {
-    // The item editor answers "do we sell this here". A timed hold set from
-    // here would expire on its own and put the item back at a counter that
-    // was meant to stop selling it.
-    expect(nextHoldKind(false)).toBe("indefinite");
+  it("covers every trading counter, so no box starts undefined", () => {
+    // A box seeded undefined renders unticked and reads as "we do not sell
+    // here", which is the opposite of the truth for a counter with no hold.
+    expect(Object.keys(sellsHereByBranch([], [pilot, other]))).toEqual([
+      "branch-pilot",
+      "branch-other",
+    ]);
+  });
+
+  it("ignores a hold belonging to a counter that is not listed", () => {
+    expect(sellsHereByBranch([hold(shut)], [pilot])).toEqual({ "branch-pilot": true });
+  });
+});
+
+describe("changedBranches", () => {
+  it("sends nothing when the ticks match what is saved", () => {
+    // Save with nothing altered must not write. Every counter rewritten is an
+    // audit row nobody asked for and one more thing that can fail.
+    const saved = sellsHereByBranch([hold(other)], [pilot, other]);
+    expect(changedBranches(saved, [hold(other)], [pilot, other])).toEqual([]);
+  });
+
+  it("sends only the counter that moved, not its neighbours", () => {
+    const drafts = { "branch-pilot": false, "branch-other": true };
+    expect(changedBranches(drafts, [], [pilot, other])).toEqual([
+      { branchId: "branch-pilot", name: "Central Bloc", sellHere: false },
+    ]);
+  });
+
+  it("sends several at once, which is the whole point of one Save", () => {
+    const drafts = { "branch-pilot": false, "branch-other": false };
+    expect(changedBranches(drafts, [], [pilot, other])).toHaveLength(2);
+  });
+
+  it("carries a tick back as a lift", () => {
+    const drafts = { "branch-pilot": true };
+    expect(changedBranches(drafts, [hold(pilot)], [pilot])).toEqual([
+      { branchId: "branch-pilot", name: "Central Bloc", sellHere: true },
+    ]);
+  });
+
+  it("ignores a draft for a counter that no longer trades", () => {
+    // Only reachable from a page left open while a branch was switched off.
+    // Writing a hold at a counter the screen is not showing would be
+    // invisible to the person who pressed Save.
+    const drafts = { "branch-shut": false, "branch-pilot": false };
+    expect(changedBranches(drafts, [], [pilot])).toEqual([
+      { branchId: "branch-pilot", name: "Central Bloc", sellHere: false },
+    ]);
   });
 });
 

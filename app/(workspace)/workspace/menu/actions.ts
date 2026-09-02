@@ -8,7 +8,7 @@ import { manilaWallClockIso } from "@/lib/staff/manila-dates";
 // optionSchema lives outside this file because a "use server" module may only
 // export async functions, so nothing declared here can be unit tested. See the
 // note in menu-schemas.ts: that is how its heat percent branch stayed wrong.
-import { optionSchema } from "@/lib/staff/menu-schemas";
+import { branchAvailabilityGridSchema, optionSchema } from "@/lib/staff/menu-schemas";
 import {
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -165,6 +165,94 @@ export async function setMenuItemHold(
     status: "success",
     message: kind === null ? "Back on the menu." : "Marked sold out.",
   };
+}
+
+/**
+ * The "Available at" grid, saved by its one button.
+ *
+ * WHY ONE SAVE AND NOT A BUTTON PER COUNTER, WHICH IS WHAT THIS WAS.
+ *
+ * It shipped as a Stop selling / Put back button on every row, acting the
+ * moment it was pressed. That is fine for one counter and wrong for nine:
+ * taking an item off four of them was four presses, four writes and four
+ * audit rows for what the person thought of as one decision, with no way to
+ * change their mind between the first and the last. Tick boxes and one Save
+ * make it one decision again, and nothing is written until it is committed.
+ *
+ * WHY IT LOOPS. staff_set_menu_item_hold takes one (item, branch) pair and
+ * writes at most one audit entry for it. There is no bulk form, and PostgREST
+ * gives one transaction per call, so four counters are four calls. It follows
+ * setItemOptionVariationPrices exactly: keep going after a failure, write
+ * every counter that can be written, and name the ones that could not. A
+ * branch this person may not act on costs that counter and not the other
+ * three.
+ *
+ * The kind is decided here and never sent by the browser. Untick writes an
+ * `indefinite` hold, "until someone puts it back", which is the only kind
+ * that means "we do not sell this here". Tick lifts whatever hold exists,
+ * including a timed one a cashier set from the menu list.
+ */
+export async function setMenuItemBranchAvailability(
+  _previous: MenuActionState,
+  formData: FormData,
+): Promise<MenuActionState> {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? "{}"));
+  } catch {
+    return { status: "error", message: "The counters could not be read. Refresh and try again." };
+  }
+  const parsed = branchAvailabilityGridSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: "Check the counters and try again." };
+
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "menu:availability")) {
+    return { status: "error", message: "You do not have access to change item availability." };
+  }
+
+  if (parsed.data.branches.length === 0) {
+    return { status: "success", message: "No availability changes to save." };
+  }
+
+  const supabase = await createStaffClient();
+  const failed: string[] = [];
+  let firstError: string | undefined;
+
+  for (const row of parsed.data.branches) {
+    const { error } = await supabase.rpc("staff_set_menu_item_hold", {
+      p_item_id: parsed.data.itemId,
+      p_branch_id: row.branchId,
+      // null is the RPC's word for lifting the hold. See holdSchema above,
+      // which spells the same thing "lift" because a form cannot post null.
+      p_kind: row.sellHere ? null : "indefinite",
+      p_unavailable_until: null,
+    });
+    if (error) {
+      console.error("[workspace] branch availability failed:", row.branchId, error.message);
+      failed.push(row.name);
+      firstError ??= error.message;
+    }
+  }
+
+  // Every counter failed, so nothing was written and the reason is the same
+  // for all of them: no access, a missing item. Say the reason rather than
+  // listing the names beside it.
+  if (failed.length === parsed.data.branches.length) {
+    return { status: "error", message: friendlyMenuError(firstError) };
+  }
+
+  refreshMenu();
+  revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+
+  if (failed.length > 0) {
+    return {
+      status: "error",
+      message: `Saved, except ${listNames(failed)}. Refresh the page and try ${
+        failed.length === 1 ? "that counter" : "those counters"
+      } again.`,
+    };
+  }
+  return { status: "success", message: "Availability saved." };
 }
 
 const categorySchema = z.object({

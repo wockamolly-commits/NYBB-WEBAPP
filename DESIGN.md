@@ -710,6 +710,17 @@ menu list, where the person with the empty fryer already is. Two full implementa
 control do not stay identical, and the day they diverge is the day the two screens disagree about
 what an item's state is.
 
+**A Repeated Action Becomes A Column And One Save.** "Available at" shipped first as a Stop selling
+button on every row, acting on the press. That reads fine against one counter and badly against
+nine: taking an item off four of them was four presses, four writes and four audit rows for what
+the person held in their head as one decision, with no way to change their mind between the first
+press and the last. It is now a tick box column and a single Save, which is the shape the per size
+price grid already arrived at from the same argument, and it carries that grid's two conditions:
+only the changed rows are sent, so an untouched counter is never rewritten, and the action does not
+stop at the first failure, so a counter this person may not act on costs that counter and not the
+other three. The Repeated Save Is Quiet Rule still applies to the one button that remains: quiet
+until something has changed, and it names how many counters are about to move.
+
 ### Selection controls
 
 A distinct family from buttons. Size chips, flavour tiles, option rows and pickup windows carry
