@@ -122,6 +122,29 @@ const button = cva(
           "focus-visible:bg-nybb-red-deep focus-visible:text-nybb-bone",
           "active:bg-nybb-red-deeper active:text-nybb-bone active:border-transparent",
         ].join(" "),
+        /**
+         * The same destructive action, already engaged.
+         *
+         * `danger` above is quiet at rest because it sits on a screen that
+         * exists for something else, and a destructive control cannot outrank
+         * the action the screen is for. Inside a confirmation, that reasoning
+         * inverts: the screen exists to ask this one question, the alternative
+         * is Cancel, and a delete that has to be found by hovering is a worse
+         * dialog, not a politer one. DESIGN.md already names Red Deep as the
+         * destructive fill "at rest-engaged"; this is the tier that wears it.
+         *
+         * The fill is the same on both grounds, unlike primary, because red
+         * is legible against amber and against ink alike: bone on Red Deep
+         * measures 5.2:1 and 6.8:1 pressed. Only the disabled state and the
+         * focus ring differ by tone, and both come from the ground.
+         *
+         * Reserve it for a control that is already the answer to a question
+         * the person was asked. Anywhere else it is `danger`.
+         */
+        dangerSolid: [
+          "bg-nybb-red-deep text-nybb-bone",
+          "hover:bg-nybb-red-deeper active:bg-nybb-red-deeper",
+        ].join(" "),
       },
       size: {
         // 44px, the touch target floor, and the height everything in a row
@@ -213,6 +236,19 @@ const button = cva(
         tone: "light",
         class:
           "border-nybb-ink/55 text-nybb-ink/85 disabled:border-nybb-ink/20 disabled:bg-transparent disabled:text-nybb-ink/35",
+      },
+      {
+        // Disabled drops the red rather than fading it. A washed out red
+        // still reads as a warning, and a warning nobody can press is a bug
+        // report. Same reasoning, and the same two values, as the quiet tier.
+        variant: "dangerSolid",
+        tone: "dark",
+        class: "disabled:bg-nybb-bone/15 disabled:text-nybb-bone/60",
+      },
+      {
+        variant: "dangerSolid",
+        tone: "light",
+        class: "disabled:bg-nybb-ink/12 disabled:text-nybb-ink/45",
       },
     ],
     defaultVariants: {

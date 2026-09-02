@@ -912,6 +912,27 @@ here was built as specified.
     the menu a second time in SQL guarantees the two copies disagree within a month, and a menu
     that disagrees with itself charges the wrong price.
 
+11. **Availability is per branch, and a menu asked for no branch answers for none of them.**
+    `menu_items.is_active` is the global switch, off everywhere until somebody turns it back on.
+    Whether a counter sells an item today is `menu_item_branch_holds`, keyed (item, branch), and
+    `menu_item_is_available()` is the single definition both readers call. There is deliberately
+    no second per-branch boolean beside the hold: an `indefinite` hold already means "not sold at
+    this counter", and two ways to say it can disagree.
+
+    Since 0058 a hold also carries **why**, one of four keys (`out_of_stock`, `ingredients`,
+    `equipment`, `temporary`) whose labels live in `lib/staff/menu-types.ts`. The writer refuses a
+    hold without one, so the audit trail can tell a broken fryer from a delivery that did not
+    arrive. Null is not a fifth reason: it marks a row written before that column existed.
+
+    `get_storefront_menu(null)` applies NO holds (0057). It used to resolve a missing slug to the
+    first active branch, so `/menu`, which every customer sees before choosing a store, applied one
+    counter's sold-out list to everybody. This is the one place availability and pricing
+    deliberately diverge: a menu with no prices cannot be rendered, so `resolve_price_list_id`
+    still falls back to the active branch, while availability has a correct answer for "no branch
+    chosen" and it is "show everything". `place_order` is unaffected, because its branch comes
+    from the order payload, so a held item is still refused at checkout and there is no oversell
+    window.
+
 ---
 
 ## 7. Information architecture
@@ -1567,6 +1588,29 @@ Port the voucher engine unchanged. It is complete and well-tested in the referen
 **Deploy discipline, inherited as a hard rule:** every voucher migration goes in **before** the
 code ships. Applying the first migration alone fails open: the screen shows a discount and the
 customer is charged full price.
+
+**Two traps already waiting in the schema.** The `vouchers` table has two nullable number columns
+where null carries meaning, and neither of them means zero:
+
+```sql
+amount_cents bigint check (amount_cents is null or amount_cents > 0),   -- null = a percentage voucher
+max_uses     int    check (max_uses is null or max_uses > 0),           -- null = unlimited
+```
+
+**Do not read either with `z.coerce.number()`.** Coercion turns null into 0, so a percentage voucher
+would parse as a fixed discount of PHP 0.00, and an unlimited voucher would parse as one usable zero
+times, which silently disables it. `max_uses` is the more dangerous of the two: 0 is a plausible
+looking cap, so nothing downstream would flag it, and the effect is every open promo code refusing to
+redeem. The database cannot catch either, because both mistakes happen after the read.
+
+Parse them as `z.number().nullable()` and branch on the null, the way `resolvedHeatPercent` does in
+`lib/staff/menu-schemas.ts`. The same applies to `expires_at` (null = never expires) and
+`owner_user_id` (null = anyone, a promo code rather than a loyalty reward): both are nullable by
+design, and a default applied on read would change what the row means. `min_order_cents` is
+`not null default 0` and needs none of this.
+
+That is not hypothetical. The identical mistake shipped on `menu_options.heat_percent`, where a blank
+form field coerced to 0 and turned "no heat level" into "0% heat" on every save. See AGENTS.md rule 6.
 
 **Launch promo suggestions for the pitch** (do not implement, put them in the README as a
 go-to-market slide): a first-order pickup code, a slow-hours discount targeting the 2pm to 5pm

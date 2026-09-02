@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { catalogImage, catalogImageBySource, imageKeys } from "@/lib/catalog/images";
 import { assembleManagedMenu, type ManagedMenuRows } from "@/lib/staff/menu";
-import { holdSummary } from "@/lib/staff/menu-types";
+import { holdSummary } from "@/lib/staff/branch-availability";
 
 /**
  * An archive photograph that actually ships, taken from the manifest itself.
@@ -39,9 +39,12 @@ const rows: ManagedMenuRows = {
     { item_id: "item-wings", group_id: "grp-heat", is_required: false, min_select: 0, max_select: 1, sort_order: 20 },
   ],
   holds: [
-    { item_id: "item-wings", branch_id: "branch-pilot", kind: "until", unavailable_until: "2026-08-25T18:00:00.000Z" },
+    { item_id: "item-wings", branch_id: "branch-pilot", kind: "until", unavailable_until: "2026-08-25T18:00:00.000Z", reason: "out_of_stock" },
   ],
-  branches: [{ id: "branch-pilot", short_name: "Central Bloc" }],
+  branches: [
+    { id: "branch-pilot", short_name: "Central Bloc", is_active: true },
+    { id: "branch-shut", short_name: "Ayala Center Cebu", is_active: false },
+  ],
   optionPrices: [],
 };
 
@@ -132,7 +135,19 @@ describe("assembleManagedMenu", () => {
     const menu = assembleManagedMenu(rows);
     const item = menu.categories[0]?.items[0];
     expect(item?.holds).toEqual([
-      { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z" },
+      { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z", reason: "out_of_stock" },
+    ]);
+  });
+
+  it("carries whether a branch trades, which decides if it can be asked about", () => {
+    const menu = assembleManagedMenu(rows);
+    // Not filtered here. The reader hands over all nine rows because the hold
+    // control's picker and the audit log both want the names of branches that
+    // have never opened; "Available at" is what leaves them out, because a
+    // counter that does not trade has no answer to give.
+    expect(menu.branches).toEqual([
+      { id: "branch-pilot", shortName: "Central Bloc", isActive: true },
+      { id: "branch-shut", shortName: "Ayala Center Cebu", isActive: false },
     ]);
   });
 

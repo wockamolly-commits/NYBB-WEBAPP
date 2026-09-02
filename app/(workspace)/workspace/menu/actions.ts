@@ -2,8 +2,14 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
+// optionSchema lives outside this file because a "use server" module may only
+// export async functions, so nothing declared here can be unit tested. See the
+// note in menu-schemas.ts: that is how its heat percent branch stayed wrong.
+import { endOfManilaDayInputValue } from "@/lib/staff/branch-availability";
+import { branchAvailabilityGridSchema, optionSchema } from "@/lib/staff/menu-schemas";
 import {
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -40,20 +46,29 @@ import { createStaffClient } from "@/lib/supabase/server";
  * sub pages. It is safe to name here because nothing deletes the record that
  * route stands on; there is no record.
  *
- * "/workspace/menu/items/[id]" is deliberately NOT here, and ruling R24 is
- * why. deleteMenuEntity calls this function, and revalidating the route the
- * caller is standing on makes Next re-render it inside the action's own
- * response. For a delete that means the item page runs notFound() because the
- * item is gone, the editor unmounts, and the effect that would have sent the
- * person back to the menu never runs: they get a 404 instead. saveMenuItem
+ * "/workspace/menu/items/[id]" is deliberately NOT here. saveMenuItem
  * revalidates the one id it just wrote, by itself, where a delete cannot
  * reach it.
+ *
+ * Leaving it out does NOT by itself keep a delete off a 404, which is what
+ * ruling R24 assumed and what shipped broken. revalidatePath invalidates the
+ * path it is given together with every ancestor layout it sits under, so
+ * revalidatePath("/workspace/menu") reaches "/workspace/menu/items/[id]"
+ * through the layout the two share. The route a delete was pressed on
+ * re-renders inside the action's own response either way, notFound() fires on
+ * the row that has just gone, and the editor unmounts before any effect of
+ * its own could navigate. deleteMenuEntity redirects from the server for that
+ * reason: it does not need the component to outlive its data.
  */
 function refreshMenu() {
   revalidatePath("/workspace/menu");
   revalidatePath("/workspace/menu/categories");
   revalidatePath("/workspace/menu/options");
   revalidatePath("/workspace/menu/items/new");
+  // The item editor reads holds too, now that "Available at" is on it. Without
+  // this, taking an item off a counter from that page left the row it was set
+  // from still reading "Available" until a hard reload.
+  revalidatePath("/workspace/menu/items/[id]", "page");
   revalidatePath("/menu");
   revalidatePath("/menu/[category]", "page");
   revalidatePath("/menu/[category]/[item]", "page");
@@ -84,67 +99,130 @@ function friendlyMenuError(message: string | undefined): string {
   return "The menu change could not be saved. Try again.";
 }
 
-const holdSchema = z
-  .object({
-    itemId: z.uuid(),
-    branchId: z.uuid(),
-    kind: z.enum(["today", "until", "indefinite", "lift"]),
-    unavailableUntil: z.string().trim().default(""),
-  })
-  .transform((value) => ({
-    ...value,
-    kind: value.kind === "lift" ? null : value.kind,
-  }));
+/** "Insane", or "Hot and Insane", or "Hot, Wild and Insane". For one sentence. */
+function listNames(names: string[]): string {
+  if (names.length === 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+// setMenuItemHold and its schema used to sit here: one counter, one hold,
+// the action behind ItemHoldControl. Both went when the two sold out
+// controls became one. setMenuItemBranchAvailability below is the only
+// writer now, and leaving a second one that predates the reason requirement
+// would be a way to write a hold without giving one.
 
 /**
- * Pause or resume one item at one counter.
+ * The "Available at" grid, saved by its one button.
  *
- * The form sends a wall clock datetime string, the counter's own clock, not
- * the server process's. manilaWallClockIso turns it into an instant, and the
- * RPC refuses one that has already passed.
+ * WHY ONE SAVE AND NOT A BUTTON PER COUNTER, WHICH IS WHAT THIS WAS.
+ *
+ * It shipped as a Stop selling / Put back button on every row, acting the
+ * moment it was pressed. That is fine for one counter and wrong for nine:
+ * taking an item off four of them was four presses, four writes and four
+ * audit rows for what the person thought of as one decision, with no way to
+ * change their mind between the first and the last. Tick boxes and one Save
+ * make it one decision again, and nothing is written until it is committed.
+ *
+ * WHY IT LOOPS. staff_set_menu_item_hold takes one (item, branch) pair and
+ * writes at most one audit entry for it. There is no bulk form, and PostgREST
+ * gives one transaction per call, so four counters are four calls. It follows
+ * setItemOptionVariationPrices exactly: keep going after a failure, write
+ * every counter that can be written, and name the ones that could not. A
+ * branch this person may not act on costs that counter and not the other
+ * three.
+ *
+ * The kind is decided here and never sent by the browser. Untick writes an
+ * `indefinite` hold, "until someone puts it back", which is the only kind
+ * that means "we do not sell this here". Tick lifts whatever hold exists,
+ * including a timed one a cashier set from the menu list.
  */
-export async function setMenuItemHold(
+export async function setMenuItemBranchAvailability(
   _previous: MenuActionState,
   formData: FormData,
 ): Promise<MenuActionState> {
-  const parsed = holdSchema.safeParse({
-    itemId: formData.get("itemId"),
-    branchId: formData.get("branchId"),
-    kind: formData.get("kind"),
-    unavailableUntil: formData.get("unavailableUntil") ?? "",
-  });
-  if (!parsed.success) return { status: "error", message: "Check the item and try again." };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(formData.get("payload") ?? "{}"));
+  } catch {
+    return { status: "error", message: "The counters could not be read. Refresh and try again." };
+  }
+  const parsed = branchAvailabilityGridSchema.safeParse(raw);
+  if (!parsed.success) return { status: "error", message: "Check the counters and try again." };
 
   const profile = await getStaffProfile();
   if (!profile || !hasStaffPermission(profile, "menu:availability")) {
     return { status: "error", message: "You do not have access to change item availability." };
   }
 
-  const { itemId, branchId, kind, unavailableUntil } = parsed.data;
-  let until: string | null = null;
-  if (kind === "today" || kind === "until") {
-    if (!unavailableUntil) return { status: "error", message: "Choose when this item comes back." };
-    until = manilaWallClockIso(unavailableUntil);
-    if (!until) return { status: "error", message: "Choose when this item comes back." };
+  if (parsed.data.branches.length === 0) {
+    return { status: "success", message: "No availability changes to save." };
   }
 
   const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("staff_set_menu_item_hold", {
-    p_item_id: itemId,
-    p_branch_id: branchId,
-    p_kind: kind,
-    p_unavailable_until: until,
-  });
-  if (error) {
-    console.error("[workspace] menu item hold failed:", error.message);
-    return { status: "error", message: friendlyMenuError(error.message) };
+  const failed: string[] = [];
+  let firstError: string | undefined;
+  const endOfManilaDay = endOfManilaDayInputValue();
+
+  for (const row of parsed.data.branches) {
+    // The kind is derived here and never posted. A hold with an end is
+    // 'until', or 'today' when that end is the end of the current Manila day,
+    // which 0051 keeps apart only so the audit trail records what the person
+    // was offered. No end is 'indefinite'.
+    let kind: string | null = null;
+    let until: string | null = null;
+    if (!row.sellHere) {
+      if (row.until) {
+        until = manilaWallClockIso(row.until);
+        if (!until) {
+          failed.push(row.name);
+          continue;
+        }
+        kind = row.until === endOfManilaDay ? "today" : "until";
+      } else {
+        kind = "indefinite";
+      }
+    }
+
+    const { error } = await supabase.rpc("staff_set_menu_item_hold", {
+      p_item_id: parsed.data.itemId,
+      p_branch_id: row.branchId,
+      // null is the RPC's word for lifting the hold. The grid posts JSON
+      // rather than form fields, so a real boolean survives the trip and
+      // nothing has to spell null as a string.
+      p_kind: kind,
+      p_unavailable_until: until,
+      // Null where the counter is going back on sale: the RPC asks for a
+      // reason only when there is a hold for it to belong to. Empty string
+      // never reaches the database, because the schema refuses that pairing
+      // before this loop runs.
+      p_reason: row.sellHere ? null : row.reason,
+    });
+    if (error) {
+      console.error("[workspace] branch availability failed:", row.branchId, error.message);
+      failed.push(row.name);
+      firstError ??= error.message;
+    }
+  }
+
+  // Every counter failed, so nothing was written and the reason is the same
+  // for all of them: no access, a missing item. Say the reason rather than
+  // listing the names beside it.
+  if (failed.length === parsed.data.branches.length) {
+    return { status: "error", message: friendlyMenuError(firstError) };
   }
 
   refreshMenu();
-  return {
-    status: "success",
-    message: kind === null ? "Back on the menu." : "Marked sold out.",
-  };
+  revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+
+  if (failed.length > 0) {
+    return {
+      status: "error",
+      message: `Saved, except ${listNames(failed)}. Refresh the page and try ${
+        failed.length === 1 ? "that counter" : "those counters"
+      } again.`,
+    };
+  }
+  return { status: "success", message: "Availability saved." };
 }
 
 const categorySchema = z.object({
@@ -234,32 +312,6 @@ export async function saveMenuOptionGroup(
   refreshMenu();
   return { status: "success", message: parsed.data.id ? "Group saved." : "Group added." };
 }
-
-/**
- * pricing is the three way choice, not a number.
- *
- * "bySize" sends null, which means this option is priced through
- * menu_option_variation_prices on each item that links the group. It does not
- * mean free, and turning it into 0 here would silently make every heat level
- * free on every wing size.
- */
-const optionSchema = z
-  .object({
-    id: z.union([z.uuid(), z.literal("")]).default(""),
-    groupId: z.uuid(),
-    name: z.string().trim().min(1).max(100),
-    description: z.string().trim().max(300).default(""),
-    pricing: z.enum(["free", "flat", "bySize"]),
-    priceCents: z.coerce.number().int().min(0).max(10_000_000).default(0),
-    heatPercent: z.union([z.coerce.number().int().min(0).max(100), z.literal("")]).default(""),
-    isActive: z.enum(["true", "false"]).transform((value) => value === "true"),
-  })
-  .transform((value) => ({
-    ...value,
-    resolvedPriceCents:
-      value.pricing === "bySize" ? null : value.pricing === "free" ? 0 : value.priceCents,
-    resolvedHeatPercent: value.heatPercent === "" ? null : value.heatPercent,
-  }));
 
 export async function saveMenuOption(
   _previous: MenuActionState,
@@ -404,23 +456,60 @@ export async function saveMenuItem(
   return { status: "success", message: parsed.data.id ? "Item saved." : "Item added." };
 }
 
-const optionPriceSchema = z.object({
-  itemId: z.uuid(),
+/**
+ * One option's per size prices, as one row of the grid.
+ *
+ * The RPC contract is fixed (Task 8): a variation named in `prices` gets that
+ * price, one omitted from the object has its price row deleted, and 0 is a
+ * real price meaning free, never a clear. HeatPriceGrid builds the object the
+ * same way: an empty input drops that variation's key entirely rather than
+ * sending it as 0 or null.
+ *
+ * `name` is carried only so a failure can say which row did not save. It is
+ * never written and never read back out of the database, and nothing but that
+ * one sentence depends on it.
+ */
+const optionPriceRowSchema = z.object({
   optionId: z.uuid(),
+  name: z.string().trim().min(1).max(100),
   /** variation id to centavos. A variation left out has its price cleared. */
   prices: z.record(z.uuid(), z.number().int().min(0).max(10_000_000)),
 });
 
+const optionPriceGridSchema = z.object({
+  itemId: z.uuid(),
+  /**
+   * Only the rows whose prices actually changed. The grid works that out
+   * rather than sending everything, so an untouched row is never rewritten
+   * and never fails. Empty is normal and means the person pressed Save
+   * without changing anything.
+   */
+  options: z.array(optionPriceRowSchema).max(60),
+});
+
 /**
- * Save one option's per size prices on one item: HeatPriceGrid's one row.
+ * The whole per size price grid, saved by its one button.
  *
- * The RPC contract is fixed (Task 8): a variation named in p_prices gets that
- * price, one omitted from the object has its price row deleted, and 0 is a
- * real price meaning free, never a clear. The payload is built by
- * HeatPriceGrid the same way: an empty input drops that variation's key from
- * the object entirely rather than sending it as 0 or null.
+ * WHY THIS LOOPS RATHER THAN WRITING ONE TRANSACTION.
+ *
+ * staff_set_option_variation_prices takes one option, locks the item row, and
+ * writes at most one audit entry for it. There is no bulk form of it, and
+ * PostgREST gives one transaction per call, so a grid of five rows is five
+ * calls.
+ *
+ * The loop does not stop at the first failure, which is the point. Each row is
+ * independently valid or not, and the realistic per row failure is
+ * OPTION_NOT_FOUND: somebody deleted that heat level on the options screen
+ * while this was open. Stopping there would refuse to price the four rows that
+ * are still perfectly fine, so every row is attempted and the message names
+ * the ones that did not land. That is also what keeps the guarantee the per
+ * row Save buttons used to give: a bad row cannot take the good ones with it.
+ *
+ * It is therefore not atomic across rows, and it should not claim to be. What
+ * it is instead is honest about which rows saved, which is the recoverable
+ * version: press Save again once the named row is dealt with.
  */
-export async function setOptionVariationPrices(
+export async function setItemOptionVariationPrices(
   _previous: MenuActionState,
   formData: FormData,
 ): Promise<MenuActionState> {
@@ -430,7 +519,7 @@ export async function setOptionVariationPrices(
   } catch {
     return { status: "error", message: "The price grid could not be read. Refresh and try again." };
   }
-  const parsed = optionPriceSchema.safeParse(raw);
+  const parsed = optionPriceGridSchema.safeParse(raw);
   if (!parsed.success) return { status: "error", message: "Check the prices and try again." };
 
   const profile = await getStaffProfile();
@@ -438,19 +527,45 @@ export async function setOptionVariationPrices(
     return { status: "error", message: "You do not have access to change the menu." };
   }
 
+  if (parsed.data.options.length === 0) {
+    return { status: "success", message: "No price changes to save." };
+  }
+
   const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("staff_set_option_variation_prices", {
-    p_item_id: parsed.data.itemId,
-    p_option_id: parsed.data.optionId,
-    p_prices: parsed.data.prices,
-  });
-  if (error) {
-    console.error("[workspace] option variation prices failed:", error.message);
-    return { status: "error", message: friendlyMenuError(error.message) };
+  const failed: string[] = [];
+  let firstError: string | undefined;
+
+  for (const row of parsed.data.options) {
+    const { error } = await supabase.rpc("staff_set_option_variation_prices", {
+      p_item_id: parsed.data.itemId,
+      p_option_id: row.optionId,
+      p_prices: row.prices,
+    });
+    if (error) {
+      console.error("[workspace] option variation prices failed:", row.optionId, error.message);
+      failed.push(row.name);
+      firstError ??= error.message;
+    }
+  }
+
+  // Every row failed, so nothing was written and the reason is the same for
+  // all of them: no access, a missing item, two price lists. Say that reason
+  // rather than listing five names beside it.
+  if (failed.length === parsed.data.options.length) {
+    return { status: "error", message: friendlyMenuError(firstError) };
   }
 
   refreshMenu();
   revalidatePath(`/workspace/menu/items/${parsed.data.itemId}`);
+
+  if (failed.length > 0) {
+    return {
+      status: "error",
+      message: `Saved, except ${listNames(failed)}. Refresh the page and try ${
+        failed.length === 1 ? "that row" : "those rows"
+      } again.`,
+    };
+  }
   return { status: "success", message: "Prices saved." };
 }
 
@@ -490,6 +605,14 @@ export async function deleteMenuEntity(
   }
 
   refreshMenu();
+
+  // An item is the only one of the four with a route of its own, so its
+  // delete is the only one that destroys the page it was pressed on. The
+  // redirect belongs here rather than in the editor because by the time the
+  // action's response is applied that editor is already gone: see refreshMenu
+  // on why the route re-renders regardless of what this revalidates.
+  if (parsed.data.entity === "item") redirect("/workspace/menu");
+
   return { status: "success", message: "Deleted." };
 }
 

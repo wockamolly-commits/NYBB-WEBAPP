@@ -260,6 +260,39 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* The staff workspace owns the document ground, it does not cover it.
+     ================================================================
+     "On every route" above was a claim nobody had checked, and it is the
+     same claim that put the wall drawing on body::before until the 404
+     disproved it. The amber gradient is the customer site's ground. The
+     workspace is not the customer site, and it was only ever hiding the
+     gradient by painting an ink div on top of it.
+
+     A div can only cover the box it is laid out in, and the viewport is
+     not always that box. Opening a Base UI Select scroll locks the page
+     with `scrollbar-gutter: stable; overflow: hidden` on <html>, which
+     takes the scrollbar away and reserves its 15px so the content does
+     not jump sideways. The shell keeps its old width, correctly, but
+     body's gradient is `background-attachment: fixed`, so it paints
+     against the viewport rather than against that box, and the reserved
+     gutter fills with raw Griddle Amber for as long as the popup is
+     open. It arrives in the scrollbar's slot at the exact moment the
+     scrollbar leaves, so what it looks like from the outside is the
+     scrollbar turning orange. Overscroll and zoom expose the same strip
+     for the same reason.
+
+     So the ground is decided by the route rather than by the document.
+     The grain goes with it: it exists to dither this gradient, and it
+     has nothing to dither here. */
+  body:has(.workspace-shell) {
+    background-color: var(--color-nybb-ink);
+    background-image: none;
+  }
+
+  body:has(.workspace-shell)::after {
+    content: none;
+  }
+
   @supports not (overflow: clip) {
     html,
     body {
@@ -568,6 +601,87 @@
     border: 2px solid var(--color-nybb-graphite);
     border-radius: 9999px;
     background: color-mix(in oklab, var(--color-nybb-bone) 30%, transparent);
+  }
+
+  /* The workspace's one confirmation surface.
+     ================================================================
+     Worn by a native <dialog> opened with showModal(), so the top layer,
+     the focus trap, Escape and the inert page behind it are the browser's
+     job rather than this project's. The element stays a descendant of
+     .workspace-shell in the DOM even while it paints in the top layer, so
+     everything above still applies to the controls inside it.
+
+     The border is deliberate and is not a violation of The Value Not
+     Shadow Rule. That rule forbids an edge on a surface already separated
+     by lightness; charcoal over an ink backdrop measures 1.1:1, which is
+     no separation at all, so this takes a real edge at the 40% bone the
+     system states for a boundary on dark. A shadow would do nothing here:
+     there is nothing under a near black page for it to darken.
+
+     The backdrop is Char at 82%. Not blurred: the chrome in this system is
+     solid rather than translucent, and a blur would be the one place in the
+     app that softens the ground instead of covering it. */
+  .confirm-dialog {
+    width: 100%;
+    max-width: min(30rem, calc(100vw - 2rem));
+    margin: auto;
+    padding: 0;
+    border: 1px solid color-mix(in oklab, var(--color-nybb-bone) 40%, transparent);
+    border-radius: 0.4rem;
+    background: var(--color-nybb-charcoal);
+    color: var(--color-nybb-bone);
+  }
+
+  .confirm-dialog::backdrop {
+    background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
+  }
+
+  /* The one piece of motion here, and it is 140ms of it.
+     ================================================================
+     A dialog is the one arrival in this system that earns a transition:
+     it is not a section fading in as somebody scrolls past, it is a
+     surface interrupting the page, and appearing between two frames reads
+     as a rendering fault rather than as an answer to the button. The panel
+     rises 0.5rem, which is the distance that says "this came from the
+     control" without becoming an animation somebody watches.
+
+     allow-discrete on display and overlay is what lets a <dialog> animate
+     at all, and @starting-style is where the entry values live. The global
+     prefers-reduced-motion block at the end of this file already flattens
+     the duration, and the end state of both properties is the resting one,
+     so a reduced motion visitor gets the panel placed rather than moved. */
+  .confirm-dialog,
+  .confirm-dialog::backdrop {
+    opacity: 0;
+    transition:
+      opacity 140ms ease-out,
+      transform 140ms ease-out,
+      overlay 140ms ease-out allow-discrete,
+      display 140ms ease-out allow-discrete;
+  }
+
+  .confirm-dialog {
+    transform: translateY(0.5rem);
+  }
+
+  .confirm-dialog[open],
+  .confirm-dialog[open]::backdrop {
+    opacity: 1;
+  }
+
+  .confirm-dialog[open] {
+    transform: translateY(0);
+  }
+
+  @starting-style {
+    .confirm-dialog[open],
+    .confirm-dialog[open]::backdrop {
+      opacity: 0;
+    }
+
+    .confirm-dialog[open] {
+      transform: translateY(0.5rem);
+    }
   }
 
   /* Billboard headings. Uppercase and tight, because the display face

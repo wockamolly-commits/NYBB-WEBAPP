@@ -2,8 +2,8 @@
 
 import { ButtonLink } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
-import { holdSummary, type ManagedMenu } from "@/lib/staff/menu-types";
-import { ItemHoldControl } from "./ItemHoldControl";
+import type { ManagedMenu } from "@/lib/staff/menu-types";
+import { SoldOutControl } from "./SoldOutControl";
 
 const CHIP = "rounded px-2 py-1 text-xs font-semibold uppercase tracking-wider";
 
@@ -32,7 +32,6 @@ export function MenuList({
           ) : (
             <div className="mt-4 space-y-3">
               {category.items.map((item) => {
-                const summary = holdSummary(item.holds);
                 return (
                   <article key={item.id} className="bg-nybb-charcoal rounded-md p-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
@@ -60,7 +59,6 @@ export function MenuList({
                                 .join(" · ")
                             : "No sizes configured yet."}
                         </p>
-                        {summary ? <p className="text-nybb-orange mt-2 text-sm">{summary}</p> : null}
                       </div>
                       {can.configure ? (
                         <ButtonLink
@@ -75,7 +73,7 @@ export function MenuList({
 
                     {can.availability ? (
                       <div className="border-nybb-bone/15 mt-4 border-t pt-4">
-                        <ItemHoldControl item={item} branches={menu.branches} actingBranchId={actingBranchId} />
+                        <SoldOutControl item={item} branches={menu.branches} actingBranchId={actingBranchId} />
                       </div>
                     ) : null}
                   </article>

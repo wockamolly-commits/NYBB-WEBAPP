@@ -27,6 +27,13 @@ follow:
    run, compared against a listing taken before the first test, so it can never
    remove something another person uploaded while it ran.
 
+A test that has to change more than a photograph creates the row it edits
+instead, and deletes it afterwards. `menu-item-options.spec.ts` does that: it
+makes an item that is off the menu, edits it, and removes it and everything
+hanging off it in `afterEach`, whether the test passed or failed. That is the
+safer of the two patterns and the one to reach for first. Snapshot and restore
+is for the cases where the screen under test needs a row that already exists.
+
 ## What you need
 
 - `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,

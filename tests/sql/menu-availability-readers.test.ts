@@ -61,19 +61,21 @@ describe("hold aware storefront readers", () => {
   it("hides a held item at the held branch and nowhere else", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
 
     expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
     expect(await menuSlugs(db, "other")).toEqual(["chicken-wings", "fries"]);
   });
 
-  it("hides an item held at the branch a no-slug call resolves to", async () => {
-    // get_storefront_menu with no slug prices against the active branch,
-    // lowest sort_order first (resolve_price_list_id). Availability has to
-    // follow the same branch, via resolve_pickup_branch_id, which is the
-    // resolver place_order also uses. Asking the resolver directly rather
-    // than assuming which of 'pilot' or 'other' it lands on keeps this
-    // test honest about the seed order.
+  it("shows an item held at one branch when the caller named no branch", async () => {
+    // THIS IS 0057, AND IT USED TO ASSERT THE OPPOSITE.
+    //
+    // /menu is what every customer sees before they have chosen a store, and
+    // it calls get_storefront_menu with no slug. That used to resolve through
+    // resolve_pickup_branch_id, which returns the FIRST ACTIVE BRANCH rather
+    // than null, so one counter's sold out list was applied to everybody. A
+    // customer who had not picked a store, and might well have been about to
+    // pick the other one, could not see the item at all.
     //
     // Written straight into the table rather than through
     // staff_set_menu_item_hold, because the resolved branch is not
@@ -85,13 +87,46 @@ describe("hold aware storefront readers", () => {
        values ('${wings}', '${resolved}', 'indefinite')`,
     );
 
+    // Held at the counter that answers a no-slug call, and still on the menu
+    // of a customer who has not named a counter.
+    expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
+
+    // And the moment they do name that counter, it is hidden again. The two
+    // assertions together are the whole point: the branch-less menu stops
+    // prejudging which store was meant, and no branch's own menu changes.
+    const resolvedSlug = await scalar<string>(
+      db, `select slug from branches where id = '${resolved}'`,
+    );
+    expect(await menuSlugs(db, resolvedSlug)).toEqual(["fries"]);
+  });
+
+  it("still prices a no-slug call against the active branch", async () => {
+    // 0057 changed which branch's HOLDS a no-slug call applies, and nothing
+    // about which branch's PRICES it uses. The two resolvers deliberately
+    // disagree now: a menu with no prices cannot be rendered at all, so
+    // pricing has to pick something, while availability has a correct answer
+    // for "no branch chosen" and it is "show everything". If a later edit
+    // makes the price list null too, every price comes back null and this
+    // catches it.
+    const menu = await scalar<Array<{ items: Array<{ slug: string; variations: Array<{ priceCents: number }> }> }>>(
+      db, "select get_storefront_menu(null)",
+    );
+    const wings = menu.flatMap((c) => c.items).find((item) => item.slug === "chicken-wings");
+    expect(wings?.variations[0]?.priceCents).toBe(10000);
+  });
+
+  it("still hides an item that is off the menu everywhere, with no branch named", async () => {
+    // is_active is the global switch and 0057 does not touch it. A no-slug
+    // call hides nothing a COUNTER has held; it does not become a menu that
+    // shows everything.
+    await db.exec("update menu_items set is_active = false where slug = 'chicken-wings'");
     expect(await menuSlugs(db, null)).toEqual(["fries"]);
   });
 
   it("hides nothing when no branch is active at all", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     await db.exec("update branches set is_active = false");
 
     // With nothing trading there is no counter whose stock could be out, so
@@ -103,7 +138,7 @@ describe("hold aware storefront readers", () => {
   it("drops a category whose every item is held", async () => {
     const fries = await itemId(db, "fries");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${fries}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${fries}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
 
     const menu = await scalar<Array<{ slug: string }>>(db, `select get_storefront_menu('pilot')`);
     expect(menu.map((category) => category.slug)).toEqual(["wings"]);
@@ -112,7 +147,7 @@ describe("hold aware storefront readers", () => {
   it("shows a held item again once its hold is lifted", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
 
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', null)`);
@@ -128,7 +163,7 @@ describe("hold aware storefront readers", () => {
     const holdEnd = await scalar<string>(db, "select (now() + interval '1 day')::text");
     await asUser(
       db, CASHIER,
-      `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', '${holdEnd}'::timestamptz)`,
+      `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', '${holdEnd}'::timestamptz, 'out_of_stock')`,
     );
 
     expect(

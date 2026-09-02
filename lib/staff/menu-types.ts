@@ -10,12 +10,43 @@ import type { MenuImageOrigin } from "@/lib/menu/resolve-image";
 
 export type HoldKind = "today" | "until" | "indefinite";
 
+/**
+ * Why a counter stopped selling an item.
+ *
+ * Stored as these stable keys and never as the words staff read, so renaming
+ * a label is a change to this file and not to every row that used it. The
+ * list is a check constraint rather than a Postgres enum for the same reason
+ * 0050 gives: retiring an enum value is a table rewrite, and this list will
+ * grow.
+ */
+export type HoldReason = "out_of_stock" | "ingredients" | "equipment" | "temporary";
+
+export const HOLD_REASONS: readonly HoldReason[] = [
+  "out_of_stock",
+  "ingredients",
+  "equipment",
+  "temporary",
+];
+
+/** What staff pick from, and what the state line reads back. */
+export const HOLD_REASON_LABELS: Record<HoldReason, string> = {
+  out_of_stock: "Out of stock",
+  ingredients: "Ingredients unavailable",
+  equipment: "Equipment issue",
+  temporary: "Temporarily unavailable",
+};
+
 export type ManagedHold = {
   branchId: string;
   branchShortName: string;
   kind: HoldKind;
   /** ISO 8601, or null for an indefinite hold. */
   unavailableUntil: string | null;
+  /**
+   * Why, or null on a hold set before 0058 added the column. Null is not a
+   * fourth reason: it is a row from before anyone was asked.
+   */
+  reason: HoldReason | null;
 };
 
 export type ManagedVariation = {
@@ -128,6 +159,14 @@ export type ManagedCategory = {
 export type ManagedBranch = {
   id: string;
   shortName: string;
+  /**
+   * Whether this branch trades. Eight of the nine rows are false and exist so
+   * the franchise map has somewhere to grow into. A screen that offers a
+   * counter to sell at, or not to sell at, has to leave those out: the
+   * question "is this item available at Ayala Center Cebu" has no answer while
+   * nothing has ever opened there.
+   */
+  isActive: boolean;
 };
 
 export type ManagedMenu = {
@@ -158,9 +197,7 @@ export const HOLD_KIND_LABELS: Record<HoldKind, string> = {
   indefinite: "Sold out until someone puts it back",
 };
 
-/** What the row says under an item that is held somewhere. */
-export function holdSummary(holds: ManagedHold[]): string | null {
-  if (holds.length === 0) return null;
-  const names = holds.map((hold) => hold.branchShortName).join(", ");
-  return `Sold out at ${names}`;
-}
+// holdSummary used to live here. It moved to lib/staff/branch-availability.ts
+// so that it and the item editor's status line are built from one formatter:
+// two screens describing the same hold in their own words is how they came to
+// disagree about whether a sold out item had an end.

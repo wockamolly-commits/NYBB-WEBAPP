@@ -49,8 +49,94 @@ describe("menu item branch holds", () => {
   beforeEach(async () => { db = await setup(); }, 120_000);
 
   it("grants execute to authenticated and never to anon", async () => {
-    expect(await scalar<boolean>(db, `select has_function_privilege('authenticated', 'staff_set_menu_item_hold(uuid, uuid, text, timestamptz)', 'execute')`)).toBe(true);
-    expect(await scalar<boolean>(db, `select has_function_privilege('anon', 'staff_set_menu_item_hold(uuid, uuid, text, timestamptz)', 'execute')`)).toBe(false);
+    expect(await scalar<boolean>(db, `select has_function_privilege('authenticated', 'staff_set_menu_item_hold(uuid, uuid, text, timestamptz, text)', 'execute')`)).toBe(true);
+    expect(await scalar<boolean>(db, `select has_function_privilege('anon', 'staff_set_menu_item_hold(uuid, uuid, text, timestamptz, text)', 'execute')`)).toBe(false);
+  });
+
+  it("refuses to take an item off a counter with no reason given", async () => {
+    // The whole point of 0058. A hold with no reason is what the old function
+    // wrote on every call, and the audit trail could not tell a broken fryer
+    // from a delivery that did not arrive a week later.
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await expect(
+      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`),
+    ).rejects.toThrow(/HOLD_NEEDS_A_REASON/);
+    expect(await scalar<number>(db, "select count(*)::int from menu_item_branch_holds")).toBe(0);
+  });
+
+  it("refuses a reason that is not one of the four", async () => {
+    // Raised by name rather than left to the column's check constraint, so
+    // the workspace gets something it can turn into a sentence. The
+    // constraint stays as the guard against a writer that is not this
+    // function.
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await expect(
+      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'because')`),
+    ).rejects.toThrow(/INVALID_INPUT/);
+  });
+
+  it("stores the reason and writes it into the audit trail", async () => {
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'equipment')`);
+
+    expect(await scalar<string>(db, "select reason from menu_item_branch_holds")).toBe("equipment");
+    expect(
+      await scalar<string>(db, "select diff->'after'->>'reason' from audit_logs where action = 'menu.item.held'"),
+    ).toBe("equipment");
+  });
+
+  it("records on release what the item had been off for", async () => {
+    // The row is deleted by a lift, so the release diff is the only place the
+    // reason survives. A manager asking "why was this off yesterday" reads
+    // the trail, not the table.
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'ingredients')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', null)`);
+
+    expect(
+      await scalar<string>(db, "select diff->'before'->>'reason' from audit_logs where action = 'menu.item.released'"),
+    ).toBe("ingredients");
+  });
+
+  it("changing only the reason is a real change, not a no-op", async () => {
+    // The no-op guard compares kind and end. Without the reason beside them,
+    // correcting "out of stock" to "equipment" returns early and writes
+    // nothing, and the screen shows the correction that never happened.
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'equipment')`);
+
+    expect(await scalar<string>(db, "select reason from menu_item_branch_holds")).toBe("equipment");
+    expect(
+      await scalar<number>(db, "select count(*)::int from audit_logs where action = 'menu.item.held'"),
+    ).toBe(2);
+  });
+
+  it("lifts a hold without asking for a reason", async () => {
+    // Putting an item back needs no explanation: the row and its reason go
+    // together, and requiring one to delete a row would be a form in the way
+    // of good news.
+    const item = await itemId(db);
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'temporary')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', null)`);
+    expect(await scalar<number>(db, "select count(*)::int from menu_item_branch_holds")).toBe(0);
+  });
+
+  it("keeps the four reasons and nothing else in the column's own guard", async () => {
+    // The function is one writer. The constraint is what holds if another
+    // ever appears, so it is asserted separately from the function's raise.
+    await expect(
+      db.exec(`insert into menu_item_branch_holds (item_id, branch_id, kind, reason)
+               select mi.id, b.id, 'indefinite', 'vibes'
+               from menu_items mi, branches b
+               where mi.slug = 'chicken-wings' and b.slug = 'pilot'`),
+    ).rejects.toThrow(/hold_reason_is_known/);
   });
 
   it("never grants the table's writes to authenticated", async () => {
@@ -68,7 +154,7 @@ describe("menu item branch holds", () => {
   it("reports an item as available when no branch is given", async () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', null)`)).toBe(true);
   });
 
@@ -77,19 +163,19 @@ describe("menu item branch holds", () => {
     const pilot = await branchId(db, "pilot");
     const other = await branchId(db, "other");
 
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}')`)).toBe(false);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${other}')`)).toBe(true);
 
     await expect(
-      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${other}', 'indefinite')`),
+      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${other}', 'indefinite', null, 'out_of_stock')`),
     ).rejects.toThrow(/BRANCH_FORBIDDEN/);
   });
 
   it("expires a timed hold with no sweep in between", async () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', now() + interval '2 hours')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', now() + interval '2 hours', 'out_of_stock')`);
 
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}', now())`)).toBe(false);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}', now() + interval '3 hours')`)).toBe(true);
@@ -99,10 +185,10 @@ describe("menu item branch holds", () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
     await expect(
-      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', null)`),
+      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', null, 'out_of_stock')`),
     ).rejects.toThrow(/HOLD_NEEDS_AN_END/);
     await expect(
-      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', now() - interval '1 hour')`),
+      asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'until', now() - interval '1 hour', 'out_of_stock')`),
     ).rejects.toThrow(/HOLD_END_IN_PAST/);
   });
 
@@ -117,14 +203,14 @@ describe("menu item branch holds", () => {
     const pilot = await branchId(db, "pilot");
     await asUser(
       db, CASHIER,
-      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '2 hours')`,
+      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '2 hours', 'out_of_stock')`,
     );
     expect(await scalar<string | null>(db, "select unavailable_until from menu_item_branch_holds")).toBe(null);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}')`)).toBe(false);
 
     await asUser(
       db, CASHIER,
-      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '9 hours')`,
+      `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', now() + interval '9 hours', 'out_of_stock')`,
     );
     expect(await scalar<number>(db, "select count(*)::int from audit_logs")).toBe(1);
   });
@@ -132,7 +218,7 @@ describe("menu item branch holds", () => {
   it("lifts a hold when kind is null, and leaves no row behind", async () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', null)`);
 
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${pilot}')`)).toBe(true);
@@ -142,15 +228,15 @@ describe("menu item branch holds", () => {
   it("lets a roving manager hold at any branch", async () => {
     const item = await itemId(db);
     const other = await branchId(db, "other");
-    await asUser(db, ROVING_MANAGER, `select staff_set_menu_item_hold('${item}', '${other}', 'indefinite')`);
+    await asUser(db, ROVING_MANAGER, `select staff_set_menu_item_hold('${item}', '${other}', 'indefinite', null, 'out_of_stock')`);
     expect(await scalar<boolean>(db, `select menu_item_is_available('${item}', '${other}')`)).toBe(false);
   });
 
   it("records one branch scoped audit row per real change and none for a no-op", async () => {
     const item = await itemId(db);
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`);
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${item}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
 
     const rows = await asUser<{ action: string; branch_id: string | null }>(
       db, ROVING_MANAGER, "select action, branch_id::text from audit_logs order by id",
