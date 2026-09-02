@@ -912,6 +912,22 @@ here was built as specified.
     the menu a second time in SQL guarantees the two copies disagree within a month, and a menu
     that disagrees with itself charges the wrong price.
 
+11. **Availability is per branch, and a menu asked for no branch answers for none of them.**
+    `menu_items.is_active` is the global switch, off everywhere until somebody turns it back on.
+    Whether a counter sells an item today is `menu_item_branch_holds`, keyed (item, branch), and
+    `menu_item_is_available()` is the single definition both readers call. There is deliberately
+    no second per-branch boolean beside the hold: an `indefinite` hold already means "not sold at
+    this counter", and two ways to say it can disagree.
+
+    `get_storefront_menu(null)` applies NO holds (0057). It used to resolve a missing slug to the
+    first active branch, so `/menu`, which every customer sees before choosing a store, applied one
+    counter's sold-out list to everybody. This is the one place availability and pricing
+    deliberately diverge: a menu with no prices cannot be rendered, so `resolve_price_list_id`
+    still falls back to the active branch, while availability has a correct answer for "no branch
+    chosen" and it is "show everything". `place_order` is unaffected, because its branch comes
+    from the order payload, so a held item is still refused at checkout and there is no oversell
+    window.
+
 ---
 
 ## 7. Information architecture
