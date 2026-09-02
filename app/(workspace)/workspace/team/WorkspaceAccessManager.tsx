@@ -9,7 +9,9 @@ import {
   type WorkspaceSelectOption,
 } from "@/components/ui/WorkspaceSelect";
 import { STAFF_JOB_ROLES, STAFF_ROLES, type StaffJobRole } from "@/lib/staff/roles";
+import { ALL_BRANCHES } from "@/lib/staff/team-schemas";
 import type {
+  AssignableBranch,
   WorkspaceAccessActionState,
   WorkspaceMember,
 } from "@/lib/staff/team-types";
@@ -24,6 +26,32 @@ const roleOptions = STAFF_JOB_ROLES.map(
   }),
 );
 
+/**
+ * The branch choices, roving first.
+ *
+ * Eight of the nine counters are not trading yet, and an assignment to one of
+ * them is legitimate (it is how a new shop is staffed before it opens), so they
+ * are offered rather than hidden, with the state said out loud.
+ */
+function branchOptions(branches: AssignableBranch[]): WorkspaceSelectOption<string>[] {
+  return [
+    {
+      value: ALL_BRANCHES,
+      label: "All branches",
+      description: "Business wide. Every counter, and the shared menu catalog.",
+    },
+    ...branches.map((branch) => ({
+      value: branch.id,
+      label: branch.isActive ? branch.shortName : `${branch.shortName} (not trading)`,
+    })),
+  ];
+}
+
+function branchLabel(branchId: string | null, branches: AssignableBranch[]): string {
+  if (!branchId) return "All branches";
+  return branches.find((branch) => branch.id === branchId)?.shortName ?? "Unknown branch";
+}
+
 function ActionMessage({ state }: { state: WorkspaceAccessActionState }) {
   if (!state.message) return null;
   return (
@@ -36,7 +64,13 @@ function ActionMessage({ state }: { state: WorkspaceAccessActionState }) {
   );
 }
 
-function MemberCard({ member }: { member: WorkspaceMember }) {
+function MemberCard({
+  member,
+  branches,
+}: {
+  member: WorkspaceMember;
+  branches: AssignableBranch[];
+}) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
   const roleLabel = member.role === "admin"
@@ -61,7 +95,10 @@ function MemberCard({ member }: { member: WorkspaceMember }) {
           </span>
         </div>
         <p className="text-nybb-bone/55 mt-1 truncate text-sm">{member.email}</p>
-        <p className="text-nybb-bone/70 mt-2 text-sm">{roleLabel}</p>
+        <p className="text-nybb-bone/70 mt-2 text-sm">
+          {roleLabel}
+          <span className="text-nybb-bone/55"> at {branchLabel(member.branchId, branches)}</span>
+        </p>
       </div>
 
       {member.role === "admin" ? (
@@ -79,6 +116,15 @@ function MemberCard({ member }: { member: WorkspaceMember }) {
             defaultValue={member.staffRole ?? "cashier"}
             disabled={pending}
             className="min-w-44"
+          />
+          <WorkspaceSelect
+            id={`branch-${member.profileId}`}
+            name="branchId"
+            label="Branch"
+            options={branchOptions(branches)}
+            defaultValue={member.branchId ?? ALL_BRANCHES}
+            disabled={pending}
+            className="min-w-52"
           />
           <Button
             type="submit"
@@ -147,7 +193,13 @@ function MemberCard({ member }: { member: WorkspaceMember }) {
   );
 }
 
-export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[] }) {
+export function WorkspaceAccessManager({
+  members,
+  branches,
+}: {
+  members: WorkspaceMember[];
+  branches: AssignableBranch[];
+}) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
 
   return (
@@ -177,6 +229,17 @@ export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[]
             options={roleOptions}
             defaultValue="cashier"
           />
+          {/* No preselected branch. Where somebody works is the whole point of
+              this form, so it is a decision to make rather than a default to
+              leave alone. */}
+          <WorkspaceSelect
+            id="team-branch"
+            name="branchId"
+            label="Branch"
+            options={branchOptions(branches)}
+            defaultValue={null}
+            placeholder="Choose a branch"
+          />
           <Button type="submit" tone="dark" block disabled={pending}>
             {pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <ShieldCheck aria-hidden className="size-4" />}
             Grant Workspace access
@@ -195,8 +258,9 @@ export function WorkspaceAccessManager({ members }: { members: WorkspaceMember[]
         <ul className="mt-5 space-y-3">
           {members.map((member) => (
             <MemberCard
-              key={`${member.profileId}:${member.staffRole}:${member.isActive}`}
+              key={`${member.profileId}:${member.staffRole}:${member.branchId}:${member.isActive}`}
               member={member}
+              branches={branches}
             />
           ))}
         </ul>

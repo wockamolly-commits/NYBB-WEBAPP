@@ -8,7 +8,10 @@ import { MenuUnavailable } from "../../MenuUnavailable";
 export const metadata: Metadata = { title: "New item" };
 
 export default async function NewMenuItemPage() {
-  await requireStaffPermission("menu:configure", "/workspace/menu/items/new");
+  const { profile } = await requireStaffPermission(
+    "menu:configure",
+    "/workspace/menu/items/new",
+  );
   const menu = await getManagedMenu();
 
   return (
@@ -36,6 +39,7 @@ export default async function NewMenuItemPage() {
           categories={menu.categories}
           optionGroups={menu.optionGroups}
           canSetAvailability={false}
+          actingBranchId={profile.branchId}
         />
       ) : (
         <MenuUnavailable />

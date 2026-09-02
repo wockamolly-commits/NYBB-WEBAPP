@@ -173,14 +173,13 @@ export type ManagedMenu = {
   categories: ManagedCategory[];
   optionGroups: ManagedOptionGroup[];
   /**
-   * Every branch the staff session can read, not just the ones the caller may
-   * act on. "staff read branches" in 0009 is `for select using (is_staff())`
-   * with no branch scope, and PostgREST cannot filter on
-   * current_staff_can_access_branch, so this select always returns all nine.
-   * The hold control's branch picker uses this list for a roving manager, and
-   * a cashier ignores it and uses their own profile.branchId instead. The RPC
-   * that writes a hold is what actually refuses a branch the caller may not
-   * act on.
+   * The branches the staff session can read, which since 0059 is the branches
+   * it may act on. "staff read branches" used to be `for select using
+   * (is_staff())` with no branch scope, so this select returned all nine to
+   * everybody and the screen did the narrowing; now the policy carries
+   * current_staff_can_access_branch(id), so a cashier reads one row and a
+   * roving manager reads them all. The RPC that writes a hold still refuses a
+   * branch the caller may not act on, and remains the boundary that counts.
    */
   branches: ManagedBranch[];
 };

@@ -37,6 +37,12 @@ export function tradingBranches(branches: ManagedBranch[]): ManagedBranch[] {
  * The RPC refuses a branch the caller may not write anyway, so this is not
  * the security boundary; it is the difference between a screen that offers
  * what you can do and one that offers nine options and rejects eight.
+ *
+ * Since 0059 the read policy on branches is scoped too, so for an assigned
+ * person this filter is given a list of one and has nothing left to remove.
+ * It stays because it is cheap, because it still does the work for a roving
+ * manager, and because a screen should not depend on a policy elsewhere being
+ * the only thing standing between it and the wrong counter.
  */
 export function actableBranches(
   branches: ManagedBranch[],

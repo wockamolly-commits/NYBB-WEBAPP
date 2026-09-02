@@ -3,6 +3,7 @@ import { ClipboardList, ExternalLink, Handshake, History, LayoutDashboard, LogOu
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { HeatRule } from "@/components/site/HeatRule";
 import { STAFF_ROLES } from "@/lib/staff/roles";
+import { getStaffBranchLabel } from "@/lib/staff/profile";
 import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
 
 export const metadata: Metadata = {
@@ -17,6 +18,9 @@ export const metadata: Metadata = {
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireStaff();
+  // Which counter this session acts on. Everything below is scoped to it, and
+  // an assigned person has no picker to check, so the shell has to say it.
+  const branchLabel = await getStaffBranchLabel(profile.branchId);
   const roleLabel =
     profile.role === "admin"
       ? "Super Admin"
@@ -41,7 +45,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             <div className="min-w-0">
               <p className="font-display text-lg leading-none tracking-[0.06em]">NYBB WORKSPACE</p>
               <p className="text-nybb-bone/55 mt-1 truncate text-xs">
-                {profile.displayName} · {roleLabel}
+                {profile.displayName} · {roleLabel} · {branchLabel}
               </p>
             </div>
           </div>

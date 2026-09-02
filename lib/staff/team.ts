@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { STAFF_JOB_ROLES } from "@/lib/staff/roles";
 import { createReadOnlyStaffClient } from "@/lib/supabase/server";
-import type { WorkspaceMember } from "./team-types";
+import type { AssignableBranch, WorkspaceMember } from "./team-types";
 
 const memberRowsSchema = z.array(
   z.object({
@@ -41,5 +41,46 @@ export async function getWorkspaceMembers(): Promise<WorkspaceMember[] | null> {
     branchId: row.branch_id,
     isActive: row.is_active,
     createdAt: row.created_at,
+  }));
+}
+
+const branchRowsSchema = z.array(
+  z.object({
+    id: z.uuid(),
+    short_name: z.string().min(1),
+    is_active: z.boolean(),
+  }),
+);
+
+/**
+ * The branches the team screen offers.
+ *
+ * Only the Super Admin opens that screen, and the Super Admin is business wide,
+ * so the branch-scoped read policy from 0059 returns every row here. A branch
+ * manager reading this would see only their own, which is why the screen stays
+ * admin only rather than gated on a permission.
+ */
+export async function listAssignableBranches(): Promise<AssignableBranch[] | null> {
+  const supabase = await createReadOnlyStaffClient();
+  const { data, error } = await supabase
+    .from("branches")
+    .select("id, short_name, is_active")
+    .order("sort_order")
+    .order("short_name");
+  if (error) {
+    console.error("[workspace] branch list failed:", error.message);
+    return null;
+  }
+
+  const parsed = branchRowsSchema.safeParse(data);
+  if (!parsed.success) {
+    console.error("[workspace] branch list had an unreadable shape", parsed.error.issues);
+    return null;
+  }
+
+  return parsed.data.map((row) => ({
+    id: row.id,
+    shortName: row.short_name,
+    isActive: row.is_active,
   }));
 }

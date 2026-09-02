@@ -11,6 +11,13 @@ export type WorkspaceMember = {
   createdAt: string;
 };
 
+/** A branch the Super Admin may assign somebody to. */
+export type AssignableBranch = {
+  id: string;
+  shortName: string;
+  isActive: boolean;
+};
+
 export type WorkspaceAccessActionState = {
   status: "idle" | "success" | "error";
   message?: string;

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getWorkspaceMembers } from "@/lib/staff/team";
+import { getWorkspaceMembers, listAssignableBranches } from "@/lib/staff/team";
 import { requireStaff } from "@/lib/staff/session";
 import { WorkspaceAccessManager } from "./WorkspaceAccessManager";
 
@@ -7,7 +7,10 @@ export default async function WorkspaceTeamPage() {
   const { profile } = await requireStaff("/workspace/team");
   if (profile.role !== "admin") redirect("/workspace");
 
-  const members = await getWorkspaceMembers();
+  const [members, branches] = await Promise.all([
+    getWorkspaceMembers(),
+    listAssignableBranches(),
+  ]);
 
   return (
     <div>
@@ -18,8 +21,8 @@ export default async function WorkspaceTeamPage() {
         written to the audit log.
       </p>
 
-      {members ? (
-        <WorkspaceAccessManager members={members} />
+      {members && branches ? (
+        <WorkspaceAccessManager members={members} branches={branches} />
       ) : (
         <p role="alert" className="border-nybb-bone/30 mt-8 rounded-md border border-dashed p-5">
           Workspace access records are unavailable. Refresh after the database connection recovers.
