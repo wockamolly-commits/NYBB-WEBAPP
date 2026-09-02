@@ -710,6 +710,26 @@ menu list, where the person with the empty fryer already is. Two full implementa
 control do not stay identical, and the day they diverge is the day the two screens disagree about
 what an item's state is.
 
+**One Piece Of State Gets One Control.** Sold out had two: a cashier's on the menu list with three
+hold kinds and a time picker, and an owner's tick box table on the item editor with neither. Sharing
+their wording and their layout made them look alike, which was an improvement and not the fix. Two
+controls for one piece of state is two vocabularies, two layouts, two things to keep in step, and a
+person having to learn which screen does which. There is one now.
+
+Which screen keeps it is decided by permission, not by taste. A cashier holds `menu:availability`
+and not `menu:configure`, and the item editor is behind `menu:configure`, so a control that lived
+only there would be unreachable by the people who use it most, in the middle of the shift it exists
+for. It lives on the menu list; the editor states the item's current state in the same words and
+links to it.
+
+The three hold kinds collapsed into a box and an optional time, because `today`, `until` and
+`indefinite` differ only in whether there is an end and what the screen called it when it was set.
+So the control asks the two questions that decide it, is this counter selling the item and when
+does it come back, and the action derives the stored kind. Nothing is lost from the audit trail and
+nobody is asked to classify their own answer. The time field renders only where it can apply: beside
+a counter that is still selling the item it is a field with nothing to say, which is what the old
+control showed permanently, greyed, next to the control that had already disabled it.
+
 **One State, One Sentence, Wherever It Is Read.** The menu list and the item editor both show
 whether a counter is selling an item, and each wrote its own words for it. The list said "Sold out
 at Central Bloc" for an indefinite hold AND for one ending at 6pm, so the two were indistinguishable
@@ -721,9 +741,8 @@ choice, it is a second definition of the state, and it drifts.
 The same pass put the list's control on a fixed grid. It was a `flex flex-wrap` row, so it sized
 itself from its own contents and landed differently on every card in a list of forty items, which
 is the fault the workspace table section describes and the whole of why that screen read as sloppy
-beside the editor. What stays different between the two is deliberate and worth naming: the list
-offers the three hold kinds and a time, because a cashier's question is "when does it come back",
-and the editor offers a tick box, because an owner's question is "do we sell this here".
+beside the editor. That pass stopped at making the two look alike; the rule above is where it ended
+up, with one of them gone.
 
 **A Repeated Action Becomes A Column And One Save.** "Available at" shipped first as a Stop selling
 button on every row, acting on the press. That reads fine against one counter and badly against

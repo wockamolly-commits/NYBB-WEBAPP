@@ -1,3 +1,4 @@
+import { manilaDateEndExclusiveIso } from "@/lib/staff/manila-dates";
 import type { ManagedBranch, ManagedHold } from "@/lib/staff/menu-types";
 
 /**
@@ -25,17 +26,24 @@ export function tradingBranches(branches: ManagedBranch[]): ManagedBranch[] {
 }
 
 /**
- * How many of the trading counters are not selling this item.
+ * The counters this person may actually act on.
  *
- * Counted against the trading list rather than by taking `holds.length`. A
- * hold can outlive its branch's trading: closing a branch does not delete the
- * holds set while it was open, and `staff_set_menu_item_hold` has no reason
- * to. Counting the raw array would report "2 of 1 sold out" on a screen
- * listing one counter, which is not a rounding error but a sentence that
- * cannot be true.
+ * A cashier's counter is fixed, so they get exactly their own and cannot mark
+ * an item sold out at a branch they are not standing in. A roving manager or
+ * an admin has no fixed counter and gets every trading one, which is what
+ * lets them take an item off several in a single Save.
+ *
+ * The RPC refuses a branch the caller may not write anyway, so this is not
+ * the security boundary; it is the difference between a screen that offers
+ * what you can do and one that offers nine options and rejects eight.
  */
-export function soldOutCount(holds: ManagedHold[], trading: ManagedBranch[]): number {
-  return holds.filter((hold) => trading.some((branch) => branch.id === hold.branchId)).length;
+export function actableBranches(
+  branches: ManagedBranch[],
+  actingBranchId: string | null,
+): ManagedBranch[] {
+  const trading = tradingBranches(branches);
+  if (!actingBranchId) return trading;
+  return trading.filter((branch) => branch.id === actingBranchId);
 }
 
 /**
@@ -71,18 +79,92 @@ export function sellsHereByBranch(
  * writing a hold at a counter this screen is no longer showing would be
  * invisible to the person who pressed the button.
  */
-export function changedBranches(
-  drafts: Record<string, boolean>,
+/**
+ * The "back on" time each counter starts with, as a datetime-local value.
+ *
+ * Seeded from the saved hold so an end set an hour ago is shown rather than
+ * silently dropped: opening the control on a counter held until 6pm and
+ * pressing Save must not turn that into an indefinite hold. An indefinite
+ * hold, and a counter with no hold at all, seed empty.
+ *
+ * The stored instant is UTC and the input speaks Manila wall clock, so this
+ * converts rather than slicing the ISO string. Slicing would show a 6pm hold
+ * as 10am, and saving it back would move the hold eight hours earlier.
+ */
+export function untilByBranch(
   holds: ManagedHold[],
-  trading: ManagedBranch[],
-): Array<{ branchId: string; name: string; sellHere: boolean }> {
-  const saved = sellsHereByBranch(holds, trading);
-  return trading
-    .filter((branch) => branch.id in drafts && drafts[branch.id] !== saved[branch.id])
+  branches: ManagedBranch[],
+): Record<string, string> {
+  const seeded: Record<string, string> = {};
+  for (const branch of branches) {
+    const hold = holds.find((candidate) => candidate.branchId === branch.id);
+    seeded[branch.id] = hold?.unavailableUntil ? manilaInputValue(hold.unavailableUntil) : "";
+  }
+  return seeded;
+}
+
+/**
+ * An instant as the value a `datetime-local` input carries, in Manila wall
+ * clock terms. "2026-08-25T18:00".
+ */
+export function manilaInputValue(iso: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+/**
+ * The counters the Save button actually has to write.
+ *
+ * Only the changed ones, for the reason the price grid sends only changed
+ * rows: an untouched counter rewritten is a write nobody asked for, an audit
+ * row nobody asked for, and one more thing that can fail and take the save
+ * down with it. Empty is normal and means Save was pressed with nothing
+ * altered, which the action answers without touching the database.
+ *
+ * The END counts as a change, not just the tick. Moving a hold from 6pm to
+ * 9pm leaves the box unticked either way, and a comparison that looked only
+ * at the box would decide nothing had happened and quietly discard the new
+ * time. The end is only compared where the counter is not selling, because
+ * the field is not shown, not sent and not meaningful where it is.
+ *
+ * A draft for a branch that is not in the list is ignored rather than sent.
+ * It can only arrive from a stale page whose counters have since changed, and
+ * writing a hold at a counter this screen is no longer showing would be
+ * invisible to the person who pressed the button.
+ */
+export function changedBranches(
+  sellsHere: Record<string, boolean>,
+  untils: Record<string, string>,
+  holds: ManagedHold[],
+  branches: ManagedBranch[],
+): Array<{ branchId: string; name: string; sellHere: boolean; until: string }> {
+  const savedSelling = sellsHereByBranch(holds, branches);
+  const savedUntil = untilByBranch(holds, branches);
+
+  return branches
+    .filter((branch) => {
+      if (!(branch.id in sellsHere)) return false;
+      const selling = sellsHere[branch.id]!;
+      if (selling !== savedSelling[branch.id]) return true;
+      if (selling) return false;
+      return (untils[branch.id] ?? "") !== (savedUntil[branch.id] ?? "");
+    })
     .map((branch) => ({
       branchId: branch.id,
       name: branch.shortName,
-      sellHere: drafts[branch.id]!,
+      sellHere: sellsHere[branch.id]!,
+      // Never sent for a counter that is selling: there is no hold to put an
+      // end on, and the action would have to ignore it anyway.
+      until: sellsHere[branch.id] ? "" : (untils[branch.id] ?? ""),
     }));
 }
 
@@ -143,4 +225,28 @@ export function formatManilaInstant(iso: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso));
+}
+
+/** "Today" in Asia/Manila, as the YYYY-MM-DD the Manila helpers expect. */
+export function manilaTodayDate(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+}
+
+/**
+ * The end of the current Manila day, as a value a `datetime-local` input can
+ * carry, in Manila wall clock terms.
+ *
+ * Shared by the control and the Server Action, which is why it is here rather
+ * than in either. The control offers it as the "Rest of today" shortcut, and
+ * the action compares an incoming end against it to decide whether the hold
+ * is recorded as `today` or as `until`. Two copies of this would eventually
+ * disagree by a day, and the audit trail would quietly stop meaning anything.
+ */
+export function endOfManilaDayInputValue(): string {
+  const iso = manilaDateEndExclusiveIso(manilaTodayDate());
+  if (!iso) return "";
+  const manilaDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(
+    new Date(iso),
+  );
+  return `${manilaDate}T00:00`;
 }

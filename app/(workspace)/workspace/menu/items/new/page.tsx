@@ -28,14 +28,13 @@ export default async function NewMenuItemPage() {
       </div>
 
       {menu ? (
-        // A new item has no id, so it has no holds and no availability
-        // section. The props are still passed rather than made optional: a
-        // default would be a second answer to "may this person do this".
+        // A new item has no id, so it has no holds and nothing to point at
+        // yet. The prop is still passed rather than made optional: a default
+        // would be a second answer to "may this person do this".
         <ItemEditor
           item={null}
           categories={menu.categories}
           optionGroups={menu.optionGroups}
-          branches={menu.branches}
           canSetAvailability={false}
         />
       ) : (

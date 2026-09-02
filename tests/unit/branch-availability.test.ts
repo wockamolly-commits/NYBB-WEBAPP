@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  actableBranches,
   availabilityStatusLine,
   changedBranches,
-  holdSummary,
   formatManilaInstant,
+  holdSummary,
+  manilaInputValue,
   sellsHereByBranch,
-  soldOutCount,
   tradingBranches,
+  untilByBranch,
 } from "@/lib/staff/branch-availability";
 import type { ManagedBranch, ManagedHold } from "@/lib/staff/menu-types";
 
@@ -50,23 +52,6 @@ describe("tradingBranches", () => {
   });
 });
 
-describe("soldOutCount", () => {
-  it("counts a hold at a trading counter", () => {
-    expect(soldOutCount([hold(pilot)], [pilot, other])).toBe(1);
-  });
-
-  it("ignores a hold left behind by a branch that has since closed", () => {
-    // Closing a branch does not delete its holds, so the raw array outlives
-    // the counter. Counting it would print "1 of 0 sold out" over a table
-    // with no rows in it.
-    expect(soldOutCount([hold(shut)], [pilot])).toBe(0);
-  });
-
-  it("is zero when nothing is held", () => {
-    expect(soldOutCount([], [pilot, other])).toBe(0);
-  });
-});
-
 describe("sellsHereByBranch", () => {
   it("ticks a counter with no hold and unticks one with a hold", () => {
     expect(sellsHereByBranch([hold(other)], [pilot, other])).toEqual({
@@ -89,41 +74,118 @@ describe("sellsHereByBranch", () => {
   });
 });
 
+describe("actableBranches", () => {
+  it("gives a cashier only the counter they are standing in", () => {
+    expect(actableBranches([pilot, other], pilot.id)).toEqual([pilot]);
+  });
+
+  it("gives a roving manager every trading counter", () => {
+    // This is what lets one Save take an item off several at once. The old
+    // control had a picker instead, so a manager set one counter, waited for
+    // it, and set the next.
+    expect(actableBranches([pilot, other, shut], null)).toEqual([pilot, other]);
+  });
+
+  it("never offers a counter that has never opened, even as a cashier's own", () => {
+    expect(actableBranches([shut], shut.id)).toEqual([]);
+  });
+});
+
+describe("untilByBranch", () => {
+  it("seeds empty for a counter with no hold and for an indefinite one", () => {
+    expect(untilByBranch([hold(other)], [pilot, other])).toEqual({
+      "branch-pilot": "",
+      "branch-other": "",
+    });
+  });
+
+  it("seeds a timed hold in Manila wall clock, not in UTC", () => {
+    // 10:00 UTC is 6pm in Cebu. Seeding the raw ISO would show 10:00 and
+    // saving it back would move the hold eight hours earlier.
+    expect(untilByBranch([hold(pilot, "2026-08-25T10:00:00.000Z")], [pilot])).toEqual({
+      "branch-pilot": "2026-08-25T18:00",
+    });
+  });
+});
+
 describe("changedBranches", () => {
-  it("sends nothing when the ticks match what is saved", () => {
-    // Save with nothing altered must not write. Every counter rewritten is an
-    // audit row nobody asked for and one more thing that can fail.
-    const saved = sellsHereByBranch([hold(other)], [pilot, other]);
-    expect(changedBranches(saved, [hold(other)], [pilot, other])).toEqual([]);
+  it("sends nothing when nothing moved", () => {
+    const holds = [hold(other)];
+    const selling = sellsHereByBranch(holds, [pilot, other]);
+    const untils = untilByBranch(holds, [pilot, other]);
+    expect(changedBranches(selling, untils, holds, [pilot, other])).toEqual([]);
   });
 
   it("sends only the counter that moved, not its neighbours", () => {
-    const drafts = { "branch-pilot": false, "branch-other": true };
-    expect(changedBranches(drafts, [], [pilot, other])).toEqual([
-      { branchId: "branch-pilot", name: "Central Bloc", sellHere: false },
-    ]);
+    expect(
+      changedBranches(
+        { "branch-pilot": false, "branch-other": true },
+        { "branch-pilot": "", "branch-other": "" },
+        [],
+        [pilot, other],
+      ),
+    ).toEqual([{ branchId: "branch-pilot", name: "Central Bloc", sellHere: false, until: "" }]);
   });
 
   it("sends several at once, which is the whole point of one Save", () => {
-    const drafts = { "branch-pilot": false, "branch-other": false };
-    expect(changedBranches(drafts, [], [pilot, other])).toHaveLength(2);
+    expect(
+      changedBranches(
+        { "branch-pilot": false, "branch-other": false },
+        {},
+        [],
+        [pilot, other],
+      ),
+    ).toHaveLength(2);
   });
 
-  it("carries a tick back as a lift", () => {
-    const drafts = { "branch-pilot": true };
-    expect(changedBranches(drafts, [hold(pilot)], [pilot])).toEqual([
-      { branchId: "branch-pilot", name: "Central Bloc", sellHere: true },
+  it("treats a changed end as a change, with the box still unticked", () => {
+    // Moving a hold from 6pm to 9pm leaves the box unticked either way. A
+    // comparison that looked only at the box would decide nothing happened
+    // and quietly discard the new time.
+    const holds = [hold(pilot, "2026-08-25T10:00:00.000Z")];
+    const changed = changedBranches(
+      { "branch-pilot": false },
+      { "branch-pilot": "2026-08-25T21:00" },
+      holds,
+      [pilot],
+    );
+    expect(changed).toEqual([
+      { branchId: "branch-pilot", name: "Central Bloc", sellHere: false, until: "2026-08-25T21:00" },
     ]);
   });
 
-  it("ignores a draft for a counter that no longer trades", () => {
-    // Only reachable from a page left open while a branch was switched off.
-    // Writing a hold at a counter the screen is not showing would be
-    // invisible to the person who pressed Save.
-    const drafts = { "branch-shut": false, "branch-pilot": false };
-    expect(changedBranches(drafts, [], [pilot])).toEqual([
-      { branchId: "branch-pilot", name: "Central Bloc", sellHere: false },
-    ]);
+  it("does not resend a timed hold that was only looked at", () => {
+    // The field is seeded from the saved hold, so opening the control and
+    // pressing Save must not rewrite an untouched 6pm hold.
+    const holds = [hold(pilot, "2026-08-25T10:00:00.000Z")];
+    expect(
+      changedBranches({ "branch-pilot": false }, untilByBranch(holds, [pilot]), holds, [pilot]),
+    ).toEqual([]);
+  });
+
+  it("carries a tick back as a lift, with no end attached", () => {
+    const holds = [hold(pilot, "2026-08-25T10:00:00.000Z")];
+    expect(
+      changedBranches({ "branch-pilot": true }, untilByBranch(holds, [pilot]), holds, [pilot]),
+    ).toEqual([{ branchId: "branch-pilot", name: "Central Bloc", sellHere: true, until: "" }]);
+  });
+
+  it("ignores a draft for a counter that is no longer listed", () => {
+    expect(
+      changedBranches({ "branch-shut": false, "branch-pilot": false }, {}, [], [pilot]),
+    ).toEqual([{ branchId: "branch-pilot", name: "Central Bloc", sellHere: false, until: "" }]);
+  });
+});
+
+describe("manilaInputValue", () => {
+  it("converts an instant into a Manila datetime-local value", () => {
+    expect(manilaInputValue("2026-08-25T10:00:00.000Z")).toBe("2026-08-25T18:00");
+  });
+
+  it("rolls the date over when Manila is already on the next day", () => {
+    // 17:00 UTC is 1am tomorrow in Cebu. Slicing the ISO string would print
+    // yesterday's date beside tomorrow's time.
+    expect(manilaInputValue("2026-08-25T17:00:00.000Z")).toBe("2026-08-26T01:00");
   });
 });
 

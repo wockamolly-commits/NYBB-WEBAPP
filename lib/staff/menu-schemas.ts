@@ -71,13 +71,24 @@ export const optionSchema = z
   }));
 
 /**
- * The "Available at" grid, as its one Save posts it.
+ * The sold out control, as its one Save posts it.
  *
  * `sellHere` is the tick box: true means this counter sells the item, false
- * means it does not. The action turns each one into a hold write or a lift,
- * so this schema deliberately does not carry a hold `kind`. The item editor
- * only ever writes the indefinite kind, and a kind arriving from the browser
- * would be a way to set a timed hold from a screen that has no time field.
+ * means it does not. `until` is the optional "back on" time beside an
+ * unticked box, as a Manila wall clock string the way the datetime input
+ * writes it, or empty for "until someone puts it back".
+ *
+ * THE HOLD KIND IS NOT CARRIED, AND THAT IS ON PURPOSE. The three kinds
+ * differ only in whether there is an end and what the screen called it when
+ * it was set (see 0051), so the pair above determines the kind completely and
+ * the action derives it. A kind posted from the browser would let a caller
+ * claim an end it did not send, or send an end while claiming to be
+ * indefinite, which is a hold whose stored kind disagrees with its own
+ * timestamp.
+ *
+ * EMPTY IS NOT ZERO, AND HERE EMPTY IS NOT A DATE (AGENTS.md rule 6). `until`
+ * stays a string and is never coerced. An empty one means "no end", which is
+ * a different hold from one ending at the epoch.
  *
  * `name` is carried only so a failure can say which counter did not save,
  * exactly as optionPriceRowSchema carries one. It is never written.
@@ -86,6 +97,7 @@ export const branchAvailabilityRowSchema = z.object({
   branchId: z.uuid(),
   name: z.string().trim().min(1).max(120),
   sellHere: z.boolean(),
+  until: z.string().trim().max(40).default(""),
 });
 
 export const branchAvailabilityGridSchema = z.object({

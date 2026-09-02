@@ -1,26 +1,28 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { serviceClient } from "./fixtures/menu-photo";
 
 /**
- * "Available at" on the item editor: taking one counter off an item and
- * putting it back.
+ * The one sold out control, on the menu list.
  *
  * WHAT THIS STANDS FOR, AND WHY THE OTHER SUITES CANNOT SEE IT.
  * ================================================================
  * tests/sql/menu-availability-readers.test.ts proves the database half: a
  * hold hides the item at its own branch and nowhere else, and a branch-less
  * menu is not hidden from at all. tests/unit/branch-availability.test.ts
- * proves the decisions the section makes before it renders. Neither can see
+ * proves the decisions the control makes before it renders. Neither can see
  * the thing this feature actually has to do, which is that ticking boxes and
  * pressing one Save changes exactly those counters and no others, and that
  * the rows read back the new state WITHOUT a reload.
  *
- * That last clause is the one with a history. A Server Action writes through
- * an RPC and the page it was pressed on is a Server Component reading the
- * managed menu, so the row only tells the truth again if the action
- * revalidates this route. refreshMenu() listed five workspace paths and not
- * /workspace/menu/items/[id], because until now nothing on that page wrote a
- * hold. The same class of defect as the option checkbox that reset itself:
+ * There used to be two controls, a cashier's here and an owner's on the item
+ * editor. There is one now, on this screen, because a cashier holds
+ * menu:availability and NOT menu:configure and cannot open the editor at all.
+ * The second to last test is what stops a second control reappearing.
+ *
+ * The no-reload clause has a history. A Server Action writes through an RPC
+ * and the page it was pressed on is a Server Component reading the managed
+ * menu, so a row only tells the truth again if the action revalidates the
+ * route. The same class of defect as the option checkbox that reset itself:
  * the write lands, the screen says otherwise, and only a hard refresh agrees.
  *
  * It creates the item it edits and deletes it afterwards, per the README's
@@ -28,10 +30,16 @@ import { serviceClient } from "./fixtures/menu-photo";
  * Holds hang off that item and go with it.
  */
 
+const MENU = "/workspace/menu";
 const ITEM_NAME_PREFIX = "E2E branch availability";
 
 let itemId: string | null = null;
 let branchNames: string[] = [];
+
+/** The card for the throwaway item, and the one control inside it. */
+function card(page: Page) {
+  return page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
+}
 
 test.beforeAll(async () => {
   const { data, error } = await serviceClient()
@@ -101,96 +109,105 @@ async function holdRows(): Promise<Array<{ branch_id: string; kind: string }>> {
   return data ?? [];
 }
 
-test("lists every trading counter, and only those", async ({ page }) => {
-  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
-
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Available at", exact: true }),
-  });
-  await expect(section).toBeVisible();
+test("shows one row per counter this person may act on", async ({ page }) => {
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+  await expect(item).toBeVisible();
 
   for (const name of branchNames) {
-    await expect(section.getByText(name, { exact: true })).toBeVisible();
+    await expect(item.getByText(name, { exact: true })).toBeVisible();
   }
 
-  // A counter that has never opened has no answer to give, so it is not asked
-  // about. Eight of the nine branch rows are in that state.
+  // A counter that has never opened has no answer to give, so it is not
+  // offered. Eight of the nine branch rows are in that state.
   const { data: shut } = await serviceClient()
     .from("branches")
     .select("short_name")
     .eq("is_active", false);
   for (const branch of shut ?? []) {
-    await expect(section.getByText(branch.short_name as string, { exact: true })).toHaveCount(0);
+    await expect(item.getByText(branch.short_name as string, { exact: true })).toHaveCount(0);
   }
 });
 
-test("the global switch names its own scope and points at this section", async ({ page }) => {
-  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
-
-  // "On the menu" named no menu, so nothing told a person that the per
-  // counter control existed. See DESIGN.md, The Control That Has A Twin
-  // Names Its Own Scope Rule.
-  await expect(page.getByText("Sell this item at all", { exact: true })).toBeVisible();
-  await expect(page.getByText("On the menu", { exact: true })).toHaveCount(0);
-  await expect(page.getByText(/use Available at below/)).toBeVisible();
-});
-
-test("stops selling at a counter through the tick box, without a reload", async ({ page }) => {
+test("stops selling at a counter, and says so without a reload", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
-
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Available at", exact: true }),
-  });
-  const save = section.getByRole("button", { name: "Save availability" });
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+  const save = item.getByRole("button", { name: "Save availability" });
 
   // Nothing to commit yet, so the button is quiet and dead. A Save that is
   // pressable before anything changed writes a row nobody asked for.
   await expect(save).toBeDisabled();
 
-  await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
   await expect(save).toBeEnabled();
-  await expect(section.getByText("1 counter changed.")).toBeVisible();
+  await expect(item.getByText("1 counter changed.")).toBeVisible();
 
   // Still nothing written: the tick is a draft until Save.
   expect(await holdRows()).toHaveLength(0);
 
   await save.click();
+  await expect(item.getByText("Sold out until someone puts it back")).toBeVisible();
 
-  // The row itself, with no page.reload(). This is the assertion the
-  // revalidatePath on /workspace/menu/items/[id] exists for.
-  await expect(section.getByText("Sold out until someone puts it back")).toBeVisible();
-
-  // And the write really happened, as the kind this screen is supposed to
-  // write. A timed hold set from here would expire on its own and put the
-  // item back at a counter that was meant to stop selling it.
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
   expect(rows[0]?.kind).toBe("indefinite");
 });
 
+test("the back on field appears only where it can apply", async ({ page }) => {
+  const first = branchNames[0]!;
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+
+  // A "comes back" beside a counter that IS selling the item is a field with
+  // nothing to say. The old control showed it permanently, greyed out.
+  await expect(item.getByLabel("Back on")).toHaveCount(0);
+  await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await expect(item.getByLabel("Back on")).toBeVisible();
+});
+
+test("writes a timed hold, and reads its end back rather than dropping it", async ({ page }) => {
+  const first = branchNames[0]!;
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+
+  await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await item.getByRole("button", { name: "Rest of today" }).click();
+  await item.getByRole("button", { name: "Save availability" }).click();
+
+  // The end is stored, and the kind records that the person chose "today"
+  // rather than picking that instant by hand. 0051 keeps the two apart for
+  // the audit trail, and this derivation is the only thing that writes it.
+  await expect(item.getByText(/Sold out until/)).toBeVisible();
+  const rows = await holdRows();
+  expect(rows).toHaveLength(1);
+  expect(rows[0]?.kind).toBe("today");
+
+  // Reopened, the field carries the saved end rather than starting empty. An
+  // empty field here would turn a timed hold into an indefinite one on the
+  // next Save, which is a hold that has stopped expiring on its own.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(card(page).getByLabel("Back on")).not.toHaveValue("");
+
+  // And Save with nothing touched writes nothing, so it is still dead.
+  await expect(card(page).getByRole("button", { name: "Save availability" })).toBeDisabled();
+});
+
 test("puts a counter back by ticking it, and leaves no hold row behind", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
-
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Available at", exact: true }),
-  });
-  const box = section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) });
-  const save = section.getByRole("button", { name: "Save availability" });
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+  const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) });
+  const save = item.getByRole("button", { name: "Save availability" });
 
   await box.uncheck();
   await save.click();
-  await expect(section.getByText("Sold out until someone puts it back")).toBeVisible();
-
-  // The box has to come back unticked after the save, showing what is now
-  // saved. A box that reset itself to ticked would be the option-checkbox
-  // defect again: the screen disagreeing with the database.
+  await expect(item.getByText("Sold out until someone puts it back")).toBeVisible();
   await expect(box).not.toBeChecked();
 
   await box.check();
   await save.click();
-  await expect(section.getByText("Available", { exact: true }).first()).toBeVisible();
+  await expect(item.getByText("Available", { exact: true })).toBeVisible();
 
   // Lifting deletes the row. There is deliberately no is_held boolean beside
   // the timestamp, per 0051, so an emptied table is the whole of "available".
@@ -198,68 +215,47 @@ test("puts a counter back by ticking it, and leaves no hold row behind", async (
 });
 
 test("takes several counters off in one Save", async ({ page }) => {
-  // The reason the row buttons were replaced. With one branch trading this
-  // asserts the single-counter path and the count sentence; with more it is
-  // the real multi-select case, and both are worth having as branches open.
+  // The reason the per row buttons went. Skips itself while one branch trades.
   test.skip(branchNames.length < 2, "needs a second trading branch to be a multi-counter test");
 
-  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Available at", exact: true }),
-  });
-
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
   for (const name of branchNames.slice(0, 2)) {
-    await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${name}`) }).uncheck();
+    await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${name}`) }).uncheck();
   }
-  await expect(section.getByText("2 counters changed.")).toBeVisible();
+  await expect(item.getByText("2 counters changed.")).toBeVisible();
 
-  await section.getByRole("button", { name: "Save availability" }).click();
-  await expect(section.getByText("Sold out until someone puts it back").first()).toBeVisible();
+  await item.getByRole("button", { name: "Save availability" }).click();
+  await expect(item.getByText("Sold out until someone puts it back").first()).toBeVisible();
 
-  // One press, two writes, and no counter touched that was not ticked.
   const rows = await holdRows();
   expect(rows).toHaveLength(2);
-  expect(rows.every((row) => row.kind === "indefinite")).toBe(true);
 });
 
-test("the menu list and the item editor describe one hold the same way", async ({ page }) => {
-  // The complaint this stands for: the two screens wrote their own sentences,
-  // so the menu list said "Sold out at Central Bloc" for BOTH an indefinite
-  // hold and one ending at 6pm. They now share branchStatusLine, and this is
-  // the assertion that keeps them sharing it.
+test("the item editor points at the one control instead of carrying a second", async ({ page }) => {
   const first = branchNames[0]!;
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  await card(page).getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await card(page).getByRole("button", { name: "Save availability" }).click();
+  await expect(card(page).getByText("Sold out until someone puts it back")).toBeVisible();
+
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
 
-  const section = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Available at", exact: true }),
-  });
-  await section.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
-  await section.getByRole("button", { name: "Save availability" }).click();
-  await expect(section.getByText("Sold out until someone puts it back")).toBeVisible();
-
-  // Same hold, other screen, same words.
-  await page.goto("/workspace/menu", { waitUntil: "domcontentloaded" });
-  const card = page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
-  await expect(card.getByText(`${first}: sold out until someone puts it back`)).toBeVisible();
+  // No second control here: the tick boxes are gone, and what remains is the
+  // state in the same words plus the way back to where it is set.
+  await expect(page.getByRole("heading", { name: "Available at", exact: true })).toHaveCount(0);
+  // Anchored on the counter's name. An unanchored "Sell .* at" also matches
+  // the global "Sell this item at all" box, which belongs here and stays.
+  await expect(
+    page.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) }),
+  ).toHaveCount(0);
+  await expect(page.getByText(`${first}: sold out until someone puts it back`)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to the menu list" })).toBeVisible();
 });
 
-test("the counter picker offers only counters that trade", async ({ page }) => {
-  // It used to list all nine branches, so a manager could mark an item sold
-  // out at a branch that has never opened. Skipped for a cashier, whose
-  // counter is fixed and who therefore gets no picker at all.
-  await page.goto("/workspace/menu", { waitUntil: "domcontentloaded" });
-  const card = page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
-  const picker = card.getByRole("combobox", { name: /Which counter/i });
-  if ((await picker.count()) === 0) test.skip(true, "signed in as a cashier, whose counter is fixed");
-
-  await picker.first().click();
-  const { data: shut } = await serviceClient()
-    .from("branches")
-    .select("short_name")
-    .eq("is_active", false);
-  for (const branch of shut ?? []) {
-    await expect(page.getByRole("option", { name: branch.short_name as string })).toHaveCount(0);
-  }
-  await expect(page.getByRole("option", { name: branchNames[0]! })).toBeVisible();
-  await page.keyboard.press("Escape");
+test("the global switch names its own scope and points at the menu list", async ({ page }) => {
+  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("Sell this item at all", { exact: true })).toBeVisible();
+  await expect(page.getByText("On the menu", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/mark it sold out from the menu list/)).toBeVisible();
 });

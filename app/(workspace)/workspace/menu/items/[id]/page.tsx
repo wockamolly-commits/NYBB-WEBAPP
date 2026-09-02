@@ -51,7 +51,6 @@ export default async function EditMenuItemPage({ params }: { params: Promise<{ i
         item={item}
         categories={menu.categories}
         optionGroups={menu.optionGroups}
-        branches={menu.branches}
         canSetAvailability={hasStaffPermission(profile, "menu:availability")}
       />
     </div>

@@ -3,14 +3,14 @@
 import { LoaderCircle, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
+import { holdSummary } from "@/lib/staff/branch-availability";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import type {
-  ManagedBranch,
   ManagedCategory,
   ManagedItem,
   ManagedOptionGroup,
@@ -18,7 +18,6 @@ import type {
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuItem } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
-import { BranchAvailability } from "./BranchAvailability";
 import { HeatPriceGrid } from "./HeatPriceGrid";
 import { ImageField } from "./ImageField";
 import { SizeRows } from "./SizeRows";
@@ -59,18 +58,17 @@ export function ItemEditor({
   item,
   categories,
   optionGroups,
-  branches,
   canSetAvailability,
 }: {
   item: ManagedItem | null;
   categories: ManagedCategory[];
   optionGroups: ManagedOptionGroup[];
-  branches: ManagedBranch[];
   /**
    * Whether this person may take the item off a counter. The page itself is
    * behind menu:configure, and availability is its own permission that a
-   * configure holder does not automatically have, so the section is gated
-   * separately rather than being assumed from the route.
+   * configure holder does not automatically have, so the pointer below is
+   * gated separately rather than being assumed from the route. The branch
+   * list is no longer passed: the control it fed lives on the menu list now.
    */
   canSetAvailability: boolean;
 }) {
@@ -340,6 +338,7 @@ export function ItemEditor({
   }
 
   const disabled = pending || leaving;
+  const soldOutSummary = item ? holdSummary(item.holds) : null;
   const activeCount = activeSizes.length;
 
   return (
@@ -460,8 +459,8 @@ export function ItemEditor({
               that the other existed. */}
           <p id={`${uid}-active-hint`} className="text-nybb-bone/65 mt-2 max-w-lg text-xs">
             Off takes the item off every counter at once, indefinitely, until someone turns it back
-            on. To stop selling it at one counter and keep it at the others, use Available at
-            below.
+            on. To stop selling it at one counter and keep it at the others, mark it sold out from
+            the menu list.
           </p>
         </WorkspaceSection>
 
@@ -615,13 +614,31 @@ export function ItemEditor({
         </div>
       </form>
 
-      {/* Outside the item's own <form>, for the reason HeatPriceGrid is: each
-          counter's row is its own <form> with its own Server Action, and a
-          nested form is not submitted independently. It sits directly after
-          the form because it answers the question the "Sell this item at all"
-          checkbox raises, at the other scope. */}
+      {/* There is ONE sold out control and it is on the menu list. This
+          carried a second one, a tick box per counter, which meant two
+          different controls for one piece of state: two vocabularies, two
+          layouts, and a person having to learn which screen offered which.
+          It also could not be the only one, because a cashier holds
+          menu:availability and not menu:configure and cannot open this page
+          at all. So the control lives where every role can reach it and this
+          says where that is. */}
       {item && canSetAvailability ? (
-        <BranchAvailability item={item} branches={branches} />
+        <WorkspaceSection
+          title="Sold out"
+          description={
+            <p>
+              Whether a counter is selling this item right now, and when it comes back, is set on
+              the menu list, beside the item.
+            </p>
+          }
+        >
+          <p className="text-nybb-bone/65 max-w-md text-sm">
+            {soldOutSummary ?? "This item is on sale at every counter."}
+          </p>
+          <ButtonLink href="/workspace/menu" tone="dark" variant="secondary" className="mt-3">
+            Go to the menu list
+          </ButtonLink>
+        </WorkspaceSection>
       ) : null}
 
       <WorkspaceSection

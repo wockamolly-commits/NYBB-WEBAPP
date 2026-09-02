@@ -8,6 +8,7 @@ import { manilaWallClockIso } from "@/lib/staff/manila-dates";
 // optionSchema lives outside this file because a "use server" module may only
 // export async functions, so nothing declared here can be unit tested. See the
 // note in menu-schemas.ts: that is how its heat percent branch stayed wrong.
+import { endOfManilaDayInputValue } from "@/lib/staff/branch-availability";
 import { branchAvailabilityGridSchema, optionSchema } from "@/lib/staff/menu-schemas";
 import {
   MENU_IMAGE_BUCKET,
@@ -217,15 +218,35 @@ export async function setMenuItemBranchAvailability(
   const supabase = await createStaffClient();
   const failed: string[] = [];
   let firstError: string | undefined;
+  const endOfManilaDay = endOfManilaDayInputValue();
 
   for (const row of parsed.data.branches) {
+    // The kind is derived here and never posted. A hold with an end is
+    // 'until', or 'today' when that end is the end of the current Manila day,
+    // which 0051 keeps apart only so the audit trail records what the person
+    // was offered. No end is 'indefinite'.
+    let kind: string | null = null;
+    let until: string | null = null;
+    if (!row.sellHere) {
+      if (row.until) {
+        until = manilaWallClockIso(row.until);
+        if (!until) {
+          failed.push(row.name);
+          continue;
+        }
+        kind = row.until === endOfManilaDay ? "today" : "until";
+      } else {
+        kind = "indefinite";
+      }
+    }
+
     const { error } = await supabase.rpc("staff_set_menu_item_hold", {
       p_item_id: parsed.data.itemId,
       p_branch_id: row.branchId,
       // null is the RPC's word for lifting the hold. See holdSchema above,
       // which spells the same thing "lift" because a form cannot post null.
-      p_kind: row.sellHere ? null : "indefinite",
-      p_unavailable_until: null,
+      p_kind: kind,
+      p_unavailable_until: until,
     });
     if (error) {
       console.error("[workspace] branch availability failed:", row.branchId, error.message);
