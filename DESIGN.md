@@ -710,6 +710,28 @@ menu list, where the person with the empty fryer already is. Two full implementa
 control do not stay identical, and the day they diverge is the day the two screens disagree about
 what an item's state is.
 
+**A Small Set Of Choices Is Not A Table.** The sold out control spent an hour as the workspace
+table, a Counter / Now / Selling here grid rendered once per item card, and it was wrong three ways.
+A table puts a counter's name at the far left of a 1400px card and its own tick box at the far
+right, so the two things that belong together sit as far apart as the card allows and the eye
+crosses the screen to answer "is this one on". Its header printed the column names once per card, so
+a menu of forty nine items printed them forty nine times, which is the fault the options screen was
+rebuilt to remove reappearing one level up. And a "Now" column reading "Available" beside a ticked
+box is one fact said twice, on every row of every item.
+
+The table earns its columns when fifteen rows have to line up and be compared. Two counters hanging
+off one item are not that: they are a small set of choices, which is the selection control family.
+So each counter is a bordered box carrying its own mark and its own name, wrapping, the shape the
+item editor already uses for Featured. State is printed only where there is state, because a ticked
+box has already said the rest.
+
+The corollary, once a field opens per choice: it goes under the group, not inside a cell. Inside
+one, the "back on" stack made that cell 120px tall, the grid's bottom alignment sank the row's other
+contents to the foot of it, and two open rows read as a broken page. Under the group, the counter
+names become a fixed first column so the fields share a left edge instead of each starting wherever
+its own label ended, and the hint that belongs to the field rather than to any counter is stated
+once for the group.
+
 **One Piece Of State Gets One Control.** Sold out had two: a cashier's on the menu list with three
 hold kinds and a time picker, and an owner's tick box table on the item editor with neither. Sharing
 their wording and their layout made them look alike, which was an improvement and not the fix. Two

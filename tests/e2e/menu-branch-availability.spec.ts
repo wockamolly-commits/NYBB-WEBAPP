@@ -161,9 +161,47 @@ test("the back on field appears only where it can apply", async ({ page }) => {
 
   // A "comes back" beside a counter that IS selling the item is a field with
   // nothing to say. The old control showed it permanently, greyed out.
-  await expect(item.getByLabel("Back on")).toHaveCount(0);
-  await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
-  await expect(item.getByLabel("Back on")).toBeVisible();
+  //
+  // Each field is labelled by its own counter's name, so two of them stack
+  // without two identical labels, and "Back on" is the group's heading. That
+  // is also what keeps the fields on one left edge.
+  await expect(item.getByText("Back on", { exact: true })).toHaveCount(0);
+  await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) }).uncheck();
+  await expect(item.getByText("Back on", { exact: true })).toBeVisible();
+  await expect(item.getByLabel(first, { exact: true })).toBeVisible();
+});
+
+test("a counter's name stays on the line with its own tick box when the time opens", async ({
+  page,
+}) => {
+  // The defect this stands for, and it shipped: the "back on" block lived
+  // inside the tick box's own cell, so opening it made that cell ~120px tall.
+  // The grid aligns cells to the bottom, so the counter's name and status sank
+  // to the foot of the row while the box stayed at the top, leaving a lake of
+  // empty charcoal between them. Two open rows read as a broken page.
+  //
+  // No assertion could see it: every other test here reads text and state, and
+  // both were correct the whole time. This one reads geometry, the way the
+  // options and categories layout specs do.
+  await page.setViewportSize({ width: 1440, height: 1200 });
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const item = card(page);
+  const first = branchNames[0]!;
+
+  const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) });
+  await box.uncheck();
+  await expect(item.getByLabel(first, { exact: true })).toBeVisible();
+
+  const name = item.getByText(first, { exact: true }).first();
+  const nameBox = await name.boundingBox();
+  const tickBox = await box.boundingBox();
+  if (!nameBox || !tickBox) throw new Error("could not measure the row");
+
+  // Same line: their vertical centres within half a row of each other. It was
+  // over 100px out before the fix.
+  const nameCentre = nameBox.y + nameBox.height / 2;
+  const tickCentre = tickBox.y + tickBox.height / 2;
+  expect(Math.abs(nameCentre - tickCentre)).toBeLessThan(24);
 });
 
 test("writes a timed hold, and reads its end back rather than dropping it", async ({ page }) => {
@@ -178,7 +216,11 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   // The end is stored, and the kind records that the person chose "today"
   // rather than picking that instant by hand. 0051 keeps the two apart for
   // the audit trail, and this derivation is the only thing that writes it.
-  await expect(item.getByText(/Sold out until/)).toBeVisible();
+  // Case-insensitive on purpose. branchStatusLine prints the counter's name
+  // first and lowers the sentence after it, "Central Bloc, IT Park: sold out
+  // until ...", so a capital S here would pin a presentation detail rather
+  // than the fact being asserted.
+  await expect(item.getByText(/sold out until/i)).toBeVisible();
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
   expect(rows[0]?.kind).toBe("today");
@@ -187,7 +229,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   // empty field here would turn a timed hold into an indefinite one on the
   // next Save, which is a hold that has stopped expiring on its own.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(card(page).getByLabel("Back on")).not.toHaveValue("");
+  await expect(card(page).getByLabel(first, { exact: true })).not.toHaveValue("");
 
   // And Save with nothing touched writes nothing, so it is still dead.
   await expect(card(page).getByRole("button", { name: "Save availability" })).toBeDisabled();
