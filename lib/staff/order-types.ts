@@ -6,6 +6,7 @@ export type WorkspaceOrder = {
   status: Extract<OrderStatus, "pending" | "accepted" | "preparing" | "ready" | "claimed">;
   isTest: boolean;
   customerName: string;
+  customerPhone: string;
   totalCents: number;
   notes: string | null;
   placedAt: string;

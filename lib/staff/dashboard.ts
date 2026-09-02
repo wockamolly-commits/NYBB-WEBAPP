@@ -12,8 +12,22 @@ export type WorkspaceSnapshot = {
   claimed: number;
 };
 
+export type WorkspaceDashboard = WorkspaceSnapshot & {
+  /**
+   * Test orders counted separately rather than dropped silently.
+   *
+   * The board shows them, badged, because a counter running a payment test
+   * needs to see the order it just placed. This summary excludes them from
+   * every figure, because a day's takings must not include play money. Those
+   * two correct decisions used to make the dashboard say four and the board
+   * show six, with nothing on either screen accounting for the difference.
+   */
+  testCount: number;
+};
+
 const rowsSchema = z.array(
   z.object({
+    is_test: z.boolean(),
     status: z.enum([
       "pending",
       "accepted",
@@ -55,12 +69,11 @@ export function summarizeOrders(statuses: readonly OrderStatus[]): WorkspaceSnap
 
 export async function getWorkspaceSnapshot(
   branchId: string | null,
-): Promise<WorkspaceSnapshot | null> {
+): Promise<WorkspaceDashboard | null> {
   const supabase = await createReadOnlyStaffClient();
   const query = supabase
     .from("orders")
-    .select("status")
-    .eq("is_test", false)
+    .select("status, is_test")
     .gte("placed_at", manilaDayStartIso());
   if (branchId) query.eq("branch_id", branchId);
   const { data, error } = await query;
@@ -74,5 +87,9 @@ export async function getWorkspaceSnapshot(
     console.error("[workspace] order summary had an unreadable shape", parsed.error.issues);
     return null;
   }
-  return summarizeOrders(parsed.data.map((row) => row.status));
+  const real = parsed.data.filter((row) => !row.is_test);
+  return {
+    ...summarizeOrders(real.map((row) => row.status)),
+    testCount: parsed.data.length - real.length,
+  };
 }

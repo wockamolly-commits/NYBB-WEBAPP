@@ -67,13 +67,32 @@ export function boardAction(order: WorkspaceOrder): BoardAction {
  * "Unpaid": the customer may be holding a QR code at this very moment, and a
  * staff member reading "unpaid" is being invited to chase somebody who is
  * already paying.
+ *
+ * WHY `settled` EXISTS.
+ * ================================================================
+ * History had its own copy of this function, under the same name, and its
+ * unpaid branch returned the raw row: "paymongo - awaiting_payment". Two
+ * functions called paymentLabel, one of them writing database enums onto a
+ * manager's screen. There is now one, and the flag is the single real
+ * difference between the two callers. A live order that is not paid is still
+ * being paid; a closed one never will be, and telling a manager reading last
+ * Tuesday to wait for a QR code is the same lie in the other direction.
  */
-export function paymentLabel(order: WorkspaceOrder): string {
-  if (!order.payment) return "No payment on this order";
+export function describePayment(
+  payment: { method: string; status: string } | null,
+  { settled = false }: { settled?: boolean } = {},
+): string {
+  if (!payment) return "No payment on this order";
 
-  if (order.payment.method === "counter") {
-    return order.payment.status === "paid" ? "Paid at counter" : "Collect at counter";
+  if (payment.method === "counter") {
+    if (payment.status === "paid") return "Paid at counter";
+    return settled ? "Never paid at the counter" : "Collect at counter";
   }
 
-  return order.payment.status === "paid" ? "Paid online" : "Awaiting payment";
+  if (payment.status === "paid") return "Paid online";
+  return settled ? "Never paid" : "Awaiting payment";
+}
+
+export function paymentLabel(order: WorkspaceOrder): string {
+  return describePayment(order.payment);
 }

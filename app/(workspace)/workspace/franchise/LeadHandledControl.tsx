@@ -45,7 +45,7 @@ export function LeadHandledControl({
       >
         {pending ? (
           <>
-            <LoaderCircle className="size-4 animate-spin" aria-hidden />
+            <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
             Saving
           </>
         ) : handled ? (

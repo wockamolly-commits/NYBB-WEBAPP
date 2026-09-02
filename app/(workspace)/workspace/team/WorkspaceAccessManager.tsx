@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, ShieldCheck, ShieldOff } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import {
@@ -73,6 +73,17 @@ function MemberCard({
 }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
+
+  // The card no longer remounts on save, so the open confirmation has to be
+  // closed deliberately rather than by accident of a changing key. Done during
+  // render off a change in the action result rather than in an effect, which
+  // is the adjust-state-on-new-input pattern: useActionState hands back a new
+  // object per submission, so identity is the signal that one just landed.
+  const [seen, setSeen] = useState(state);
+  if (seen !== state) {
+    setSeen(state);
+    if (state.status === "success") setConfirmingRevoke(false);
+  }
   const roleLabel = member.role === "admin"
     ? "Super Admin"
     : member.staffRole
@@ -108,7 +119,7 @@ function MemberCard({
       </div>
 
       {member.role === "admin" ? (
-        <p className="text-nybb-bone/45 max-w-prose text-xs leading-relaxed">
+        <p className="text-nybb-bone/55 max-w-prose text-xs leading-relaxed">
           The Super Admin is controlled by server configuration and cannot be changed here.
         </p>
       ) : (
@@ -207,6 +218,14 @@ export function WorkspaceAccessManager({
   branches: AssignableBranch[];
 }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
+  const grantForm = useRef<HTMLFormElement>(null);
+
+  // An email left sitting in the box after a successful grant is an invitation
+  // to grant the same person again, and the second attempt reads as a failure
+  // to anybody who does not know it already worked.
+  useEffect(() => {
+    if (state.status === "success") grantForm.current?.reset();
+  }, [state.status]);
 
   return (
     <div className="mt-8 grid gap-8 lg:grid-cols-[22rem_1fr]">
@@ -215,7 +234,7 @@ export function WorkspaceAccessManager({
         <p className="text-nybb-bone/55 mt-3 text-sm leading-relaxed">
           The person must first sign in once through the regular website login so their account exists.
         </p>
-        <form action={action} className="mt-5 space-y-4">
+        <form ref={grantForm} action={action} className="mt-5 space-y-4">
           <input type="hidden" name="active" value="true" />
           <div>
             <WorkspaceFieldLabel htmlFor="team-email">Email address</WorkspaceFieldLabel>
@@ -263,11 +282,20 @@ export function WorkspaceAccessManager({
         </div>
         <ul className="mt-5 space-y-3">
           {members.map((member) => (
-            <MemberCard
-              key={`${member.profileId}:${member.staffRole}:${member.branchId}:${member.isActive}`}
-              member={member}
-              branches={branches}
-            />
+            /*
+              Keyed on the person, and on nothing that changes when you edit
+              them. The key used to carry staffRole and isActive, and later the
+              branch as well, so the first thing a successful save did was
+              change the key, remount the card and throw away the "Workspace
+              access saved." it had just been handed. An admin changed a role
+              and watched nothing happen.
+
+              Nothing is lost by dropping them. The summary line and the button
+              label read from props, which the revalidation refreshes in place,
+              and each select is already showing the value the admin just
+              picked.
+            */
+            <MemberCard key={member.profileId} member={member} branches={branches} />
           ))}
         </ul>
       </section>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Building2, KeyRound, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { WorkspaceSignOut } from "@/components/workspace/WorkspaceSignOut";
 import { getStaffBranchLabel } from "@/lib/staff/profile";
 import { STAFF_ROLES, type StaffPermission } from "@/lib/staff/roles";
 import { requireStaff } from "@/lib/staff/session";
@@ -37,11 +38,23 @@ export default async function WorkspaceProfilePage() {
 
   return (
     <div>
-      <p className="type-caps text-nybb-yellow">Signed-in profile</p>
-      <h1 className="font-display heading-major mt-3">Your Workspace profile</h1>
-      <p className="text-nybb-bone/60 mt-3 max-w-2xl leading-relaxed">
-        These details and permissions are checked by the server whenever you use the Workspace.
-      </p>
+      {/*
+        Signing out lived only as an unlabelled icon in the header. This is the
+        page a person opens when the question is "who am I signed in as", and
+        the answer is very often followed by "not me".
+      */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="type-caps text-nybb-yellow">Signed-in profile</p>
+          <h1 className="font-display heading-major mt-3">Your Workspace profile</h1>
+          <p className="text-nybb-bone/70 mt-3 max-w-2xl leading-relaxed">
+            These details and permissions are checked by the server whenever you use the
+            Workspace. To change your name, your branch or what you can reach, ask the Super
+            Admin: none of it can be edited from here.
+          </p>
+        </div>
+        <WorkspaceSignOut withLabel />
+      </div>
 
       <section
         aria-labelledby="profile-details"
@@ -55,7 +68,7 @@ export default async function WorkspaceProfilePage() {
             <h2 id="profile-details" className="font-display heading-minor">
               {profile.displayName}
             </h2>
-            <p className="text-nybb-bone/55 mt-1 text-sm">{roleLabel}</p>
+            <p className="text-nybb-bone/70 mt-1 text-sm">{roleLabel}</p>
           </div>
         </div>
 
@@ -92,7 +105,7 @@ export default async function WorkspaceProfilePage() {
           <p className="bg-nybb-charcoal text-nybb-bone/70 mt-4 rounded-md p-5 text-sm">
             Full Workspace access
           </p>
-        ) : (
+        ) : profile.permissions.length ? (
           <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {profile.permissions.map((permission) => (
               <li
@@ -103,6 +116,17 @@ export default async function WorkspaceProfilePage() {
               </li>
             ))}
           </ul>
+        ) : (
+          // Reachable: every permission a role grants can be revoked one at a
+          // time by an override. This is also the page such a person lands on,
+          // so an empty list with no sentence under it was the whole workspace.
+          <p
+            role="status"
+            className="border-nybb-bone/30 text-nybb-bone/70 mt-4 rounded-md border border-dashed p-5 text-sm"
+          >
+            You have no Workspace permissions yet, so there is nothing here to open. Ask the
+            Super Admin to grant the access your shift needs.
+          </p>
         )}
       </section>
     </div>

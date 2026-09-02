@@ -17,18 +17,43 @@ export const metadata: Metadata = { title: "Audit log" };
  * screen can afford to name them. An unmapped action falls back to the raw
  * string rather than to a blank: an audit trail that hides an entry it does
  * not recognise is worse than one that shows an ugly one.
+ *
+ * This map used to cover ten of the twenty-three actions the migrations
+ * actually write, and the thirteen it missed were the ones a manager comes
+ * here for: every refund, every pause, every change to hours. The fallback
+ * meant the log worked, and read like a stack trace. Keep this list level with
+ * `grep -ohE "'[a-z_]+\.[a-z_]+'" supabase/migrations/*.sql`.
  */
 const ACTION_LABELS: Record<string, string> = {
+  // Orders
+  "order.accepted": "Order accepted",
   "order.started": "Order started",
   "order.ready": "Order marked ready",
   "order.claimed": "Order claimed at the counter",
+  "order.rejected": "Order refused by the branch",
+  "order.zenpos_entry_recorded": "Order entered into the POS",
+  // Money
+  "refund.requested": "Refund requested",
+  "refund.succeeded": "Refund completed",
+  "refund.failed": "Refund failed",
+  // The shop
+  "store.orders_paused": "Counter paused",
+  "store.orders_resumed": "Counter resumed",
+  "store.hours_changed": "Opening hours changed",
+  "store.hours_cleared": "Opening hours cleared",
+  "store.branch_settings_changed": "Branch settings changed",
+  "store.order_intake_changed": "Business-wide intake changed",
+  // Access
   "workspace.access_granted": "Workspace access granted",
   "workspace.access_reactivated": "Workspace access restored",
   "workspace.access_revoked": "Workspace access revoked",
   "workspace.role_changed": "Workspace role changed",
+  "workspace.branch_changed": "Workspace branch changed",
   "workspace.access_confirmed": "Workspace access confirmed",
+  "workspace.kitchen_role_retired": "Kitchen role retired",
   "staff.super_admin_bootstrapped": "Super Admin provisioned",
   "staff.super_admin_revoked_by_configuration": "Super Admin replaced by configuration",
+  // The menu
   "menu.category.created": "Menu category created",
   "menu.category.updated": "Menu category changed",
   "menu.category.deleted": "Menu category deleted",
@@ -47,6 +72,8 @@ const ACTION_LABELS: Record<string, string> = {
   "menu.option_group.updated": "Option group changed",
   "menu.option_group.deleted": "Option group deleted",
   "menu.reordered": "Menu order changed",
+  // Machinery
+  "cron.job": "Scheduled job ran",
 };
 
 function manilaDateTime(value: string): string {
@@ -73,6 +100,7 @@ export default async function AuditLogPage({
     searchParams,
   ]);
   const filters = normalizeAuditFilters(values);
+  const datesReversed = filters.from !== "" && filters.to !== "" && filters.from > filters.to;
   const page = await getAuditLog(filters);
   const olderHref = page?.olderCursor
     ? `/workspace/audit?${auditFilterParams(filters, page.olderCursor)}`
@@ -95,7 +123,7 @@ export default async function AuditLogPage({
         </ButtonLink>
       </div>
 
-      <form className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-4">
+      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <WorkspaceFieldLabel htmlFor="audit-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -120,6 +148,16 @@ export default async function AuditLogPage({
         </div>
       </form>
 
+      {datesReversed ? (
+        <p
+          role="alert"
+          className="border-nybb-orange/60 bg-nybb-orange/10 mt-4 rounded-md border p-4 text-sm leading-relaxed"
+        >
+          &ldquo;Recorded from&rdquo; is after &ldquo;Recorded through&rdquo;, so nothing can fall
+          between them. Swap the two dates to see results.
+        </p>
+      ) : null}
+
       {page ? (
         <>
           {page.entries.length ? (
@@ -133,7 +171,7 @@ export default async function AuditLogPage({
               <p className="font-display heading-panel">
                 {isPaged ? "No older entries" : "No recorded activity"}
               </p>
-              <p className="text-nybb-bone/50 mt-2 text-sm">
+              <p className="text-nybb-bone/60 mt-2 text-sm">
                 {isPaged
                   ? "This is the end of the trail for these filters."
                   : "Nothing matches these filters yet. Staff actions appear here as they happen."}
@@ -141,11 +179,28 @@ export default async function AuditLogPage({
             </div>
           )}
 
-          {olderHref ? (
-            <div className="mt-5 flex justify-center">
-              <ButtonLink href={olderHref} tone="dark" variant="secondary">
-                Load older
-              </ButtonLink>
+          {/*
+            "Load older" was the only control here, so the trail ran one way.
+            Three pages in, the way back to the top was the browser's own back
+            button pressed three times, or Reset, which also threw away the
+            filters that got you there.
+          */}
+          {olderHref || isPaged ? (
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {isPaged ? (
+                <ButtonLink
+                  href={`/workspace/audit?${auditFilterParams(filters, null)}`}
+                  tone="dark"
+                  variant="ghost"
+                >
+                  Back to newest
+                </ButtonLink>
+              ) : null}
+              {olderHref ? (
+                <ButtonLink href={olderHref} tone="dark" variant="secondary">
+                  Load older
+                </ButtonLink>
+              ) : null}
             </div>
           ) : null}
         </>
@@ -170,7 +225,7 @@ function AuditEntryCard({ entry }: { entry: AuditLogEntry }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display heading-panel">{label}</h2>
-          <p className="text-nybb-bone/45 mt-1 font-mono text-xs break-all">
+          <p className="text-nybb-bone/55 mt-1 font-mono text-xs break-all">
             {entry.action} · {entry.targetTable}
             {entry.targetId ? ` · ${entry.targetId}` : ""}
           </p>
@@ -193,14 +248,14 @@ function AuditEntryCard({ entry }: { entry: AuditLogEntry }) {
         <span className="bg-nybb-graphite text-nybb-bone/70 rounded px-2 py-1 text-xs font-medium">
           {actorRoleLabel(entry)}
         </span>
-        <span className="text-nybb-bone/45 text-xs">
+        <span className="text-nybb-bone/55 text-xs">
           {entry.branchName ?? "Business wide"}
         </span>
       </div>
 
       {hasDetail ? (
         <details className="border-nybb-bone/15 mt-4 rounded-md border">
-          <summary className="type-caps text-nybb-bone/65 hover:text-nybb-bone cursor-pointer px-3 py-2.5">
+          <summary className="type-caps text-nybb-bone/70 hover:text-nybb-bone flex min-h-11 cursor-pointer items-center px-3">
             What changed
           </summary>
           <pre className="border-nybb-bone/15 text-nybb-bone/80 overflow-x-auto border-t px-3 py-3 text-xs leading-relaxed">

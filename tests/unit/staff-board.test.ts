@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { awaitsPayment, boardAction, paymentLabel } from "@/lib/staff/board";
+import { awaitsPayment, boardAction, describePayment, paymentLabel } from "@/lib/staff/board";
 import type { WorkspaceOrder } from "@/lib/staff/order-types";
 
 /**
@@ -20,6 +20,7 @@ function order(overrides: Partial<WorkspaceOrder> = {}): WorkspaceOrder {
     status: "pending",
     isTest: false,
     customerName: "Maria Santos",
+    customerPhone: "0906-440-5297",
     totalCents: 45000,
     notes: null,
     placedAt: "2026-08-12T02:00:00.000Z",
@@ -104,5 +105,36 @@ describe("what the card says about money", () => {
 
   it("says so plainly when there is no payment row", () => {
     expect(paymentLabel(order({ payment: null }))).toBe("No payment on this order");
+  });
+});
+
+describe("what a closed order says about money", () => {
+  // History used to own a second function of the same name whose unpaid branch
+  // returned the raw row, so a manager reading last Tuesday was shown
+  // "paymongo · awaiting_payment". One function now answers both screens.
+  it("stops telling a manager to wait for a payment that will never arrive", () => {
+    const payment = { method: "qrph", status: "pending" };
+    expect(describePayment(payment)).toBe("Awaiting payment");
+    expect(describePayment(payment, { settled: true })).toBe("Never paid");
+  });
+
+  it("never prints a database enum at a person", () => {
+    for (const settled of [false, true]) {
+      for (const status of ["pending", "awaiting_payment", "failed", "expired"]) {
+        const label = describePayment({ method: "qrph", status }, { settled });
+        expect(label, status).not.toMatch(/_|qrph|paymongo/);
+      }
+    }
+  });
+
+  it("reads the same as the board once the money is in", () => {
+    const paid = { method: "qrph", status: "paid" };
+    expect(describePayment(paid, { settled: true })).toBe(describePayment(paid));
+  });
+
+  it("distinguishes a counter order never collected from one still to collect", () => {
+    const due = { method: "counter", status: "due" };
+    expect(describePayment(due)).toBe("Collect at counter");
+    expect(describePayment(due, { settled: true })).toBe("Never paid at the counter");
   });
 });

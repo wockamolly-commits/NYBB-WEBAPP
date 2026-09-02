@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Clock3, Flame, LoaderCircle, PackageCheck, Play } from "lucide-react";
+import { Check, Clock3, Flame, LoaderCircle, PackageCheck, Phone, Play } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { formatPeso } from "@/lib/format";
+import { telHref } from "@/lib/phone";
 import {
   REJECT_REASON_CODES,
   REJECT_REASON_LABELS,
@@ -44,8 +45,8 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
   return (
     <article className="bg-nybb-charcoal rounded-md p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="font-mono text-lg font-bold tracking-tight">{order.shortCode}</p>
             {order.isTest ? (
               <span className="border-nybb-yellow/60 text-nybb-yellow rounded border px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider">
@@ -53,10 +54,35 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
               </span>
             ) : null}
           </div>
-          <p className="text-nybb-bone/55 mt-1 text-xs">{order.customerName}</p>
+          <p className="text-nybb-bone/70 mt-1 text-sm break-words">{order.customerName}</p>
+          {/*
+            A ready order and an empty counter is the one situation on this
+            board with no next tap in it. The number was on the order the whole
+            time and reachable only from History, which does not carry an order
+            that is still open, so in practice it was not reachable at all.
+          */}
+          <a
+            href={telHref(order.customerPhone)}
+            className="text-nybb-bone/60 hover:text-nybb-bone focus-visible:text-nybb-bone -ml-1 inline-flex min-h-11 items-center gap-1.5 rounded px-1 text-xs underline-offset-4 hover:underline"
+          >
+            <Phone aria-hidden className="size-3.5" />
+            {order.customerPhone}
+            <span className="sr-only"> (call {order.customerName})</span>
+          </a>
         </div>
-        <span className="bg-nybb-graphite text-nybb-bone/70 rounded px-2 py-1 font-mono text-xs">
-          {order.pickupAt ? manilaTime(order.pickupAt) : manilaTime(order.placedAt)}
+        {/*
+          Labelled, because it was not. This chip showed the pickup time when
+          there was one and the order time when there was not, in the same
+          place, in the same face, with no word either way. The card also
+          prints the order time again at the bottom, so the same value could
+          appear twice and a counter had no way to tell which "6:45" was the
+          one the customer was coming back for.
+        */}
+        <span className="bg-nybb-graphite shrink-0 rounded px-2 py-1 text-right">
+          <span className="type-caps text-nybb-bone/60 block text-[0.625rem]">Pickup</span>
+          <span className="mt-0.5 block font-mono text-sm">
+            {order.pickupAt ? manilaTime(order.pickupAt) : "Not set"}
+          </span>
         </span>
       </div>
 
@@ -70,9 +96,9 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
         {order.items.map((item, index) => (
           <li key={`${item.name}-${index}`} className="leading-snug">
             <span className="text-nybb-orange font-mono">{item.quantity}x</span>{" "}
-            {item.name} <span className="text-nybb-bone/45">{item.variation}</span>
+            {item.name} <span className="text-nybb-bone/55">{item.variation}</span>
             {item.options.length ? (
-              <span className="text-nybb-bone/45 mt-0.5 block text-xs">{item.options.join(", ")}</span>
+              <span className="text-nybb-bone/55 mt-0.5 block text-xs">{item.options.join(", ")}</span>
             ) : null}
           </li>
         ))}
@@ -93,10 +119,10 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
       <div className="border-nybb-bone/15 mt-3 flex items-end justify-between gap-3 border-t pt-3">
         <div>
           <p className="font-mono text-lg font-bold">{formatPeso(order.totalCents)}</p>
-          <p className="text-nybb-bone/45 mt-1 text-xs uppercase tracking-wider">{paymentLabel(order)}</p>
+          <p className="text-nybb-bone/55 mt-1 text-xs uppercase tracking-wider">{paymentLabel(order)}</p>
         </div>
-        <span className="text-nybb-bone/45 inline-flex items-center gap-1 text-xs">
-          <Clock3 aria-hidden className="size-3" /> {manilaTime(order.placedAt)}
+        <span className="text-nybb-bone/55 inline-flex shrink-0 items-center gap-1 text-xs">
+          <Clock3 aria-hidden className="size-3" /> Ordered {manilaTime(order.placedAt)}
         </span>
       </div>
 
@@ -132,9 +158,19 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
       ) : null}
       {action.kind === "claim" && claiming ? (
         <div className="mt-4 space-y-2">
-          <WorkspaceFieldLabel htmlFor={`claim-${order.id}`}>Pickup code</WorkspaceFieldLabel>
+          <WorkspaceFieldLabel htmlFor={`claim-${order.id}`}>
+            Pickup code
+          </WorkspaceFieldLabel>
+          <p id={`claim-hint-${order.id}`} className="text-nybb-bone/55 text-xs">
+            Ask the customer for the four digits on their order.
+          </p>
           <WorkspaceInput
             id={`claim-${order.id}`}
+            // Opening this panel is already the decision to type. Without the
+            // caret here it costs a second tap on a small target, once per
+            // order, on a tablet held in one hand.
+            autoFocus
+            aria-describedby={`claim-hint-${order.id}`}
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
             inputMode="numeric"
@@ -155,6 +191,7 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
           </WorkspaceFieldLabel>
           <select
             id={`reject-${order.id}`}
+            autoFocus
             className="border-nybb-bone/25 focus:border-nybb-bone/60 h-11 w-full rounded-md border bg-transparent px-2 text-sm"
             value={reason}
             onChange={(event) => setReason(event.target.value as RejectReasonCode)}
@@ -165,7 +202,7 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
               </option>
             ))}
           </select>
-          <p className="text-nybb-bone/50 text-xs leading-snug">
+          <p className="text-nybb-bone/55 text-xs leading-snug">
             {order.payment?.status === "paid"
               ? "The customer is told the branch will return the payment. Issue the refund from History afterwards."
               : "The pickup window goes back on sale straight away."}
@@ -198,7 +235,11 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
         // it by accident during a rush has told a customer their food is off.
         <button
           type="button"
-          className="text-nybb-bone/40 hover:text-nybb-bone/70 mt-3 w-full text-center text-xs underline underline-offset-4"
+          disabled={pending}
+          // Quiet, but not small. The weight is the whole point of this
+          // control and stays exactly as it was; the 44px box around the words
+          // is what was missing, on a screen that is only ever touched.
+          className="text-nybb-bone/55 hover:text-nybb-bone focus-visible:text-nybb-bone mt-3 flex min-h-11 w-full items-center justify-center rounded text-center text-xs underline underline-offset-4 disabled:pointer-events-none disabled:opacity-50"
           onClick={() => setRejecting(true)}
         >
           Cannot make this order
