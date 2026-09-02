@@ -24,6 +24,7 @@ export function WorkspaceSelect<Value extends string>({
   className,
   labelClassName,
   controlClassName,
+  triggerLabel,
 }: {
   id: string;
   name: string;
@@ -60,6 +61,17 @@ export function WorkspaceSelect<Value extends string>({
   labelClassName?: string;
   /** Margin between the label and the trigger, for the same callers. */
   controlClassName?: string;
+  /**
+   * A fuller accessible name for the trigger, when the visible label is a
+   * column heading shared by several rows. "Why" over a column is enough to
+   * read when you can see which row you are in; it is three identical
+   * controls to anyone who cannot. Mirrors ConfirmDeleteButton's triggerLabel.
+   *
+   * It replaces the label association rather than joining it, because
+   * aria-labelledby outranks aria-label and the pair would leave the shorter
+   * name winning.
+   */
+  triggerLabel?: string;
 }) {
   return (
     <Select.Root<Value>
@@ -84,7 +96,8 @@ export function WorkspaceSelect<Value extends string>({
              VALUE and no name: "Choose a counter", with nothing saying what
              was being chosen. Found while making the two availability screens
              agree, and it affects every screen that uses this. */
-          aria-labelledby={`${id}-label`}
+          aria-label={triggerLabel}
+          aria-labelledby={triggerLabel ? undefined : `${id}-label`}
           className={cn(
             PRESSABLE,
             "group border-nybb-bone/40 bg-nybb-graphite text-nybb-bone mt-2 flex min-h-11 w-full min-w-0 items-stretch justify-between rounded-md border text-left text-base outline-none sm:text-sm",

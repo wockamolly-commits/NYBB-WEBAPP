@@ -271,6 +271,9 @@ function SoldOutForm({ item, actable }: { item: ManagedItem; actable: ManagedBra
                   name={`reason-${branch.id}`}
                   label="Why"
                   labelClassName="lg:sr-only"
+                  // Names the counter, for the same reason the tick box does:
+                  // two counters open at once is two controls called "Why".
+                  triggerLabel={`Why ${item.name} is off at ${branch.shortName}`}
                   controlClassName="mt-1.5 lg:mt-0"
                   options={reasonOptions}
                   value={reasons[branch.id] === "" ? null : (reasons[branch.id] as HoldReason)}

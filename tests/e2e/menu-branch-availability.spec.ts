@@ -41,10 +41,15 @@ function card(page: Page) {
   return page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
 }
 
-/** Picks a reason for one counter's row. */
+/**
+ * Picks a reason for one counter's row.
+ *
+ * By the select's own accessible name, which carries the counter. "Why" alone
+ * is the column heading and would match every open row.
+ */
 async function chooseReason(item: ReturnType<typeof card>, branch: string, label: string) {
-  const row = item.locator("div").filter({ hasText: branch }).last();
-  await row.getByRole("combobox", { name: /Why/i }).click();
+  await item.getByRole("combobox", { name: new RegExp(`Why .* at ${branch}$`) }).click();
+  // The popup is portalled to the body, so it is not inside the card.
   await item.page().getByRole("option", { name: label, exact: true }).click();
 }
 
@@ -161,7 +166,9 @@ test("stops selling at a counter, and says so without a reload", async ({ page }
   expect(await holdRows()).toHaveLength(0);
 
   await save.click();
-  await expect(item.getByText("Sold out until someone puts it back")).toBeVisible();
+  // The reason is part of the sentence now, which is the whole feature: the
+  // state line says why, not only that.
+  await expect(item.getByText(/sold out \(equipment issue\) until someone puts it back/i)).toBeVisible();
 
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
@@ -180,10 +187,12 @@ test("the back on field appears only where it can apply", async ({ page }) => {
   // Each field is labelled by its own counter's name, so two of them stack
   // without two identical labels, and "Back on" is the group's heading. That
   // is also what keeps the fields on one left edge.
-  await expect(item.getByText("Back on", { exact: true })).toHaveCount(0);
+  await expect(item.getByLabel("Back on")).toHaveCount(0);
   await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) }).uncheck();
-  await expect(item.getByText("Back on", { exact: true })).toBeVisible();
-  await expect(item.getByLabel(first, { exact: true })).toBeVisible();
+  await expect(item.getByLabel("Back on")).toBeVisible();
+
+  // And the reason select opens with it, unchosen.
+  await expect(item.getByRole("combobox", { name: new RegExp(`Why .* at ${first}$`) })).toBeVisible();
 });
 
 test("a counter's name stays on the line with its own tick box when the time opens", async ({
@@ -205,7 +214,7 @@ test("a counter's name stays on the line with its own tick box when the time ope
 
   const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) });
   await box.uncheck();
-  await expect(item.getByLabel(first, { exact: true })).toBeVisible();
+  await expect(item.getByLabel("Back on")).toBeVisible();
   // Nothing is saved here: the row's shape is the subject, so the reason the
   // Save would need is beside the point.
 
@@ -238,7 +247,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   // first and lowers the sentence after it, "Central Bloc, IT Park: sold out
   // until ...", so a capital S here would pin a presentation detail rather
   // than the fact being asserted.
-  await expect(item.getByText(/sold out until/i)).toBeVisible();
+  await expect(item.getByText(/sold out \(out of stock\) until/i)).toBeVisible();
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
   expect(rows[0]?.kind).toBe("today");
@@ -248,7 +257,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   // empty field here would turn a timed hold into an indefinite one on the
   // next Save, which is a hold that has stopped expiring on its own.
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(card(page).getByLabel(first, { exact: true })).not.toHaveValue("");
+  await expect(card(page).getByLabel("Back on")).not.toHaveValue("");
 
   // And Save with nothing touched writes nothing, so it is still dead.
   await expect(card(page).getByRole("button", { name: "Save availability" })).toBeDisabled();
