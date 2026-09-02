@@ -11,6 +11,7 @@ import {
   Store,
   UserRound,
   Users,
+  UtensilsCrossed,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,6 +39,7 @@ const ICONS = {
   dashboard: LayoutDashboard,
   orders: ClipboardList,
   history: History,
+  menu: UtensilsCrossed,
   availability: Store,
   settings: Settings,
   audit: ScrollText,

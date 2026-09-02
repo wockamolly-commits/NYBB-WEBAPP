@@ -58,6 +58,14 @@ const SEED = path.join(process.cwd(), "supabase", "seed.sql");
  * place-order tests generated pickup codes that production could not. Creating
  * it into `extensions` first reproduces the real bootstrap and makes 0016 load
  * bearing. Do not move it back to `public` to make something go green.
+ *
+ * **The storage schema is the third of these, added for 0055.** Supabase's
+ * Storage service owns storage.buckets and storage.objects and has RLS on the
+ * latter, and a bucket policy is an ordinary policy on an ordinary table. Only
+ * the columns the migrations actually name are here, which is enough to prove
+ * that a policy compiles, targets the right role and calls a function that
+ * exists. It proves nothing about what the Storage API would return, the same
+ * caveat that applies to every policy in this file.
  */
 const SUPABASE_SHIM = `
   create schema if not exists extensions;
@@ -93,6 +101,23 @@ const SUPABASE_SHIM = `
     insert into realtime.sent_messages (payload, event, topic, private)
     values (payload, event, topic, private)
   $$;
+
+  create schema if not exists storage;
+  create table storage.buckets (
+    id text primary key,
+    name text not null,
+    public boolean not null default false,
+    file_size_limit bigint,
+    allowed_mime_types text[]
+  );
+  create table storage.objects (
+    id uuid primary key default gen_random_uuid(),
+    bucket_id text references storage.buckets (id),
+    name text,
+    owner uuid
+  );
+  alter table storage.objects enable row level security;
+  grant usage on schema storage to anon, authenticated, service_role;
 
   alter default privileges in schema public
     grant all on tables to anon, authenticated, service_role;

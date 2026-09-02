@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CartView } from "@/components/cart/CartView";
+import { ReorderNotice } from "@/components/cart/ReorderNotice";
 import { StoreBar } from "@/components/store/StoreBar";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
@@ -34,9 +35,14 @@ export const metadata: Metadata = {
  * be discovered one screen later, after the cart had already been built.
  */
 export default async function CartPage() {
-  const [{ categories }, selection, orderingOpen] = await Promise.all([
-    getStorefrontMenu(),
-    getStoreSelection(),
+  // The counter first, then the menu it is about. The cart is priced and
+  // matched against what comes back, so a menu read that has not been told
+  // which counter the customer chose would let a line survive here that the
+  // chosen branch has held, all the way to a checkout that refuses it.
+  const selection = await getStoreSelection();
+
+  const [{ categories }, orderingOpen] = await Promise.all([
+    getStorefrontMenu(selection.selected?.slug),
     onlineOrderingOpen(),
   ]);
 
@@ -54,6 +60,7 @@ export default async function CartPage() {
         <StoreBar selection={selection} returnTo="/cart" className="mt-8" />
       ) : null}
 
+      <ReorderNotice />
       <CartView
         categories={categories}
         storeName={selection.selected?.shortName ?? null}

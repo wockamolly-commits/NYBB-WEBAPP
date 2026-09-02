@@ -16,43 +16,98 @@ export function WorkspaceSelect<Value extends string>({
   name,
   label,
   options,
+  value,
   defaultValue,
+  placeholder,
   onValueChange,
   disabled,
   className,
+  labelClassName,
+  controlClassName,
+  triggerLabel,
 }: {
   id: string;
   name: string;
   label: string;
   options: readonly WorkspaceSelectOption<Value>[];
-  defaultValue: Value;
+  /**
+   * The current selection, for a caller that holds it in state. Pass this
+   * rather than `defaultValue` whenever the value can change after the first
+   * render: `defaultValue` is read once, so feeding state into it leaves the
+   * two copies to drift and Base UI warns that an uncontrolled Select changed
+   * its default. `null` is a valid controlled value and means nothing is
+   * selected. Mutually exclusive with `defaultValue`.
+   */
+  value?: Value | null;
+  /**
+   * The starting selection for a control that manages itself afterwards, such
+   * as a plain form field read on submit. Omit (or pass null) to render with
+   * no preselected value. Do not pass state here; use `value` for that.
+   */
+  defaultValue?: Value | null;
+  /** Shown in the trigger while nothing is selected. */
+  placeholder?: string;
   onValueChange?: (value: Value | null) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * For a caller that labels this control somewhere else, such as a grid
+   * whose column headers name every cell in the column. Pass `lg:sr-only` to
+   * keep the label in the accessibility tree while the header does the
+   * visible work; a header cell is not programmatically the label of an input
+   * several rows below it, so removing it outright would leave the trigger
+   * announcing only its value.
+   */
+  labelClassName?: string;
+  /** Margin between the label and the trigger, for the same callers. */
+  controlClassName?: string;
+  /**
+   * A fuller accessible name for the trigger, when the visible label is a
+   * column heading shared by several rows. "Why" over a column is enough to
+   * read when you can see which row you are in; it is three identical
+   * controls to anyone who cannot. Mirrors ConfirmDeleteButton's triggerLabel.
+   *
+   * It replaces the label association rather than joining it, because
+   * aria-labelledby outranks aria-label and the pair would leave the shorter
+   * name winning.
+   */
+  triggerLabel?: string;
 }) {
   return (
     <Select.Root<Value>
       id={id}
       name={name}
       items={options}
-      defaultValue={defaultValue}
+      {...(value === undefined
+        ? { defaultValue: defaultValue ?? null }
+        : { value })}
       onValueChange={onValueChange}
       disabled={disabled}
     >
       <div className={cn("min-w-0", className)}>
-        <Select.Label className="type-caps text-nybb-bone/65 block cursor-default">
+        <Select.Label className={cn("type-caps text-nybb-bone/65 block cursor-default", labelClassName)}>
           {label}
         </Select.Label>
         <Select.Trigger
+          /* The label is a <div>, not a <label>, because the trigger is a
+             button rather than a form control, and a <label> cannot name one.
+             Base UI gives that div the id `${id}-label` but does not point the
+             trigger at it, so every select in the workspace announced its
+             VALUE and no name: "Choose a counter", with nothing saying what
+             was being chosen. Found while making the two availability screens
+             agree, and it affects every screen that uses this. */
+          aria-label={triggerLabel}
+          aria-labelledby={triggerLabel ? undefined : `${id}-label`}
           className={cn(
             PRESSABLE,
             "group border-nybb-bone/40 bg-nybb-graphite text-nybb-bone mt-2 flex min-h-11 w-full min-w-0 items-stretch justify-between rounded-md border text-left text-base outline-none sm:text-sm",
+            controlClassName,
             "hover:not-data-disabled:border-nybb-bone/65 hover:not-data-disabled:bg-nybb-bone/5",
             "data-popup-open:border-nybb-orange data-popup-open:bg-nybb-bone/5",
             "data-disabled:border-nybb-bone/15 data-disabled:text-nybb-bone/35",
           )}
         >
-          <Select.Value className="flex min-w-0 flex-1 items-center truncate px-3.5 py-2.5" />
+          <Select.Value className="flex min-w-0 flex-1 items-center truncate px-3.5 py-2.5" placeholder={placeholder} />
           <Select.Icon className="border-nybb-bone/15 text-nybb-orange grid w-11 shrink-0 place-items-center border-l">
             <ChevronDown
               aria-hidden

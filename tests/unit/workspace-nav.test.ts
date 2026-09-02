@@ -13,6 +13,7 @@ const ITEMS: WorkspaceNavItem[] = [
   { href: "/workspace", label: "Dashboard", icon: "dashboard" },
   { href: "/workspace/orders", label: "Orders", icon: "orders" },
   { href: "/workspace/orders/history", label: "History", icon: "history" },
+  { href: "/workspace/menu", label: "Menu", icon: "menu" },
   { href: "/workspace/settings", label: "Settings", icon: "settings" },
   { href: "/workspace/profile", label: "Profile", icon: "profile" },
 ];
@@ -41,6 +42,8 @@ describe("which workspace tab is the current one", () => {
     // A future /workspace/orders/42 belongs to the board, not to History and
     // not to the dashboard.
     expect(lit("/workspace/orders/42")).toEqual(["Orders"]);
+    // The menu screens nest two deep, and only the one tab covers them all.
+    expect(lit("/workspace/menu/items/new")).toEqual(["Menu"]);
   });
 
   it("falls back to the nearest ancestor tab, never to two tabs at once", () => {

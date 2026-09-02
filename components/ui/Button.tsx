@@ -122,6 +122,29 @@ const button = cva(
           "focus-visible:bg-nybb-red-deep focus-visible:text-nybb-bone",
           "active:bg-nybb-red-deeper active:text-nybb-bone active:border-transparent",
         ].join(" "),
+        /**
+         * The same destructive action, already engaged.
+         *
+         * `danger` above is quiet at rest because it sits on a screen that
+         * exists for something else, and a destructive control cannot outrank
+         * the action the screen is for. Inside a confirmation, that reasoning
+         * inverts: the screen exists to ask this one question, the alternative
+         * is Cancel, and a delete that has to be found by hovering is a worse
+         * dialog, not a politer one. DESIGN.md already names Red Deep as the
+         * destructive fill "at rest-engaged"; this is the tier that wears it.
+         *
+         * The fill is the same on both grounds, unlike primary, because red
+         * is legible against amber and against ink alike: bone on Red Deep
+         * measures 5.2:1 and 6.8:1 pressed. Only the disabled state and the
+         * focus ring differ by tone, and both come from the ground.
+         *
+         * Reserve it for a control that is already the answer to a question
+         * the person was asked. Anywhere else it is `danger`.
+         */
+        dangerSolid: [
+          "bg-nybb-red-deep text-nybb-bone",
+          "hover:bg-nybb-red-deeper active:bg-nybb-red-deeper",
+        ].join(" "),
       },
       size: {
         // 44px, the touch target floor, and the height everything in a row
@@ -130,11 +153,23 @@ const button = cva(
         // The full-width commitment at the bottom of a card. Taller and wider
         // rather than louder, because it is already the only fill in view.
         lg: "min-h-12 px-7",
-        // 42px square: the stepper's 40px button plus the 1px border on each
-        // side of the group holding it. One number rather than a height plus
-        // a border, which border-box would take straight back out and leave
-        // this two pixels short of its neighbour.
-        icon: "size-[2.625rem] px-0",
+        // Square, and on the same 44px floor as everything else here.
+        //
+        // This used to be 42px, derived from the quantity stepper's outer
+        // height when that stepper's own buttons were 40px. Deriving one
+        // control's size from another control's mistake spread it: of the
+        // three call sites, the cart and the hero video both rendered a
+        // sub-floor square. The workspace shell did not, because it passes
+        // className="size-11" and has done since it was built, which is worth
+        // noticing rather than tidying away: somebody hit this and worked
+        // around it locally instead of fixing the token, so the token stayed
+        // wrong and two other screens kept paying for it.
+        //
+        // The stepper's buttons are now 44px too, so its group stands 2px
+        // taller than this square; centred in a flex row that difference is
+        // not visible, and matching a neighbour was never worth being under
+        // the floor for.
+        icon: "size-11 px-0",
       },
       block: {
         true: "w-full",
@@ -201,6 +236,19 @@ const button = cva(
         tone: "light",
         class:
           "border-nybb-ink/55 text-nybb-ink/85 disabled:border-nybb-ink/20 disabled:bg-transparent disabled:text-nybb-ink/35",
+      },
+      {
+        // Disabled drops the red rather than fading it. A washed out red
+        // still reads as a warning, and a warning nobody can press is a bug
+        // report. Same reasoning, and the same two values, as the quiet tier.
+        variant: "dangerSolid",
+        tone: "dark",
+        class: "disabled:bg-nybb-bone/15 disabled:text-nybb-bone/60",
+      },
+      {
+        variant: "dangerSolid",
+        tone: "light",
+        class: "disabled:bg-nybb-ink/12 disabled:text-nybb-ink/45",
       },
     ],
     defaultVariants: {

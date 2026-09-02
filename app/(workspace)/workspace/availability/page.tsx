@@ -21,7 +21,10 @@ export default async function WorkspaceAvailabilityPage() {
           <h1 className="font-display heading-major mt-2">Store availability</h1>
           <p className="text-nybb-bone/55 mt-2 max-w-2xl text-sm">Pause a counter when its kitchen needs a breath. Opening hours and capacity stay in Settings because they are planned configuration, not a mid-shift control.</p>
         </div>
-        <ButtonLink href="/workspace" tone="dark" variant="secondary">Back to dashboard</ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/workspace/menu" tone="dark" variant="secondary">Menu availability</ButtonLink>
+          <ButtonLink href="/workspace" tone="dark" variant="secondary">Back to dashboard</ButtonLink>
+        </div>
       </div>
 
       {branches && intake ? <AvailabilityManager branches={branches} intake={intake} /> : (

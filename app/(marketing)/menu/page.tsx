@@ -30,9 +30,17 @@ export const metadata: Metadata = {
  * asserting an answer that goes stale without anybody noticing.
  */
 export default async function MenuPage() {
-  const [{ categories }, selection, orderingOpen] = await Promise.all([
-    getStorefrontMenu(),
-    getStoreSelection(),
+  // THE COUNTER IS RESOLVED BEFORE THE MENU, NOT ALONGSIDE IT, and checkout
+  // sequences its slot read for the same reason. `get_storefront_menu` hides
+  // an item held at the branch it is given, so a menu read that has not been
+  // told which counter the customer chose gates on whichever branch sorts
+  // first. With a second branch trading that shows one shop's availability to
+  // somebody buying from another, and place_order refuses at the till what
+  // this page offered.
+  const selection = await getStoreSelection();
+
+  const [{ categories }, orderingOpen] = await Promise.all([
+    getStorefrontMenu(selection.selected?.slug),
     onlineOrderingOpen(),
   ]);
 

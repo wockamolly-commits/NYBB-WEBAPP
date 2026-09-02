@@ -119,9 +119,26 @@ const steps = [
 ];
 
 export default async function Home() {
-  const [{ categories }, selection, orderingOpen] = await Promise.all([
-    getStorefrontMenu(),
-    getStoreSelection(),
+  // THE COUNTER FIRST, EVEN THOUGH THIS PAGE TAKES NO MONEY.
+  //
+  // "The landing page sells nothing so it need not pay for a per customer
+  // read" is the wrong test, and this is the counterexample. The featured
+  // strip below renders a ProductTile per item and every tile links to
+  // /menu/[category]/[item], which resolves against the counter the customer
+  // chose. Reading the menu here without that slug lets this page advertise an
+  // item that is held at their branch, and the tile then lands on a 404.
+  //
+  // The right test is not "does this page charge" but "does it name specific
+  // purchasable items". This one does, so it resolves them the same way the
+  // page they link to does. /about names one item for descriptive copy and
+  // links only to /menu, which is why it stays unslugged.
+  //
+  // The slug is free here: getStoreSelection() was already being read on this
+  // line. All this costs is sequencing it ahead of the menu read.
+  const selection = await getStoreSelection();
+
+  const [{ categories }, orderingOpen] = await Promise.all([
+    getStorefrontMenu(selection.selected?.slug),
     onlineOrderingOpen(),
   ]);
 

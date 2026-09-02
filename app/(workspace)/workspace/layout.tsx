@@ -4,6 +4,7 @@ import { HeatRule } from "@/components/site/HeatRule";
 import { WorkspaceNav, type WorkspaceNavItem } from "@/components/workspace/WorkspaceNav";
 import { WorkspaceSignOut } from "@/components/workspace/WorkspaceSignOut";
 import { STAFF_ROLES } from "@/lib/staff/roles";
+import { getStaffBranchLabel } from "@/lib/staff/profile";
 import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
 import type { StaffProfile } from "@/lib/staff/session";
 
@@ -34,6 +35,9 @@ function navItems(profile: StaffProfile): WorkspaceNavItem[] {
     items.push({ href: "/workspace/orders", label: "Orders", icon: "orders" });
     items.push({ href: "/workspace/orders/history", label: "History", icon: "history" });
   }
+  if (hasStaffPermission(profile, "menu:view")) {
+    items.push({ href: "/workspace/menu", label: "Menu", icon: "menu" });
+  }
   if (hasStaffPermission(profile, "store:availability")) {
     items.push({ href: "/workspace/availability", label: "Availability", icon: "availability" });
   }
@@ -57,6 +61,9 @@ function navItems(profile: StaffProfile): WorkspaceNavItem[] {
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireStaff();
+  // Which counter this session acts on. Everything below is scoped to it, and
+  // an assigned person has no picker to check, so the shell has to say it.
+  const branchLabel = await getStaffBranchLabel(profile.branchId);
   const roleLabel =
     profile.role === "admin"
       ? "Super Admin"
@@ -81,7 +88,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
             <div className="min-w-0">
               <p className="font-display text-lg leading-none tracking-[0.06em]">NYBB WORKSPACE</p>
               <p className="text-nybb-bone/60 mt-1 truncate text-xs">
-                {profile.displayName} · {roleLabel}
+                {profile.displayName} · {roleLabel} · {branchLabel}
               </p>
             </div>
           </div>

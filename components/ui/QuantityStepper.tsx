@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils";
  * same glyphs at different optical weights. Same control, two answers, which
  * is the definition of a thing that should be one component.
  *
+ * Unifying them originally kept both box sizes, which kept the 40px one alive
+ * as a `sm` variant on the cart line. That is 4px under the 44px minimum this
+ * project states for itself, on the control a customer touches more than any
+ * other in the product. Both sizes are now on the floor, and `sm` earns its
+ * name from the readout instead.
+ *
  * The glyphs are icons rather than typed characters. A hyphen is not a minus
  * sign: it renders short and sits low, so beside a full-height "+" it read as
  * a smaller, weaker control, which is not what it is. Matching Trash2's 16px
@@ -40,7 +46,13 @@ export function QuantityStepper({
   size?: "sm" | "default";
   className?: string;
 }) {
-  const box = size === "sm" ? "size-10" : "size-11";
+  // Both sizes put the tappable box on the 44px floor. `sm` stays a distinct
+  // size for its narrower readout, which is what the cart row actually needed:
+  // the row carries a price and a remove button beside this, and 4px of
+  // readout is the part that can give. The button is not the part that can
+  // give, and it used to be: `sm` was a 40px box, 4px under the floor this
+  // project sets for itself, on the control a customer taps most.
+  const box = "size-11";
   const readout = size === "sm" ? "w-9 text-sm" : "w-10 text-base";
 
   const step = cn(

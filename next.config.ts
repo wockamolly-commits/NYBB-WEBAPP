@@ -1,4 +1,12 @@
 import type { NextConfig } from "next";
+// Imported rather than repeated. This file and the two writers,
+// app/(workspace)/workspace/menu/actions.ts and
+// scripts/ingest-legacy-images.ts, have to name the same bucket: a pattern
+// that does not match is not a warning, it is next/image refusing to optimize
+// every menu photograph. The script and this file DID disagree, with the
+// script writing to "menu" and this pattern permitting "menu-images", and
+// nothing could catch it because no code path read both.
+import { MENU_IMAGE_BUCKET } from "./lib/staff/menu-image-limits";
 
 const remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,7 +16,7 @@ if (supabaseHost) {
   remotePatterns.push({
     protocol: "https",
     hostname: supabaseHost,
-    pathname: "/storage/v1/object/public/menu-images/**",
+    pathname: `/storage/v1/object/public/${MENU_IMAGE_BUCKET}/**`,
   });
 }
 
@@ -56,6 +64,20 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns,
     minimumCacheTTL: IMAGE_MINIMUM_CACHE_TTL,
+  },
+  experimental: {
+    serverActions: {
+      // The framework default is 1 MB, covering the whole multipart request
+      // body, not just the file inside it. MENU_IMAGE_MAX_BYTES (5 MB)
+      // advertises and checks a 5 MB photograph on both sides of the upload,
+      // but without this every request over 1 MB, which is most phone
+      // photographs, was rejected before uploadMenuItemImage or
+      // uploadMenuOptionImage ever ran: no friendly message printed, because
+      // no action body executed. 6mb rather than 5mb leaves room for the
+      // multipart boundaries and part headers the raw body carries beside
+      // the file, per the framework docs' own 10-20 KB rule of thumb.
+      bodySizeLimit: "6mb",
+    },
   },
   async headers() {
     return [

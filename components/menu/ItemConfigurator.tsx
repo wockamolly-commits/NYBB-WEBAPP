@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
 import { Button, PRESSABLE } from "@/components/ui/Button";
@@ -21,6 +21,7 @@ import {
   toggleOption,
   unitPriceCents,
 } from "@/lib/menu/line-pricing";
+import { orderingCopy } from "@/lib/menu/ordering-copy";
 import { previewImage } from "@/lib/menu/preview";
 import type { MenuItem, MenuOption, MenuOptionGroup } from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ function upcharge(option: MenuOption, variationSlug: string): string | null {
 export function ItemConfigurator({
   item,
   details,
+  canOrder,
 }: {
   item: MenuItem;
   /**
@@ -74,6 +76,8 @@ export function ItemConfigurator({
    * arrives here as a slot rather than being re-implemented on the client.
    */
   details?: React.ReactNode;
+  /** Whether an order can actually be completed on this deployment right now. */
+  canOrder: boolean;
 }) {
   const searchParams = useSearchParams();
 
@@ -113,18 +117,46 @@ export function ItemConfigurator({
   // so the divider there would be a rule with nothing to divide.
   const hasChoices = item.variations.length > 1 || item.optionGroups.length > 0;
 
+  const ordering = orderingCopy(canOrder);
+
   // The confirmation is tied to the line that was added, not to a timer. Change
   // the flavour and it goes, because "Added to cart" sitting under a different
   // configuration is a claim about wings the customer is not looking at.
   const [added, setAdded] = useState<{ key: string; ok: boolean; quantity: number } | null>(
     null,
   );
+  // Quantity resets to one after every successful add (below), so pressing
+  // "Add to cart" twice in a row with nothing changed renders the exact same
+  // string both times. React's text reconciler only writes to the DOM when
+  // the rendered string actually differs, so an unchanged string is silent to
+  // a screen reader on the second press even though the cart genuinely grew.
+  //
+  // The live region below stays mounted for the life of this component; see
+  // components/cart/ReorderNotice.tsx for the rule that forbids keying it.
+  // Instead, a press clears the announcement synchronously
+  // and this effect, keyed on the press count, writes the real text on the
+  // following render: two renders, one stable node, a genuine text change
+  // every time. QuickAddButton uses the same clear-then-set approach for the
+  // same reason.
+  const [addCount, setAddCount] = useState(0);
+  const [cleared, setCleared] = useState(false);
   const currentKey = lineKey({
     itemSlug: item.slug,
     variationSlug: selection.variationSlug,
     optionSlugs: selection.optionSlugs,
   });
   const confirmation = added?.key === currentKey ? added : null;
+
+  useEffect(() => {
+    // Nothing to reveal before the first press; skip so mount does not clear
+    // the default copy for no reason.
+    if (addCount === 0) return;
+    // Wrapped and invoked, rather than a bare setCleared call, to satisfy
+    // react-hooks/set-state-in-effect; see the same pattern and its reason
+    // in components/cart/ReorderNotice.tsx.
+    const reveal = () => setCleared(false);
+    reveal();
+  }, [addCount]);
 
   function add() {
     const { ok } = addToCart({
@@ -138,6 +170,8 @@ export function ItemConfigurator({
     });
 
     setAdded({ key: currentKey, ok, quantity: selection.quantity });
+    setCleared(true);
+    setAddCount((count) => count + 1);
     // Back to one, so a second tap on a screen that already says "3 added"
     // does not quietly make it six.
     if (ok) setSelection((current) => ({ ...current, quantity: MIN_QUANTITY }));
@@ -392,27 +426,28 @@ export function ItemConfigurator({
 
           {/* One live region rather than a message that appears and disappears,
               so a screen reader hears the confirmation without the paragraph
-              itself coming and going under the button.
+              itself coming and going under the button. Never keyed; see the
+              comment by addCount's declaration above for why a repeated
+              identical add still reaches the DOM without remounting this node.
 
-              What is true today: the cart works, checkout does not. Pickup
-              times need the pilot branch and its hours, which are still with
-              the owner, so this says so instead of pretending. */}
-          <p
-            aria-live="polite"
-            className="text-nybb-bone/65 mt-3 text-sm leading-relaxed"
-          >
-            {confirmation === null ? (
-              <>
-                Build your order now. Checkout opens once pickup times are
-                published; until then,{" "}
-                <Link
-                  href="/contact"
-                  className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
-                >
-                  call the branch
-                </Link>{" "}
-                you want to collect from.
-              </>
+              Whether checkout can complete an order is a fact resolved above
+              rather than asserted here; see lib/menu/ordering-copy.ts for why. */}
+          <p aria-live="polite" className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
+            {cleared ? null : confirmation === null ? (
+              canOrder ? (
+                ordering.message
+              ) : (
+                <>
+                  {ordering.message}{" "}
+                  <Link
+                    href="/contact"
+                    className="text-nybb-bone underline decoration-current/40 underline-offset-4 hover:decoration-current"
+                  >
+                    Call the counter you want to collect from
+                  </Link>
+                  .
+                </>
+              )
             ) : confirmation.ok ? (
               <>
                 <span className="text-nybb-bone">

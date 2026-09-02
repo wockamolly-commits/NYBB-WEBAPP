@@ -54,3 +54,11 @@ yarn-error.log*
 !/.impeccable/live/
 /.impeccable/live/*
 !/.impeccable/live/config.json
+
+# browser tests: the minted staff session is a live credential, and the traces,
+# screenshots and reports are per-run artifacts of the machine that ran them.
+/tests/e2e/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

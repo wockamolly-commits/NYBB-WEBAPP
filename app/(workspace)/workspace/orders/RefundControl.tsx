@@ -131,7 +131,7 @@ export function RefundControl({
           name={`refund-reason-${orderId}`}
           label="Reason"
           options={refundReasonOptions}
-          defaultValue={reason}
+          value={reason}
           onValueChange={(value) => value && setReason(value)}
           disabled={pending}
         />
