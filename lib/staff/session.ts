@@ -117,7 +117,11 @@ export const getStaffProfile = cache(async (): Promise<StaffProfile | null> => {
     staffRole: parsedProfile.data.staff_role,
     displayName: parsedProfile.data.display_name,
     branchId: parsedProfile.data.branch_id,
-    permissions: resolvePermissions(parsedProfile.data.staff_role, overrides),
+    permissions: resolvePermissions(
+      parsedProfile.data.staff_role,
+      overrides,
+      parsedProfile.data.branch_id,
+    ),
   };
 });
 
