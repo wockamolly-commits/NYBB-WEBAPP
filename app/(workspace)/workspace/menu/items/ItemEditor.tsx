@@ -59,6 +59,7 @@ export function ItemEditor({
   categories,
   optionGroups,
   canSetAvailability,
+  actingBranchId,
 }: {
   item: ManagedItem | null;
   categories: ManagedCategory[];
@@ -71,6 +72,13 @@ export function ItemEditor({
    * list is no longer passed: the control it fed lives on the menu list now.
    */
   canSetAvailability: boolean;
+  /**
+   * The counter this person works, or null for a roving manager. Only the
+   * empty state below reads it: holds arrive already scoped by 0059, so
+   * "nothing held" means one counter to an assigned person and nine to a
+   * business wide one, and the sentence has to say which.
+   */
+  actingBranchId: string | null;
 }) {
   const uid = useId();
   const router = useRouter();
@@ -633,7 +641,10 @@ export function ItemEditor({
           }
         >
           <p className="text-nybb-bone/65 max-w-md text-sm">
-            {soldOutSummary ?? "This item is on sale at every counter."}
+            {soldOutSummary ??
+              (actingBranchId
+                ? "This item is on sale at your counter."
+                : "This item is on sale at every counter.")}
           </p>
           <ButtonLink href="/workspace/menu" tone="dark" variant="secondary" className="mt-3">
             Go to the menu list

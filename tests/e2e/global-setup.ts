@@ -20,8 +20,30 @@ import { createClient } from "@supabase/supabase-js";
 
 export const STAFF_STATE_PATH = "tests/e2e/.auth/staff.json";
 
+/**
+ * The counter-assigned persona, for the specs about branch scoping.
+ *
+ * A second account rather than a second role on the first, because the whole
+ * point of those specs is what a person pinned to one branch sees, and the
+ * account above is business wide. Both already exist in the project; neither is
+ * created by this file.
+ */
+export const BRANCH_STAFF_STATE_PATH = "tests/e2e/.auth/staff-branch.json";
+
+/**
+ * The Super Admin, for the specs about screens only they can open.
+ *
+ * This is the configured SUPER_ADMIN_EMAIL itself, with no suffix, so it is the
+ * owner's own account rather than a test one. Workspace access is admin only
+ * and cannot be reached any other way. The spec that uses it writes nothing.
+ */
+export const ADMIN_STATE_PATH = "tests/e2e/.auth/admin.json";
+
 /** The plus-address suffix identifying the staff account the suite signs in as. */
 const STAFF_SUFFIX = "nybbowner";
+
+/** The same, for the manager assigned to Central Bloc. */
+const BRANCH_STAFF_SUFFIX = "nybbmanager";
 
 /**
  * Reads .env.local by hand.
@@ -51,13 +73,18 @@ function required(name: string): string {
   return value;
 }
 
-async function globalSetup(): Promise<void> {
-  loadLocalEnv();
-
+/**
+ * Mints one staff session and writes it where Playwright can load it.
+ *
+ * The workspace login sends a one time code to an inbox, so the form cannot be
+ * filled in headlessly. This does what the form would have done.
+ */
+async function signInAs(suffix: string | null, statePath: string): Promise<void> {
   const url = required("NEXT_PUBLIC_SUPABASE_URL");
   const anonKey = required("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   const serviceKey = required("SUPABASE_SERVICE_ROLE_KEY");
-  const email = required("SUPER_ADMIN_EMAIL").replace("@", `+${STAFF_SUFFIX}@`);
+  const configured = required("SUPER_ADMIN_EMAIL");
+  const email = suffix === null ? configured : configured.replace("@", `+${suffix}@`);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const { data: link, error: linkError } = await admin.auth.admin.generateLink({
@@ -106,9 +133,18 @@ async function globalSetup(): Promise<void> {
     origins: [],
   };
 
-  mkdirSync(dirname(STAFF_STATE_PATH), { recursive: true });
-  writeFileSync(STAFF_STATE_PATH, JSON.stringify(state, null, 2));
+  mkdirSync(dirname(statePath), { recursive: true });
+  writeFileSync(statePath, JSON.stringify(state, null, 2));
   console.log(`[e2e] signed in as ${email}`);
+}
+
+async function globalSetup(): Promise<void> {
+  loadLocalEnv();
+  // One at a time. Both call verifyOtp against the same project, and the auth
+  // rate limiter counts them.
+  await signInAs(STAFF_SUFFIX, STAFF_STATE_PATH);
+  await signInAs(BRANCH_STAFF_SUFFIX, BRANCH_STAFF_STATE_PATH);
+  await signInAs(null, ADMIN_STATE_PATH);
 }
 
 export default globalSetup;

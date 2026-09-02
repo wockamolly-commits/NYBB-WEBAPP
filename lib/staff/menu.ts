@@ -205,9 +205,14 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
  * recreated the read policy on each menu table (categories, items,
  * variations, option groups, options, item option groups) as
  * current_staff_has_permission('menu:view'), so an ordinary staff session
- * reads them under that gate. branches is the one exception: its policy is
- * still is_staff() with no permission check (0009_rls.sql, untouched by
- * 0022). If a caller without menu:view reaches here, the menu tables come
+ * reads them under that gate. branches used to be the exception, with the
+ * is_staff() policy 0009 gave it and no branch scope, so this select returned
+ * all nine counters to everybody; 0059 scoped it, and the holds with it, so
+ * an assigned person now reads their own counter and a roving one reads them
+ * all. Nothing here filters by branch on top of that. The policy is the
+ * boundary, and a second filter in this reader would be a second answer that
+ * can drift from it. If a caller without menu:view reaches here, the menu
+ * tables come
  * back empty rather than erroring, which is why the page checks the
  * permission too.
  *

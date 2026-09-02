@@ -4,6 +4,7 @@ import { freshDatabase, scalar } from "./harness";
 
 const STAFF_ID = "74000000-0000-4000-8000-000000000001";
 const COLLEAGUE_ID = "74000000-0000-4000-8000-000000000002";
+const ROVING_ID = "74000000-0000-4000-8000-000000000003";
 
 async function asAuthenticated<T>(
   db: PGlite,
@@ -27,7 +28,8 @@ describe("Workspace row security", () => {
       insert into auth.users (id, email)
       values
         ('${STAFF_ID}', 'staff@example.com'),
-        ('${COLLEAGUE_ID}', 'colleague@example.com');
+        ('${COLLEAGUE_ID}', 'colleague@example.com'),
+        ('${ROVING_ID}', 'roving@example.com');
       create or replace function auth.uid()
       returns uuid language sql stable as $$ select '${STAFF_ID}'::uuid $$;
 
@@ -48,7 +50,22 @@ describe("Workspace row security", () => {
       select '${COLLEAGUE_ID}', 'staff', 'manager', 'Colleague', id, '09170000002'
       from branches where slug = 'pilot';
 
+      insert into profiles (id, role, staff_role, display_name, branch_id)
+      values ('${ROVING_ID}', 'staff', 'manager', 'Roving', null);
+
       insert into menu_categories (slug, name) values ('wings', 'Wings');
+      insert into menu_items (category_id, slug, name)
+      select id, 'kimchi-fries', 'Kimchi Fries' from menu_categories where slug = 'wings';
+
+      insert into store_hours (branch_id, weekday, opens_at, closes_at)
+      select id, 1, '10:00', '22:00' from branches where slug = 'pilot';
+      insert into store_hours (branch_id, weekday, opens_at, closes_at)
+      select id, 1, '11:00', '23:00' from branches where slug = 'other';
+
+      insert into menu_item_branch_holds (item_id, branch_id, kind)
+      select i.id, b.id, 'indefinite'
+      from menu_items i, branches b
+      where i.slug = 'kimchi-fries' and b.slug in ('pilot', 'other');
       insert into orders
         (short_code, branch_id, price_list_id, pickup_code,
          customer_name, customer_phone)
@@ -78,6 +95,61 @@ describe("Workspace row security", () => {
         `select current_staff_can_access_branch('${pilotBranchId}') as allowed`,
       ),
     ).toEqual([{ allowed: true }]);
+  });
+
+  it("hides the other counters from an assigned person", async () => {
+    // Before 0059 each of these three policies was is_staff() or a bare
+    // permission check, so an assigned cashier read every branch row, every
+    // counter's hours, and what was sold out at the other eight shops. The
+    // assignment scoped the orders board and left the rest of the business in
+    // plain sight.
+    expect(
+      await asAuthenticated<{ slug: string }>(db, "select slug from branches order by slug"),
+    ).toEqual([{ slug: "pilot" }]);
+    expect(
+      await asAuthenticated<{ opens_at: string }>(
+        db,
+        "select opens_at::text from store_hours order by opens_at",
+      ),
+    ).toEqual([{ opens_at: "10:00:00" }]);
+    expect(
+      await asAuthenticated<{ count: number }>(
+        db,
+        "select count(*)::int as count from menu_item_branch_holds",
+      ),
+    ).toEqual([{ count: 1 }]);
+  });
+
+  it("shows every counter to a manager who covers the business", async () => {
+    // The same three reads, from the profile whose branch_id is null. Null is
+    // business wide, not unknown, so this is the roving manager seeing all of
+    // it rather than a hole in the policy.
+    await db.exec(`
+      create or replace function auth.uid()
+      returns uuid language sql stable as $$ select '${ROVING_ID}'::uuid $$
+    `);
+    try {
+      expect(
+        await asAuthenticated<{ slug: string }>(db, "select slug from branches order by slug"),
+      ).toEqual([{ slug: "other" }, { slug: "pilot" }]);
+      expect(
+        await asAuthenticated<{ count: number }>(
+          db,
+          "select count(*)::int as count from store_hours",
+        ),
+      ).toEqual([{ count: 2 }]);
+      expect(
+        await asAuthenticated<{ count: number }>(
+          db,
+          "select count(*)::int as count from menu_item_branch_holds",
+        ),
+      ).toEqual([{ count: 2 }]);
+    } finally {
+      await db.exec(`
+        create or replace function auth.uid()
+        returns uuid language sql stable as $$ select '${STAFF_ID}'::uuid $$
+      `);
+    }
   });
 
   it("honors an explicit orders:view denial in direct Data API reads", async () => {
