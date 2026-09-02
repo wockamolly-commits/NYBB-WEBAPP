@@ -54,9 +54,9 @@ which is not committed.
 This is not a way around authorisation. The session belongs to a real staff row
 and carries exactly that row's permissions.
 
-### The three people it signs in as
+### The accounts it uses
 
-All three are derived from `SUPER_ADMIN_EMAIL`, and none is created here. They
+All four are derived from `SUPER_ADMIN_EMAIL`, and none is created here. They
 already exist in the project.
 
 | State file | Address | Row | Used by |
@@ -64,14 +64,29 @@ already exist in the project.
 | `.auth/staff.json` | `+nybbowner` | manager, **all branches** | everything, by default |
 | `.auth/staff-branch.json` | `+nybbmanager` | manager, **Central Bloc** | `branch-scoped-staff.spec.ts` |
 | `.auth/admin.json` | no suffix, the address itself | the **Super Admin** | `workspace-team-layout.spec.ts` |
+| none, it is never signed in as | `+nybbcashier` | cashier, **Central Bloc**, currently revoked | nothing |
 
-Two things to know about them.
+Three things to know about them.
 
 **The default persona must stay business wide.** A plus address is not the
 configured Super Admin, so `+nybbowner` resolves as an ordinary staff row.
 Since migration 0059 the shared menu catalog is a business wide capability, so
 assigning that account a branch would take `menu:configure` away and break
 every menu spec at once, with a failure that reads like a routing bug.
+
+**The last one is the write target.** Every spec here reads. When a check has
+to write, because the thing under test is a save rather than a rendering, it
+needs an account no other spec depends on, and `+nybbcashier` is it. Moving the
+role or the branch of any of the three above is how the suite breaks itself: the
+default persona loses `menu:configure`, the branch persona stops being pinned to
+the counter its spec asserts, and the admin is the owner. Put the account back
+where it started when the check is done, and expect the audit rows to stay.
+
+It is revoked at the moment, so the only control on its card is Restore, and a
+check that writes has to reactivate it first and revoke it again afterwards. A
+check that cannot afford those two extra rows should move the branch of
+`+nybbmanager` and move it straight back, which is what the confirmation
+message was verified with.
 
 **The admin persona is the owner's own account.** Workspace access is Super
 Admin only and cannot be reached any other way, so the spec that uses it reads
