@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { HOLD_REASONS } from "@/lib/staff/menu-types";
+
+/**
+ * z.enum needs a non-empty tuple, and HOLD_REASONS is a readonly array. This
+ * is the one place the two shapes meet, so the assertion is here rather than
+ * at every use.
+ */
+const HOLD_REASONS_TUPLE = HOLD_REASONS as unknown as [string, ...string[]];
 
 /**
  * Menu write schemas that are worth testing on their own.
@@ -93,12 +101,27 @@ export const optionSchema = z
  * `name` is carried only so a failure can say which counter did not save,
  * exactly as optionPriceRowSchema carries one. It is never written.
  */
-export const branchAvailabilityRowSchema = z.object({
-  branchId: z.uuid(),
-  name: z.string().trim().min(1).max(120),
-  sellHere: z.boolean(),
-  until: z.string().trim().max(40).default(""),
-});
+export const branchAvailabilityRowSchema = z
+  .object({
+    branchId: z.uuid(),
+    name: z.string().trim().min(1).max(120),
+    sellHere: z.boolean(),
+    until: z.string().trim().max(40).default(""),
+    /**
+     * Why this counter stopped selling it. Empty is the unchosen state of the
+     * select, and it is only legal on a row that is going back on sale, where
+     * there is no hold for a reason to belong to.
+     *
+     * z.enum over the shared list rather than a second copy of the four
+     * strings: a fifth reason added to HOLD_REASONS is then accepted here
+     * without anyone remembering to widen a union that lives somewhere else.
+     */
+    reason: z.union([z.literal(""), z.enum(HOLD_REASONS_TUPLE)]).default(""),
+  })
+  .refine((row) => row.sellHere || row.reason !== "", {
+    path: ["reason"],
+    message: "A counter being taken off sale needs a reason.",
+  });
 
 export const branchAvailabilityGridSchema = z.object({
   itemId: z.uuid(),

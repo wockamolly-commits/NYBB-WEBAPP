@@ -41,6 +41,13 @@ function card(page: Page) {
   return page.locator("article").filter({ hasText: ITEM_NAME_PREFIX });
 }
 
+/** Picks a reason for one counter's row. */
+async function chooseReason(item: ReturnType<typeof card>, branch: string, label: string) {
+  const row = item.locator("div").filter({ hasText: branch }).last();
+  await row.getByRole("combobox", { name: /Why/i }).click();
+  await item.page().getByRole("option", { name: label, exact: true }).click();
+}
+
 test.beforeAll(async () => {
   const { data, error } = await serviceClient()
     .from("branches")
@@ -100,10 +107,10 @@ test.afterEach(async () => {
   itemId = null;
 });
 
-async function holdRows(): Promise<Array<{ branch_id: string; kind: string }>> {
+async function holdRows(): Promise<Array<{ branch_id: string; kind: string; reason: string | null }>> {
   const { data, error } = await serviceClient()
     .from("menu_item_branch_holds")
-    .select("branch_id, kind")
+    .select("branch_id, kind, reason")
     .eq("item_id", itemId!);
   if (error) throw error;
   return data ?? [];
@@ -140,6 +147,13 @@ test("stops selling at a counter, and says so without a reload", async ({ page }
   await expect(save).toBeDisabled();
 
   await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+
+  // Unticked but unexplained, so Save still will not press and says why. The
+  // whole point of the reason is that it cannot be skipped.
+  await expect(save).toBeDisabled();
+  await expect(item.getByText(new RegExp(`Choose why ${first} is not selling it`))).toBeVisible();
+
+  await chooseReason(item, first, "Equipment issue");
   await expect(save).toBeEnabled();
   await expect(item.getByText("1 counter changed.")).toBeVisible();
 
@@ -152,6 +166,7 @@ test("stops selling at a counter, and says so without a reload", async ({ page }
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
   expect(rows[0]?.kind).toBe("indefinite");
+  expect(rows[0]?.reason).toBe("equipment");
 });
 
 test("the back on field appears only where it can apply", async ({ page }) => {
@@ -191,6 +206,8 @@ test("a counter's name stays on the line with its own tick box when the time ope
   const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) });
   await box.uncheck();
   await expect(item.getByLabel(first, { exact: true })).toBeVisible();
+  // Nothing is saved here: the row's shape is the subject, so the reason the
+  // Save would need is beside the point.
 
   const name = item.getByText(first, { exact: true }).first();
   const nameBox = await name.boundingBox();
@@ -210,6 +227,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   const item = card(page);
 
   await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await chooseReason(item, first, "Out of stock");
   await item.getByRole("button", { name: "Rest of today" }).click();
   await item.getByRole("button", { name: "Save availability" }).click();
 
@@ -224,6 +242,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   const rows = await holdRows();
   expect(rows).toHaveLength(1);
   expect(rows[0]?.kind).toBe("today");
+  expect(rows[0]?.reason).toBe("out_of_stock");
 
   // Reopened, the field carries the saved end rather than starting empty. An
   // empty field here would turn a timed hold into an indefinite one on the
@@ -243,8 +262,9 @@ test("puts a counter back by ticking it, and leaves no hold row behind", async (
   const save = item.getByRole("button", { name: "Save availability" });
 
   await box.uncheck();
+  await chooseReason(item, first, "Ingredients unavailable");
   await save.click();
-  await expect(item.getByText("Sold out until someone puts it back")).toBeVisible();
+  await expect(item.getByText(/sold out \(ingredients unavailable\)/i)).toBeVisible();
   await expect(box).not.toBeChecked();
 
   await box.check();
@@ -255,7 +275,7 @@ test("puts a counter back by ticking it, and leaves no hold row behind", async (
   // landed, so the obvious assertion passes instantly and the database read
   // below then runs mid-save. That is exactly how this test failed the first
   // time a second branch was switched on.
-  await expect(item.getByText("Sold out until someone puts it back")).toHaveCount(0);
+  await expect(item.getByText(/sold out \(/i)).toHaveCount(0);
 
   // Lifting deletes the row. There is deliberately no is_held boolean beside
   // the timestamp, per 0051, so an emptied table is the whole of "available".
@@ -271,6 +291,10 @@ test("takes several counters off in one Save", async ({ page }) => {
   for (const name of branchNames.slice(0, 2)) {
     await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${name}`) }).uncheck();
   }
+  // Two counters off for two different reasons, which is the case a single
+  // shared reason per save could not express.
+  await chooseReason(item, branchNames[0]!, "Out of stock");
+  await chooseReason(item, branchNames[1]!, "Equipment issue");
   await expect(item.getByText("2 counters changed.")).toBeVisible();
 
   await item.getByRole("button", { name: "Save availability" }).click();
@@ -278,18 +302,20 @@ test("takes several counters off in one Save", async ({ page }) => {
   // Both rows, not `.first()`. The counters are written one RPC at a time, so
   // waiting for one of them to change lets the read below run while the
   // second is still in flight.
-  await expect(item.getByText("Sold out until someone puts it back")).toHaveCount(2);
+  await expect(item.getByText(/sold out \(/i)).toHaveCount(2);
 
   const rows = await holdRows();
   expect(rows).toHaveLength(2);
+  expect(rows.map((r) => r.reason).sort()).toEqual(["equipment", "out_of_stock"]);
 });
 
 test("the item editor points at the one control instead of carrying a second", async ({ page }) => {
   const first = branchNames[0]!;
   await page.goto(MENU, { waitUntil: "domcontentloaded" });
   await card(page).getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
+  await chooseReason(card(page), first, "Temporarily unavailable");
   await card(page).getByRole("button", { name: "Save availability" }).click();
-  await expect(card(page).getByText("Sold out until someone puts it back")).toBeVisible();
+  await expect(card(page).getByText(/sold out \(temporarily unavailable\)/i)).toBeVisible();
 
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
 
@@ -301,7 +327,10 @@ test("the item editor points at the one control instead of carrying a second", a
   await expect(
     page.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) }),
   ).toHaveCount(0);
-  await expect(page.getByText(`${first}: sold out until someone puts it back`)).toBeVisible();
+  // The editor reads the reason back too, from the same function.
+  await expect(
+    page.getByText(`${first}: sold out (temporarily unavailable) until someone puts it back`),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Go to the menu list" })).toBeVisible();
 });
 

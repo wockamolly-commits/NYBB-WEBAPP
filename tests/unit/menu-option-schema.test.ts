@@ -81,10 +81,40 @@ describe("branchAvailabilityGridSchema", () => {
   it("parses a grid of ticked and unticked counters", () => {
     const parsed = branchAvailabilityGridSchema.safeParse({
       itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
-      branches: [{ branchId, name: "Central Bloc", sellHere: false }],
+      branches: [{ branchId, name: "Central Bloc", sellHere: false, reason: "equipment" }],
     });
     expect(parsed.success).toBe(true);
     expect(parsed.data?.branches[0]?.sellHere).toBe(false);
+    expect(parsed.data?.branches[0]?.reason).toBe("equipment");
+  });
+
+  it("refuses a counter taken off sale with no reason", () => {
+    // The requirement is in three places on purpose: the select holds the
+    // Save, this refuses a payload that got past it, and the RPC raises
+    // HOLD_NEEDS_A_REASON. Only the last of those is load bearing against a
+    // caller that is not this form, and the first is the only one a person
+    // ever sees.
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: false, reason: "" }],
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("allows no reason on a counter going back on sale", () => {
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: true, reason: "" }],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("refuses a reason that is not one of the four", () => {
+    const parsed = branchAvailabilityGridSchema.safeParse({
+      itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
+      branches: [{ branchId, name: "Central Bloc", sellHere: false, reason: "because" }],
+    });
+    expect(parsed.success).toBe(false);
   });
 
   it("accepts an empty list, which is Save pressed with nothing changed", () => {
@@ -102,7 +132,7 @@ describe("branchAvailabilityGridSchema", () => {
     // meant to stop selling it.
     const parsed = branchAvailabilityGridSchema.safeParse({
       itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
-      branches: [{ branchId, name: "Central Bloc", sellHere: false, kind: "today" }],
+      branches: [{ branchId, name: "Central Bloc", sellHere: false, reason: "temporary", kind: "today" }],
     });
     expect(parsed.success).toBe(true);
     expect(parsed.data?.branches[0]).not.toHaveProperty("kind");
@@ -111,7 +141,7 @@ describe("branchAvailabilityGridSchema", () => {
   it("refuses a branch id that is not a uuid", () => {
     const parsed = branchAvailabilityGridSchema.safeParse({
       itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
-      branches: [{ branchId: "central-bloc", name: "Central Bloc", sellHere: false }],
+      branches: [{ branchId: "central-bloc", name: "Central Bloc", sellHere: false, reason: "temporary" }],
     });
     expect(parsed.success).toBe(false);
   });
@@ -122,7 +152,7 @@ describe("branchAvailabilityGridSchema", () => {
     // JSON precisely so the type survives.
     const parsed = branchAvailabilityGridSchema.safeParse({
       itemId: "0b6e7a34-3f5a-4c2e-8a1b-9d0c1e2f3a4b",
-      branches: [{ branchId, name: "Central Bloc", sellHere: "false" }],
+      branches: [{ branchId, name: "Central Bloc", sellHere: "false", reason: "temporary" }],
     });
     expect(parsed.success).toBe(false);
   });

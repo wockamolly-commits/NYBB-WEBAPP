@@ -105,68 +105,11 @@ function listNames(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-const holdSchema = z
-  .object({
-    itemId: z.uuid(),
-    branchId: z.uuid(),
-    kind: z.enum(["today", "until", "indefinite", "lift"]),
-    unavailableUntil: z.string().trim().default(""),
-  })
-  .transform((value) => ({
-    ...value,
-    kind: value.kind === "lift" ? null : value.kind,
-  }));
-
-/**
- * Pause or resume one item at one counter.
- *
- * The form sends a wall clock datetime string, the counter's own clock, not
- * the server process's. manilaWallClockIso turns it into an instant, and the
- * RPC refuses one that has already passed.
- */
-export async function setMenuItemHold(
-  _previous: MenuActionState,
-  formData: FormData,
-): Promise<MenuActionState> {
-  const parsed = holdSchema.safeParse({
-    itemId: formData.get("itemId"),
-    branchId: formData.get("branchId"),
-    kind: formData.get("kind"),
-    unavailableUntil: formData.get("unavailableUntil") ?? "",
-  });
-  if (!parsed.success) return { status: "error", message: "Check the item and try again." };
-
-  const profile = await getStaffProfile();
-  if (!profile || !hasStaffPermission(profile, "menu:availability")) {
-    return { status: "error", message: "You do not have access to change item availability." };
-  }
-
-  const { itemId, branchId, kind, unavailableUntil } = parsed.data;
-  let until: string | null = null;
-  if (kind === "today" || kind === "until") {
-    if (!unavailableUntil) return { status: "error", message: "Choose when this item comes back." };
-    until = manilaWallClockIso(unavailableUntil);
-    if (!until) return { status: "error", message: "Choose when this item comes back." };
-  }
-
-  const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("staff_set_menu_item_hold", {
-    p_item_id: itemId,
-    p_branch_id: branchId,
-    p_kind: kind,
-    p_unavailable_until: until,
-  });
-  if (error) {
-    console.error("[workspace] menu item hold failed:", error.message);
-    return { status: "error", message: friendlyMenuError(error.message) };
-  }
-
-  refreshMenu();
-  return {
-    status: "success",
-    message: kind === null ? "Back on the menu." : "Marked sold out.",
-  };
-}
+// setMenuItemHold and its schema used to sit here: one counter, one hold,
+// the action behind ItemHoldControl. Both went when the two sold out
+// controls became one. setMenuItemBranchAvailability below is the only
+// writer now, and leaving a second one that predates the reason requirement
+// would be a way to write a hold without giving one.
 
 /**
  * The "Available at" grid, saved by its one button.
@@ -243,10 +186,16 @@ export async function setMenuItemBranchAvailability(
     const { error } = await supabase.rpc("staff_set_menu_item_hold", {
       p_item_id: parsed.data.itemId,
       p_branch_id: row.branchId,
-      // null is the RPC's word for lifting the hold. See holdSchema above,
-      // which spells the same thing "lift" because a form cannot post null.
+      // null is the RPC's word for lifting the hold. The grid posts JSON
+      // rather than form fields, so a real boolean survives the trip and
+      // nothing has to spell null as a string.
       p_kind: kind,
       p_unavailable_until: until,
+      // Null where the counter is going back on sale: the RPC asks for a
+      // reason only when there is a hold for it to belong to. Empty string
+      // never reaches the database, because the schema refuses that pairing
+      // before this loop runs.
+      p_reason: row.sellHere ? null : row.reason,
     });
     if (error) {
       console.error("[workspace] branch availability failed:", row.branchId, error.message);

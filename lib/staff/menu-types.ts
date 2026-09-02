@@ -10,12 +10,43 @@ import type { MenuImageOrigin } from "@/lib/menu/resolve-image";
 
 export type HoldKind = "today" | "until" | "indefinite";
 
+/**
+ * Why a counter stopped selling an item.
+ *
+ * Stored as these stable keys and never as the words staff read, so renaming
+ * a label is a change to this file and not to every row that used it. The
+ * list is a check constraint rather than a Postgres enum for the same reason
+ * 0050 gives: retiring an enum value is a table rewrite, and this list will
+ * grow.
+ */
+export type HoldReason = "out_of_stock" | "ingredients" | "equipment" | "temporary";
+
+export const HOLD_REASONS: readonly HoldReason[] = [
+  "out_of_stock",
+  "ingredients",
+  "equipment",
+  "temporary",
+];
+
+/** What staff pick from, and what the state line reads back. */
+export const HOLD_REASON_LABELS: Record<HoldReason, string> = {
+  out_of_stock: "Out of stock",
+  ingredients: "Ingredients unavailable",
+  equipment: "Equipment issue",
+  temporary: "Temporarily unavailable",
+};
+
 export type ManagedHold = {
   branchId: string;
   branchShortName: string;
   kind: HoldKind;
   /** ISO 8601, or null for an indefinite hold. */
   unavailableUntil: string | null;
+  /**
+   * Why, or null on a hold set before 0058 added the column. Null is not a
+   * fourth reason: it is a row from before anyone was asked.
+   */
+  reason: HoldReason | null;
 };
 
 export type ManagedVariation = {

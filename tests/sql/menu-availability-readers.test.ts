@@ -61,7 +61,7 @@ describe("hold aware storefront readers", () => {
   it("hides a held item at the held branch and nowhere else", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
 
     expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
     expect(await menuSlugs(db, "other")).toEqual(["chicken-wings", "fries"]);
@@ -126,7 +126,7 @@ describe("hold aware storefront readers", () => {
   it("hides nothing when no branch is active at all", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     await db.exec("update branches set is_active = false");
 
     // With nothing trading there is no counter whose stock could be out, so
@@ -138,7 +138,7 @@ describe("hold aware storefront readers", () => {
   it("drops a category whose every item is held", async () => {
     const fries = await itemId(db, "fries");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${fries}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${fries}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
 
     const menu = await scalar<Array<{ slug: string }>>(db, `select get_storefront_menu('pilot')`);
     expect(menu.map((category) => category.slug)).toEqual(["wings"]);
@@ -147,7 +147,7 @@ describe("hold aware storefront readers", () => {
   it("shows a held item again once its hold is lifted", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
-    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite')`);
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
 
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', null)`);
@@ -163,7 +163,7 @@ describe("hold aware storefront readers", () => {
     const holdEnd = await scalar<string>(db, "select (now() + interval '1 day')::text");
     await asUser(
       db, CASHIER,
-      `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', '${holdEnd}'::timestamptz)`,
+      `select staff_set_menu_item_hold('${wings}', '${pilot}', 'until', '${holdEnd}'::timestamptz, 'out_of_stock')`,
     );
 
     expect(

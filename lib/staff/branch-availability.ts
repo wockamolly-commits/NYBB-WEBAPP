@@ -1,4 +1,5 @@
 import { manilaDateEndExclusiveIso } from "@/lib/staff/manila-dates";
+import { HOLD_REASON_LABELS, type HoldReason } from "@/lib/staff/menu-types";
 import type { ManagedBranch, ManagedHold } from "@/lib/staff/menu-types";
 
 /**
@@ -63,6 +64,42 @@ export function sellsHereByBranch(
     seeded[branch.id] = !holds.some((hold) => hold.branchId === branch.id);
   }
   return seeded;
+}
+
+/**
+ * The reason each counter starts with, seeded from its saved hold.
+ *
+ * Seeded for the same reason the end is: opening the control on a counter
+ * held for an equipment issue and pressing Save must not rewrite it as
+ * something else, and must not blank it. A counter with no hold starts empty,
+ * which is the unchosen state the Save button waits on.
+ */
+export function reasonByBranch(
+  holds: ManagedHold[],
+  branches: ManagedBranch[],
+): Record<string, HoldReason | ""> {
+  const seeded: Record<string, HoldReason | ""> = {};
+  for (const branch of branches) {
+    seeded[branch.id] = holds.find((h) => h.branchId === branch.id)?.reason ?? "";
+  }
+  return seeded;
+}
+
+/**
+ * The counters still missing a reason, which is what holds the Save button.
+ *
+ * Only counters being taken off sale can be missing one. A counter going back
+ * on sale has no hold for a reason to belong to, and asking for one would be
+ * a form standing in the way of good news.
+ */
+export function branchesNeedingReason(
+  sellsHere: Record<string, boolean>,
+  reasons: Record<string, HoldReason | "">,
+  branches: ManagedBranch[],
+): ManagedBranch[] {
+  return branches.filter(
+    (branch) => !(sellsHere[branch.id] ?? true) && !reasons[branch.id],
+  );
 }
 
 /**
@@ -144,11 +181,19 @@ export function manilaInputValue(iso: string): string {
 export function changedBranches(
   sellsHere: Record<string, boolean>,
   untils: Record<string, string>,
+  reasons: Record<string, HoldReason | "">,
   holds: ManagedHold[],
   branches: ManagedBranch[],
-): Array<{ branchId: string; name: string; sellHere: boolean; until: string }> {
+): Array<{
+  branchId: string;
+  name: string;
+  sellHere: boolean;
+  until: string;
+  reason: HoldReason | "";
+}> {
   const savedSelling = sellsHereByBranch(holds, branches);
   const savedUntil = untilByBranch(holds, branches);
+  const savedReason = reasonByBranch(holds, branches);
 
   return branches
     .filter((branch) => {
@@ -156,15 +201,23 @@ export function changedBranches(
       const selling = sellsHere[branch.id]!;
       if (selling !== savedSelling[branch.id]) return true;
       if (selling) return false;
-      return (untils[branch.id] ?? "") !== (savedUntil[branch.id] ?? "");
+      // Still off, so the two things that can still have moved are when it
+      // comes back and why it went. Correcting a reason from "out of stock"
+      // to "equipment issue" leaves the box untouched, and a comparison
+      // watching only the box would drop the correction on the floor.
+      return (
+        (untils[branch.id] ?? "") !== (savedUntil[branch.id] ?? "") ||
+        (reasons[branch.id] ?? "") !== (savedReason[branch.id] ?? "")
+      );
     })
     .map((branch) => ({
       branchId: branch.id,
       name: branch.shortName,
       sellHere: sellsHere[branch.id]!,
-      // Never sent for a counter that is selling: there is no hold to put an
-      // end on, and the action would have to ignore it anyway.
+      // Neither is sent for a counter that is selling: there is no hold to
+      // put an end or a reason on, and the action would ignore both anyway.
       until: sellsHere[branch.id] ? "" : (untils[branch.id] ?? ""),
+      reason: sellsHere[branch.id] ? "" : (reasons[branch.id] ?? ""),
     }));
 }
 
@@ -177,8 +230,14 @@ export function changedBranches(
  */
 export function availabilityStatusLine(hold: ManagedHold | undefined): string {
   if (!hold) return "Available";
-  if (hold.unavailableUntil) return `Sold out until ${formatManilaInstant(hold.unavailableUntil)}`;
-  return "Sold out until someone puts it back";
+  const when = hold.unavailableUntil
+    ? `until ${formatManilaInstant(hold.unavailableUntil)}`
+    : "until someone puts it back";
+  // The reason in parentheses, and absent rather than guessed at when the row
+  // predates 0058. "Sold out (no reason recorded)" would be a sentence about
+  // a gap in the data pretending to be a sentence about the wings.
+  const why = hold.reason ? ` (${HOLD_REASON_LABELS[hold.reason].toLowerCase()})` : "";
+  return `Sold out${why} ${when}`;
 }
 
 /**

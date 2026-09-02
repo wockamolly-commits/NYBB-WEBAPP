@@ -39,7 +39,7 @@ const rows: ManagedMenuRows = {
     { item_id: "item-wings", group_id: "grp-heat", is_required: false, min_select: 0, max_select: 1, sort_order: 20 },
   ],
   holds: [
-    { item_id: "item-wings", branch_id: "branch-pilot", kind: "until", unavailable_until: "2026-08-25T18:00:00.000Z" },
+    { item_id: "item-wings", branch_id: "branch-pilot", kind: "until", unavailable_until: "2026-08-25T18:00:00.000Z", reason: "out_of_stock" },
   ],
   branches: [
     { id: "branch-pilot", short_name: "Central Bloc", is_active: true },
@@ -135,7 +135,7 @@ describe("assembleManagedMenu", () => {
     const menu = assembleManagedMenu(rows);
     const item = menu.categories[0]?.items[0];
     expect(item?.holds).toEqual([
-      { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z" },
+      { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z", reason: "out_of_stock" },
     ]);
   });
 

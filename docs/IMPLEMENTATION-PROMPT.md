@@ -919,6 +919,11 @@ here was built as specified.
     no second per-branch boolean beside the hold: an `indefinite` hold already means "not sold at
     this counter", and two ways to say it can disagree.
 
+    Since 0058 a hold also carries **why**, one of four keys (`out_of_stock`, `ingredients`,
+    `equipment`, `temporary`) whose labels live in `lib/staff/menu-types.ts`. The writer refuses a
+    hold without one, so the audit trail can tell a broken fryer from a delivery that did not
+    arrive. Null is not a fifth reason: it marks a row written before that column existed.
+
     `get_storefront_menu(null)` applies NO holds (0057). It used to resolve a missing slug to the
     first active branch, so `/menu`, which every customer sees before choosing a store, applied one
     counter's sold-out list to everybody. This is the one place availability and pricing

@@ -6,19 +6,43 @@ import { Button } from "@/components/ui/Button";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceInput } from "@/components/ui/WorkspaceField";
 import {
+  TABLE_ROW,
+  TABLE_ROW_COLUMNS,
+  TableCellLabel,
+  TableHead,
+  tableColumns,
+  tableRowClass,
+  tableRowStyle,
+} from "@/components/ui/WorkspaceTable";
+import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
+import {
   actableBranches,
   branchStatusLine,
+  branchesNeedingReason,
   changedBranches,
   endOfManilaDayInputValue,
+  reasonByBranch,
   sellsHereByBranch,
   untilByBranch,
 } from "@/lib/staff/branch-availability";
-import type { ManagedBranch, ManagedItem, MenuActionState } from "@/lib/staff/menu-types";
+import {
+  HOLD_REASONS,
+  HOLD_REASON_LABELS,
+  type HoldReason,
+  type ManagedBranch,
+  type ManagedItem,
+  type MenuActionState,
+} from "@/lib/staff/menu-types";
 import { cn } from "@/lib/utils";
 import { setMenuItemBranchAvailability } from "./actions";
 import { MenuStatusMessage } from "./MenuStatusMessage";
 
 const initialState: MenuActionState = { status: "idle" };
+
+const reasonOptions: readonly WorkspaceSelectOption<HoldReason>[] = HOLD_REASONS.map((value) => ({
+  value,
+  label: HOLD_REASON_LABELS[value],
+}));
 
 /**
  * The ONE sold out control.
@@ -111,9 +135,28 @@ function SoldOutForm({ item, actable }: { item: ManagedItem; actable: ManagedBra
   const [untils, setUntils] = useState<Record<string, string>>(() =>
     untilByBranch(item.holds, actable),
   );
+  const [reasons, setReasons] = useState<Record<string, HoldReason | "">>(() =>
+    reasonByBranch(item.holds, actable),
+  );
 
-  const changed = changedBranches(sellsHere, untils, item.holds, actable);
+  const changed = changedBranches(sellsHere, untils, reasons, item.holds, actable);
+  const missing = branchesNeedingReason(sellsHere, reasons, actable);
   const payload = JSON.stringify({ itemId: item.id, branches: changed });
+
+  // Counter, why, and when it comes back. Three columns, from one call, for
+  // the header and every row: see WorkspaceTable on why two hand written
+  // lists drift.
+  const stoppedColumns = tableColumns("minmax(8rem,1fr)", "minmax(11rem,1.1fr)", "minmax(14rem,auto)");
+
+  // Stated beside the button rather than left for the person to work out from
+  // a control that will not press. It names the counter, because with two
+  // fields open "choose a reason" does not say which one is waiting.
+  const problem =
+    missing.length === 0
+      ? null
+      : missing.length === 1
+        ? `Choose why ${missing[0]!.shortName} is not selling it.`
+        : "Choose why each counter is not selling it.";
 
   // Counters this person has taken off in the draft, which is what decides
   // how many time fields are on screen. Read from the draft rather than from
@@ -197,58 +240,96 @@ function SoldOutForm({ item, actable }: { item: ManagedItem; actable: ManagedBra
           and nine times on a full one. */}
       {stopped.length > 0 ? (
         <div className="mt-4">
-          <p className="type-caps text-nybb-bone/65">Back on</p>
-          <div className="mt-2 space-y-2">
-            {stopped.map((branch) => {
-              const untilId = `${uid}-${branch.id}-until`;
-              return (
-                <div key={branch.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <label
-                    htmlFor={untilId}
-                    className="text-nybb-bone shrink-0 text-sm sm:w-52"
-                  >
-                    {branch.shortName}
-                  </label>
-                  <WorkspaceInput
-                    id={untilId}
-                    type="datetime-local"
-                    value={untils[branch.id] ?? ""}
-                    onChange={(event) =>
-                      setUntils((current) => ({ ...current, [branch.id]: event.target.value }))
-                    }
-                    disabled={pending}
-                    aria-describedby={`${uid}-until-hint`}
-                    className="mt-0 w-auto flex-none"
-                  />
-                  <button
-                    type="button"
-                    className="text-nybb-orange min-h-11 text-xs underline underline-offset-2"
-                    onClick={() =>
-                      setUntils((current) => ({
-                        ...current,
-                        [branch.id]: endOfManilaDayInputValue(),
-                      }))
-                    }
-                    disabled={pending}
-                  >
-                    Rest of today
-                  </button>
-                  {untils[branch.id] ? (
+          {/* Now genuinely tabular: a counter, why it is off, and when it
+              comes back, for each counter being taken off sale. Three things
+              to line up per row is what the workspace table is for, and the
+              selection above is what it is not for. The column names are
+              printed once by the header from `lg` up, and each cell keeps its
+              own label in the accessibility tree, because a header cell is
+              not programmatically the label of a control two rows below it. */}
+          <TableHead columns={stoppedColumns}>
+            <div>Counter</div>
+            <div>Why</div>
+            <div>Back on</div>
+          </TableHead>
+
+          {stopped.map((branch) => {
+            const untilId = `${uid}-${branch.id}-until`;
+            const reasonId = `${uid}-${branch.id}-reason`;
+            return (
+              <div
+                key={branch.id}
+                className={cn(TABLE_ROW, TABLE_ROW_COLUMNS, tableRowClass("saved"))}
+                style={tableRowStyle(stoppedColumns)}
+              >
+                <div className="flex min-h-11 items-center lg:min-h-0">
+                  <span className="text-sm">{branch.shortName}</span>
+                </div>
+
+                <WorkspaceSelect
+                  id={reasonId}
+                  name={`reason-${branch.id}`}
+                  label="Why"
+                  labelClassName="lg:sr-only"
+                  controlClassName="mt-1.5 lg:mt-0"
+                  options={reasonOptions}
+                  value={reasons[branch.id] === "" ? null : (reasons[branch.id] as HoldReason)}
+                  placeholder="Choose a reason"
+                  onValueChange={(value) =>
+                    setReasons((current) => ({ ...current, [branch.id]: value ?? "" }))
+                  }
+                  disabled={pending}
+                />
+
+                <div>
+                  <TableCellLabel htmlFor={untilId}>Back on</TableCellLabel>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 lg:mt-0">
+                    <WorkspaceInput
+                      id={untilId}
+                      type="datetime-local"
+                      value={untils[branch.id] ?? ""}
+                      onChange={(event) =>
+                        setUntils((current) => ({ ...current, [branch.id]: event.target.value }))
+                      }
+                      disabled={pending}
+                      aria-describedby={`${uid}-until-hint`}
+                      className="mt-0 w-auto flex-none"
+                    />
                     <button
                       type="button"
-                      className="text-nybb-bone/65 min-h-11 text-xs underline underline-offset-2"
-                      onClick={() => setUntils((current) => ({ ...current, [branch.id]: "" }))}
+                      className="text-nybb-orange min-h-11 text-xs underline underline-offset-2"
+                      onClick={() =>
+                        setUntils((current) => ({
+                          ...current,
+                          [branch.id]: endOfManilaDayInputValue(),
+                        }))
+                      }
                       disabled={pending}
                     >
-                      Clear
+                      Rest of today
                     </button>
-                  ) : null}
+                    {untils[branch.id] ? (
+                      <button
+                        type="button"
+                        className="text-nybb-bone/65 min-h-11 text-xs underline underline-offset-2"
+                        onClick={() => setUntils((current) => ({ ...current, [branch.id]: "" }))}
+                        disabled={pending}
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
+
+          {/* Said once for the group. It is a fact about the field rather than
+              about any counter, so beside every row it would be the same
+              sentence twice on a two counter shop and nine times on a full
+              one. */}
           <p id={`${uid}-until-hint`} className="text-nybb-bone/65 mt-2 max-w-md text-xs">
-            Empty means until someone puts it back.
+            Leave the time empty to keep it off until someone puts it back.
           </p>
         </div>
       ) : null}
@@ -258,7 +339,7 @@ function SoldOutForm({ item, actable }: { item: ManagedItem; actable: ManagedBra
           type="submit"
           tone="dark"
           variant={changed.length > 0 ? "primary" : "secondary"}
-          disabled={pending || changed.length === 0}
+          disabled={pending || changed.length === 0 || problem !== null}
           className="min-h-11"
         >
           {pending ? (
@@ -268,7 +349,13 @@ function SoldOutForm({ item, actable }: { item: ManagedItem; actable: ManagedBra
           )}
           Save availability
         </Button>
-        {changed.length > 0 ? (
+        {/* The blocking reason outranks the count: a person whose Save will
+            not press needs to know why before they need to know how many.
+            Body copy weight, not the quietest text on the card, per the rule
+            the item editor's commit footer already follows. */}
+        {problem ? (
+          <p className="text-nybb-bone/65 text-sm">{problem}</p>
+        ) : changed.length > 0 ? (
           <p className="text-nybb-bone/65 text-sm">
             {changed.length === 1 ? "1 counter changed." : `${changed.length} counters changed.`}
           </p>
