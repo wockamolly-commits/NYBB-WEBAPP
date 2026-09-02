@@ -207,7 +207,13 @@ test("puts a counter back by ticking it, and leaves no hold row behind", async (
 
   await box.check();
   await save.click();
-  await expect(item.getByText("Available", { exact: true })).toBeVisible();
+
+  // Wait for THIS row to stop saying it, not for any row to say "Available".
+  // A second trading counter puts that word on screen before this save has
+  // landed, so the obvious assertion passes instantly and the database read
+  // below then runs mid-save. That is exactly how this test failed the first
+  // time a second branch was switched on.
+  await expect(item.getByText("Sold out until someone puts it back")).toHaveCount(0);
 
   // Lifting deletes the row. There is deliberately no is_held boolean beside
   // the timestamp, per 0051, so an emptied table is the whole of "available".
@@ -226,7 +232,11 @@ test("takes several counters off in one Save", async ({ page }) => {
   await expect(item.getByText("2 counters changed.")).toBeVisible();
 
   await item.getByRole("button", { name: "Save availability" }).click();
-  await expect(item.getByText("Sold out until someone puts it back").first()).toBeVisible();
+
+  // Both rows, not `.first()`. The counters are written one RPC at a time, so
+  // waiting for one of them to change lets the read below run while the
+  // second is still in flight.
+  await expect(item.getByText("Sold out until someone puts it back")).toHaveCount(2);
 
   const rows = await holdRows();
   expect(rows).toHaveLength(2);
