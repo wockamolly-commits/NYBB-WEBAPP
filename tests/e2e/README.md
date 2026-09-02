@@ -54,6 +54,32 @@ which is not committed.
 This is not a way around authorisation. The session belongs to a real staff row
 and carries exactly that row's permissions.
 
+### The three people it signs in as
+
+All three are derived from `SUPER_ADMIN_EMAIL`, and none is created here. They
+already exist in the project.
+
+| State file | Address | Row | Used by |
+|---|---|---|---|
+| `.auth/staff.json` | `+nybbowner` | manager, **all branches** | everything, by default |
+| `.auth/staff-branch.json` | `+nybbmanager` | manager, **Central Bloc** | `branch-scoped-staff.spec.ts` |
+| `.auth/admin.json` | no suffix, the address itself | the **Super Admin** | `workspace-team-layout.spec.ts` |
+
+Two things to know about them.
+
+**The default persona must stay business wide.** A plus address is not the
+configured Super Admin, so `+nybbowner` resolves as an ordinary staff row.
+Since migration 0059 the shared menu catalog is a business wide capability, so
+assigning that account a branch would take `menu:configure` away and break
+every menu spec at once, with a failure that reads like a routing bug.
+
+**The admin persona is the owner's own account.** Workspace access is Super
+Admin only and cannot be reached any other way, so the spec that uses it reads
+rendered geometry and nothing else: it never presses Save, never submits the
+grant form, and never opens the revoke confirmation. Keep it that way. A test
+that writes through that session is writing to the real owner's account and
+leaving audit rows that say the owner did it.
+
 ## Running one test
 
 ```

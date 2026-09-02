@@ -80,7 +80,13 @@ function MemberCard({
       : "Staff";
 
   return (
-    <li className="border-nybb-bone/15 grid gap-4 rounded-md border p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+    /* Stacked, not two columns. The controls used to be a role select and a
+       button, which sat beside the name comfortably. A third control took the
+       row past the width of the card, and since the controls column sizes to
+       its own content and will not shrink, the name column was the thing that
+       gave: "Cashier at Central Bloc, IT Park" wrapped one word per line under
+       an overlapping heading. */
+    <li className="border-nybb-bone/15 grid gap-4 rounded-md border p-4">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-display text-lg">{member.displayName}</p>
@@ -102,7 +108,7 @@ function MemberCard({
       </div>
 
       {member.role === "admin" ? (
-        <p className="text-nybb-bone/45 max-w-64 text-xs leading-relaxed">
+        <p className="text-nybb-bone/45 max-w-prose text-xs leading-relaxed">
           The Super Admin is controlled by server configuration and cannot be changed here.
         </p>
       ) : (
