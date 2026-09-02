@@ -41,7 +41,10 @@ const rows: ManagedMenuRows = {
   holds: [
     { item_id: "item-wings", branch_id: "branch-pilot", kind: "until", unavailable_until: "2026-08-25T18:00:00.000Z" },
   ],
-  branches: [{ id: "branch-pilot", short_name: "Central Bloc" }],
+  branches: [
+    { id: "branch-pilot", short_name: "Central Bloc", is_active: true },
+    { id: "branch-shut", short_name: "Ayala Center Cebu", is_active: false },
+  ],
   optionPrices: [],
 };
 
@@ -133,6 +136,18 @@ describe("assembleManagedMenu", () => {
     const item = menu.categories[0]?.items[0];
     expect(item?.holds).toEqual([
       { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z" },
+    ]);
+  });
+
+  it("carries whether a branch trades, which decides if it can be asked about", () => {
+    const menu = assembleManagedMenu(rows);
+    // Not filtered here. The reader hands over all nine rows because the hold
+    // control's picker and the audit log both want the names of branches that
+    // have never opened; "Available at" is what leaves them out, because a
+    // counter that does not trade has no answer to give.
+    expect(menu.branches).toEqual([
+      { id: "branch-pilot", shortName: "Central Bloc", isActive: true },
+      { id: "branch-shut", shortName: "Ayala Center Cebu", isActive: false },
     ]);
   });
 

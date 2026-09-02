@@ -27,7 +27,7 @@ export type ManagedMenuRows = {
   options: Array<{ id: string; group_id: string; slug: string; name: string; description: string | null; price_cents: number | null; heat_percent: number | null; image_url: string | null; image_source: string | null; image_width: number | null; image_height: number | null; image_blur_data_url: string | null; is_active: boolean; sort_order: number }>;
   links: Array<{ item_id: string; group_id: string; is_required: boolean; min_select: number; max_select: number; sort_order: number }>;
   holds: Array<{ item_id: string; branch_id: string; kind: string; unavailable_until: string | null }>;
-  branches: Array<{ id: string; short_name: string }>;
+  branches: Array<{ id: string; short_name: string; is_active: boolean }>;
   optionPrices: Array<{ option_id: string; variation_id: string; price_cents: number }>;
 };
 
@@ -179,7 +179,11 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
   return {
     categories,
     optionGroups,
-    branches: rows.branches.map((branch) => ({ id: branch.id, shortName: branch.short_name })),
+    branches: rows.branches.map((branch) => ({
+      id: branch.id,
+      shortName: branch.short_name,
+      isActive: branch.is_active,
+    })),
   };
 }
 
@@ -251,7 +255,7 @@ export async function getManagedMenu(): Promise<ManagedMenu | null> {
     supabase.from("menu_options").select("id, group_id, slug, name, description, price_cents, heat_percent, image_url, image_source, image_width, image_height, image_blur_data_url, is_active, sort_order").order("sort_order"),
     supabase.from("menu_item_option_groups").select("item_id, group_id, is_required, min_select, max_select, sort_order").order("sort_order"),
     supabase.from("menu_item_branch_holds").select("item_id, branch_id, kind, unavailable_until"),
-    supabase.from("branches").select("id, short_name").order("sort_order").order("short_name"),
+    supabase.from("branches").select("id, short_name, is_active").order("sort_order").order("short_name"),
     supabase.from("menu_option_variation_prices").select("option_id, variation_id, price_cents"),
   ]);
 

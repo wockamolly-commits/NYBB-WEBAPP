@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
 import { getManagedMenu } from "@/lib/staff/menu";
-import { requireStaffPermission } from "@/lib/staff/session";
+import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
 import { ItemEditor } from "../ItemEditor";
 import { MenuUnavailable } from "../../MenuUnavailable";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Edit item" };
 
 export default async function EditMenuItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await requireStaffPermission("menu:configure", `/workspace/menu/items/${id}`);
+  const { profile } = await requireStaffPermission("menu:configure", `/workspace/menu/items/${id}`);
   const menu = await getManagedMenu();
 
   // A failed read and a missing item are two different answers. notFound()
@@ -47,7 +47,13 @@ export default async function EditMenuItemPage({ params }: { params: Promise<{ i
         </ButtonLink>
       </div>
 
-      <ItemEditor item={item} categories={menu.categories} optionGroups={menu.optionGroups} />
+      <ItemEditor
+        item={item}
+        categories={menu.categories}
+        optionGroups={menu.optionGroups}
+        branches={menu.branches}
+        canSetAvailability={hasStaffPermission(profile, "menu:availability")}
+      />
     </div>
   );
 }

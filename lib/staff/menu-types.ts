@@ -128,6 +128,14 @@ export type ManagedCategory = {
 export type ManagedBranch = {
   id: string;
   shortName: string;
+  /**
+   * Whether this branch trades. Eight of the nine rows are false and exist so
+   * the franchise map has somewhere to grow into. A screen that offers a
+   * counter to sell at, or not to sell at, has to leave those out: the
+   * question "is this item available at Ayala Center Cebu" has no answer while
+   * nothing has ever opened there.
+   */
+  isActive: boolean;
 };
 
 export type ManagedMenu = {

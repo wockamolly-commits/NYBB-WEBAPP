@@ -64,6 +64,10 @@ function refreshMenu() {
   revalidatePath("/workspace/menu/categories");
   revalidatePath("/workspace/menu/options");
   revalidatePath("/workspace/menu/items/new");
+  // The item editor reads holds too, now that "Available at" is on it. Without
+  // this, taking an item off a counter from that page left the row it was set
+  // from still reading "Available" until a hard reload.
+  revalidatePath("/workspace/menu/items/[id]", "page");
   revalidatePath("/menu");
   revalidatePath("/menu/[category]", "page");
   revalidatePath("/menu/[category]/[item]", "page");

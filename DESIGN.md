@@ -695,6 +695,21 @@ Two smaller things the same pass fixed, both worth repeating. The blocking reaso
 status line sat in the button's flex row inside a `w-full` wrapper, which is a flex item whether or
 not the message renders, so an idle form paid a row gap for a line that was not there.
 
+**The Control That Has A Twin Names Its Own Scope Rule.** When the same question is asked at two
+scopes, each control says which scope it is and points at the other. The item editor's global switch
+read "On the menu", which named no menu, and the per-counter control reads "sold out", which names
+no counter, so a person looking at either had no way to tell the other existed. They are now "Sell
+this item at all", whose hint ends by naming Available at, and "Available at", whose rail sends a
+person wanting a timed hold back to the menu list. Neither label is longer than the one it replaced;
+they are just about something.
+
+The corollary is that the narrower control does not grow a copy of the wider one. "Available at"
+sets and lifts, and the hold it writes is always the indefinite kind, because the question that
+screen answers is "do we sell this here". The three hold kinds and their time picker stay on the
+menu list, where the person with the empty fryer already is. Two full implementations of one
+control do not stay identical, and the day they diverge is the day the two screens disagree about
+what an item's state is.
+
 ### Selection controls
 
 A distinct family from buttons. Size chips, flavour tiles, option rows and pickup windows carry

@@ -10,6 +10,7 @@ import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceFi
 import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import type {
+  ManagedBranch,
   ManagedCategory,
   ManagedItem,
   ManagedOptionGroup,
@@ -17,6 +18,7 @@ import type {
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuItem } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
+import { BranchAvailability } from "./BranchAvailability";
 import { HeatPriceGrid } from "./HeatPriceGrid";
 import { ImageField } from "./ImageField";
 import { SizeRows } from "./SizeRows";
@@ -57,10 +59,20 @@ export function ItemEditor({
   item,
   categories,
   optionGroups,
+  branches,
+  canSetAvailability,
 }: {
   item: ManagedItem | null;
   categories: ManagedCategory[];
   optionGroups: ManagedOptionGroup[];
+  branches: ManagedBranch[];
+  /**
+   * Whether this person may take the item off a counter. The page itself is
+   * behind menu:configure, and availability is its own permission that a
+   * configure holder does not automatically have, so the section is gated
+   * separately rather than being assumed from the route.
+   */
+  canSetAvailability: boolean;
 }) {
   const uid = useId();
   const router = useRouter();
@@ -435,16 +447,21 @@ export function ItemEditor({
                 disabled={disabled}
                 aria-describedby={`${uid}-active-hint`}
               />
-              <span className="text-sm">On the menu</span>
+              <span className="text-sm">Sell this item at all</span>
             </label>
           </div>
           {/* Capped at a readable measure. Full bleed in the body column it
               set at roughly 148 characters a line, which is twice the ceiling
               for reading copy at any size. */}
+          {/* The two controls are one question at two scopes, so each names
+              its own scope and points at the other. "On the menu" said
+              nothing about which menu, and the per-counter control says
+              "sold out", so a person reading either one had no way to tell
+              that the other existed. */}
           <p id={`${uid}-active-hint`} className="text-nybb-bone/65 mt-2 max-w-lg text-xs">
-            Turning this off takes the item off the menu at every branch, indefinitely, until
-            someone turns it back on. To stop selling it for one shift at one counter, mark it sold
-            out from the menu list instead.
+            Off takes the item off every counter at once, indefinitely, until someone turns it back
+            on. To stop selling it at one counter and keep it at the others, use Available at
+            below.
           </p>
         </WorkspaceSection>
 
@@ -597,6 +614,15 @@ export function ItemEditor({
           </div>
         </div>
       </form>
+
+      {/* Outside the item's own <form>, for the reason HeatPriceGrid is: each
+          counter's row is its own <form> with its own Server Action, and a
+          nested form is not submitted independently. It sits directly after
+          the form because it answers the question the "Sell this item at all"
+          checkbox raises, at the other scope. */}
+      {item && canSetAvailability ? (
+        <BranchAvailability item={item} branches={branches} />
+      ) : null}
 
       <WorkspaceSection
         title="Photo"
