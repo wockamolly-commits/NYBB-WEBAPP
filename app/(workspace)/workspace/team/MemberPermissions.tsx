@@ -1,37 +1,25 @@
 "use client";
 
-import { ChevronDown, ChevronUp, LoaderCircle, SlidersHorizontal } from "lucide-react";
-import { useActionState, useOptimistic, useState } from "react";
+import { ChevronDown, ChevronUp, LoaderCircle, Save, SlidersHorizontal } from "lucide-react";
+import { useActionState, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { WorkspaceToggle } from "@/components/ui/WorkspaceToggle";
 import {
   PERMISSION_DESCRIPTIONS,
   PERMISSION_GROUPS,
   PERMISSION_LABELS,
 } from "@/lib/staff/permission-catalog";
-import { permissionRowState, summarizePermissions } from "@/lib/staff/permission-panel";
+import {
+  panelRows,
+  summarizePermissions,
+  togglePending,
+  type PendingChanges,
+} from "@/lib/staff/permission-panel";
 import { BUSINESS_WIDE_PERMISSIONS, type PermissionOverride } from "@/lib/staff/roles";
 import type { PermissionActionState, WorkspaceMember } from "@/lib/staff/team-types";
-import { setStaffPermission } from "./actions";
+import { setStaffPermissions } from "./actions";
 
 const initialState: PermissionActionState = { status: "idle" };
-
-/**
- * Applying a pressed switch to the list of override rows, so that everything
- * downstream keeps working on the shape it already understands.
- *
- * The optimistic value is a row rather than a flag because that is what the
- * server is about to write, and because permissionRowState already reads a row
- * that agrees with the default as inherited. So an optimistic entry that lands
- * on the default shows the DEFAULT badge immediately, which is what the
- * database will make true a moment later by deleting the row.
- */
-function withPressed(
-  overrides: readonly PermissionOverride[],
-  pressed: PermissionOverride,
-): PermissionOverride[] {
-  const rest = overrides.filter((row) => row.permission !== pressed.permission);
-  return [...rest, pressed];
-}
 
 export function MemberPermissions({
   member,
@@ -40,13 +28,37 @@ export function MemberPermissions({
   member: WorkspaceMember;
   overrides: readonly PermissionOverride[];
 }) {
-  const [state, action, pending] = useActionState(setStaffPermission, initialState);
+  const [state, action, pending] = useActionState(setStaffPermissions, initialState);
   const [open, setOpen] = useState(false);
-  const [shown, applyPressed] = useOptimistic(overrides, withPressed);
 
-  const summary = summarizePermissions(member.staffRole, member.branchId, shown);
+  /**
+   * The switches that have been moved and not saved.
+   *
+   * A key is present only while it disagrees with what is stored, which
+   * togglePending maintains, so moving a switch and moving it back leaves this
+   * empty and Save has nothing to offer. That is also why the hidden fields
+   * below can just be its entries: everything in here is a real change.
+   */
+  const [changes, setChanges] = useState<PendingChanges>({});
+
+  // Cleared when a save lands, not by an effect. useActionState hands back a
+  // new object per submission, so identity is the signal that one just
+  // arrived; this is the same adjust-state-on-new-input pattern MemberCard
+  // uses to close its revoke confirmation. Clearing on success is what makes
+  // the panel fall back to the freshly revalidated props. Clearing on failure
+  // would throw away what the person had asked for, so it does not.
+  const [seen, setSeen] = useState(state);
+  if (seen !== state) {
+    setSeen(state);
+    if (state.status === "success") setChanges({});
+  }
+
+  const rows = panelRows(member.staffRole, member.branchId, overrides, changes);
+  const summary = summarizePermissions(member.staffRole, member.branchId, overrides, changes);
+  const byPermission = new Map(rows.map((row) => [row.permission, row]));
   const panelId = `permissions-${member.profileId}`;
   const isAssigned = member.branchId !== null;
+  const editable = member.isActive && !pending;
 
   return (
     <section
@@ -81,6 +93,16 @@ export function MemberPermissions({
             {summary.on}/{summary.total} on
             {summary.changed > 0 ? `, ${summary.changed} changed` : null}
           </p>
+          {/*
+            Said in the heading as well as inside the panel, because the panel
+            can be collapsed with changes still in it, and a change nobody can
+            see is a change about to be lost.
+          */}
+          {summary.unsaved > 0 ? (
+            <p className="text-nybb-orange text-sm font-semibold">
+              {summary.unsaved} unsaved
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => setOpen((current) => !current)}
@@ -100,45 +122,38 @@ export function MemberPermissions({
 
       <div id={panelId} hidden={!open}>
         {/*
-          One form for all thirteen switches. Each switch is a submit button
-          carrying its own name and value, which is what a submit sends, so
-          there is no hidden field per row and no form per row. It sits outside
-          the role and branch form in MemberCard rather than inside it, because
-          forms cannot nest.
+          One form for the whole panel, submitted by Save and by nothing else.
+          The switches are buttons that move React state; what is posted is the
+          hidden field per moved switch below. It sits outside the role and
+          branch form in MemberCard rather than inside it, because forms cannot
+          nest: a nested one is dropped by the parser and its fields would end
+          up in the role form.
         */}
-        <form
-          action={(formData) => {
-            const toggle = formData.get("toggle");
-            if (typeof toggle === "string") {
-              const [permission, next] = toggle.split("|");
-              applyPressed({
-                permission: permission as PermissionOverride["permission"],
-                granted: next === "on",
-              });
-            }
-            return action(formData);
-          }}
-          className="border-nybb-bone/15 border-t"
-        >
+        <form action={action} className="border-nybb-bone/15 border-t">
           <input type="hidden" name="profileId" value={member.profileId} />
+          {Object.entries(changes).map(([permission, granted]) => (
+            <input
+              key={permission}
+              type="hidden"
+              name="change"
+              value={`${permission}|${granted ? "on" : "off"}`}
+            />
+          ))}
 
           {PERMISSION_GROUPS.map((group) => {
-            const rows = group.permissions.map((permission) => ({
-              permission,
-              ...permissionRowState(member.staffRole, member.branchId, shown, permission),
-            }));
-            const onInGroup = rows.filter((row) => row.on).length;
+            const groupRows = group.permissions.map((permission) => byPermission.get(permission)!);
+            const onInGroup = groupRows.filter((row) => row.on).length;
 
             return (
               <div key={group.label}>
                 <div className="bg-nybb-bone/5 flex items-center justify-between px-4 py-2">
                   <p className="type-caps text-nybb-bone/55 text-xs">{group.label}</p>
                   <p className="text-nybb-bone/55 text-xs">
-                    {onInGroup}/{rows.length}
+                    {onInGroup}/{groupRows.length}
                   </p>
                 </div>
                 <ul>
-                  {rows.map((row) => {
+                  {groupRows.map((row) => {
                     const labelId = `${panelId}-${row.permission.replace(":", "-")}`;
                     return (
                       <li
@@ -153,6 +168,11 @@ export function MemberPermissions({
                             {row.isDefault ? (
                               <span className="bg-nybb-bone/10 text-nybb-bone/55 rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
                                 Default
+                              </span>
+                            ) : null}
+                            {row.unsaved ? (
+                              <span className="bg-nybb-orange/15 text-nybb-orange rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                                Not saved
                               </span>
                             ) : null}
                           </div>
@@ -182,11 +202,20 @@ export function MemberPermissions({
                         </div>
                         <WorkspaceToggle
                           on={row.on}
-                          name="toggle"
-                          value={`${row.permission}|${row.on ? "off" : "on"}`}
-                          disabled={pending || !member.isActive}
+                          disabled={!editable}
                           aria-labelledby={labelId}
                           aria-describedby={`${labelId}-hint`}
+                          onClick={() =>
+                            setChanges((current) =>
+                              togglePending(
+                                member.staffRole,
+                                member.branchId,
+                                overrides,
+                                current,
+                                row.permission,
+                              ),
+                            )
+                          }
                         />
                       </li>
                     );
@@ -196,13 +225,32 @@ export function MemberPermissions({
             );
           })}
 
-          <div className="flex min-h-10 items-center gap-2 px-4 py-3">
-            {pending ? (
-              <LoaderCircle
-                aria-hidden
-                className="text-nybb-bone/55 size-4 animate-spin motion-reduce:animate-none"
-              />
+          <div className="border-nybb-bone/15 flex flex-wrap items-center gap-3 border-t p-4">
+            <Button type="submit" tone="dark" disabled={!editable || summary.unsaved === 0}>
+              {pending ? (
+                <LoaderCircle
+                  aria-hidden
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Save aria-hidden className="size-4" />
+              )}
+              {summary.unsaved > 0
+                ? `Save ${summary.unsaved} change${summary.unsaved === 1 ? "" : "s"}`
+                : "Save"}
+            </Button>
+            {summary.unsaved > 0 ? (
+              <Button
+                type="button"
+                tone="dark"
+                variant="ghost"
+                disabled={!editable}
+                onClick={() => setChanges({})}
+              >
+                Discard
+              </Button>
             ) : null}
+
             {!member.isActive ? (
               <p className="text-nybb-bone/55 text-sm">
                 This account is revoked. Restore it to change what it can reach.
@@ -210,13 +258,19 @@ export function MemberPermissions({
             ) : null}
             {state.status === "error" && state.message ? (
               <p role="alert" className="text-nybb-orange text-sm">
-                {state.message}
+                {state.message} Nothing was saved.
               </p>
             ) : null}
-            {state.status === "success" && state.permission ? (
+            {state.status === "success" ? (
               <p role="status" className="text-nybb-yellow text-sm">
-                {PERMISSION_LABELS[state.permission]} is now{" "}
-                {state.granted ? "on" : "off"}.
+                {/*
+                  What the database changed, which is not always what was
+                  asked: a switch already sitting where it was put writes
+                  nothing, and saying "1 saved" for it would be a small lie.
+                */}
+                {state.savedCount === 0
+                  ? "Nothing needed changing."
+                  : `Saved ${state.savedCount} permission${state.savedCount === 1 ? "" : "s"}.`}
               </p>
             ) : null}
           </div>

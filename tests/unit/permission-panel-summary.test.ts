@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  displayedOn,
+  panelRows,
   permissionRowState,
   summarizePermissions,
+  togglePending,
+  type PendingChanges,
 } from "@/lib/staff/permission-panel";
 import type { PermissionOverride } from "@/lib/staff/roles";
 
@@ -96,6 +100,7 @@ describe("summarizePermissions", () => {
       on: 7,
       total: 13,
       changed: 0,
+      unsaved: 0,
     });
   });
 
@@ -104,6 +109,7 @@ describe("summarizePermissions", () => {
       on: 13,
       total: 13,
       changed: 0,
+      unsaved: 0,
     });
   });
 
@@ -113,7 +119,7 @@ describe("summarizePermissions", () => {
         { permission: "refunds:manage", granted: true },
         { permission: "orders:manage", granted: false },
       ]),
-    ).toEqual({ on: 7, total: 13, changed: 2 });
+    ).toEqual({ on: 7, total: 13, changed: 2, unsaved: 0 });
   });
 
   it("does not count team:manage, which the panel does not offer", () => {
@@ -121,7 +127,7 @@ describe("summarizePermissions", () => {
     // panel that has no switch to explain it.
     expect(
       summarizePermissions("cashier", ROVING, [{ permission: "team:manage", granted: true }]),
-    ).toEqual({ on: 7, total: 13, changed: 0 });
+    ).toEqual({ on: 7, total: 13, changed: 0, unsaved: 0 });
   });
 
   it("drops menu:configure from an assigned manager's count", () => {
@@ -129,6 +135,7 @@ describe("summarizePermissions", () => {
       on: 12,
       total: 13,
       changed: 0,
+      unsaved: 0,
     });
   });
 
@@ -137,6 +144,84 @@ describe("summarizePermissions", () => {
       on: 0,
       total: 13,
       changed: 0,
+      unsaved: 0,
+    });
+  });
+});
+
+describe("pending changes, before Save is pressed", () => {
+  const NONE: PendingChanges = {};
+
+  it("keeps a moved switch only while it disagrees with what is stored", () => {
+    // The invariant the Save button rests on. Moving a switch and moving it
+    // straight back has to leave nothing behind, or Save would offer to write
+    // a change that is not one.
+    const once = togglePending("cashier", ROVING, NO_OVERRIDES, NONE, "refunds:manage");
+    expect(once).toEqual({ "refunds:manage": true });
+
+    const twice = togglePending("cashier", ROVING, NO_OVERRIDES, once, "refunds:manage");
+    expect(twice).toEqual({});
+  });
+
+  it("does not mutate the map it was given", () => {
+    const before: PendingChanges = {};
+    togglePending("cashier", ROVING, NO_OVERRIDES, before, "refunds:manage");
+    expect(before).toEqual({});
+  });
+
+  it("clears the pending entry when a switch returns to a stored override", () => {
+    // The stored state here is an override, not a role default. Returning to
+    // it is still "nothing to save".
+    const stored: PermissionOverride[] = [{ permission: "refunds:manage", granted: true }];
+    const off = togglePending("cashier", ROVING, stored, NONE, "refunds:manage");
+    expect(off).toEqual({ "refunds:manage": false });
+    expect(togglePending("cashier", ROVING, stored, off, "refunds:manage")).toEqual({});
+  });
+
+  it("shows the pending answer over the stored one", () => {
+    expect(displayedOn("cashier", ROVING, NO_OVERRIDES, NONE, "refunds:manage")).toBe(false);
+    expect(
+      displayedOn("cashier", ROVING, NO_OVERRIDES, { "refunds:manage": true }, "refunds:manage"),
+    ).toBe(true);
+  });
+
+  it("counts an unsaved switch in the on count and in the changed count", () => {
+    // The heading describes what the screen is showing, so that pressing Save
+    // is not expected to change the numbers, only to make them true.
+    expect(
+      summarizePermissions("cashier", ROVING, NO_OVERRIDES, { "refunds:manage": true }),
+    ).toEqual({ on: 8, total: 13, changed: 1, unsaved: 1 });
+  });
+
+  it("moves the DEFAULT badge to follow the switch rather than the stored row", () => {
+    // The badge answers "if you saved this now, would there be an override
+    // row", which is the question somebody moving a switch is asking.
+    const rows = panelRows("cashier", ROVING, NO_OVERRIDES, { "orders:view": false });
+    const row = rows.find((entry) => entry.permission === "orders:view");
+    expect(row).toEqual({
+      permission: "orders:view",
+      on: false,
+      isDefault: false,
+      defaultOn: true,
+      unsaved: true,
+    });
+  });
+
+  it("marks only the switches that moved", () => {
+    const rows = panelRows("cashier", ROVING, NO_OVERRIDES, { "refunds:manage": true });
+    expect(rows.filter((row) => row.unsaved).map((row) => row.permission)).toEqual([
+      "refunds:manage",
+    ]);
+  });
+
+  it("lets a pinned manager stage the catalog, and counts it as a change", () => {
+    const staged = togglePending("manager", IT_PARK, NO_OVERRIDES, NONE, "menu:configure");
+    expect(staged).toEqual({ "menu:configure": true });
+    expect(summarizePermissions("manager", IT_PARK, NO_OVERRIDES, staged)).toEqual({
+      on: 13,
+      total: 13,
+      changed: 1,
+      unsaved: 1,
     });
   });
 });

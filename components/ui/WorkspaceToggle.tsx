@@ -1,23 +1,21 @@
 "use client";
 
 /**
- * A switch that submits.
+ * A switch.
  *
- * WHY A BUTTON AND NOT A CHECKBOX.
+ * WHY role="switch" AND NOT A CHECKBOX.
  *
- * The permission panel is one form holding thirteen of these, because a
- * button's own name and value are what a submit sends: pressing one says which
- * permission and which way in a single field. A checkbox would need its own
- * form each (forms cannot nest, and the member card already has one for the
- * role and the branch) or a hidden field per row plus a script to submit on
- * change. It would also inherit the reset problem WorkspaceCheckbox exists to
- * paper over, which does not arise here because nothing about this element is
- * controlled: it is a button, and what it looks like comes from aria-checked.
+ * It carries no value into a form. The permission panel keeps what has been
+ * moved in React state and posts it as hidden fields when Save is pressed, so
+ * this element's job is to show a state and report a press, which is a button.
+ * role="switch" with aria-checked is the ARIA pattern for exactly that, and a
+ * screen reader announces it as "on" or "off" rather than "checked".
  *
- * role="switch" with aria-checked is the ARIA pattern for exactly this: a
- * control with two states that takes effect immediately, rather than one that
- * contributes a value to something submitted later. Screen readers announce it
- * as "on" or "off" rather than "checked".
+ * It also sidesteps the problem WorkspaceCheckbox exists to paper over. React
+ * 19 resets a form after every action, and a reset puts a controlled checkbox
+ * back to the defaultChecked it was born with, showing the opposite of what
+ * the form would send. Nothing here is a form control, so there is nothing for
+ * the reset to get wrong.
  *
  * The material lives in the .workspace-toggle rules in app/globals.css, beside
  * the checkbox and radio ones, the same way WorkspaceInput and
@@ -34,7 +32,10 @@ type WorkspaceToggleProps = Omit<
 export function WorkspaceToggle({ on, className, ...props }: WorkspaceToggleProps) {
   return (
     <button
-      type="submit"
+      // Explicit, because a button inside a form defaults to submit, and this
+      // one sits inside the panel's save form. Left implicit, every switch
+      // would save the form instead of moving.
+      type="button"
       role="switch"
       aria-checked={on}
       className={className ? `workspace-toggle ${className}` : "workspace-toggle"}

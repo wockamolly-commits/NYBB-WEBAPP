@@ -18,10 +18,11 @@ import { ADMIN_STATE_PATH } from "./global-setup";
  * IT SIGNS IN AS THE OWNER'S OWN ACCOUNT, and therefore NOTHING HERE WRITES.
  * The panel it is looking at can only be reached by the configured Super
  * Admin, so there is no other session to use, and the rule from README.md
- * applies: every assertion reads. It never presses a switch. Whether a press
- * writes the right row is covered where it can be covered without touching the
- * real project, in tests/sql/staff-permission-overrides.test.ts, which drives
- * admin_set_staff_permission through every outcome against a real Postgres.
+ * applies. Moving a switch is safe and is exercised below, because nothing
+ * reaches the database until Save is pressed, and Save is never pressed. Every
+ * test that moves one puts it back or discards. What a save actually writes is
+ * covered where it can be without touching the real project, in
+ * tests/sql/staff-permission-overrides.test.ts.
  */
 
 test.use({ storageState: ADMIN_STATE_PATH });
@@ -56,12 +57,12 @@ test("gives every staff card a permissions panel, and the Super Admin none", asy
   await expect(page.getByRole("heading", { name: "Manage permissions" })).toHaveCount(count);
 });
 
-test("keeps the panel out of the role form, where its switches would be dropped", async ({
+test("keeps the panel out of the role form, where its fields would be dropped", async ({
   page,
 }) => {
   // The bug this stands for does not throw and does not warn. A nested form is
-  // removed by the parser, so the thirteen submit buttons would end up in the
-  // role form and pressing one would save the role.
+  // removed by the parser, so the panel's hidden fields would end up in the
+  // role form and Save would save the role instead.
   const nested = await page.evaluate(
     () => document.querySelectorAll("form form").length,
   );
@@ -73,6 +74,19 @@ test("keeps the panel out of the role form, where its switches would be dropped"
     ).length,
   );
   expect(orphaned).toBe(0);
+});
+
+test("gives every switch an explicit button type, so moving one cannot save", async ({
+  page,
+}) => {
+  // A button inside a form defaults to submit. Left implicit, the first switch
+  // pressed would submit the panel, which is the whole thing a Save button is
+  // there to prevent.
+  await panel(cards(page).first()).getByRole("button", { name: "Show permissions" }).click();
+  const types = await page
+    .locator('button[role="switch"]')
+    .evaluateAll((nodes) => [...new Set(nodes.map((node) => node.getAttribute("type")))]);
+  expect(types).toEqual(["button"]);
 });
 
 test("starts collapsed and opens on request", async ({ page }) => {
@@ -140,4 +154,57 @@ test("leaves the switches alone on a revoked account", async ({ page }) => {
   await first.getByRole("button", { name: "Show permissions" }).click();
   await expect(first.getByRole("switch").first()).toBeDisabled();
   await expect(first.getByText(/This account is revoked/)).toBeVisible();
+});
+
+test("holds a moved switch until Save, and offers to discard it", async ({ page }) => {
+  // Nothing here reaches the database: Save is never pressed, and the switch
+  // is put back before the test ends.
+  const first = panel(cards(page).first());
+  await first.getByRole("button", { name: "Show permissions" }).click();
+
+  const save = first.getByRole("button", { name: /^Save/ });
+  await expect(save).toBeDisabled();
+  await expect(first.getByRole("button", { name: "Discard" })).toHaveCount(0);
+
+  const refunds = first.getByRole("switch", { name: "Issue refunds" });
+  const before = await refunds.getAttribute("aria-checked");
+  await refunds.click();
+
+  await expect(refunds).not.toHaveAttribute("aria-checked", before!);
+  await expect(save).toBeEnabled();
+  await expect(save).toHaveText(/Save 1 change$/);
+  await expect(first.getByText("1 unsaved")).toBeVisible();
+  await expect(first.getByText("Not saved")).toBeVisible();
+
+  await first.getByRole("button", { name: "Discard" }).click();
+  await expect(refunds).toHaveAttribute("aria-checked", before!);
+  await expect(save).toBeDisabled();
+  await expect(first.getByText("Not saved")).toHaveCount(0);
+});
+
+test("forgets a switch that was moved and moved straight back", async ({ page }) => {
+  // The invariant behind the Save button: what is pending is what disagrees
+  // with what is stored, so a round trip leaves nothing to save.
+  const first = panel(cards(page).first());
+  await first.getByRole("button", { name: "Show permissions" }).click();
+
+  const audit = first.getByRole("switch", { name: "View audit log" });
+  await audit.click();
+  await expect(first.getByRole("button", { name: /^Save/ })).toBeEnabled();
+
+  await audit.click();
+  await expect(first.getByRole("button", { name: /^Save/ })).toBeDisabled();
+  await expect(first.getByText(/unsaved/)).toHaveCount(0);
+});
+
+test("says there are unsaved changes even when the panel is collapsed", async ({ page }) => {
+  // A change nobody can see is a change about to be lost, and the panel can be
+  // collapsed with one sitting in it.
+  const first = panel(cards(page).first());
+  await first.getByRole("button", { name: "Show permissions" }).click();
+  await first.getByRole("switch", { name: "Issue refunds" }).click();
+  await first.getByRole("button", { name: "Hide permissions" }).click();
+
+  await expect(first.getByText("1 unsaved")).toBeVisible();
+  await expect(first.getByRole("switch")).toHaveCount(0);
 });

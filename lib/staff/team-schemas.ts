@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MANAGEABLE_PERMISSIONS } from "./permission-catalog";
+import type { StaffPermission } from "./roles";
 
 /**
  * The value the branch select posts when the Super Admin means "every counter".
@@ -26,30 +27,51 @@ export const branchAssignmentSchema = z.union(
 );
 
 /**
- * The single value a permission switch posts.
+ * One line of a permission save: which permission, and which way.
  *
- * The panel is one form holding a submit button per permission, because a
- * button's own name and value are what a submit sends: pressing one says which
- * permission and which way in a single field, with no hidden input per row and
- * no nested forms. The wire format is "refunds:manage|on".
+ * The wire format is "refunds:manage|on". The panel posts one of these per
+ * switch the Super Admin actually moved, as a hidden field named "change", so
+ * a save carries the decisions and not the nine other switches that were left
+ * alone. Reading them back with formData.getAll() is the plain HTML way to
+ * send a list, and it keeps the parse to a shape a test can hold.
+ *
+ * team:manage is refused even though it is a real StaffPermission. The panel
+ * has no switch for it (see lib/staff/permission-catalog.ts), so a value naming
+ * it did not come from the screen, and something that could only have been hand
+ * made should not be honoured just because it parses.
+ */
+const permissionChangeSchema = z
+  .string()
+  .transform((value) => value.split("|"))
+  .pipe(
+    z.tuple([z.enum(MANAGEABLE_PERMISSIONS), z.enum(["on", "off"])], {
+      error: "A permission switch sent something unreadable.",
+    }),
+  );
+
+/**
+ * Everything one press of Save is asking for.
  *
  * Parsed here rather than in the actions file for the reason AGENTS.md rule 6
  * gives: a "use server" file may only export async functions, so a schema left
  * inside one cannot be reached by a unit test, and this is the parse standing
  * between a hand made POST and a row in staff_permission_overrides.
  *
- * team:manage is refused even though it is a real StaffPermission. The panel
- * has no switch for it (see lib/staff/permission-catalog.ts), so a value
- * naming it did not come from the screen, and something that could only have
- * been hand made should not be honoured just because it parses. The database
- * refuses an unknown permission as well; this is the first of two answers.
+ * The result is a map rather than a list, because that is what the database
+ * function takes and because a map cannot hold the same permission twice. A
+ * list can, so the duplicate is refused here rather than resolved by whichever
+ * of the two happened to be written last.
  */
-export const permissionTogglePayloadSchema = z
-  .string()
-  .transform((value) => value.split("|"))
-  .pipe(
-    z.tuple([z.enum(MANAGEABLE_PERMISSIONS), z.enum(["on", "off"])], {
-      error: "That permission switch sent something unreadable.",
-    }),
+export const permissionChangeSetSchema = z
+  .array(permissionChangeSchema)
+  .min(1, { error: "There is nothing to save." })
+  .refine(
+    (entries) => new Set(entries.map(([permission]) => permission)).size === entries.length,
+    { error: "That save named the same permission twice." },
   )
-  .transform(([permission, state]) => ({ permission, granted: state === "on" }));
+  .transform(
+    (entries) =>
+      Object.fromEntries(
+        entries.map(([permission, state]) => [permission, state === "on"]),
+      ) as Partial<Record<StaffPermission, boolean>>,
+  );

@@ -68,12 +68,13 @@ export type PermissionSummary = {
   on: number;
   total: number;
   changed: number;
+  unsaved: number;
 };
 
 /**
- * The heading count: "7/13 on, 2 changed".
+ * The heading count: "7/13 on, 2 changed", plus how many are waiting on Save.
  *
- * Both numbers are taken over MANAGEABLE_PERMISSIONS rather than over the
+ * Every number is taken over MANAGEABLE_PERMISSIONS rather than over the
  * override rows, so a row for a permission the panel does not offer, which can
  * only come from a hand edit, cannot move a count that has no switch to
  * account for it.
@@ -82,13 +83,91 @@ export function summarizePermissions(
   role: StaffJobRole | null,
   branchId: string | null,
   overrides: readonly PermissionOverride[],
+  pending: PendingChanges = {},
 ): PermissionSummary {
   let on = 0;
   let changed = 0;
-  for (const permission of MANAGEABLE_PERMISSIONS) {
-    const row = permissionRowState(role, branchId, overrides, permission);
+  let unsaved = 0;
+  for (const row of panelRows(role, branchId, overrides, pending)) {
     if (row.on) on += 1;
     if (!row.isDefault) changed += 1;
+    if (row.unsaved) unsaved += 1;
   }
-  return { on, total: MANAGEABLE_PERMISSIONS.length, changed };
+  return { on, total: MANAGEABLE_PERMISSIONS.length, changed, unsaved };
+}
+
+/**
+ * The switches that have been moved and not yet saved.
+ *
+ * Keyed by permission, holding the state the Super Admin has asked for. The
+ * invariant that makes everything else simple: a key is present only while it
+ * DISAGREES with what is saved. Moving a switch and moving it straight back
+ * leaves the map empty, so "is there anything to save" is a question about its
+ * size rather than a comparison somebody has to remember to run, and the Save
+ * button cannot offer to write a change that is not one.
+ */
+export type PendingChanges = Partial<Record<StaffPermission, boolean>>;
+
+/** What the switch is showing: the pending answer if there is one, else the saved one. */
+export function displayedOn(
+  role: StaffJobRole | null,
+  branchId: string | null,
+  overrides: readonly PermissionOverride[],
+  pending: PendingChanges,
+  permission: StaffPermission,
+): boolean {
+  return pending[permission] ?? permissionRowState(role, branchId, overrides, permission).on;
+}
+
+/**
+ * Moving one switch, and keeping the invariant above.
+ *
+ * Returns a new map rather than mutating, because it is React state.
+ */
+export function togglePending(
+  role: StaffJobRole | null,
+  branchId: string | null,
+  overrides: readonly PermissionOverride[],
+  pending: PendingChanges,
+  permission: StaffPermission,
+): PendingChanges {
+  const saved = permissionRowState(role, branchId, overrides, permission).on;
+  const next = !displayedOn(role, branchId, overrides, pending, permission);
+  const result = { ...pending };
+  if (next === saved) delete result[permission];
+  else result[permission] = next;
+  return result;
+}
+
+export type PanelRow = PermissionRowState & {
+  permission: StaffPermission;
+  /** Moved since the last save, and not written yet. */
+  unsaved: boolean;
+};
+
+/**
+ * Every row the panel draws, with the pending changes folded in.
+ *
+ * isDefault is computed against what the switch is SHOWING, not against what
+ * is saved, so the DEFAULT badge answers "if you saved this now, would there
+ * be an override row" rather than describing a state that has been moved away
+ * from on screen.
+ */
+export function panelRows(
+  role: StaffJobRole | null,
+  branchId: string | null,
+  overrides: readonly PermissionOverride[],
+  pending: PendingChanges = {},
+): PanelRow[] {
+  return MANAGEABLE_PERMISSIONS.map((permission) => {
+    const saved = permissionRowState(role, branchId, overrides, permission);
+    const on = pending[permission] ?? saved.on;
+    return {
+      permission,
+      on,
+      defaultOn: saved.defaultOn,
+      isDefault: on === saved.defaultOn,
+      unsaved: permission in pending,
+    };
+  });
 }

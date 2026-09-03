@@ -1,4 +1,4 @@
-import type { StaffJobRole, StaffPermission } from "./roles";
+import type { StaffJobRole } from "./roles";
 
 export type WorkspaceMember = {
   profileId: string;
@@ -24,14 +24,14 @@ export type WorkspaceAccessActionState = {
 };
 
 /**
- * What a permission switch gets back.
+ * What one press of Save gets back.
  *
- * It carries the permission and the state the database settled on, because the
- * panel moves the switch optimistically the moment it is pressed and has to be
- * able to put it back if the answer is no. Without the key it would know only
- * that something failed, and would have to reset all thirteen.
+ * savedCount is what the database actually changed, which is not always the
+ * number of switches that moved: a set can name a permission that is already
+ * where it is being put, and the function skips those rather than writing a
+ * row and an audit line for nothing. The panel says what happened rather than
+ * what was asked for.
  */
 export type PermissionActionState = WorkspaceAccessActionState & {
-  permission?: StaffPermission;
-  granted?: boolean;
+  savedCount?: number;
 };

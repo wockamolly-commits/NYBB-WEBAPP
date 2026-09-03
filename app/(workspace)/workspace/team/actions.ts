@@ -5,7 +5,7 @@ import { z } from "zod";
 import { STAFF_JOB_ROLES } from "@/lib/staff/roles";
 import {
   branchAssignmentSchema,
-  permissionTogglePayloadSchema,
+  permissionChangeSetSchema,
 } from "@/lib/staff/team-schemas";
 import { getStaffProfile } from "@/lib/staff/session";
 import type {
@@ -34,6 +34,7 @@ function friendlyError(message: string | undefined): string {
   if (message?.includes("UNKNOWN_PERMISSION")) {
     return "That permission does not exist. Reload the page and try again.";
   }
+  if (message?.includes("NO_CHANGES")) return "Nothing had changed, so nothing was saved.";
   if (message?.includes("FORBIDDEN")) return "Only the Super Admin can change Workspace access.";
   return "Workspace access could not be updated. Try again.";
 }
@@ -80,24 +81,32 @@ export async function setWorkspaceAccess(
 }
 
 /**
- * One permission, switched on or off for one person.
+ * A member's permission changes, saved together.
  *
- * The desired state goes to the database and the database decides what to do
- * with it: landing on what the role and the branch already give deletes the
- * override row rather than storing agreement, so the person goes back to
- * inheriting. That rule lives in admin_set_staff_permission and not here,
- * because it needs the role defaults and the business wide list, and the
- * database is where both are authoritative.
+ * The whole set goes to the database in one call, and that is the point rather
+ * than an optimisation: one call is one transaction, so a set that cannot be
+ * honoured in full writes nothing. Thirteen calls behind a Save button would
+ * fail on the seventh and leave somebody holding four of the changes and not
+ * the other three, which is worse than saving each switch as it moved, because
+ * at least that version never lied about what had happened.
+ *
+ * The desired state goes over, not an instruction. Landing on what the role
+ * and the branch already give deletes the override row rather than storing
+ * agreement, and that rule lives in admin_set_staff_permissions because it
+ * needs the role defaults and the business wide list, both of which the
+ * database is authoritative for.
  */
-export async function setStaffPermission(
+export async function setStaffPermissions(
   _previous: PermissionActionState,
   formData: FormData,
 ): Promise<PermissionActionState> {
-  const parsed = permissionTogglePayloadSchema.safeParse(formData.get("toggle"));
+  const parsed = permissionChangeSetSchema.safeParse(formData.getAll("change"));
   if (!parsed.success) {
-    return { status: "error", message: "That permission could not be read. Reload the page." };
+    return {
+      status: "error",
+      message: parsed.error.issues[0]?.message ?? "That save could not be read. Reload the page.",
+    };
   }
-  const { permission, granted } = parsed.data;
 
   const profileId = formData.get("profileId");
   if (typeof profileId !== "string" || profileId === "") {
@@ -110,16 +119,22 @@ export async function setStaffPermission(
   }
 
   const supabase = await createStaffClient();
-  const { error } = await supabase.rpc("admin_set_staff_permission", {
+  const { data, error } = await supabase.rpc("admin_set_staff_permissions", {
     p_profile_id: profileId,
-    p_permission: permission,
-    p_granted: granted,
+    p_changes: parsed.data,
   });
   if (error) {
-    console.error("[workspace] permission update failed:", error.message);
-    return { status: "error", message: friendlyError(error.message), permission };
+    console.error("[workspace] permission save failed:", error.message);
+    return { status: "error", message: friendlyError(error.message) };
   }
 
+  // The function returns an outcome per permission. Everything except
+  // "unchanged" was a real write, and that count is what the panel reports.
+  const outcomes = data as Record<string, string> | null;
+  const savedCount = Object.values(outcomes ?? {}).filter(
+    (outcome) => outcome !== "unchanged",
+  ).length;
+
   revalidatePath("/workspace/team");
-  return { status: "success", permission, granted };
+  return { status: "success", savedCount };
 }

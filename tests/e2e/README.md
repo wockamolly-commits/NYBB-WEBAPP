@@ -97,11 +97,18 @@ the real owner's account and leaving audit rows that say the owner did it.
 
 This is why the permission panel has no browser test of its saving. There is no
 second session that can reach the screen, so the write is covered where it can
-be covered without touching the real project: `tests/sql/staff-permission-overrides.test.ts`
-drives `admin_set_staff_permission` through every outcome against a real
-Postgres, and `workspace-permission-overrides.spec.ts` checks only what the
-panel renders. If that ever has to be proven end to end in a browser, it is a
+be covered without touching the real project:
+`tests/sql/staff-permission-overrides.test.ts` drives
+`admin_set_staff_permissions` through every outcome against a real Postgres,
+and `workspace-permission-overrides.spec.ts` checks only what the panel
+renders. If that ever has to be proven end to end in a browser, it is a
 deliberate exception to the rule above and not a spec to add casually.
+
+Moving a switch in that spec is safe and is done on purpose. Since the panel
+gained a Save button, nothing reaches the database until Save is pressed, and
+Save is never pressed: the specs that move a switch discard it or move it back.
+That is the one place the read-only rule has any give, and it exists only
+because the change is held in the browser.
 
 ## Running one test
 
