@@ -34,9 +34,10 @@ export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
   "menu:view": "Open the Menu dashboard and browse the catalog.",
   "menu:availability": "Mark items sold out and put them back.",
   "menu:configure": "Add, rename, price and delete items across the whole catalog.",
-  "pos:manage": "Take an order at the counter on somebody's behalf.",
-  "analytics:view": "Open the sales analytics report.",
-  "vouchers:manage": "Create and retire discount vouchers.",
+  "pos:manage": "Read the POS sync records. There is no POS screen yet, so this opens nothing.",
+  "analytics:view": "Nothing reads this yet. The sales analytics report has not been built.",
+  "vouchers:manage":
+    "Read the voucher tables. There is no voucher screen yet, so this opens nothing.",
   "store:availability": "Pause and resume orders, and set opening hours.",
   "settings:manage": "Change branch details and business settings.",
   "audit:view": "Open the audit log of staff actions.",
@@ -83,6 +84,40 @@ export const MANAGEABLE_PERMISSIONS = [
 
 /** One of the thirteen the panel offers, as opposed to any StaffPermission. */
 export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
+
+/**
+ * The switches whose feature has not been built.
+ *
+ * They are offered rather than hidden, and the panel says so on the row. Two
+ * different reasons, and the difference is why hiding them would be worse than
+ * a label:
+ *
+ * - vouchers:manage and pos:manage are read by live RLS policies. 0022 makes
+ *   vouchers:manage the read policy on vouchers and voucher_redemptions, and
+ *   pos:manage the read policy on pos_sync. Taking the switch away would leave
+ *   those policies governed by the job role alone, with no way to grant or
+ *   withhold them for one person, which is a real loss of control over a real
+ *   rule.
+ * - analytics:view is read by nothing at all, in the app or the database. It
+ *   is kept only so that the panel is the whole permission model rather than a
+ *   selection from it, and so the switch is already there the day the report
+ *   ships.
+ *
+ * team:manage is the case that went the other way, and MANAGEABLE_PERMISSIONS
+ * above says why: it is not merely unbuilt, it is unreachable by design,
+ * because the screen that would honour it admits the Super Admin by profile
+ * role instead.
+ *
+ * WHEN A FEATURE SHIPS, DELETE ITS ENTRY HERE and rewrite its description.
+ * tests/unit/permission-catalog.test.ts fails if a permission named here turns
+ * up in a permission check under app/, which is the drift guard: the test goes
+ * red on the commit that builds the screen rather than months later.
+ */
+export const UNBUILT_PERMISSIONS = [
+  "analytics:view",
+  "vouchers:manage",
+  "pos:manage",
+] as const satisfies readonly ManageablePermission[];
 
 export type PermissionGroup = {
   label: string;

@@ -8,6 +8,7 @@ import {
   PERMISSION_DESCRIPTIONS,
   PERMISSION_GROUPS,
   PERMISSION_LABELS,
+  UNBUILT_PERMISSIONS,
 } from "@/lib/staff/permission-catalog";
 import {
   panelRows,
@@ -165,6 +166,20 @@ export function MemberPermissions({
                             <p id={labelId} className="font-semibold">
                               {PERMISSION_LABELS[row.permission]}
                             </p>
+                            {/*
+                              Said before the other two, because it changes how
+                              they should be read: whichever way this switch is
+                              set, there is no screen behind it yet. Outlined
+                              rather than filled, so it reads as a note about
+                              the row rather than as a state of the switch.
+                            */}
+                            {(UNBUILT_PERMISSIONS as readonly string[]).includes(
+                              row.permission,
+                            ) ? (
+                              <span className="border-nybb-bone/30 text-nybb-bone/55 rounded border px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                                Not built yet
+                              </span>
+                            ) : null}
                             {row.isDefault ? (
                               <span className="bg-nybb-bone/10 text-nybb-bone/55 rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
                                 Default

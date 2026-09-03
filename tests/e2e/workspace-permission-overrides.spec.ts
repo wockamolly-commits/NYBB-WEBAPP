@@ -208,3 +208,21 @@ test("says there are unsaved changes even when the panel is collapsed", async ({
   await expect(first.getByText("1 unsaved")).toBeVisible();
   await expect(first.getByRole("switch")).toHaveCount(0);
 });
+
+test("says which switches have no feature behind them yet", async ({ page }) => {
+  // vouchers:manage and pos:manage are read by live RLS policies but have no
+  // screen; analytics:view is read by nothing at all. All three stay
+  // switchable, because hiding the first two would remove the only control
+  // over a real rule, so the row has to say what it is instead.
+  const first = panel(cards(page).first());
+  await first.getByRole("button", { name: "Show permissions" }).click();
+
+  await expect(first.getByText("Not built yet")).toHaveCount(3);
+  for (const name of ["Manage vouchers", "Manage POS", "View analytics"]) {
+    await expect(first.getByRole("switch", { name }), name).toBeEnabled();
+  }
+
+  // And the descriptions do not promise a screen that is not there.
+  await expect(first.getByText(/There is no voucher screen yet/)).toBeVisible();
+  await expect(first.getByText(/has not been built/)).toBeVisible();
+});
