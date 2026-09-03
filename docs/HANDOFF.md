@@ -776,6 +776,29 @@ pending migrations must land before the routes receive their browser smoke test.
 **Production capacity remains blocked on the owner**, per spec section 28 item
 4: Central Bloc's genuine throughput per fifteen minutes at peak.
 
+**Per-staff permission overrides got their screen on 2026-09-03, in `0060`.** The table, the RLS
+and both readers have existed since `0007` and `0009`; what was missing was a way to write a row,
+which `0022` had revoked from `authenticated` and `0059` explicitly deferred. `0060` adds
+`admin_set_staff_permission(uuid, text, boolean)`, and lifts the role-default list out of the case
+expression inside `current_staff_has_permission` into `role_default_permission(staff_role, text)`
+so the new function reads the same copy rather than a third one.
+
+The function takes a desired state rather than an instruction: landing on what the role and the
+branch already give deletes the override row, so the person returns to inheriting and a later role
+change carries them with it. The case that makes this subtle is `menu:configure` on a
+branch-assigned manager, where the role says yes and the branch says no, so switching it on has to
+write a row rather than delete one. `lib/staff/permission-panel.ts` computes the same default on
+the app side through `resolvePermissions(role, [], branchId)`, and both sides are pinned by
+`tests/sql/staff-business-wide-permissions.test.ts`.
+
+The audit rows are `workspace.permission_granted`, `_revoked` and `_inherited`, and their diff is
+deliberately three fields rather than `to_jsonb()` of the profile: the redaction note below exists
+because the access RPCs put a staff phone number in the log, and this one cannot.
+
+**`0060` is not applied yet.** Everything above is verified against PGlite by
+`tests/sql/staff-permission-overrides.test.ts`; the panel renders without it, because reading the
+override rows needs no function, but every switch will fail until the migration lands.
+
 ## Things earlier sessions learned the hard way
 
 The first four are also written into spec section 5.6 and the README. They are repeated here

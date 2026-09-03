@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ButtonLink } from "@/components/ui/Button";
-import { getWorkspaceMembers, listAssignableBranches } from "@/lib/staff/team";
+import {
+  getWorkspaceMembers,
+  listAssignableBranches,
+  listPermissionOverrides,
+} from "@/lib/staff/team";
 import { requireStaff } from "@/lib/staff/session";
 import { WorkspaceAccessManager } from "./WorkspaceAccessManager";
 
@@ -13,9 +17,10 @@ export default async function WorkspaceTeamPage() {
   const { profile } = await requireStaff("/workspace/team");
   if (profile.role !== "admin") redirect("/workspace");
 
-  const [members, branches] = await Promise.all([
+  const [members, branches, overrides] = await Promise.all([
     getWorkspaceMembers(),
     listAssignableBranches(),
+    listPermissionOverrides(),
   ]);
 
   return (
@@ -35,8 +40,8 @@ export default async function WorkspaceTeamPage() {
         </ButtonLink>
       </div>
 
-      {members && branches ? (
-        <WorkspaceAccessManager members={members} branches={branches} />
+      {members && branches && overrides ? (
+        <WorkspaceAccessManager members={members} branches={branches} overrides={overrides} />
       ) : (
         <p role="alert" className="border-nybb-bone/30 mt-8 rounded-md border border-dashed p-5">
           Workspace access records are unavailable. Refresh after the database connection recovers.

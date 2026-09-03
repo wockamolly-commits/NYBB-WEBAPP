@@ -523,6 +523,69 @@
     cursor: not-allowed;
   }
 
+  /*
+    The permission switch. A button, not a checkbox: see
+    components/ui/WorkspaceToggle.tsx for why. Its two states come from
+    aria-checked, which is the same attribute a screen reader reads, so there
+    is no second source of truth for what it looks like.
+
+    Sized against the 44px pointer target rather than against the pill: the
+    track is 2.5rem by 1.375rem to match the checkbox height beside it, and the
+    padding block carries the rest of the hit area without moving the row.
+  */
+  .workspace-shell .workspace-toggle {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    width: 2.75rem;
+    height: 1.5rem;
+    padding: 0.1875rem;
+    border: 1px solid color-mix(in oklab, var(--color-nybb-bone) 45%, transparent);
+    border-radius: 9999px;
+    background-color: var(--color-nybb-graphite);
+    cursor: pointer;
+    transition:
+      border-color 150ms ease-out,
+      background-color 150ms ease-out;
+  }
+
+  .workspace-shell .workspace-toggle-knob {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    background-color: color-mix(in oklab, var(--color-nybb-bone) 55%, transparent);
+    transition:
+      transform 150ms ease-out,
+      background-color 150ms ease-out;
+  }
+
+  .workspace-shell .workspace-toggle[aria-checked="true"] {
+    border-color: var(--color-nybb-yellow);
+    background-color: color-mix(in oklab, var(--color-nybb-yellow) 35%, transparent);
+  }
+
+  .workspace-shell .workspace-toggle[aria-checked="true"] .workspace-toggle-knob {
+    transform: translateX(1.25rem);
+    background-color: var(--color-nybb-yellow);
+  }
+
+  .workspace-shell .workspace-toggle:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .workspace-shell .workspace-toggle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workspace-shell .workspace-toggle,
+    .workspace-shell .workspace-toggle-knob {
+      transition: none;
+    }
+  }
+
   .workspace-shell input[type="range"] {
     width: 100%;
     height: 2.75rem;

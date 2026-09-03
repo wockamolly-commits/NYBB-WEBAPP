@@ -1045,7 +1045,7 @@ mechanism serves the same need. **Remove** means delete it and do not build a su
 | Analytics | **Modify** | See section 20. |
 | Audit log | **Keep as-is** | |
 | Team invites with 48h expiry | **Keep as-is** | |
-| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `manager`. (A `kitchen` role was added here too, and retired on 2026-08-20: the POS monitor already serves that station.) |
+| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `manager`. (A `kitchen` role was added here too, and retired on 2026-08-20: the POS monitor already serves that station.) The overrides got their screen on 2026-09-03: migration 0060 adds `admin_set_staff_permission`, and the Manage permissions panel on `/workspace/team` offers thirteen switches per member. `team:manage` is the fourteenth and is deliberately not offered, because nothing in the app checks it. A switch landing on what the role and branch already give deletes the override row rather than storing agreement, so the person goes back to inheriting. |
 | Owner settings form | **Modify** | Add slot capacity and prep minutes. Drop delivery settings. |
 | Store availability, high-demand mode | **Keep as-is** | |
 | Staff web push for new orders | **Keep as-is** | Verified working on Android tablets in the reference. |

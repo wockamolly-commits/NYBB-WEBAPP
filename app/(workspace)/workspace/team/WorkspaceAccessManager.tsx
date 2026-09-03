@@ -8,13 +8,19 @@ import {
   WorkspaceSelect,
   type WorkspaceSelectOption,
 } from "@/components/ui/WorkspaceSelect";
-import { STAFF_JOB_ROLES, STAFF_ROLES, type StaffJobRole } from "@/lib/staff/roles";
+import {
+  STAFF_JOB_ROLES,
+  STAFF_ROLES,
+  type PermissionOverride,
+  type StaffJobRole,
+} from "@/lib/staff/roles";
 import { ALL_BRANCHES } from "@/lib/staff/team-schemas";
 import type {
   AssignableBranch,
   WorkspaceAccessActionState,
   WorkspaceMember,
 } from "@/lib/staff/team-types";
+import { MemberPermissions } from "./MemberPermissions";
 import { setWorkspaceAccess } from "./actions";
 
 const initialState: WorkspaceAccessActionState = { status: "idle" };
@@ -67,9 +73,11 @@ function ActionMessage({ state }: { state: WorkspaceAccessActionState }) {
 function MemberCard({
   member,
   branches,
+  overrides,
 }: {
   member: WorkspaceMember;
   branches: AssignableBranch[];
+  overrides: readonly PermissionOverride[];
 }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
   const [confirmingRevoke, setConfirmingRevoke] = useState(false);
@@ -206,6 +214,15 @@ function MemberCard({
           <div className="basis-full"><ActionMessage state={state} /></div>
         </form>
       )}
+
+      {/*
+        A sibling of the form above, never a child of it: forms cannot nest,
+        and this one has thirteen submit buttons of its own. The Super Admin's
+        own card gets the note instead, the same way the role controls do.
+      */}
+      {member.role === "admin" ? null : (
+        <MemberPermissions member={member} overrides={overrides} />
+      )}
     </li>
   );
 }
@@ -213,9 +230,12 @@ function MemberCard({
 export function WorkspaceAccessManager({
   members,
   branches,
+  overrides,
 }: {
   members: WorkspaceMember[];
   branches: AssignableBranch[];
+  /** Every override row, by profile id. Absent means the person has none. */
+  overrides: Map<string, PermissionOverride[]>;
 }) {
   const [state, action, pending] = useActionState(setWorkspaceAccess, initialState);
   const grantForm = useRef<HTMLFormElement>(null);
@@ -295,7 +315,12 @@ export function WorkspaceAccessManager({
               and each select is already showing the value the admin just
               picked.
             */
-            <MemberCard key={member.profileId} member={member} branches={branches} />
+            <MemberCard
+              key={member.profileId}
+              member={member}
+              branches={branches}
+              overrides={overrides.get(member.profileId) ?? []}
+            />
           ))}
         </ul>
       </section>

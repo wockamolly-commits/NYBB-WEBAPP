@@ -63,7 +63,7 @@ already exist in the project.
 |---|---|---|---|
 | `.auth/staff.json` | `+nybbowner` | manager, **all branches** | everything, by default |
 | `.auth/staff-branch.json` | `+nybbmanager` | manager, **Central Bloc** | `branch-scoped-staff.spec.ts` |
-| `.auth/admin.json` | no suffix, the address itself | the **Super Admin** | `workspace-team-layout.spec.ts` |
+| `.auth/admin.json` | no suffix, the address itself | the **Super Admin** | `workspace-team-layout.spec.ts`, `workspace-permission-overrides.spec.ts` |
 | none, it is never signed in as | `+nybbcashier` | cashier, **Central Bloc**, currently revoked | nothing |
 
 Three things to know about them.
@@ -89,11 +89,19 @@ check that cannot afford those two extra rows should move the branch of
 message was verified with.
 
 **The admin persona is the owner's own account.** Workspace access is Super
-Admin only and cannot be reached any other way, so the spec that uses it reads
-rendered geometry and nothing else: it never presses Save, never submits the
-grant form, and never opens the revoke confirmation. Keep it that way. A test
-that writes through that session is writing to the real owner's account and
-leaving audit rows that say the owner did it.
+Admin only and cannot be reached any other way, so the specs that use it read
+rendered geometry and nothing else: they never press Save, never submit the
+grant form, never open the revoke confirmation, and never press a permission
+switch. Keep it that way. A test that writes through that session is writing to
+the real owner's account and leaving audit rows that say the owner did it.
+
+This is why the permission panel has no browser test of its saving. There is no
+second session that can reach the screen, so the write is covered where it can
+be covered without touching the real project: `tests/sql/staff-permission-overrides.test.ts`
+drives `admin_set_staff_permission` through every outcome against a real
+Postgres, and `workspace-permission-overrides.spec.ts` checks only what the
+panel renders. If that ever has to be proven end to end in a browser, it is a
+deliberate exception to the rule above and not a spec to add casually.
 
 ## Running one test
 
