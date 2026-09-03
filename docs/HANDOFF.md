@@ -795,9 +795,15 @@ The audit rows are `workspace.permission_granted`, `_revoked` and `_inherited`, 
 deliberately three fields rather than `to_jsonb()` of the profile: the redaction note below exists
 because the access RPCs put a staff phone number in the log, and this one cannot.
 
-**`0060` is not applied yet.** Everything above is verified against PGlite by
-`tests/sql/staff-permission-overrides.test.ts`; the panel renders without it, because reading the
-override rows needs no function, but every switch will fail until the migration lands.
+**`0060` was applied on 2026-09-03, so the project now carries `0001` to `0060`.** It was then
+verified through the running app rather than only against PGlite: `menu:configure` was switched on
+for the branch-assigned manager persona and the panel went from "12/13 on" to "13/13 on, 1
+changed", switched off again and returned to "12/13 on". The override row was written and then
+deleted, `staff_permission_overrides` is back to zero rows, and the two audit rows read
+`workspace.permission_granted` and `workspace.permission_inherited` with `role_default: false`, a
+null `branch_id` and nothing from the profile row. That pair is the branch case working: the
+Manager role lists `menu:configure` and the assignment takes it away, so the grant had to write a
+row rather than read as a return to the default.
 
 ## Things earlier sessions learned the hard way
 
