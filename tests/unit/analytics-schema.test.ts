@@ -3,6 +3,7 @@ import {
   analyticsFilterParams,
   datesReversed,
   discountRate,
+  hasRanking,
   normalizeAnalyticsFilters,
   salesReportSchema,
   slotUtilization,
@@ -191,5 +192,30 @@ describe("the two ratios the cards print", () => {
     expect(
       discountRate({ given_cents: 5000, discounted_orders: 1, rung_in_pos_orders: 4 }),
     ).toBe(25);
+  });
+});
+
+describe("whether a mix has a ranking in it", () => {
+  // The bars read each row against the biggest one, so the biggest row is
+  // always full. These are the two shapes where that turns into a lie: a lone
+  // row that outsells nothing, and a set that is level. Both are ordinary on
+  // one counter on one day, so neither is a thin-data case that volume cures.
+  it("says no to a single row, which has nothing to be bigger than", () => {
+    expect(hasRanking([1])).toBe(false);
+    expect(hasRanking([400])).toBe(false);
+  });
+
+  it("says no when every row sold the same, at any volume", () => {
+    expect(hasRanking([1, 1])).toBe(false);
+    expect(hasRanking([400, 400, 400])).toBe(false);
+  });
+
+  it("says no to an empty mix, which draws its own empty line instead", () => {
+    expect(hasRanking([])).toBe(false);
+  });
+
+  it("says yes as soon as one row outsells another", () => {
+    expect(hasRanking([2, 1])).toBe(true);
+    expect(hasRanking([5, 5, 5, 4])).toBe(true);
   });
 });

@@ -9,6 +9,7 @@ import {
   analyticsFilterParams,
   datesReversed,
   discountRate,
+  hasRanking,
   normalizeAnalyticsFilters,
   slotUtilization,
   type SalesReport,
@@ -86,11 +87,23 @@ function Card({
 }
 
 /**
- * A ranked list drawn as bars, for the mixes.
+ * A ranked list, drawn as bars only when there is a ranking to draw.
  *
  * Shares are read against the top row rather than against the total, because
  * the question these answer is "what outsells what", and a share of the whole
  * basket would flatten nine flavours into nine indistinguishable slivers.
+ *
+ * Which is also why the bars come off when the rows are level. Reading against
+ * the top row makes the top row full by construction, so a range where
+ * everything tied drew a column of identical full bars: two items at one sale
+ * each rendered as two maxed-out charts, and one flavour on its own rendered as
+ * a flavour outselling a set containing only itself. A bar that is always full
+ * is not a chart, it is an orange rule.
+ *
+ * So below two rows, or with no spread between the top and the bottom, the list
+ * keeps its numbers and drops the bars, and says why rather than leaving the
+ * reader to wonder where the chart went. This is not only a thin-data case that
+ * volume will cure: one counter on one day ties constantly.
  */
 function RankedBars({
   rows,
@@ -102,27 +115,40 @@ function RankedBars({
   if (rows.length === 0) {
     return <p className="text-nybb-bone/55 text-sm">{empty}</p>;
   }
-  const top = Math.max(...rows.map((row) => row.qty), 1);
+  const quantities = rows.map((row) => row.qty);
+  const top = Math.max(...quantities, 1);
+  const ranked = hasRanking(quantities);
 
   return (
-    <ul className="space-y-2">
-      {rows.map((row) => (
-        <li key={row.name}>
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="truncate text-sm">{row.name}</span>
-            <span className="font-mono-tabular text-nybb-bone/70 shrink-0 text-xs">
-              {row.trailing ?? row.qty}
-            </span>
-          </div>
-          <div aria-hidden className="bg-nybb-graphite mt-1 h-1.5 w-full rounded-full">
-            <span
-              className="bg-nybb-orange block h-full rounded-full"
-              style={{ width: `${Math.max((row.qty / top) * 100, 3)}%` }}
-            />
-          </div>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="space-y-2">
+        {rows.map((row) => (
+          <li key={row.name}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="truncate text-sm">{row.name}</span>
+              <span className="font-mono-tabular text-nybb-bone/70 shrink-0 text-xs">
+                {row.trailing ?? row.qty}
+              </span>
+            </div>
+            {ranked ? (
+              <div aria-hidden className="bg-nybb-graphite mt-1 h-1.5 w-full rounded-full">
+                <span
+                  className="bg-nybb-orange block h-full rounded-full"
+                  style={{ width: `${Math.max((row.qty / top) * 100, 3)}%` }}
+                />
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {ranked ? null : (
+        <p className="text-nybb-bone/55 mt-3 text-xs">
+          {rows.length === 1
+            ? "One row, so there is nothing to rank it against yet."
+            : "Every row here sold the same amount, so there is nothing to rank yet."}
+        </p>
+      )}
+    </>
   );
 }
 
@@ -291,41 +317,43 @@ function Report({ report }: { report: SalesReport }) {
         </Card>
       </div>
 
-      <Card
-        title="Top pairings"
-        hint="Two different items on one ticket, counted once per order. Menu engineering: what to put beside what."
-      >
-        {report.top_pairings.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[24rem] text-sm">
-              <thead>
-                <tr className="type-caps text-nybb-bone/55">
-                  <th scope="col" className="py-2 text-left font-normal">Bought together</th>
-                  <th scope="col" className="py-2 text-right font-normal">Orders</th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.top_pairings.map((row) => (
-                  <tr
-                    key={`${row.first_item}-${row.second_item}`}
-                    className="border-nybb-bone/15 border-t"
-                  >
-                    <td className="py-2 pr-3">
-                      {row.first_item} <span className="text-nybb-bone/55">and</span>{" "}
-                      {row.second_item}
-                    </td>
-                    <td className="font-mono-tabular py-2 text-right">{row.orders}</td>
+      <div className="mt-4">
+        <Card
+          title="Top pairings"
+          hint="Two different items on one ticket, counted once per order. Menu engineering: what to put beside what."
+        >
+          {report.top_pairings.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[24rem] text-sm">
+                <thead>
+                  <tr className="type-caps text-nybb-bone/55">
+                    <th scope="col" className="py-2 text-left font-normal">Bought together</th>
+                    <th scope="col" className="py-2 text-right font-normal">Orders</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-nybb-bone/55 text-sm">
-            No order in this range carried two different items.
-          </p>
-        )}
-      </Card>
+                </thead>
+                <tbody>
+                  {report.top_pairings.map((row) => (
+                    <tr
+                      key={`${row.first_item}-${row.second_item}`}
+                      className="border-nybb-bone/15 border-t"
+                    >
+                      <td className="py-2 pr-3">
+                        {row.first_item} <span className="text-nybb-bone/55">and</span>{" "}
+                        {row.second_item}
+                      </td>
+                      <td className="font-mono-tabular py-2 text-right">{row.orders}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-nybb-bone/55 text-sm">
+              No order in this range carried two different items.
+            </p>
+          )}
+        </Card>
+      </div>
     </>
   );
 }

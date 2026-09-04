@@ -189,3 +189,21 @@ export function discountRate(discounts: SalesReport["discounts"]): number | null
   if (discounts.rung_in_pos_orders <= 0) return null;
   return Math.round((discounts.discounted_orders / discounts.rung_in_pos_orders) * 100);
 }
+
+/**
+ * Whether a mix has a ranking in it, which is what decides if its bars are
+ * drawn.
+ *
+ * The bars read each row against the biggest one, so the biggest row is full
+ * by construction. That is right when the rows differ and a lie when they do
+ * not: a range where everything tied drew a column of identical full bars, and
+ * a lone row drew a full bar for outselling nothing at all.
+ *
+ * Two rows are needed for a comparison, and a spread is needed for that
+ * comparison to say anything. It lives here rather than beside the markup so
+ * the cases can be named in a test.
+ */
+export function hasRanking(quantities: readonly number[]): boolean {
+  if (quantities.length < 2) return false;
+  return Math.max(...quantities) > Math.min(...quantities);
+}
