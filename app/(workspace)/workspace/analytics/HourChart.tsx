@@ -58,15 +58,7 @@ function BarRow({
   rows: SalesReport["by_hour"];
   measure: (row: SalesReport["by_hour"][number]) => number;
   max: number;
-  /**
-   * Both rows are Buffalo Orange. They were orange and bone for a while, so
-   * that two measures would read as two things, and value is how this system
-   * usually separates surfaces. It is the wrong device here: these are not two
-   * surfaces, they are two charts, each with its own label and its own axis,
-   * and never adjacent. Spending a second colour on that says there is a
-   * relationship to compare when there is not, and it costs the page its one
-   * loud thing. See DESIGN.md, The One Loud Thing Rule.
-   */
+  /** A graphic, never type, so the alpha is free to go below the text floor. */
   tone: string;
   label: string;
 }) {
@@ -145,7 +137,7 @@ export function HourChart({ report }: { report: SalesReport }) {
             rows={rows}
             measure={(row) => row.sales_cents}
             max={maxSales}
-            tone="bg-nybb-orange"
+            tone="bg-nybb-bone/60"
             label="Revenue"
           />
           <div aria-hidden className="flex gap-px">
