@@ -61,7 +61,12 @@ for (const width of WIDTHS) {
     for (let index = 0; index < (await rows.count()); index += 1) {
       const row = rows.nth(index);
       const details = row.locator("div.min-w-0").first();
-      const form = row.locator("form");
+      // The role and branch form specifically. The card grew a second one when
+      // the permissions panel arrived, and this check is about where the role
+      // controls sit relative to the person's name.
+      const form = row
+        .locator("form")
+        .filter({ has: page.getByRole("combobox", { name: "Branch" }) });
 
       const detailsBox = await details.boundingBox();
       const formBox = await form.boundingBox();

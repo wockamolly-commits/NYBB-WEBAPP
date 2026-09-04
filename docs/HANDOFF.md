@@ -776,6 +776,56 @@ pending migrations must land before the routes receive their browser smoke test.
 **Production capacity remains blocked on the owner**, per spec section 28 item
 4: Central Bloc's genuine throughput per fifteen minutes at peak.
 
+**Per-staff permission overrides got their screen on 2026-09-03, in `0060`.** The table, the RLS
+and both readers have existed since `0007` and `0009`; what was missing was a way to write a row,
+which `0022` had revoked from `authenticated` and `0059` explicitly deferred. `0060` adds
+`admin_set_staff_permission(uuid, text, boolean)`, and lifts the role-default list out of the case
+expression inside `current_staff_has_permission` into `role_default_permission(staff_role, text)`
+so the new function reads the same copy rather than a third one.
+
+The function takes a desired state rather than an instruction: landing on what the role and the
+branch already give deletes the override row, so the person returns to inheriting and a later role
+change carries them with it. The case that makes this subtle is `menu:configure` on a
+branch-assigned manager, where the role says yes and the branch says no, so switching it on has to
+write a row rather than delete one. `lib/staff/permission-panel.ts` computes the same default on
+the app side through `resolvePermissions(role, [], branchId)`, and both sides are pinned by
+`tests/sql/staff-business-wide-permissions.test.ts`.
+
+The audit rows are `workspace.permission_granted`, `_revoked` and `_inherited`, and their diff is
+deliberately three fields rather than `to_jsonb()` of the profile: the redaction note below exists
+because the access RPCs put a staff phone number in the log, and this one cannot.
+
+**`0061` replaced that function with a batched one the same day, after the panel gained a Save
+button.** `admin_set_staff_permissions(uuid, jsonb)` takes the whole set of changes and applies
+them in one transaction, and `admin_set_staff_permission` (singular) is dropped rather than left
+callable. The reason is the guarantee, not tidiness: a Save button in front of thirteen separate
+calls fails on the seventh and leaves somebody holding four of the changes and not the other three,
+which is worse than saving eagerly, because the eager version at least never lied about what had
+happened. One call is one transaction.
+
+`0061` also stopped auditing a no-op. A set naming a permission that is already where it is being
+put writes no row and no audit line, where `0060` logged every call; the comparison is between the
+row that should exist and the row that does, which also clears a redundant row left by an older
+hand edit.
+
+**`0060` was applied on 2026-09-03, so the project now carries `0001` to `0060`.** It was then
+verified through the running app rather than only against PGlite: `menu:configure` was switched on
+for the branch-assigned manager persona and the panel went from "12/13 on" to "13/13 on, 1
+changed", switched off again and returned to "12/13 on". The override row was written and then
+deleted, `staff_permission_overrides` is back to zero rows, and the two audit rows read
+`workspace.permission_granted` and `workspace.permission_inherited` with `role_default: false`, a
+null `branch_id` and nothing from the profile row. That pair is the branch case working: the
+Manager role lists `menu:configure` and the assignment takes it away, so the grant had to write a
+row rather than read as a return to the default. `0061` was applied the same day and the project
+now carries `0001` to `0061`.
+
+**Both went in through the MCP `apply_migration` and both needed the version repaired afterwards**,
+for the reason recorded against `0059`: it stamps a timestamp rather than the file number. The
+CLI `db push` is the right tool and was blocked by the sandbox on the second attempt, so the repair
+is two `supabase migration repair` calls, one `--status applied <NNNN>` and one
+`--status reverted <timestamp>`. Verified after each: 61 files, 61 history rows, `0001` to `0061`,
+nothing outside the four digit pattern.
+
 ## Things earlier sessions learned the hard way
 
 The first four are also written into spec section 5.6 and the README. They are repeated here

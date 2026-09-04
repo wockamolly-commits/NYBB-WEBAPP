@@ -2,29 +2,14 @@ import type { Metadata } from "next";
 import { Building2, KeyRound, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { WorkspaceSignOut } from "@/components/workspace/WorkspaceSignOut";
 import { getStaffBranchLabel } from "@/lib/staff/profile";
-import { STAFF_ROLES, type StaffPermission } from "@/lib/staff/roles";
+import { PERMISSION_LABELS } from "@/lib/staff/permission-catalog";
+import { STAFF_ROLES } from "@/lib/staff/roles";
 import { requireStaff } from "@/lib/staff/session";
 
 export const metadata: Metadata = {
   title: "Profile",
 };
 
-const PERMISSION_LABELS: Record<StaffPermission, string> = {
-  "dashboard:view": "View dashboard",
-  "orders:view": "View orders",
-  "orders:manage": "Manage orders",
-  "menu:view": "View menu",
-  "menu:availability": "Change menu availability",
-  "menu:configure": "Configure menu",
-  "pos:manage": "Manage POS",
-  "analytics:view": "View analytics",
-  "vouchers:manage": "Manage vouchers",
-  "store:availability": "Change store availability",
-  "settings:manage": "Manage settings",
-  "audit:view": "View audit log",
-  "team:manage": "Manage team access",
-  "refunds:manage": "Issue refunds",
-};
 
 export default async function WorkspaceProfilePage() {
   const { user, profile } = await requireStaff("/workspace/profile");

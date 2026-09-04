@@ -22,3 +22,16 @@ export type WorkspaceAccessActionState = {
   status: "idle" | "success" | "error";
   message?: string;
 };
+
+/**
+ * What one press of Save gets back.
+ *
+ * savedCount is what the database actually changed, which is not always the
+ * number of switches that moved: a set can name a permission that is already
+ * where it is being put, and the function skips those rather than writing a
+ * row and an audit line for nothing. The panel says what happened rather than
+ * what was asked for.
+ */
+export type PermissionActionState = WorkspaceAccessActionState & {
+  savedCount?: number;
+};

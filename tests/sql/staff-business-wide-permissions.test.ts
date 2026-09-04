@@ -4,6 +4,8 @@ import {
   ALL_PERMISSIONS,
   BUSINESS_WIDE_PERMISSIONS,
   resolvePermissions,
+  roleDefaultPermissions,
+  STAFF_JOB_ROLES,
   type PermissionOverride,
   type StaffJobRole,
 } from "@/lib/staff/roles";
@@ -97,6 +99,37 @@ describe("business wide permissions", () => {
       expect(inSql, permission).toBe(
         (BUSINESS_WIDE_PERMISSIONS as readonly string[]).includes(permission),
       );
+    }
+  });
+
+  it("gives the same role defaults as the app, before any override or branch", async () => {
+    // 0060 lifted this list out of the case expression inside
+    // current_staff_has_permission so that admin_set_staff_permission could
+    // read it too, rather than a third copy of it. Two copies remain, one here
+    // and one in ROLE_PERMISSIONS, and this is the tripwire between them: the
+    // function decides whether a switch writes a row or deletes one, so a
+    // disagreement would make a switch look like it worked and change nothing.
+    for (const role of STAFF_JOB_ROLES) {
+      const fromApp = roleDefaultPermissions(role);
+      for (const permission of ALL_PERMISSIONS) {
+        const inSql = await scalar<boolean>(
+          db,
+          `select role_default_permission('${role}'::staff_role, '${permission}')`,
+        );
+        expect(inSql, `${role} ${permission}`).toBe(fromApp.includes(permission));
+      }
+    }
+  });
+
+  it("gives a profile with no job role nothing at all", async () => {
+    // The else arm. A null staff_role reaches this only on an admin row, whose
+    // permission check short circuits before it, but the function is callable
+    // on its own and should not answer true to anything here.
+    for (const permission of ALL_PERMISSIONS) {
+      expect(
+        await scalar<boolean>(db, `select role_default_permission(null, '${permission}')`),
+        permission,
+      ).toBe(false);
     }
   });
 
