@@ -826,6 +826,48 @@ is two `supabase migration repair` calls, one `--status applied <NNNN>` and one
 `--status reverted <timestamp>`. Verified after each: 61 files, 61 history rows, `0001` to `0061`,
 nothing outside the four digit pattern.
 
+## The sales report, 2026-09-04
+
+`/workspace/analytics` is built, gated on `analytics:view`, and migration `0062` is the read behind
+it. This is the permission that PR #20's audit found granted by default while guarding nothing;
+the choice was to build the report or drop the permission, and this is the build.
+
+**Three answers came from the owner, and none of them was invented.** They are recorded in spec
+section 20 under "What shipped" and in section 28 item 5d, but the short version is: a
+branch-assigned manager sees their own counter and gets no picker, hour buckets are cut in
+`Asia/Manila`, and returning means the same phone number has ordered before at any point.
+
+**`0062` checks the permission, which the reference did not.** `C:\dev\zombeans-web`'s
+`order_analytics` guards on `current_role_kind()` alone. That is correct there and wrong here,
+because this schema separates a job role from what it may do: a cashier is staff, and a cashier
+holds no `analytics:view`. `tests/sql/order-analytics.test.ts` asserts the refusal.
+
+**The scope is decided inside the function, not by the page.** It is `SECURITY DEFINER`, so it runs
+past the RLS that scopes every other read a pinned manager makes. `p_branch_id` is discarded
+outright when the caller has a branch of their own, which is why "the page does not draw the
+picker" is a courtesy rather than the control. The page reads `profile.branchId` to decide whether
+to draw it, and that is the same `profiles.branch_id` column the function reads for the same
+session, not a second opinion about it.
+
+**The drift guard did its job.** `tests/unit/permission-catalog.test.ts` scans `app/` for a
+permission named in `UNBUILT_PERMISSIONS` and went red on the commit that gated the page, exactly
+as its comment said it would. `analytics:view` came off the list and its description was rewritten
+in the same commit. Two entries remain, `vouchers:manage` and `pos:manage`.
+
+**What could not be done from this session.** `npx supabase db push` is blocked by the sandbox
+classifier, the same wall `0060` and `0061` hit. The dry run confirms `0062` is the only pending
+migration and the history is clean through `0061`, so the push is one command with nothing to
+repair afterwards, run from the repository root:
+
+```
+npx supabase db push --db-url "$SUPABASE_DB_URL"
+```
+
+Until it runs, the page renders "The report is unavailable" against the live project and the three
+browser checks in `tests/e2e/workspace-analytics.spec.ts` that need real data fail. Everything that
+does not need the live database is green: 1,107 tests including 20 new ones against a real
+Postgres, `npm run build`, `npm run lint` and `npm run typecheck`.
+
 ## Things earlier sessions learned the hard way
 
 The first four are also written into spec section 5.6 and the README. They are repeated here

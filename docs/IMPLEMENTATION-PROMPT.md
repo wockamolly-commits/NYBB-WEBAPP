@@ -1045,7 +1045,7 @@ mechanism serves the same need. **Remove** means delete it and do not build a su
 | Analytics | **Modify** | See section 20. |
 | Audit log | **Keep as-is** | |
 | Team invites with 48h expiry | **Keep as-is** | |
-| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `manager`. (A `kitchen` role was added here too, and retired on 2026-08-20: the POS monitor already serves that station.) The overrides got their screen on 2026-09-03: the Manage permissions panel on `/workspace/team` offers thirteen switches per member, and migration 0061's `admin_set_staff_permissions` saves a whole set of them in one transaction, so a save either lands in full or not at all. `team:manage` is the fourteenth switch and is deliberately not offered, because nothing in the app checks it. A switch landing on what the role and branch already give deletes the override row rather than storing agreement, so the person goes back to inheriting. Three switches carry a NOT BUILT YET label: `vouchers:manage` and `pos:manage`, which are read by live RLS policies from 0022 but have no screen, and `analytics:view`, which nothing reads at all. They stay switchable because hiding the first two would leave their policies governed by the job role alone. `tests/unit/permission-catalog.test.ts` reads `app/` and fails the day one of them is used, which is the day to drop the label. |
+| Role + per-user permission overrides | **Keep as-is** | `lib/staff-roles.ts` is the best single file in the reference. Drop the `rider` role, add `manager`. (A `kitchen` role was added here too, and retired on 2026-08-20: the POS monitor already serves that station.) The overrides got their screen on 2026-09-03: the Manage permissions panel on `/workspace/team` offers thirteen switches per member, and migration 0061's `admin_set_staff_permissions` saves a whole set of them in one transaction, so a save either lands in full or not at all. `team:manage` is the fourteenth switch and is deliberately not offered, because nothing in the app checks it. A switch landing on what the role and branch already give deletes the override row rather than storing agreement, so the person goes back to inheriting. Two switches carry a NOT BUILT YET label: `vouchers:manage` and `pos:manage`, which are read by live RLS policies from 0022 but have no screen. They stay switchable because hiding them would leave those policies governed by the job role alone. It was three until 2026-09-04, when `/workspace/analytics` shipped and `analytics:view` came off the list. `tests/unit/permission-catalog.test.ts` reads `app/` and fails the day one of them is used, which is the day to drop the label, and it is what went red on the commit that gated the report. |
 | Owner settings form | **Modify** | Add slot capacity and prep minutes. Drop delivery settings. |
 | Store availability, high-demand mode | **Keep as-is** | |
 | Staff web push for new orders | **Keep as-is** | Verified working on Android tablets in the reference. |
@@ -1676,6 +1676,36 @@ collapse to one representative paid payment per order so multi-row payments cann
 Keep the discount-check card from the reference: it catches vouchers being applied at a rate that
 suggests a leak.
 
+### What shipped, 2026-09-04
+
+`/workspace/analytics`, gated on `analytics:view`, reading `order_analytics(from_ts, to_ts,
+p_branch_id)` from migration `0062`. Every metric in the table above is on it. Three decisions had
+to be made before the SQL could be written, and all three were put to the owner rather than
+invented:
+
+- **Branch scoping.** A branch-assigned manager sees their own counter and nothing else, and gets
+  no branch picker. An unassigned manager and the Super Admin see the whole business, with a
+  filter. The scope is decided inside `0062` and not by the page: the function is `SECURITY
+  DEFINER`, so it runs past the RLS that scopes every other read that person makes, and a branch
+  taken from the argument would have let a pinned manager read all nine counters by editing a query
+  string. The assigned branch therefore overrides `p_branch_id` outright.
+- **The clock.** Hour buckets are cut in `Asia/Manila`, and so is every window boundary, through
+  the same `lib/staff/manila-dates.ts` helpers the order history and the audit log already use. In
+  UTC the dinner peak would draw at 11:00. The page opens on the last seven days, which is long
+  enough to show a weekday pattern and short enough not to average it away.
+- **Returning customers.** Keyed on `orders.customer_phone`, and returning means that number has
+  ordered before at any point, not within a window. `user_id` is null for a guest and most orders
+  are placed as guests, so keying on the account would count the same regular as new every week.
+  Deliberately not branch scoped: somebody who first ordered at another counter is still a
+  returning customer of the business.
+
+Two departures from the reference worth knowing. `0062` checks `analytics:view` rather than only
+`current_role_kind()`, because this schema separates a job role from what it may do and a cashier
+holds neither; that is the lesson of `0024`. And the discount check's row filter is
+`pos_sync.entered_at`, not the reference's `orders.pos_entered_at`, which does not exist here:
+there is no ZenPOS API (section 16), so the manual re-key stamp is the only honest answer to
+whether an order reached the POS at all.
+
 ---
 
 ## 21. Mobile-first responsive design
@@ -2019,6 +2049,10 @@ Stop and ask before deciding these. Do not invent answers.
    be published to customers before the first order, since it is a money question.
 5c. **Who reconciles online sales at branch cash up**, and in what form they need them, so the
    ZenPOS tender-type answer can be judged against a real process rather than a guess.
+5d. ~~**What counts as a returning customer**, for the analytics report.~~ **Resolved 2026-09-04.**
+   The same phone number having ordered before, at any point rather than inside a rolling window,
+   counted across all counters. It is keyed on the number rather than on the account because most
+   orders are placed as guests. Implemented in migration `0062`; see section 20.
 6. **The original shoot deliverables.** Per 5.6, ask specifically for: (a) the cutout source files
    **with alpha**, not the orange-flattened JPEGs, and (b) full-resolution wing photos for Cheezy,
    Salted Egg, and Smokey Barbecue, which exist only as 300x300 thumbnails. Clean product shots for
