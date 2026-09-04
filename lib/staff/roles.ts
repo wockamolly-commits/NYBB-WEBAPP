@@ -107,11 +107,17 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS) as StaffPermission[]
  * override row, which is the same mechanism that already layers on top of the
  * role defaults.
  *
- * business_wide_permission() in migration 0059 is the database's copy of this
- * list, and tests/sql/staff-business-wide-permissions.test.ts fails if the two
- * disagree.
+ * Vouchers are the second one, added 2026-09-04, on the same argument. The
+ * vouchers table carries no branch: a promo code is one row every counter
+ * shares, and voucher_branches narrows where it may be spent rather than who
+ * owns it. So a manager pinned to one counter creating a code would be creating
+ * it for the whole business, and a discount is money.
+ *
+ * business_wide_permission() in migrations 0059 and 0066 is the database's copy
+ * of this list, and tests/sql/staff-business-wide-permissions.test.ts fails if
+ * the two disagree.
  */
-export const BUSINESS_WIDE_PERMISSIONS = ["menu:configure"] as const satisfies
+export const BUSINESS_WIDE_PERMISSIONS = ["menu:configure", "vouchers:manage"] as const satisfies
   readonly StaffPermission[];
 
 export type PermissionOverride = {
