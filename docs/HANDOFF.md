@@ -849,6 +849,24 @@ picker" is a courtesy rather than the control. The page reads `profile.branchId`
 to draw it, and that is the same `profiles.branch_id` column the function reads for the same
 session, not a second opinion about it.
 
+**`0063` corrects three figures `0062` got wrong, and all three were found by recomputing the
+number against the live database rather than by reading the SQL.** That is the transferable part:
+each one rendered as a perfectly plausible value, so no amount of reading the function would have
+raised an eyebrow, and the unit and SQL suites were green throughout because they asserted the
+behaviour the function already had.
+
+- Slot utilization read `pickup_slots.reserved`, which `place_order` increments for test bookings
+  too, so a tile that `0062`'s own header promised was free of test orders was built partly out of
+  them. 15 per cent shown, 25 per cent real.
+- A paid order the branch rejected counted as revenue, in the same function that already excluded
+  refused orders from the discount check for the stated reason that the sale never closed. 529
+  pesos of a 5,786 peso total.
+- New versus returning counted tickets, so one customer with seven orders read as "6 returning,
+  1 new".
+
+Applied 2026-09-04, verified the same way: 63 history rows, latest `0063`, nothing badly stamped,
+and the page now shows 5,257 against an independently recomputed 5,257.
+
 **The drift guard did its job.** `tests/unit/permission-catalog.test.ts` scans `app/` for a
 permission named in `UNBUILT_PERMISSIONS` and went red on the commit that gated the page, exactly
 as its comment said it would. `analytics:view` came off the list and its description was rewritten

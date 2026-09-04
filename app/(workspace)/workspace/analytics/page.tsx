@@ -394,7 +394,8 @@ export default async function AnalyticsPage({
           <h1 className="font-display heading-major mt-2">Analytics</h1>
           <p className="text-nybb-bone/55 mt-2 max-w-2xl text-sm">
             Every figure below excludes staff test orders, and every peso is from an order that
-            was actually paid for. Hours are the counter&rsquo;s own, Asia/Manila.
+            was paid for and not refused. Orders the branch turned down still count as orders, and
+            the kitchen still timed them. Hours are the counter&rsquo;s own, Asia/Manila.
           </p>
         </div>
         <ButtonLink href="/workspace" tone="dark" variant="secondary">

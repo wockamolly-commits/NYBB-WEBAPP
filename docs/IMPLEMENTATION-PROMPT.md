@@ -1699,6 +1699,26 @@ invented:
   Deliberately not branch scoped: somebody who first ordered at another counter is still a
   returning customer of the business.
 
+### Three figures it got wrong, corrected in `0063`
+
+Found by recomputing each number against the live database rather than by reading the SQL. All
+three rendered as plausible values, which is why none of them surfaced any other way.
+
+- **Slot utilization counted test orders.** `pickup_slots.reserved` is incremented by
+  `place_order` for a test booking like any other, so the tile was built partly from the rows
+  `is_test` exists to exclude. It read 15 per cent against a real 25. Counted from the orders now,
+  with windows that only a test order touched dropped from the denominator.
+- **Refused orders counted as revenue.** A paid order the branch rejected landed in gross sales,
+  the average, the hour chart's money and the item mixes, while the same function already excluded
+  it from the discount check on the grounds that the sale never closed. Money and the mixes follow
+  that rule now. The order still counts in `orders_count` and still feeds prep and wait, because
+  the kitchen cooked it; what it is not is a sale.
+- **New versus returning counted tickets, not people.** The test ran once per order, so a regular
+  ordering six times contributed six, and the card read "6 returning, 1 new" for a range holding
+  one customer. Each phone number is counted once now, against its first order in the range.
+
+Owner rulings, 2026-09-04: refused orders leave the money, and the card counts people.
+
 Two departures from the reference worth knowing. `0062` checks `analytics:view` rather than only
 `current_role_kind()`, because this schema separates a job role from what it may do and a cashier
 holds neither; that is the lesson of `0024`. And the discount check's row filter is
