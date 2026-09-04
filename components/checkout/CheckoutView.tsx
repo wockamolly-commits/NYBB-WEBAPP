@@ -156,8 +156,14 @@ export function CheckoutView({
   // Read through a ref so that typing a phone number does not re-run the
   // check on every keystroke. The number only affects the per-customer cap,
   // and place_order counts that again with the number actually submitted.
+  //
+  // Written in an effect rather than during render: a ref mutated while
+  // rendering is a value that differs between the two passes of Strict Mode
+  // and between a discarded render and the committed one.
   const phoneRef = useRef(details.phone);
-  phoneRef.current = details.phone;
+  useEffect(() => {
+    phoneRef.current = details.phone;
+  }, [details.phone]);
 
   /**
    * Re-check the applied code whenever what it was checked against moves.
@@ -173,10 +179,10 @@ export function CheckoutView({
    * stale discount can never be on screen.
    */
   useEffect(() => {
-    if (appliedCode === null) {
-      setVoucher(null);
-      return;
-    }
+    // Nothing to re-check, and nothing to clear either: the two places that
+    // drop a code (Remove, and applying a different one) clear the verdict in
+    // the same handler, so this never has to catch up by setting state.
+    if (appliedCode === null) return;
     let cancelled = false;
     void (async () => {
       const result = await checkVoucher({
@@ -205,8 +211,13 @@ export function CheckoutView({
     startCheckingVoucher(() => {
       // Applying replaces whatever was applied before. One code per order, so
       // there is no merge to do and nothing to ask about.
+      //
+      // The old verdict is dropped here rather than left standing while the new
+      // one is checked, so the totals never show one code's discount under
+      // another code's name.
       setVoucherCode(code);
       setVoucherError(null);
+      setVoucher(null);
       setAppliedCode(code);
     });
   }

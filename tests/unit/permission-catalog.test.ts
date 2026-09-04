@@ -67,12 +67,15 @@ describe("the permission catalog", () => {
 /**
  * Reading app/ for permission checks, so the "not built yet" label cannot rot.
  *
- * The catalog claims three permissions have no feature behind them. That claim
- * was true when it was written and nothing about it is self-maintaining: the
+ * The catalog claims some permissions have no feature behind them. That claim
+ * is true when it is written and nothing about it is self-maintaining: the
  * commit that builds the analytics report would leave a switch on screen
  * telling the Super Admin it grants nothing. So the claim is checked rather
  * than trusted, against the same thing a reader would check, which is whether
  * any screen asks about the permission.
+ *
+ * It has gone red twice and been right both times: on the analytics report and
+ * again on /workspace/vouchers, both 2026-09-04. pos:manage is the last one.
  *
  * Reading source in a test is a habit this suite already has;
  * tests/sql/staff-order-ops.test.ts asserts on a function body the same way.

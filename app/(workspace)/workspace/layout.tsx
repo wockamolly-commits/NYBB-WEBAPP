@@ -47,6 +47,9 @@ function navItems(profile: StaffProfile): WorkspaceNavItem[] {
   if (hasStaffPermission(profile, "analytics:view")) {
     items.push({ href: "/workspace/analytics", label: "Analytics", icon: "analytics" });
   }
+  if (hasStaffPermission(profile, "vouchers:manage")) {
+    items.push({ href: "/workspace/vouchers", label: "Promos", icon: "vouchers" });
+  }
   if (hasStaffPermission(profile, "audit:view")) {
     items.push({ href: "/workspace/audit", label: "Audit", icon: "audit" });
   }

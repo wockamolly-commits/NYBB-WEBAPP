@@ -198,6 +198,24 @@ export type VoucherFormInput = z.input<typeof voucherFormSchema>;
 export type VoucherPayload = z.output<typeof voucherFormSchema>;
 
 /**
+ * What a voucher form's Save hands back, for useActionState.
+ *
+ * `fieldErrors` carries the schema's own messages so a refusal lands beside the
+ * control it is about, which is the same rule CustomerDetails follows on the
+ * storefront: colour on its own is not an error message, and a message at the
+ * top of a long form is not next to anything.
+ */
+export type VoucherActionState = {
+  ok: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string>;
+  /** Set on a create, so the screen can move to the saved record. */
+  savedId?: string;
+  /** Set when the record is gone, so the screen can leave rather than reload. */
+  deleted?: boolean;
+};
+
+/**
  * A voucher row read back from Postgres.
  *
  * Nullable columns are parsed as nullable and branched on, never coerced.

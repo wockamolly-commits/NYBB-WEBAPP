@@ -19,7 +19,7 @@ export const PERMISSION_LABELS: Record<StaffPermission, string> = {
   "menu:configure": "Configure menu",
   "pos:manage": "Manage POS",
   "analytics:view": "View analytics",
-  "vouchers:manage": "Manage vouchers",
+  "vouchers:manage": "Manage promo codes",
   "store:availability": "Change store availability",
   "settings:manage": "Manage settings",
   "audit:view": "View audit log",
@@ -37,7 +37,7 @@ export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
   "pos:manage": "Read the POS sync records. There is no POS screen yet, so this opens nothing.",
   "analytics:view": "Open the sales report: hours, prep times, menu mix and no-shows.",
   "vouchers:manage":
-    "Read the voucher tables. There is no voucher screen yet, so this opens nothing.",
+    "Create and edit promo codes, switch them off, and see who has used them.",
   "store:availability": "Pause and resume orders, and set opening hours.",
   "settings:manage": "Change branch details and business settings.",
   "audit:view": "Open the audit log of staff actions.",
@@ -101,6 +101,12 @@ export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
  * 2026-09-04 and migration 0062 guards the report on it, so it came off this
  * list in the same commit, which is the drift guard working as designed.
  *
+ * vouchers:manage came off the same day, for the reason the guard was written
+ * to catch. It had been here since 0022 pointed live RLS policies at it, so it
+ * was real everywhere except on a screen; /workspace/vouchers is that screen.
+ * pos:manage is now the only one left, and it is the original case: read by
+ * policies, with nothing in app/ that asks about it.
+ *
  * team:manage is the case that went the other way, and MANAGEABLE_PERMISSIONS
  * above says why: it is not merely unbuilt, it is unreachable by design,
  * because the screen that would honour it admits the Super Admin by profile
@@ -112,7 +118,6 @@ export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
  * red on the commit that builds the screen rather than months later.
  */
 export const UNBUILT_PERMISSIONS = [
-  "vouchers:manage",
   "pos:manage",
 ] as const satisfies readonly ManageablePermission[];
 

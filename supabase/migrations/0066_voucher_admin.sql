@@ -312,3 +312,53 @@ $$;
 
 revoke execute on function admin_delete_voucher(uuid) from public, anon, authenticated;
 grant execute on function admin_delete_voucher(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 5. The master switch.
+-- ---------------------------------------------------------------------------
+--
+-- app_settings.vouchers_enabled has existed since 0008 and defaults false, and
+-- spec section 18 is emphatic about why: the whole engine stays dark until the
+-- entire path is live, because a half-deployed voucher feature shows a discount
+-- on screen and charges full price. This is the control that finally turns it
+-- on, and it is here rather than beside staff_set_order_intake because the
+-- permission it checks is vouchers:manage rather than settings:manage.
+--
+-- authenticated holds no update on app_settings (0022), so this function is the
+-- only way through, and it records who flipped it. Switching promotions on for
+-- the whole business is exactly the kind of change the audit log exists for.
+create or replace function admin_set_vouchers_enabled(p_enabled boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_actor_id uuid := auth.uid();
+  v_before   boolean;
+begin
+  if not current_staff_has_permission('vouchers:manage') then
+    raise exception 'FORBIDDEN' using errcode = 'P0001';
+  end if;
+  if p_enabled is null then
+    raise exception 'INVALID_INPUT' using errcode = 'P0001';
+  end if;
+
+  select vouchers_enabled into v_before from app_settings where id = 1 for update;
+
+  update app_settings set vouchers_enabled = p_enabled where id = 1;
+
+  insert into audit_logs (actor_profile_id, action, target_table, target_id, diff)
+  values (
+    v_actor_id,
+    case when p_enabled then 'vouchers.enable_engine' else 'vouchers.disable_engine' end,
+    'app_settings',
+    '1',
+    jsonb_build_object('before', to_jsonb(v_before), 'after', to_jsonb(p_enabled))
+  );
+end;
+$$;
+
+revoke execute on function admin_set_vouchers_enabled(boolean)
+  from public, anon, authenticated;
+grant execute on function admin_set_vouchers_enabled(boolean) to authenticated;
