@@ -686,3 +686,115 @@ describe("order_analytics", () => {
     });
   });
 });
+
+/**
+ * Top pairings, on the shapes the live database has never produced.
+ *
+ * The fixture above holds exactly one pairing, on one order, which is also all
+ * the live project has: one ticket carrying two items. That asserts the
+ * feature renders and nothing about whether it counts. Every way this query
+ * can be wrong needs an order shape that data does not contain, so it gets its
+ * own database.
+ *
+ * The one that would actually ship wrong is the first. An order carrying the
+ * same item on two lines, which is what a customer buying a half and a full of
+ * something produces, joins twice without the `distinct` in order_item_names
+ * and inflates that pair by one order for every extra line. It would read as a
+ * genuinely popular combination rather than as one person ordering wings twice.
+ */
+describe("order_analytics pairings", () => {
+  const ADMIN = "79000000-0000-4000-8000-000000000001";
+  const FROM = "2026-09-01T00:00:00+08:00";
+  const TO = "2026-09-03T00:00:00+08:00";
+
+  let db: PGlite;
+
+  async function pairings(): Promise<
+    { first_item: string; second_item: string; orders: number }[]
+  > {
+    const rows = await asUser<{ report: { top_pairings: never[] } }>(
+      db,
+      ADMIN,
+      `select order_analytics('${FROM}'::timestamptz, '${TO}'::timestamptz) as report`,
+    );
+    return rows[0]!.report.top_pairings;
+  }
+
+  /** One paid, collected order carrying the given lines, in order. */
+  async function ticket(phone: string, lines: string[]): Promise<void> {
+    const id = await scalar<string>(
+      db,
+      `insert into orders (
+         short_code, pickup_code, status, branch_id, price_list_id,
+         customer_name, customer_phone, subtotal_cents, discount_cents,
+         total_cents, placed_at
+       )
+       select generate_short_code(), generate_pickup_code(), 'claimed',
+              b.id, b.price_list_id, 'Tester', '${phone}', 1000, 0, 1000,
+              '2026-09-02T02:00:00Z'::timestamptz
+       from branches b where b.slug = 'garden-bloc'
+       returning id`,
+    );
+    await db.query(
+      `insert into payments (order_id, method, status, amount_cents, paid_at)
+       values ($1, 'counter', 'paid', 1000, '2026-09-02T02:00:00Z'::timestamptz)`,
+      [id],
+    );
+    for (const name of lines) {
+      await db.query(
+        `insert into order_items (
+           order_id, item_id, variation_id, item_name_snapshot,
+           variation_label_snapshot, unit_price_cents, qty, line_total_cents
+         )
+         select $1, v.item_id, v.id, $2, v.label, 100, 1, 100
+         from item_variations v order by v.id limit 1`,
+        [id, name],
+      );
+    }
+  }
+
+  beforeAll(async () => {
+    db = await freshDatabase({ seed: true });
+    await db.exec(`
+      insert into auth.users (id, email) values ('${ADMIN}', 'pairings@example.com');
+      insert into profiles (id, role, staff_role, display_name, branch_id)
+      values ('${ADMIN}', 'admin', null, 'Super Admin', null);
+    `);
+
+    // The half-and-full case: Wings twice on one ticket, beside Fries.
+    await ticket("0917-100-0001", ["Wings", "Wings", "Fries"]);
+    // Three items, which is three pairs off one order.
+    await ticket("0917-100-0002", ["Wings", "Fries", "Coke"]);
+    // The same pair again, on its own.
+    await ticket("0917-100-0003", ["Wings", "Fries"]);
+    // One item, which pairs with nothing.
+    await ticket("0917-100-0004", ["Wings"]);
+  }, 180_000);
+
+  it("counts a pair once per ticket, however many lines carry it", async () => {
+    const rows = await pairings();
+    const wingsAndFries = rows.find(
+      (row) => row.first_item === "Fries" && row.second_item === "Wings",
+    );
+    // Three tickets hold both. The first of them holds Wings on two lines, and
+    // without the distinct that ticket would contribute two, reading 4.
+    expect(Number(wingsAndFries?.orders)).toBe(3);
+  });
+
+  it("draws every pair on a ticket, in one direction only", async () => {
+    const rows = await pairings();
+    expect(rows.map((row) => `${row.first_item}+${row.second_item}`)).toEqual([
+      // Ordered by count, then alphabetically, and no pair restated backwards.
+      "Fries+Wings",
+      "Coke+Fries",
+      "Coke+Wings",
+    ]);
+  });
+
+  it("pairs a single-item ticket with nothing", async () => {
+    // The fourth order is in the window and paid for, and contributes no row.
+    const rows = await pairings();
+    expect(rows.every((row) => row.first_item !== row.second_item)).toBe(true);
+    expect(rows).toHaveLength(3);
+  });
+});
