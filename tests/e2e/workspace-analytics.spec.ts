@@ -65,7 +65,13 @@ test.describe("as a business-wide manager", () => {
 
   test("says so when the dates are the wrong way round", async ({ page }) => {
     await page.goto(`${ANALYTICS}?from=2026-08-31&to=2026-08-01`);
-    await expect(page.getByRole("alert")).toContainText("Swap the two dates");
+    // Filtered rather than taken bare, because Next renders its route
+    // announcer as an empty role="alert" div on every page. A bare
+    // getByRole("alert") matches both and passes or fails on which one
+    // hydrates first, which is a flake rather than a check.
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Swap the two dates" }),
+    ).toBeVisible();
     // The report is still drawn beneath it rather than replaced by the notice.
     await expect(page.getByRole("heading", { name: "Orders and revenue by hour" })).toBeVisible();
   });
