@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   ClipboardList,
   ExternalLink,
   Handshake,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { buttonStyles } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,28 @@ import { cn } from "@/lib/utils";
  *
  * The server therefore hands down a list it has already filtered. This
  * component never asks who you are, only where you are.
+ *
+ * WHY THE ROW SCROLLS, AND WHAT IT SCROLLS WITH.
+ * ================================================================
+ * An admin sees thirteen tabs, which do not fit a laptop and have never fitted
+ * a counter tablet, so the row has always scrolled. What it used to scroll with
+ * was the browser's default bar: ten pixels of grey with a stepper arrow at
+ * each end, running the full width of the header directly above the heat rule.
+ * Three stacked horizontal lines in one header, and the loudest of the three
+ * was the one carrying no information, with a pair of buttons on it that
+ * nobody on a touch screen has ever pressed.
+ *
+ * `scroll-rail` in globals.css redraws it as a hairline: no track, a six pixel
+ * bone thumb inside the row's own bottom padding, no arrows. It keeps a
+ * scrollbar rather than hiding one, because how much of the row you can see
+ * and where in it you are looking are real facts, and nothing else in this
+ * header carries them.
+ *
+ * The rail also brings the current tab into view when the route changes. On
+ * the tablet the highlight was regularly scrolled off screen, which is the one
+ * case where a tab bar that cannot show you where you are is worse than no tab
+ * bar at all. Only the rail's own scrollLeft is touched: `scrollIntoView`
+ * would take the sticky header and the page with it.
  */
 
 const ICONS = {
@@ -42,6 +66,7 @@ const ICONS = {
   menu: UtensilsCrossed,
   availability: Store,
   settings: Settings,
+  analytics: BarChart3,
   audit: ScrollText,
   team: Users,
   leads: Handshake,
@@ -76,11 +101,24 @@ export function isCurrent(pathname: string, href: string, items: readonly Worksp
 
 export function WorkspaceNav({ items }: { items: readonly WorkspaceNavItem[] }) {
   const pathname = usePathname();
+  const railRef = useRef<HTMLElement | null>(null);
+  const currentRef = useRef<HTMLAnchorElement | null>(null);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    const current = currentRef.current;
+    if (!rail || !current) return;
+    const centred = current.offsetLeft - (rail.clientWidth - current.offsetWidth) / 2;
+    // Clamped by the browser, so an early tab stays at the start of the row
+    // rather than being dragged into the middle of it.
+    rail.scrollLeft = Math.max(0, centred);
+  }, [pathname]);
 
   return (
     <nav
+      ref={railRef}
       aria-label="Workspace"
-      className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8"
+      className="scroll-rail mx-auto mb-1 flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-2 sm:px-6 lg:px-8"
     >
       {items.map((item) => {
         const Icon = ICONS[item.icon];
@@ -88,6 +126,7 @@ export function WorkspaceNav({ items }: { items: readonly WorkspaceNavItem[] }) 
         return (
           <Link
             key={item.href}
+            ref={current ? currentRef : undefined}
             href={item.href}
             aria-current={current ? "page" : undefined}
             className={cn(
@@ -96,6 +135,10 @@ export function WorkspaceNav({ items }: { items: readonly WorkspaceNavItem[] }) 
                 variant: current ? "secondary" : "ghost",
                 className: "px-3",
               }),
+              // A tab must not be squeezed to fit the rail. Shrinking them
+              // is how a row of thirteen becomes a row of thirteen unreadable
+              // stubs instead of a row you scroll.
+              "shrink-0",
               // The current tab carries weight, a lit edge and a rule beneath
               // it. Three signals rather than one, because a counter tablet is
               // read at arm's length in a bright room and colour alone is the
@@ -116,7 +159,7 @@ export function WorkspaceNav({ items }: { items: readonly WorkspaceNavItem[] }) 
         className={buttonStyles({
           tone: "dark",
           variant: "ghost",
-          className: "ml-auto px-3",
+          className: "ml-auto shrink-0 px-3",
         })}
       >
         <ExternalLink aria-hidden className="size-4" />

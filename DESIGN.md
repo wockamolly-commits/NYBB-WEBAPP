@@ -538,9 +538,41 @@ popup is Charcoal with the same real edge, selected rows carry a check and a fai
 and the keyboard-highlighted row becomes Buffalo Orange with Char text. Base UI owns focus,
 keyboard navigation, dismissal and the hidden form value.
 
+Workspace date fields are the same rule applied to the calendar. The field itself stays a real
+`<input type="date">`, so it keeps segmented entry, typed dates and its `YYYY-MM-DD` value, but the
+browser's own panel is switched off and `components/ui/WorkspaceDateField.tsx` draws the calendar.
+That is not decoration. Chrome renders its panel in a widget layer no stylesheet reaches, welded to
+the bottom edge of the control, so on the analytics filter card it opened with no gap and the card's
+edge running behind it, which read as a rendering fault rather than as a menu. Owning the popup is
+the only way it can have a gap, an alignment and the workspace's material. It uses the same Base UI
+positioner as the dropdown, at the same `10px` offset from the field and aligned to the field's left
+edge rather than to the small button that opens it, so a calendar and a dropdown on one row open the
+same distance from their fields and flip on the same rules near the bottom of the window. The panel
+is Charcoal on the same real edge, six rows always so it cannot change height as you page, the
+selected day is Buffalo Orange with Ink text, and today is signage yellow when it is not the
+selection.
+
 The Workspace shell also themes the browser surfaces around those controls: caret and selection,
 scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin
 screens therefore inherit one control language even before they need a dedicated component.
+
+Scrollbars are the one surface that has to be stated twice, by engine rather than stacked, and the
+reason is worth knowing before anybody edits them. `scrollbar-width` and `scrollbar-color` are the
+standard pair, and the moment either is set, Chrome hands the scrollbar to its own renderer and
+ignores every `::-webkit-scrollbar` rule on the page. That renderer draws stepper arrows and offers
+no property to turn them off. The workspace asked for a thin bar in one place and a graphite track
+in another, and got a Windows stepper bar wearing the project's colours, most visibly as a ten pixel
+band with a grey button at each end running the full width of the header under the navigation. So
+Chrome and Safari take the `::-webkit-scrollbar` rules, which can dismiss the buttons by name, and
+Firefox takes the standard pair inside an `@supports not selector(::-webkit-scrollbar)` block.
+Neither engine sees both.
+
+The navigation row then takes a second, quieter treatment on top of that, as `.scroll-rail`: no
+track, a six pixel bone thumb, sitting inside the row's own bottom padding. It keeps a scrollbar
+rather than hiding one, because how much of the row you can see and where in it you are looking are
+real facts and nothing else in the header carries them. The row also scrolls its current tab into
+view on every route change, which is the fact the highlight carries and was regularly parked off
+screen on a tablet.
 
 ### The delete confirmation
 

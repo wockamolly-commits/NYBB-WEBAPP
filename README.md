@@ -368,6 +368,20 @@ Phase 2 so far:
   branch-scoped `SECURITY DEFINER` RPC with an audit row. The screens preserve
   the honest starting state: no hours or capacity was invented, and no branch
   is made live by the migration.
+- `/workspace/analytics` and migration `0062` are the sales report, gated on
+  `analytics:view`, which until 2026-09-04 was a permission nothing read. It
+  aggregates in SQL and returns one json document rather than pulling rows into
+  Node: orders and revenue by hour, slot utilization, median and p90 prep and
+  wait times, no-shows against what they cost in settled refunds, the flavour
+  and heat mix, top items and pairings, new against returning customers, and
+  the discount check for reconciling against the POS. Hours are cut in
+  `Asia/Manila`, a branch-assigned manager is pinned to their own counter by the
+  function rather than by the page, and returning means the same phone number
+  has ordered before at any point. Migration `0063` then corrected three figures
+  `0062` got wrong, each found by recomputing it against the live database:
+  slot utilization was counting test bookings, refused orders were counting as
+  revenue, and new against returning was counting tickets rather than people.
+  See spec section 20.
 
 **Online payment is switched on in the database, and that is now gated by what
 each deployment can actually service.** `paymongo_enabled` and

@@ -35,7 +35,7 @@ export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
   "menu:availability": "Mark items sold out and put them back.",
   "menu:configure": "Add, rename, price and delete items across the whole catalog.",
   "pos:manage": "Read the POS sync records. There is no POS screen yet, so this opens nothing.",
-  "analytics:view": "Nothing reads this yet. The sales analytics report has not been built.",
+  "analytics:view": "Open the sales report: hours, prep times, menu mix and no-shows.",
   "vouchers:manage":
     "Read the voucher tables. There is no voucher screen yet, so this opens nothing.",
   "store:availability": "Pause and resume orders, and set opening hours.",
@@ -88,20 +88,18 @@ export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
 /**
  * The switches whose feature has not been built.
  *
- * They are offered rather than hidden, and the panel says so on the row. Two
- * different reasons, and the difference is why hiding them would be worse than
- * a label:
+ * They are offered rather than hidden, and the panel says so on the row.
+ * Both of them are read by live RLS policies: 0022 makes vouchers:manage the
+ * read policy on vouchers and voucher_redemptions, and pos:manage the read
+ * policy on pos_sync. Taking either switch away would leave those policies
+ * governed by the job role alone, with no way to grant or withhold them for
+ * one person, which is a real loss of control over a real rule. What is
+ * missing is the screen, not the rule.
  *
- * - vouchers:manage and pos:manage are read by live RLS policies. 0022 makes
- *   vouchers:manage the read policy on vouchers and voucher_redemptions, and
- *   pos:manage the read policy on pos_sync. Taking the switch away would leave
- *   those policies governed by the job role alone, with no way to grant or
- *   withhold them for one person, which is a real loss of control over a real
- *   rule.
- * - analytics:view is read by nothing at all, in the app or the database. It
- *   is kept only so that the panel is the whole permission model rather than a
- *   selection from it, and so the switch is already there the day the report
- *   ships.
+ * analytics:view used to be the third entry here, for a third reason: nothing
+ * read it at all, in the app or the database. /workspace/analytics shipped on
+ * 2026-09-04 and migration 0062 guards the report on it, so it came off this
+ * list in the same commit, which is the drift guard working as designed.
  *
  * team:manage is the case that went the other way, and MANAGEABLE_PERMISSIONS
  * above says why: it is not merely unbuilt, it is unreachable by design,
@@ -114,7 +112,6 @@ export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
  * red on the commit that builds the screen rather than months later.
  */
 export const UNBUILT_PERMISSIONS = [
-  "analytics:view",
   "vouchers:manage",
   "pos:manage",
 ] as const satisfies readonly ManageablePermission[];

@@ -211,18 +211,29 @@ test("says there are unsaved changes even when the panel is collapsed", async ({
 
 test("says which switches have no feature behind them yet", async ({ page }) => {
   // vouchers:manage and pos:manage are read by live RLS policies but have no
-  // screen; analytics:view is read by nothing at all. All three stay
-  // switchable, because hiding the first two would remove the only control
-  // over a real rule, so the row has to say what it is instead.
+  // screen. Both stay switchable, because hiding them would remove the only
+  // control over a real rule, so the row has to say what it is instead.
+  //
+  // It was three until 2026-09-04, when /workspace/analytics shipped and
+  // analytics:view came off the list. That is what this count is for: the
+  // badge is a claim about the rest of the app, and a claim nothing checks
+  // goes stale the moment somebody builds the screen.
   const first = panel(cards(page).first());
   await first.getByRole("button", { name: "Show permissions" }).click();
 
-  await expect(first.getByText("Not built yet")).toHaveCount(3);
-  for (const name of ["Manage vouchers", "Manage POS", "View analytics"]) {
+  await expect(first.getByText("Not built yet")).toHaveCount(2);
+  for (const name of ["Manage vouchers", "Manage POS"]) {
     await expect(first.getByRole("switch", { name }), name).toBeEnabled();
   }
 
-  // And the descriptions do not promise a screen that is not there.
+  // The report has a screen now, so its row carries no badge and its
+  // description names what it opens.
+  await expect(
+    first.getByRole("switch", { name: "View analytics" }),
+  ).toBeEnabled();
+  await expect(first.getByText(/Open the sales report/)).toBeVisible();
+
+  // And the two that remain do not promise a screen that is not there.
   await expect(first.getByText(/There is no voucher screen yet/)).toBeVisible();
-  await expect(first.getByText(/has not been built/)).toBeVisible();
+  await expect(first.getByText(/There is no POS screen yet/)).toBeVisible();
 });

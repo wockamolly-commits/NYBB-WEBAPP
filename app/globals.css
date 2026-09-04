@@ -394,10 +394,6 @@
      language into the operations surface. */
   .workspace-shell {
     color-scheme: dark;
-    scrollbar-color:
-      color-mix(in oklab, var(--color-nybb-bone) 30%, transparent)
-      var(--color-nybb-graphite);
-    scrollbar-width: thin;
   }
 
   .workspace-shell ::selection {
@@ -651,12 +647,37 @@
     opacity: 0.75;
   }
 
+  /* THE WORKSPACE SCROLLBAR, AND WHY IT IS DRAWN TWICE.
+     ================================================================
+     There are two ways to style a scrollbar and they are not additive.
+     `scrollbar-width` and `scrollbar-color` are the standard pair, and the
+     moment either one is set, Chrome hands the scrollbar to its own Fluent
+     renderer and ignores every ::-webkit-scrollbar rule on the page. That
+     renderer draws stepper arrows, and there is no property in the standard
+     pair that can turn them off.
+
+     That is where the navigation row's arrows came from. The shell asked for
+     `scrollbar-width: thin` in one place and for a graphite track and a bone
+     thumb in another, and got a Windows stepper bar wearing the project's
+     colours: ten pixels of chrome running the full width of the header with a
+     grey button at each end that nobody on a counter tablet will ever press.
+
+     So the two are split by engine rather than stacked. Chrome and Safari
+     take the ::-webkit-scrollbar rules below, which can say `display: none`
+     to the buttons by name. Firefox, which has no such pseudo-element, takes
+     the standard pair in the @supports block underneath. Neither engine sees
+     both, which is the only arrangement where the arrows actually go. */
   .workspace-shell ::-webkit-scrollbar {
     width: 0.625rem;
     height: 0.625rem;
   }
 
-  .workspace-shell ::-webkit-scrollbar-track {
+  .workspace-shell ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  .workspace-shell ::-webkit-scrollbar-track,
+  .workspace-shell ::-webkit-scrollbar-corner {
     background: var(--color-nybb-graphite);
   }
 
@@ -664,6 +685,56 @@
     border: 2px solid var(--color-nybb-graphite);
     border-radius: 9999px;
     background: color-mix(in oklab, var(--color-nybb-bone) 30%, transparent);
+  }
+
+  .workspace-shell ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--color-nybb-bone) 45%, transparent);
+  }
+
+  /* A rail of tabs is not a document, and the scrollbar under one should not
+     be sized like the scrollbar beside one. The bar above is right for a
+     table or a long panel; drawn under the navigation it was a band across
+     the full width of the header, directly above the heat rule, reading as a
+     seam in the chrome rather than as a control.
+
+     The rail keeps a scrollbar rather than hiding one, because how much of
+     the row you can see and where in it you are looking are real facts and
+     nothing else in the header carries them. It is just built as a hairline:
+     no track, a six pixel bone thumb inside the rail's own bottom padding.
+     Quiet at rest, findable under a cursor, which is what the hover step is
+     for. */
+  .workspace-shell .scroll-rail::-webkit-scrollbar {
+    height: 0.375rem;
+  }
+
+  .workspace-shell .scroll-rail::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .workspace-shell .scroll-rail::-webkit-scrollbar-thumb {
+    border: 0;
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--color-nybb-bone) 22%, transparent);
+  }
+
+  .workspace-shell .scroll-rail::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--color-nybb-bone) 45%, transparent);
+  }
+
+  /* Firefox, and anything else with no ::-webkit-scrollbar. It gets the same
+     two decisions in the only vocabulary it has, and its own scrollbars carry
+     no stepper arrows to begin with. */
+  @supports not selector(::-webkit-scrollbar) {
+    .workspace-shell {
+      scrollbar-color:
+        color-mix(in oklab, var(--color-nybb-bone) 30%, transparent)
+        var(--color-nybb-graphite);
+      scrollbar-width: thin;
+    }
+
+    .workspace-shell .scroll-rail {
+      scrollbar-color: color-mix(in oklab, var(--color-nybb-bone) 22%, transparent) transparent;
+    }
   }
 
   /* The workspace's one confirmation surface.
