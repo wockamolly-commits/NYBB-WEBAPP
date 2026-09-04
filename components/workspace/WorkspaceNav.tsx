@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   ClipboardList,
   ExternalLink,
   Handshake,
@@ -42,6 +43,7 @@ const ICONS = {
   menu: UtensilsCrossed,
   availability: Store,
   settings: Settings,
+  analytics: BarChart3,
   audit: ScrollText,
   team: Users,
   leads: Handshake,
