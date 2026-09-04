@@ -538,6 +538,20 @@ popup is Charcoal with the same real edge, selected rows carry a check and a fai
 and the keyboard-highlighted row becomes Buffalo Orange with Char text. Base UI owns focus,
 keyboard navigation, dismissal and the hidden form value.
 
+Workspace date fields are the same rule applied to the calendar. The field itself stays a real
+`<input type="date">`, so it keeps segmented entry, typed dates and its `YYYY-MM-DD` value, but the
+browser's own panel is switched off and `components/ui/WorkspaceDateField.tsx` draws the calendar.
+That is not decoration. Chrome renders its panel in a widget layer no stylesheet reaches, welded to
+the bottom edge of the control, so on the analytics filter card it opened with no gap and the card's
+edge running behind it, which read as a rendering fault rather than as a menu. Owning the popup is
+the only way it can have a gap, an alignment and the workspace's material. It uses the same Base UI
+positioner as the dropdown, at the same `10px` offset from the field and aligned to the field's left
+edge rather than to the small button that opens it, so a calendar and a dropdown on one row open the
+same distance from their fields and flip on the same rules near the bottom of the window. The panel
+is Charcoal on the same real edge, six rows always so it cannot change height as you page, the
+selected day is Buffalo Orange with Ink text, and today is signage yellow when it is not the
+selection.
+
 The Workspace shell also themes the browser surfaces around those controls: caret and selection,
 scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin
 screens therefore inherit one control language even before they need a dedicated component.

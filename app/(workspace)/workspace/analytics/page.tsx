@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import { formatPeso } from "@/lib/format";
 import { getSalesReport } from "@/lib/staff/analytics";
@@ -407,14 +407,8 @@ export default async function AnalyticsPage({
         role="search"
         className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-4"
       >
-        <div>
-          <WorkspaceFieldLabel htmlFor="analytics-from">From</WorkspaceFieldLabel>
-          <WorkspaceInput id="analytics-from" name="from" type="date" defaultValue={filters.from} />
-        </div>
-        <div>
-          <WorkspaceFieldLabel htmlFor="analytics-to">Through</WorkspaceFieldLabel>
-          <WorkspaceInput id="analytics-to" name="to" type="date" defaultValue={filters.to} />
-        </div>
+        <WorkspaceDateField id="analytics-from" name="from" label="From" defaultValue={filters.from} />
+        <WorkspaceDateField id="analytics-to" name="to" label="Through" defaultValue={filters.to} />
         {branches ? (
           <WorkspaceSelect
             id="analytics-branch"
