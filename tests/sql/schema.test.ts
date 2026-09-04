@@ -82,6 +82,8 @@ describe("migrations", () => {
       "0061",
       "0062",
       "0063",
+      "0064",
+      "0065",
     ]);
   });
 
@@ -196,7 +198,9 @@ describe("migrations", () => {
           'menu_options', 'menu_item_option_groups',
           'item_variation_prices', 'menu_option_variation_prices',
           'vouchers', 'staff_invitations', 'staff_permission_overrides',
-          'app_settings', 'franchise_inquiries'
+          'app_settings', 'franchise_inquiries',
+          'voucher_branches', 'voucher_items', 'voucher_categories',
+          'voucher_customers'
         )
       order by 1, 2
     `);
@@ -390,6 +394,15 @@ describe("migrations", () => {
     // the active rows only, the columns a picker draws, and the two booleans
     // that decide whether a card is selectable. No capacity figures, no
     // reservations, no settings. Everything in it is painted on the shopfront.
+    //
+    // preview_voucher (0065) is here because a guest has to be able to try a
+    // promo code, and guests are most of the orders this platform takes. It
+    // reserves nothing and charges nothing: place_order resolves the code again
+    // and its answer is the one billed, so the worst a caller can get out of
+    // this is a number that the placement then corrects. What keeps it from
+    // being a code oracle is that it answers a wrong code and a code that is
+    // not for this customer identically, and that the Server Action in front of
+    // it rate limits the caller's address the way cart writes already are.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -400,6 +413,7 @@ describe("migrations", () => {
       "get_public_settings",
       "get_storefront_menu",
       "place_order",
+      "preview_voucher",
       "register_customer_push_device",
       "register_customer_push_subscription",
       "submit_franchise_inquiry",
