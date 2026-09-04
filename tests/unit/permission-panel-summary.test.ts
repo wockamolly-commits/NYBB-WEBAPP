@@ -130,9 +130,12 @@ describe("summarizePermissions", () => {
     ).toEqual({ on: 7, total: 13, changed: 0, unsaved: 0 });
   });
 
-  it("drops menu:configure from an assigned manager's count", () => {
+  it("drops both business wide capabilities from an assigned manager's count", () => {
+    // menu:configure and, since 2026-09-04, vouchers:manage. Neither table
+    // carries a branch, so neither is something a pinned manager does to their
+    // own counter alone.
     expect(summarizePermissions("manager", IT_PARK, NO_OVERRIDES)).toEqual({
-      on: 12,
+      on: 11,
       total: 13,
       changed: 0,
       unsaved: 0,
@@ -217,8 +220,10 @@ describe("pending changes, before Save is pressed", () => {
   it("lets a pinned manager stage the catalog, and counts it as a change", () => {
     const staged = togglePending("manager", IT_PARK, NO_OVERRIDES, NONE, "menu:configure");
     expect(staged).toEqual({ "menu:configure": true });
+    // Twelve of thirteen, not all of them: vouchers:manage is the other
+    // business wide capability and staging the catalog does not hand it over.
     expect(summarizePermissions("manager", IT_PARK, NO_OVERRIDES, staged)).toEqual({
-      on: 13,
+      on: 12,
       total: 13,
       changed: 1,
       unsaved: 1,

@@ -1,13 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { placeOrder } from "@/app/actions/checkout";
+import { checkVoucher } from "@/app/actions/vouchers";
 import { CustomerDetails, isDetailField } from "@/components/checkout/CustomerDetails";
 import { OrderPlaced } from "@/components/checkout/OrderPlaced";
 import { PendingPayment } from "@/components/checkout/PendingPayment";
 import { payOrder } from "@/app/actions/payment";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
+import { OrderTotals, VoucherField } from "@/components/checkout/VoucherField";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
 import { clearCart } from "@/lib/cart/store";
@@ -21,6 +23,7 @@ import type { PickupSlots } from "@/lib/slots/types";
 import type { MenuCategory } from "@/lib/menu/types";
 import type { OnlineMethod } from "@/lib/paymongo/methods";
 import type { PayOrderResult } from "@/lib/paymongo/attach-result";
+import type { AppliedVoucher } from "@/lib/vouchers/preview";
 
 /**
  * Checkout, screen four of the four in spec section 11.
@@ -93,6 +96,25 @@ export function CheckoutView({
   const [submitting, startSubmitting] = useTransition();
 
   /**
+   * The promo code, held as three separate things, and the split is deliberate.
+   *
+   * `voucherCode` is what the customer typed. `voucher` is the SERVER's verdict
+   * for the cart exactly as it stands, discount included, and it is the only
+   * thing the summary renders a peso from. `appliedCode` is the code the
+   * customer asked us to keep using, which is what the re-check below watches.
+   *
+   * Keeping the asked-for code apart from the server's answer is what lets a
+   * discount fall off when the cart changes under it and come back when the
+   * cart changes back, without the customer having to notice and retype
+   * anything. One code, because the stacking rule is one code.
+   */
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [checkingVoucher, startCheckingVoucher] = useTransition();
+
+  /**
    * The idempotency key, minted lazily and reused on every retry.
    *
    * Lazily, because generating it while rendering would produce one value on
@@ -109,6 +131,92 @@ export function CheckoutView({
   }
 
   const resolved = resolveCart(categories, cart);
+
+  /**
+   * The cart in the shape both the preview and the placement send.
+   *
+   * Slugs and quantities, exactly as `submit` builds them below. Not one price
+   * leaves this browser in either direction, because not one price sent from a
+   * browser would be believed.
+   */
+  const voucherLines = resolved.lines.map((line) => ({
+    itemSlug: line.line.itemSlug,
+    variationSlug: line.line.variationSlug,
+    quantity: line.line.quantity,
+    options: Object.entries(line.line.optionSlugs).flatMap(([groupSlug, optionSlugs]) =>
+      optionSlugs.map((optionSlug) => ({ groupSlug, optionSlug })),
+    ),
+  }));
+
+  const previewBranchSlug = branchSlug ?? slots.branch?.slug ?? null;
+  // A signature rather than the array itself, so the re-check below fires when
+  // the cart's CONTENTS change and not on every render that rebuilt the array.
+  const cartSignature = JSON.stringify(voucherLines);
+
+  // Read through a ref so that typing a phone number does not re-run the
+  // check on every keystroke. The number only affects the per-customer cap,
+  // and place_order counts that again with the number actually submitted.
+  const phoneRef = useRef(details.phone);
+  phoneRef.current = details.phone;
+
+  /**
+   * Re-check the applied code whenever what it was checked against moves.
+   *
+   * A discount is only true of one cart at one counter. Without this, a
+   * customer could apply a code that needs PHP 500 of ribs, remove the ribs,
+   * and walk to the payment screen still looking at the discount, which
+   * `place_order` would then refuse after they had committed to paying.
+   *
+   * The failure path keeps `appliedCode` rather than clearing it, so putting
+   * the ribs back brings the discount back without anybody retyping anything.
+   * What it clears is `voucher`, which is the only thing the totals read, so a
+   * stale discount can never be on screen.
+   */
+  useEffect(() => {
+    if (appliedCode === null) {
+      setVoucher(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const result = await checkVoucher({
+        code: appliedCode,
+        branchSlug: previewBranchSlug,
+        phone: phoneRef.current,
+        lines: JSON.parse(cartSignature) as typeof voucherLines,
+      });
+      if (cancelled) return;
+      if (result.ok) {
+        setVoucher(result.voucher);
+        setVoucherError(null);
+      } else {
+        setVoucher(null);
+        setVoucherError(result.error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [appliedCode, cartSignature, previewBranchSlug]);
+
+  function applyVoucher() {
+    const code = voucherCode.trim().toUpperCase();
+    if (code === "") return;
+    startCheckingVoucher(() => {
+      // Applying replaces whatever was applied before. One code per order, so
+      // there is no merge to do and nothing to ask about.
+      setVoucherCode(code);
+      setVoucherError(null);
+      setAppliedCode(code);
+    });
+  }
+
+  function removeVoucher() {
+    setAppliedCode(null);
+    setVoucher(null);
+    setVoucherError(null);
+    setVoucherCode("");
+  }
 
   // The confirmation is checked before the cart is, and it has to be: placing
   // an order empties the cart, so the "nothing to check out" branch below would
@@ -162,6 +270,8 @@ export function CheckoutView({
    * this turns itself on.
    */
   const needsStore = storeCount > 1 && !storeChosen;
+  /** What the customer is actually about to pay, discount included. */
+  const payableCents = Math.max(resolved.subtotalCents - (voucher?.discountCents ?? 0), 0);
   const detailError =
     failure && isDetailField(failure.field)
       ? { field: failure.field, message: failure.message }
@@ -191,16 +301,13 @@ export function CheckoutView({
         pickupSlotStart: selectedSlot,
         details,
         paymentMethod,
+        // A code, never a discount. place_order resolves what it is worth from
+        // the vouchers row, and anything this browser claimed about the money
+        // would be ignored.
+        voucherCode: appliedCode ?? "",
         // Slugs and quantities. Not one price leaves this browser, because not
         // one price sent from a browser would be believed.
-        lines: resolved.lines.map((line) => ({
-          itemSlug: line.line.itemSlug,
-          variationSlug: line.line.variationSlug,
-          quantity: line.line.quantity,
-          options: Object.entries(line.line.optionSlugs).flatMap(([groupSlug, optionSlugs]) =>
-            optionSlugs.map((optionSlug) => ({ groupSlug, optionSlug })),
-          ),
-        })),
+        lines: voucherLines,
       }, accessToken);
 
       if (result.ok) {
@@ -306,12 +413,21 @@ export function CheckoutView({
             ))}
           </ul>
 
-          <div className="mt-4 flex items-baseline justify-between gap-4">
-            <span className="font-display heading-panel">Subtotal</span>
-            <span className="font-mono-tabular text-nybb-orange text-2xl">
-              {formatPeso(resolved.subtotalCents)}
-            </span>
-          </div>
+          <VoucherField
+            code={voucherCode}
+            onCodeChange={(next) => {
+              setVoucherCode(next);
+              setVoucherError(null);
+            }}
+            applied={voucher}
+            error={voucherError}
+            busy={checkingVoucher}
+            disabled={submitting}
+            onApply={applyVoucher}
+            onRemove={removeVoucher}
+          />
+
+          <OrderTotals subtotalCents={resolved.subtotalCents} applied={voucher} />
 
           {/* Two lines, because they are two facts and a customer checks them
               separately: the shop they are walking to, and the minute they are
@@ -354,7 +470,11 @@ export function CheckoutView({
                 : needsStore
                   ? "Choose a counter first"
                   : selectedSlot
-                    ? `Continue to QR Ph, ${formatPeso(resolved.subtotalCents)}`
+                    ? // The figure on the button is what will actually be
+                      // charged. A button promising the subtotal beside a
+                      // summary showing a discount is the one place this screen
+                      // could lie about money.
+                      `Continue to QR Ph, ${formatPeso(payableCents)}`
                     : "Choose a pickup time"}
           </Button>
 

@@ -43,6 +43,8 @@ export type PlaceOrderInput = {
   pickupSlotStart: string;
   details: CheckoutDetails;
   paymentMethod: CheckoutPaymentMethod;
+  /** The promo code the customer typed, or empty. Never a discount amount. */
+  voucherCode: string;
   lines: OrderLineInput[];
 };
 
@@ -65,7 +67,7 @@ export type PlacedOrder = {
 };
 
 /** Which field the screen should point at when an order is refused. */
-export type CheckoutField = "name" | "phone" | "email" | "slot" | "cart";
+export type CheckoutField = "name" | "phone" | "email" | "slot" | "cart" | "voucher";
 
 export type PlaceOrderResult =
   | { ok: true; order: PlacedOrder }

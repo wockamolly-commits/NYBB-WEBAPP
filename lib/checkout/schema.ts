@@ -58,6 +58,18 @@ export const placeOrderInputSchema = z.object({
     notes: z.string().trim().max(500),
   }),
   paymentMethod: z.enum(["counter", "qrph", "gcash", "maya", "card"]),
+  /**
+   * A code and nothing else, which is the whole of what a client may say about
+   * a discount.
+   *
+   * Spec section 22 item 4 lists what an order request may carry and a peso is
+   * not on it. `place_order` resolves the value, the eligibility and the
+   * arithmetic from the vouchers row, so a forged payload can ask for a
+   * different code and cannot ask for a different discount. Length capped here
+   * only so a megabyte of text does not reach the database; whether it names a
+   * real voucher is a question only SQL answers.
+   */
+  voucherCode: z.string().trim().max(40).default(""),
   lines: z.array(orderLineSchema).min(1).max(MAX_LINES),
 });
 
@@ -96,6 +108,8 @@ export type PlaceOrderPayload = {
   customer_email: string | null;
   notes: string | null;
   payment_method: "counter" | "qrph" | "gcash" | "maya" | "card";
+  /** Upper-cased, or null. `place_order` matches on upper(code). */
+  voucher_code: string | null;
   pickup_slot_start: string;
   lines: {
     item_slug: string;
@@ -122,6 +136,7 @@ export function toPlaceOrderPayload(
     customer_email: input.details.email === "" ? null : input.details.email,
     notes: input.details.notes === "" ? null : input.details.notes,
     payment_method: input.paymentMethod,
+    voucher_code: input.voucherCode === "" ? null : input.voucherCode.toUpperCase(),
     pickup_slot_start: input.pickupSlotStart,
     lines: input.lines.map((line) => ({
       item_slug: line.itemSlug,

@@ -287,11 +287,15 @@ revoke execute on function resolve_voucher(text, uuid, uuid, text, bigint, bigin
 -- computed against part of a basket is worse than no discount: it is a number
 -- the customer will see change at the till.
 --
--- ON ENUMERATION. An unknown code and a code that exists but is not for this
--- customer both come back as a refusal that names no voucher, and the Server
--- Action rate limits the caller's address the way cart writes and order
--- placement already are. Nothing in a successful verdict describes a voucher
--- the caller did not already hold the code for.
+-- ON ENUMERATION, HONESTLY. The refusals are specific, so a caller can tell an
+-- unknown code from one that exists and is not theirs. That is a deliberate
+-- trade: a customer who was handed a loyalty code for another account needs to
+-- be told which of those two things went wrong, and the leak is small next to
+-- the fact that a code which IS valid for them returns a discount by design.
+-- What actually bounds guessing is the address rate limit the Server Action
+-- applies, the same one cart writes and order placement already use. What no
+-- refusal ever carries is a voucher's terms: its value, its cap, its scope and
+-- its owner are never described to somebody who could not already use it.
 create or replace function preview_voucher(
   p_code text,
   p_branch_slug text,

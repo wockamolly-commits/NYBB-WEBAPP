@@ -51,6 +51,11 @@ describe("staff roles", () => {
     expect(resolvePermissions("manager", [], null)).toContain("menu:configure");
     expect(resolvePermissions("manager", [], BRANCH)).not.toContain("menu:configure");
 
+    // Promo codes are the same shape of thing and left the same way, since
+    // 2026-09-04: the vouchers table carries no branch either.
+    expect(resolvePermissions("manager", [], null)).toContain("vouchers:manage");
+    expect(resolvePermissions("manager", [], BRANCH)).not.toContain("vouchers:manage");
+
     // Everything that is about one counter survives the assignment.
     const assigned = resolvePermissions("manager", [], BRANCH);
     expect(assigned).toContain("menu:availability");
@@ -59,7 +64,9 @@ describe("staff roles", () => {
     expect(assigned).toContain("settings:manage");
     expect(new Set(assigned)).toEqual(
       new Set(
-        roleDefaultPermissions("manager").filter((p) => p !== "menu:configure"),
+        roleDefaultPermissions("manager").filter(
+          (p) => !BUSINESS_WIDE_PERMISSIONS.includes(p as (typeof BUSINESS_WIDE_PERMISSIONS)[number]),
+        ),
       ),
     );
   });
@@ -90,8 +97,11 @@ describe("staff roles", () => {
     ).not.toContain("menu:configure");
   });
 
-  it("names the catalog as the one business wide capability today", () => {
-    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual(["menu:configure"]);
+  it("names the catalog and the promo codes as the business wide capabilities", () => {
+    // Both are one shared list with no branch on it: renaming an item, or
+    // minting a code, is something a pinned manager would be doing to all nine
+    // counters. vouchers:manage joined on 2026-09-04 with migration 0066.
+    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual(["menu:configure", "vouchers:manage"]);
     for (const permission of BUSINESS_WIDE_PERMISSIONS) {
       expect(isStaffPermission(permission)).toBe(true);
     }

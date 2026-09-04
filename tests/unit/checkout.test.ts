@@ -25,6 +25,7 @@ const VALID: PlaceOrderInput = {
   pickupSlotStart: "2026-08-06T11:00:00+00:00",
   details: { name: "Steven Cruz", phone: "0906 440 5297", email: "", notes: "" },
   paymentMethod: "counter",
+  voucherCode: "",
   lines: [
     {
       itemSlug: "chicken-wings",

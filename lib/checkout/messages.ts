@@ -1,3 +1,4 @@
+import { formatPeso } from "@/lib/format";
 import type { CheckoutField } from "./types";
 
 /**
@@ -186,6 +187,108 @@ export function checkoutFailure(raw: string): CheckoutFailure {
 
     case "VOUCHERS_DISABLED":
       return { error: "Promo codes are not running yet, so we have not applied one." };
+
+    // The voucher refusals, in the order resolve_voucher (0065) checks them.
+    //
+    // All of them point at the code field, because in every case the move is
+    // the same: take this code off and either use another or order without one.
+    // None of them stops the order being placed, which is why not one of these
+    // says anything like "your order failed".
+    case "VOUCHER_NOT_FOUND":
+      return {
+        error: "We do not have a promo code by that name. Please check the spelling.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_INACTIVE":
+      return {
+        error: "That promo code is not running at the moment.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_NOT_STARTED":
+      return {
+        error: "That promo code has not started yet. It will work once the offer opens.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_EXPIRED":
+      return { error: "That promo code has expired.", field: "voucher" };
+
+    // Deliberately not "this is not your code", which reads as an accusation.
+    // The likely reader is somebody who was sent a reward meant for another
+    // account, and the useful half is that the order is fine without it.
+    case "VOUCHER_NOT_YOURS":
+      return {
+        error:
+          "That promo code is set aside for a particular customer, so we " +
+          "cannot use it on this order.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_WRONG_BRANCH":
+      return {
+        error: "That promo code is not valid at the branch you are collecting from.",
+        field: "voucher",
+      };
+
+    // Distinct from the minimum below, and the difference matters: this
+    // customer needs to add a particular thing, not to spend more.
+    case "VOUCHER_NO_ELIGIBLE_ITEMS":
+      return {
+        error: "That promo code only covers certain items, and none of them are in your order.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_BELOW_MINIMUM": {
+      const minimum = Number(detail);
+      return {
+        error: Number.isFinite(minimum)
+          ? `That promo code needs a qualifying order of at least ${formatPeso(minimum)}.`
+          : "Your order is not large enough for that promo code yet.",
+        field: "voucher",
+      };
+    }
+
+    case "VOUCHER_EXHAUSTED":
+      return {
+        error: "That promo code has been fully claimed.",
+        field: "voucher",
+      };
+
+    case "VOUCHER_CUSTOMER_LIMIT":
+      return {
+        error: "You have already used that promo code.",
+        field: "voucher",
+      };
+
+    // A percentage small enough to round away on a cheap order. Saying "it
+    // takes nothing off" is more honest than applying it for PHP 0.00.
+    case "VOUCHER_NO_DISCOUNT":
+      return {
+        error: "That promo code takes nothing off an order this size.",
+        field: "voucher",
+      };
+
+    // Only the preview raises this, and only because the menu moved while the
+    // tab sat open. The cart screen is what names the change.
+    case "VOUCHER_CART_CHANGED":
+      return {
+        error:
+          "Something in your cart is not on the menu any more, so we cannot " +
+          "price the code yet. Open the cart and it will show you what changed.",
+        field: "cart",
+      };
+
+    // A discount so large the rail cannot take what is left. Better said here,
+    // while the code can still be removed, than by a payment page that fails.
+    case "VOUCHER_TOTAL_TOO_LOW":
+      return {
+        error:
+          "That promo code leaves too little to pay online. Please add " +
+          "something to the order, or take the code off and use it next time.",
+        field: "voucher",
+      };
 
     case "RATE_LIMITED":
       return {

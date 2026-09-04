@@ -400,10 +400,10 @@ describe("migrations", () => {
     // promo code, and guests are most of the orders this platform takes. It
     // reserves nothing and charges nothing: place_order resolves the code again
     // and its answer is the one billed, so the worst a caller can get out of
-    // this is a number that the placement then corrects. What keeps it from
-    // being a code oracle is that it answers a wrong code and a code that is
-    // not for this customer identically, and that the Server Action in front of
-    // it rate limits the caller's address the way cart writes already are.
+    // this is a number that the placement then corrects. Guessing at codes is
+    // bounded by the address rate limit the Server Action in front of it
+    // applies, the same one cart writes already use, and no refusal it returns
+    // ever describes a voucher's value, cap, scope or owner.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
