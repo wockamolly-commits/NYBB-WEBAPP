@@ -171,7 +171,11 @@ function Report({ report }: { report: SalesReport }) {
           value={String(report.orders_count)}
           note={`${report.paid_count} paid for`}
         />
-        <Tile label="Gross sales" value={formatPeso(report.gross_sales_cents)} note="Paid orders only" />
+        <Tile
+          label="Gross sales"
+          value={formatPeso(report.gross_sales_cents)}
+          note="Paid, and not refused"
+        />
         <Tile label="Average order" value={formatPeso(report.avg_order_value_cents)} />
         <Tile
           label="Slot utilization"
@@ -251,7 +255,7 @@ function Report({ report }: { report: SalesReport }) {
 
         <Card
           title="New and returning"
-          hint="Counted by phone number, so a guest who never made an account still counts. Returning means that number has ordered before, at any point."
+          hint="People, not tickets: each phone number counts once however many times it ordered. Counted by number so a guest who never made an account still counts, and returning means that number had ordered before its first order in this range."
         >
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
             <p>
@@ -265,7 +269,7 @@ function Report({ report }: { report: SalesReport }) {
           </div>
           {returningShare !== null ? (
             <p className="text-nybb-bone/55 mt-2 text-xs">
-              {returningShare}% of orders came from a number that had ordered before.
+              {returningShare}% of the people who ordered in this range had ordered before.
             </p>
           ) : null}
         </Card>
@@ -305,7 +309,7 @@ function Report({ report }: { report: SalesReport }) {
           <RankedBars rows={report.flavour_mix} empty="No flavours were chosen in this range." />
         </Card>
 
-        <Card title="Top items" hint="By quantity, on paid orders.">
+        <Card title="Top items" hint="By quantity, on paid orders the branch did not refuse.">
           <RankedBars
             rows={report.top_items.map((row) => ({
               name: row.item_name,

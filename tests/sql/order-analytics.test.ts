@@ -84,6 +84,27 @@ async function report(
   return rows[0]!.report;
 }
 
+/**
+ * How many different phone numbers ordered in the window, counted straight off
+ * the table rather than through the report. The point of the new-versus-
+ * returning test is that the two sides add up to people, so the expectation
+ * has to come from somewhere other than the function under test.
+ */
+async function distinctPhones(db: PGlite, branchSlug: string): Promise<number> {
+  const rows = (
+    await db.query<{ n: number }>(
+      `select count(distinct o.customer_phone)::int as n
+       from orders o
+       join branches b on b.id = o.branch_id
+       where b.slug = '${branchSlug}'
+         and o.is_test = false
+         and o.placed_at >= '${FROM}'::timestamptz
+         and o.placed_at < '${TO}'::timestamptz`,
+    )
+  ).rows;
+  return rows[0]!.n;
+}
+
 function hour(result: Report, at: number): { orders: number; sales_cents: number } {
   const bucket = result.by_hour.find((row) => row.hour === at);
   if (!bucket) throw new Error(`no bucket for hour ${at}`);
@@ -378,12 +399,71 @@ describe("order_analytics", () => {
     });
     await addLine(regular, "Fries", 1);
 
-    // Pickup windows, for the utilization ratio.
+    // The regular again, inside the window this time, so new versus returning
+    // has to choose between counting tickets and counting people.
+    await placeOrder({
+      branch: "garden-bloc",
+      placedAt: "2026-09-02T05:00:00Z", // 13:00 Manila
+      phone: "0917-000-9999",
+      totalCents: 9000,
+    });
+
+    // An order the branch refused after the money had already been taken. It
+    // is a real order and a real refusal, and it is not a sale.
+    const refused = await placeOrder({
+      branch: "garden-bloc",
+      placedAt: "2026-09-02T09:00:00Z", // 17:00 Manila
+      phone: "0917-000-0012",
+      totalCents: 77000,
+      status: "rejected",
+    });
+    await addLine(refused, "Refused Platter", 3);
+
+    // A second test order, which exists only to book a pickup window.
+    await placeOrder({
+      branch: "garden-bloc",
+      placedAt: "2026-09-02T11:35:00Z",
+      phone: "0917-000-0013",
+      totalCents: 400000,
+      isTest: true,
+    });
+
+    // Pickup windows, for the utilization ratio. The stored reserved counters
+    // are deliberately wrong here: they say 8 and 2, which is what 0062 read
+    // and reported. What is true is underneath them, in who booked what.
     await db.query(
       `insert into pickup_slots (branch_id, slot_start, capacity, reserved)
        values
          ($1, '2026-09-02T11:00:00Z'::timestamptz, 10, 8),
          ($1, '2026-09-02T11:15:00Z'::timestamptz, 10, 2)`,
+      [garden],
+    );
+
+    // The 19:00 window is held by two real orders, and also chosen by the
+    // staff test order and by the order the branch went on to refuse. Neither
+    // of those is a place a paying customer took: the test row is not real,
+    // and rejecting an order hands its window straight back (0036).
+    await db.query(
+      `update orders o
+         set pickup_slot_id = ps.id
+       from pickup_slots ps
+       where ps.branch_id = $1
+         and ps.slot_start = '2026-09-02T11:00:00Z'::timestamptz
+         and o.customer_phone in (
+           '0917-000-0003', '0917-000-0004', '0917-000-0006', '0917-000-0012'
+         )`,
+      [garden],
+    );
+
+    // The 19:15 window was only ever chosen by a test order, so it was never
+    // a window the kitchen offered anybody real.
+    await db.query(
+      `update orders o
+         set pickup_slot_id = ps.id
+       from pickup_slots ps
+       where ps.branch_id = $1
+         and ps.slot_start = '2026-09-02T11:15:00Z'::timestamptz
+         and o.customer_phone = '0917-000-0013'`,
       [garden],
     );
   }, 180_000);
@@ -539,7 +619,34 @@ describe("order_analytics", () => {
       const result = await report(db, PINNED_MANAGER_ID);
       // One regular, whose earlier order is outside the window entirely.
       expect(result.customers.returning).toBe(1);
-      expect(result.customers.new).toBe(result.orders_count - 1);
+    });
+
+    it("counts people rather than tickets", async () => {
+      const result = await report(db, PINNED_MANAGER_ID);
+      // The regular ordered twice inside this range. Counting tickets, which
+      // is what 0062 did, would call that two returning customers and make the
+      // two sides add up to the order count instead of to the people.
+      const people = result.customers.new + result.customers.returning;
+      expect(result.customers.returning).toBe(1);
+      expect(people).toBeLessThan(result.orders_count);
+      expect(people).toBe(await distinctPhones(db, "garden-bloc"));
+    });
+  });
+
+  describe("an order the branch refused", () => {
+    it("is counted, and is not revenue", async () => {
+      const result = await report(db, PINNED_MANAGER_ID);
+      // 17:00 Manila holds the refused order and nothing else: one order on
+      // the chart, and not one centavo of its 770 pesos.
+      expect(hour(result, 17).orders).toBe(1);
+      expect(hour(result, 17).sales_cents).toBe(0);
+    });
+
+    it("keeps its items out of the mix", async () => {
+      const result = await report(db, PINNED_MANAGER_ID);
+      expect(result.top_items.map((row) => row.item_name)).not.toContain(
+        "Refused Platter",
+      );
     });
   });
 
@@ -569,9 +676,13 @@ describe("order_analytics", () => {
   });
 
   describe("pickup windows", () => {
-    it("reports reserved against the capacity that was actually offered", async () => {
+    it("counts the places real customers took, not the stored counter", async () => {
       const result = await report(db, PINNED_MANAGER_ID);
-      expect(result.slots).toEqual({ windows: 2, reserved: 10, capacity: 20 });
+      // The counters on the two rows say 8 and 2, and 0062 reported exactly
+      // that. Two real orders hold the 19:00 window; the test order and the
+      // refused one do not. The 19:15 window had nothing real in it at all, so
+      // it leaves the denominator with the row it came from.
+      expect(result.slots).toEqual({ windows: 1, reserved: 2, capacity: 10 });
     });
   });
 });
