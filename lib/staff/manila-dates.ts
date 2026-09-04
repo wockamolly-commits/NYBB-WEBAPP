@@ -49,6 +49,35 @@ export function manilaWallClockIso(value: string): string | null {
   return Number.isNaN(instant.getTime()) ? null : instant.toISOString();
 }
 
+/**
+ * The calendar day it is at the counter right now, as a `<input type="date">`
+ * value.
+ *
+ * The server process runs in whatever zone its host was configured with, and
+ * on Vercel that is UTC, so `new Date()` read with the local getters is eight
+ * hours behind the shop for the first eight hours of every Cebu day. Between
+ * midnight and 08:00 local, a report defaulting to "today" would open on
+ * yesterday. Formatting through the zone rather than through the host's
+ * getters is what makes the answer the same wherever this runs.
+ */
+export function manilaToday(now: Date = new Date()): string {
+  // en-CA gives ISO order (YYYY-MM-DD), which is what a date input takes.
+  return now.toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+}
+
+/**
+ * A Manila calendar day shifted by whole days, for a default range.
+ *
+ * Built by moving the UTC instant of that day's Manila midnight, so it cannot
+ * land on a different day than the arithmetic intended.
+ */
+export function manilaDateShift(value: string, days: number): string {
+  const start = manilaDateStartIso(value);
+  if (!start) return value;
+  const moved = new Date(new Date(start).getTime() + days * 24 * 60 * 60 * 1000);
+  return manilaToday(moved);
+}
+
 /** First value of a repeated query parameter, trimmed to a usable string. */
 export function firstSearchValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
