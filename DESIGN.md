@@ -556,6 +556,24 @@ The Workspace shell also themes the browser surfaces around those controls: care
 scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin
 screens therefore inherit one control language even before they need a dedicated component.
 
+Scrollbars are the one surface that has to be stated twice, by engine rather than stacked, and the
+reason is worth knowing before anybody edits them. `scrollbar-width` and `scrollbar-color` are the
+standard pair, and the moment either is set, Chrome hands the scrollbar to its own renderer and
+ignores every `::-webkit-scrollbar` rule on the page. That renderer draws stepper arrows and offers
+no property to turn them off. The workspace asked for a thin bar in one place and a graphite track
+in another, and got a Windows stepper bar wearing the project's colours, most visibly as a ten pixel
+band with a grey button at each end running the full width of the header under the navigation. So
+Chrome and Safari take the `::-webkit-scrollbar` rules, which can dismiss the buttons by name, and
+Firefox takes the standard pair inside an `@supports not selector(::-webkit-scrollbar)` block.
+Neither engine sees both.
+
+The navigation row then takes a second, quieter treatment on top of that, as `.scroll-rail`: no
+track, a six pixel bone thumb, sitting inside the row's own bottom padding. It keeps a scrollbar
+rather than hiding one, because how much of the row you can see and where in it you are looking are
+real facts and nothing else in the header carries them. The row also scrolls its current tab into
+view on every route change, which is the fact the highlight carries and was regularly parked off
+screen on a tablet.
+
 ### The delete confirmation
 
 The Workspace's one interrupting surface, and the only dialog in the system. It is a native
