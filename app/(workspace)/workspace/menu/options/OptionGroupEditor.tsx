@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { WorkspaceCheckbox } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceNumberInput } from "@/components/ui/WorkspaceNumberInput";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import {
   TABLE_CELL_INPUT,
@@ -315,14 +316,11 @@ function OptionFieldset({
             {pricing === "flat" ? (
               <>
                 <TableCellLabel htmlFor={`${idPrefix}-amount`}>Amount</TableCellLabel>
-                <WorkspaceInput
+                <WorkspaceNumberInput
                   id={`${idPrefix}-amount`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="0.01"
+                  shape="pesos"
                   value={amount}
-                  onChange={(event) => onAmountChange(event.target.value)}
+                  onValueChange={onAmountChange}
                   disabled={disabled}
                   aria-label={`Amount in pesos for ${rowName}`}
                   className={cn(TABLE_CELL_INPUT, "font-mono tabular-nums")}
@@ -334,15 +332,11 @@ function OptionFieldset({
         {columns.showHeat ? (
           <div className="w-24 lg:w-auto lg:min-w-0">
             <TableCellLabel htmlFor={`${idPrefix}-heat`}>Heat %</TableCellLabel>
-            <WorkspaceInput
+            <WorkspaceNumberInput
               id={`${idPrefix}-heat`}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={100}
-              step="1"
+              shape="integer"
               value={heatPercent}
-              onChange={(event) => onHeatPercentChange(event.target.value)}
+              onValueChange={onHeatPercentChange}
               disabled={disabled}
               aria-label={`Heat percent for ${rowName}`}
               className={cn(TABLE_CELL_INPUT, "font-mono tabular-nums")}

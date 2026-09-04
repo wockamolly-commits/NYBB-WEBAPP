@@ -3,7 +3,7 @@
 import { LoaderCircle, Save } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceNumberInput } from "@/components/ui/WorkspaceNumberInput";
 import { WorkspaceSection } from "@/components/ui/WorkspaceSection";
 import type {
   ManagedItem,
@@ -294,13 +294,9 @@ function HeatPriceForm({
                   </th>
                   {activeSizes.map((size) => (
                     <td key={size.id} className="border-nybb-bone/10 border-b py-3 pr-3">
-                      <WorkspaceInput
+                      <WorkspaceNumberInput
                         id={`${idPrefix}-${option.id}-${size.id}`}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={MAX_PRICE_CENTS / 100}
-                        step="0.01"
+                        shape="pesos"
                         // The column header names the size and the row header
                         // names the option, which is enough for a screen
                         // reader moving through the table. This says both at
@@ -309,10 +305,10 @@ function HeatPriceForm({
                         // WCAG 2.5.3.
                         aria-label={`${option.name} price, ${size.shortLabel}`}
                         value={drafts[cellKey(option.id, size.id)] ?? ""}
-                        onChange={(event) =>
+                        onValueChange={(next) =>
                           setDrafts((current) => ({
                             ...current,
-                            [cellKey(option.id, size.id)]: event.target.value,
+                            [cellKey(option.id, size.id)]: next,
                           }))
                         }
                         disabled={pending}

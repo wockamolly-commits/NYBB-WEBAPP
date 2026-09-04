@@ -57,6 +57,13 @@ export function LoginForm() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
+              // Uncontrolled and six digits wide, so the guard is a strip
+              // rather than a refusal: a code arrives pasted more often than
+              // typed, and pasting "123 456" should leave the digits rather
+              // than nothing. The same shape the counter's pickup code uses.
+              onInput={(event) => {
+                event.currentTarget.value = event.currentTarget.value.replace(/\D/g, "").slice(0, 6);
+              }}
               pattern="[0-9]{6}"
               minLength={6}
               maxLength={6}

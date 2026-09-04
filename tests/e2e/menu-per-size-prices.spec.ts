@@ -151,8 +151,8 @@ test("one button saves the whole grid, and only the rows that changed", async ({
   const [first, second] = optionIds;
   const [half, full] = variationIds;
 
-  await section.getByRole("spinbutton", { name: /, HALF$/ }).first().fill("30");
-  await section.getByRole("spinbutton", { name: /, FULL$/ }).first().fill("40.50");
+  await section.getByRole("textbox", { name: /, HALF$/ }).first().fill("30");
+  await section.getByRole("textbox", { name: /, FULL$/ }).first().fill("40.50");
 
   await section.getByRole("button", { name: "Save prices" }).click();
   await expect(section.getByText("Prices saved.")).toBeVisible();
@@ -180,7 +180,12 @@ test("a price over the maximum is named, and holds the button until it is fixed"
 }) => {
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
   const section = grid(page);
-  const halfInput = section.getByRole("spinbutton", { name: /, HALF$/ }).first();
+  // A textbox, not a spinbutton. These price cells stopped being
+  // `type="number"` when the workspace's number fields moved to a guarded text
+  // input, because a number input still accepts "e" and then reports its value
+  // as the empty string. The gate asserted below is the form's own, and was
+  // never the browser's.
+  const halfInput = section.getByRole("textbox", { name: /, HALF$/ }).first();
 
   await halfInput.fill("200000");
 
@@ -213,7 +218,7 @@ test("a blank clears one saved price and leaves the other alone", async ({ page 
   await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
   const section = grid(page);
 
-  const halfInput = section.getByRole("spinbutton", { name: /, HALF$/ }).first();
+  const halfInput = section.getByRole("textbox", { name: /, HALF$/ }).first();
   await expect(halfInput).toHaveValue("30");
   await halfInput.fill("");
 
@@ -221,4 +226,36 @@ test("a blank clears one saved price and leaves the other alone", async ({ page 
   await expect(section.getByText("Prices saved.")).toBeVisible();
 
   expect(await savedPrices()).toEqual({ [first!]: { [full!]: 4000 } });
+});
+
+/**
+ * The bug this grid was carrying in common with every other number field.
+ *
+ * Reported on the promo code screen, where "Amount off, in pesos" took letters,
+ * and true here for the same reason: `inputMode` picks the keyboard a phone
+ * offers and restricts nothing at all on a desktop. The cells were `type
+ * ="number"`, which looks like protection and is not, because every browser
+ * accepts "e" in one and then reports the field's value as the empty string,
+ * so the box reads 50e and the form holds nothing.
+ *
+ * Typed a character at a time rather than filled, because filling sets the
+ * value in one event and the person who found this was pressing keys.
+ */
+test("a price refuses the letters inputMode never did", async ({ page }) => {
+  await page.goto(`/workspace/menu/items/${itemId}`, { waitUntil: "domcontentloaded" });
+  const section = grid(page);
+  const halfInput = section.getByRole("textbox", { name: /, HALF$/ }).first();
+
+  await halfInput.fill("");
+  await halfInput.pressSequentially("12abc.5x0");
+
+  // The digits and the one decimal point landed. Nothing else did, and the
+  // rejected keys left no trace rather than being shown and complained about.
+  await expect(halfInput).toHaveValue("12.50");
+
+  // "e" is the one a number input would have taken, emptying the value behind
+  // the person's back.
+  await halfInput.fill("");
+  await halfInput.pressSequentially("5e3");
+  await expect(halfInput).toHaveValue("53");
 });

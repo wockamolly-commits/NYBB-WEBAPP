@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
-import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceFieldLabel } from "@/components/ui/WorkspaceField";
+import { WorkspaceNumberInput } from "@/components/ui/WorkspaceNumberInput";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import { formatPeso } from "@/lib/format";
 import {
@@ -117,12 +118,11 @@ export function RefundControl({
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div>
           <WorkspaceFieldLabel htmlFor={`refund-amount-${orderId}`}>Amount</WorkspaceFieldLabel>
-          <WorkspaceInput
+          <WorkspaceNumberInput
             id={`refund-amount-${orderId}`}
-            type="text"
-            inputMode="decimal"
+            shape="pesos"
             value={amount}
-            onChange={(event) => setAmount(event.target.value)}
+            onValueChange={setAmount}
             disabled={pending}
           />
         </div>

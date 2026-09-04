@@ -4,6 +4,7 @@ import { ChevronDown, LoaderCircle, Save, TriangleAlert } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceNumberInput } from "@/components/ui/WorkspaceNumberInput";
 import {
   formatWindow,
   formatTime12,
@@ -227,9 +228,9 @@ function BranchConfiguration({
             <span className="text-sm">Live on the ordering platform</span>
           </label>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div><WorkspaceFieldLabel htmlFor={`prep-${branch.branchId}`}>Prep minutes</WorkspaceFieldLabel><WorkspaceInput id={`prep-${branch.branchId}`} name="prepMinutes" type="number" min="1" max="240" defaultValue={branch.prepMinutes} disabled={branchPending} required /></div>
-            <div><WorkspaceFieldLabel htmlFor={`slot-${branch.branchId}`}>Slot minutes</WorkspaceFieldLabel><WorkspaceInput id={`slot-${branch.branchId}`} name="slotMinutes" type="number" min="5" max="120" defaultValue={branch.slotMinutes} disabled={branchPending} required /></div>
-            <div><WorkspaceFieldLabel htmlFor={`capacity-${branch.branchId}`}>Orders per slot</WorkspaceFieldLabel><WorkspaceInput id={`capacity-${branch.branchId}`} name="slotCapacity" type="number" min="1" max="200" defaultValue={branch.slotCapacity} disabled={branchPending} required /></div>
+            <div><WorkspaceFieldLabel htmlFor={`prep-${branch.branchId}`}>Prep minutes</WorkspaceFieldLabel><WorkspaceNumberInput id={`prep-${branch.branchId}`} name="prepMinutes" shape="integer" defaultValue={branch.prepMinutes} disabled={branchPending} required /></div>
+            <div><WorkspaceFieldLabel htmlFor={`slot-${branch.branchId}`}>Slot minutes</WorkspaceFieldLabel><WorkspaceNumberInput id={`slot-${branch.branchId}`} name="slotMinutes" shape="integer" defaultValue={branch.slotMinutes} disabled={branchPending} required /></div>
+            <div><WorkspaceFieldLabel htmlFor={`capacity-${branch.branchId}`}>Orders per slot</WorkspaceFieldLabel><WorkspaceNumberInput id={`capacity-${branch.branchId}`} name="slotCapacity" shape="integer" defaultValue={branch.slotCapacity} disabled={branchPending} required /></div>
           </div>
           <Button type="submit" tone="dark" variant="secondary" className="mt-5" disabled={branchPending}>{branchPending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Save aria-hidden className="size-4" />}Save branch</Button>
           <Message state={branchState} />
@@ -282,12 +283,10 @@ function IntakeSettings({ intake }: { intake: OrderIntakeSettings }) {
         </label>
         <div className="w-full sm:w-52">
           <WorkspaceFieldLabel htmlFor="slot-horizon">Booking horizon, hours</WorkspaceFieldLabel>
-          <WorkspaceInput
+          <WorkspaceNumberInput
             id="slot-horizon"
             name="slotHorizonHours"
-            type="number"
-            min="1"
-            max="168"
+            shape="integer"
             defaultValue={intake.slotHorizonHours}
             disabled={pending}
             required

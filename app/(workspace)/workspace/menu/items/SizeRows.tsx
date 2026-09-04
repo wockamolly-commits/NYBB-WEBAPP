@@ -4,6 +4,7 @@ import { Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceRadio } from "@/components/ui/WorkspaceCheckbox";
 import { WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceNumberInput } from "@/components/ui/WorkspaceNumberInput";
 import {
   TABLE_CELL_INPUT,
   TABLE_MARK_CELL,
@@ -17,7 +18,7 @@ import {
   tableRowStyle,
 } from "@/components/ui/WorkspaceTable";
 import { cn } from "@/lib/utils";
-import { MAX_PRICE_CENTS, sizeName, type SizeDraft } from "./sizeDrafts";
+import { sizeName, type SizeDraft } from "./sizeDrafts";
 
 /**
  * The Sizes section of the item editor: the list of rows, the strip a removed
@@ -180,15 +181,11 @@ export function SizeRows({
                   <TableCellLabel htmlFor={`${idPrefix}-${size.key}-price`}>
                     Price (PHP)
                   </TableCellLabel>
-                  <WorkspaceInput
+                  <WorkspaceNumberInput
                     id={`${idPrefix}-${size.key}-price`}
-                    type="number"
-                    inputMode="decimal"
-                    min={0}
-                    max={MAX_PRICE_CENTS / 100}
-                    step="0.01"
+                    shape="pesos"
                     value={size.pesos}
-                    onChange={(event) => onUpdate(size.key, { pesos: event.target.value })}
+                    onValueChange={(next) => onUpdate(size.key, { pesos: next })}
                     disabled={disabled}
                     aria-label={`Price in pesos: ${name}`}
                     className={cn(TABLE_CELL_INPUT, "font-mono tabular-nums")}
