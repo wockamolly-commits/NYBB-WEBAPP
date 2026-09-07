@@ -157,7 +157,7 @@ export function HeroVideo() {
           playsInline
           // metadata, not auto. `auto` pulls the whole file whether or not the
           // visitor ever sees the bottom of the hero, and it competes with
-          // hydration and with the nine flavour images below it.
+          // hydration and with the ten flavour images below it.
           preload="metadata"
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}

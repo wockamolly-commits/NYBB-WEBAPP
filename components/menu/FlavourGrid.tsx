@@ -76,13 +76,18 @@ export function FlavourGrid({
    * default describes the five column default below; a caller that overrides
    * the grid has to override this too, or the browser fetches a candidate
    * sized for a tile a third of the width it is actually painting.
+   *
+   * The column counts are two and five because there are ten flavours, and
+   * those are the numbers that divide ten. A three column step at `sm` was
+   * here while there were nine, and it now leaves one tile alone on a fourth
+   * row. Any caller overriding this has the same arithmetic to do.
    */
   imageSizes?: string;
 }) {
   return (
     <ul
       className={cn(
-        "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5",
+        "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5",
         className,
       )}
     >

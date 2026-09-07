@@ -91,7 +91,7 @@ function Card({
  *
  * Shares are read against the top row rather than against the total, because
  * the question these answer is "what outsells what", and a share of the whole
- * basket would flatten nine flavours into nine indistinguishable slivers.
+ * basket would flatten ten flavours into ten indistinguishable slivers.
  *
  * Which is also why the bars come off when the rows are level. Reading against
  * the top row makes the top row full by construction, so a range where

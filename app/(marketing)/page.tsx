@@ -36,7 +36,7 @@ import { telHref } from "@/lib/phone";
  * eighteen dark cards sitting on top of it:
  *
  *   dark    hero
- *   amber   nine flavours, the food this place is for
+ *   amber   ten flavours, the food this place is for
  *   dark    the heat scale, the signature
  *   amber   how pickup works, then the rest of the menu
  *   dark    branches, the close, with numbers you can actually call
@@ -314,7 +314,7 @@ export default async function Home() {
               three that no band on this page carries, so it is the line the
               hero is actually adding rather than previewing. */}
               <p className="text-nybb-bone/75 mt-6 max-w-[44ch] text-base leading-relaxed sm:text-lg [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-base">
-                Nine flavours, five levels of heat, fried to order.
+                Ten flavours, five levels of heat, fried to order.
               </p>
             </div>
 
@@ -404,9 +404,12 @@ export default async function Home() {
       </section>
 
       {/* ============================================================
-          Nine flavours. The best photography the brand has, so it gets
-          the most room: a true three by three at desktop instead of a
-          ragged five and four with ten pixel gutters.
+          Ten flavours. The best photography the brand has, so it gets
+          the most room. This was a true three by three until Brad's Gravy
+          made it ten on 2026-09-07, which is 3+3+3+1 and exactly the ragged
+          last row the three column layout existed to avoid. Ten divides by
+          two and by five, so the grid is two up on a phone and five up at
+          desktop, and every row is full at every width.
           ============================================================ */}
       <section
         aria-labelledby="flavours-title"
@@ -415,10 +418,10 @@ export default async function Home() {
         <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
           <div>
             <h2 id="flavours-title" className="font-display heading-major">
-              Nine flavours
+              Ten flavours
             </h2>
             <p className="text-nybb-ink/75 mt-5 max-w-[46ch] leading-relaxed">
-              One shoot, one basket, nine sauces. Every one of them takes a
+              One shoot, one basket, ten sauces. Every one of them takes a
               level of heat on top, at no change to the flavour you picked.
             </p>
             {half && full ? (
@@ -443,9 +446,9 @@ export default async function Home() {
           hrefFor={(flavour) =>
             `/menu/${WINGS_ITEM_SLUG}/${WINGS_ITEM_SLUG}?flavour=${flavour.slug}`
           }
-          className="mt-10 sm:mt-12 lg:grid-cols-3 lg:gap-5"
+          className="mt-10 sm:mt-12 lg:gap-5"
           withDescriptions={false}
-          imageSizes="(min-width: 1024px) 32vw, (min-width: 640px) 31vw, 45vw"
+          imageSizes="(min-width: 1024px) 19vw, 45vw"
         />
       </section>
 

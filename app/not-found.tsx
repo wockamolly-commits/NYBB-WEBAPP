@@ -120,7 +120,7 @@ export default function NotFound() {
                 You took a wrong turn
               </h1>
               <p className="text-nybb-ink/75 mt-5 text-base leading-relaxed">
-                That page is not here. The wings are, though. Nine flavours,
+                That page is not here. The wings are, though. Ten flavours,
                 five levels of hotness, and nine branches across Cebu to collect
                 from.
               </p>

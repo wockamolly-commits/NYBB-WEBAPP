@@ -12,7 +12,7 @@ import { findOptionGroup } from "@/lib/menu";
 export const metadata: Metadata = {
   title: "Menu",
   description:
-    "Wings in nine flavours and five levels of heat, burgers, hotdogs, ribs, pasta, waffles and iced coffee. Pickup across Cebu.",
+    "Wings in ten flavours and five levels of heat, burgers, hotdogs, ribs, pasta, waffles and iced coffee. Pickup across Cebu.",
 };
 
 /**
@@ -95,7 +95,7 @@ export default async function MenuPage() {
             </p>
 
             {/* Wings show the flavour grid instead of a product tile. One tile
-                labelled "Chicken Wings" would waste all nine flavour
+                labelled "Chicken Wings" would waste all ten flavour
                 photographs, which are the best material the brand has. */}
             {category.slug === "chicken-wings" ? (
               <FlavourGrid
@@ -105,8 +105,8 @@ export default async function MenuPage() {
                 hrefFor={(flavour) =>
                   `/menu/${category.slug}/${category.items[0].slug}?flavour=${flavour.slug}`
                 }
-                className="mt-6 lg:grid-cols-4"
-                imageSizes="(min-width: 1024px) 24vw, (min-width: 640px) 31vw, 45vw"
+                className="mt-6"
+                imageSizes="(min-width: 1024px) 19vw, 45vw"
               />
             ) : (
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">

@@ -15,7 +15,7 @@ import {
 export const metadata: Metadata = {
   title: "About",
   description:
-    "New York Buffalo Brad's Hot Wings: nine flavours, five levels of heat, and counters across Cebu.",
+    "New York Buffalo Brad's Hot Wings: ten flavours, five levels of heat, and counters across Cebu.",
 };
 
 export default async function AboutPage() {
@@ -105,7 +105,7 @@ export default async function AboutPage() {
           </p>
           <p className="text-nybb-ink/75">
             Wings come by the half order of six or the full order of ten, sauced
-            in one of nine flavours. Alongside them sit burgers numbered BB1 to
+            in one of ten flavours. Alongside them sit burgers numbered BB1 to
             BB5, hotdogs numbered H1 to H5, ribs, pasta, waffles and an iced
             coffee line.
           </p>

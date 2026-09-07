@@ -185,7 +185,7 @@ export function CartView({
             />
             <div className="sm:pt-1">
               <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
-                Nothing in the cart yet. Wings come in nine flavours and five
+                Nothing in the cart yet. Wings come in ten flavours and five
                 levels of heat, and every one of them is priced before you
                 commit to it.
               </p>
