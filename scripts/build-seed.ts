@@ -71,7 +71,13 @@ function allItems(): { item: CatalogItem; categorySlug: string; sort: number }[]
  * chip is pre-selected.
  */
 function defaultVariationSlug(item: CatalogItem): string {
-  return item.variations.reduce((cheapest, variation) =>
+  // Only a sellable size can be the default. A variation switched off for want
+  // of a confirmed price is not an entry point, and NY Fries is the case that
+  // proves it: its cheapest row is the unpriced Small, so the naive reduce
+  // opened the product page on a size the storefront filters out.
+  const sellable = item.variations.filter((variation) => variation.active !== false);
+  const from = sellable.length > 0 ? sellable : item.variations;
+  return from.reduce((cheapest, variation) =>
     variation.priceCents < cheapest.priceCents ? variation : cheapest,
   ).slug;
 }
@@ -237,7 +243,7 @@ function variationRows() {
   w("-- ---------------------------------------------------------------------------");
   w("");
   w("insert into item_variations (");
-  w("  item_id, slug, label, short_label, price_cents, is_default, sort_order");
+  w("  item_id, slug, label, short_label, price_cents, is_default, is_active, sort_order");
   w(") values");
 
   const rows: string[] = [];
@@ -249,7 +255,8 @@ function variationRows() {
           "  (",
           `(select id from menu_items where slug = ${lit(item.slug)}),`,
           ` ${lit(variation.slug)}, ${lit(variation.name)}, ${lit(variation.shortName)},`,
-          ` ${variation.priceCents}, ${bool(variation.slug === defaultSlug)}, ${index})`,
+          ` ${variation.priceCents}, ${bool(variation.slug === defaultSlug)},`,
+          ` ${bool(variation.active ?? true)}, ${index})`,
         ].join(""),
       );
     });

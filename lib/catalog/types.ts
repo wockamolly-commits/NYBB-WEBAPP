@@ -40,6 +40,19 @@ export type CatalogVariation = {
   /** "HALF". Shown on chips and tickets, where space is tight. */
   shortName: string;
   priceCents: number;
+  /**
+   * Whether this size may be sold. Defaults to true.
+   *
+   * The same device as `active` on an item, one level down, and it exists for
+   * the sizes we know are on the menu but cannot price. NY Fries is the case:
+   * the current menu sells Small, Medium and Large, our own list has a single
+   * unlabelled 128, and 128 is not any of the three Foodpanda figures, so
+   * there is no honest way to say which size we hold a price for. Dropping the
+   * sizes would hide that they exist; guessing would put a wrong price on a
+   * real order; taking the item off sale would remove something sellable.
+   * Recording them switched off does none of those.
+   */
+  active?: boolean;
 };
 
 export type CatalogOption = {

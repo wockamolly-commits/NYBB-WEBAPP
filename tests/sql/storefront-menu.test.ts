@@ -7,15 +7,21 @@ import { hydrateMenuPayload, menuPayloadSchema } from "@/lib/menu/storefront";
 import { staticMenu } from "@/lib/menu/static";
 
 /**
- * The catalog as the storefront sells it: `active: false` items dropped, and
- * any category left empty dropped with them. `get_storefront_menu()` filters on
- * `is_active`, so comparing it against the unfiltered catalog would fail on
- * every row that is waiting for the owner to confirm a price.
+ * The catalog as the storefront sells it: `active: false` dropped at both
+ * levels, item and variation, and any category left empty dropped with them.
+ * `get_storefront_menu()` filters on `is_active` in both places, so comparing
+ * it against the unfiltered catalog fails on every row that is waiting for the
+ * owner to confirm a price, and on every size of NY Fries but one.
  */
 const staticCategories = catalogCategories
   .map((category) => ({
     ...category,
-    items: category.items.filter((item) => item.active !== false),
+    items: category.items
+      .filter((item) => item.active !== false)
+      .map((item) => ({
+        ...item,
+        variations: item.variations.filter((variation) => variation.active !== false),
+      })),
   }))
   .filter((category) => category.items.length > 0);
 

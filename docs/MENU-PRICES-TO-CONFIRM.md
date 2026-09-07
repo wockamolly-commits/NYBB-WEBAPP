@@ -11,6 +11,14 @@ The Foodpanda column is `price_before_discount` from the SM City Cebu
 listing, captured 2026-09-07. A 15% vendor promo was masking the displayed
 `price` at the time, so the displayed figures were 15% lower than these.
 
+## What's New
+
+| Item | Size | Foodpanda (delivery) | Pickup price |
+| --- | --- | --- | --- |
+| NY Umbrella |  | 349.00 | |
+| Rainy Day Rush 2026 (Bundle A) |  | 1,299.00 | |
+| Rainy Day Rush 2026 (Bundle B) |  | 1,299.00 | |
+
 ## Hunger Busters
 
 | Item | Size | Foodpanda (delivery) | Pickup price |
@@ -27,7 +35,7 @@ listing, captured 2026-09-07. A 15% vendor promo was masking the displayed
 | Item | Size | Foodpanda (delivery) | Pickup price |
 | --- | --- | --- | --- |
 | Classic Hotdog Meal |  | 202.00 | |
-| Jalapeno Cheesedog Meal |  | 248.00 | |
+| Jalapeño Cheesedog Meal |  | 248.00 | |
 | Chili Cheesedog Meal |  | 294.00 | |
 | Hungarian Sandwich Meal |  | 317.00 | |
 
@@ -65,12 +73,12 @@ listing, captured 2026-09-07. A 15% vendor promo was masking the displayed
 
 | Item | Size | Foodpanda (delivery) | Pickup price |
 | --- | --- | --- | --- |
-| Cucumber Lemonade | 8 oz | 91.00 | |
-| Cucumber Lemonade | 16 oz | 137.00 | |
-| Cucumber Lemonade | 22 oz | 160.00 | |
-| Lemon Iced Tea | 8 oz | 91.00 | |
-| Lemon Iced Tea | 16 oz | 137.00 | |
-| Lemon Iced Tea | 22 oz | 160.00 | |
+| Cucumber Lemonade Juice | 8 oz | 91.00 | |
+| Cucumber Lemonade Juice | 16 oz | 137.00 | |
+| Cucumber Lemonade Juice | 22 oz | 160.00 | |
+| Lemon Iced Tea Juice | 8 oz | 91.00 | |
+| Lemon Iced Tea Juice | 16 oz | 137.00 | |
+| Lemon Iced Tea Juice | 22 oz | 160.00 | |
 | Bottled Water |  | 57.00 | |
 
 ---
@@ -100,7 +108,7 @@ gaps are large enough that the source is probably out of date.
 | Iced Vanilla | 139.00 | 169.00 | +22% |
 | Level of Hotness, per level | 30.00 | 29.00 | -3% |
 
-**23 items are waiting on a price.**
+**26 items are waiting on a price.**
 
 Open questions that are not a number:
 

@@ -229,9 +229,9 @@ describe("get_order_by_tracking, the customer's own order", () => {
     // describing the thing that was actually bought.
     await db.exec("update menu_items set name = 'Renamed' where slug = 'ribs-original'");
     const later = (await track(db, placed.shortCode, placed.trackingToken)) as Tracked;
-    expect(later.items.map((item) => item.name)).toContain("Original Ribs");
+    expect(later.items.map((item) => item.name)).toContain("NY Ribs Original");
     expect(later.items.map((item) => item.name)).not.toContain("Renamed");
-    await db.exec("update menu_items set name = 'Original Ribs' where slug = 'ribs-original'");
+    await db.exec("update menu_items set name = 'NY Ribs Original' where slug = 'ribs-original'");
   });
 });
 

@@ -54,12 +54,16 @@ function toItem(item: CatalogItem): MenuItem {
     featured: item.featured ?? false,
     pricingNote: item.pricingNote ?? null,
     image: toImage(catalogImage(item.imageKey)),
-    variations: item.variations.map((variation) => ({
-      slug: variation.slug,
-      name: variation.name,
-      shortName: variation.shortName,
-      priceCents: variation.priceCents,
-    })),
+    // Inactive sizes are dropped here for the same reason inactive items are,
+    // and against the same filter in get_storefront_menu(): `where iv.is_active`.
+    variations: item.variations
+      .filter((variation) => variation.active !== false)
+      .map((variation) => ({
+        slug: variation.slug,
+        name: variation.name,
+        shortName: variation.shortName,
+        priceCents: variation.priceCents,
+      })),
     optionGroups: item.optionGroups.map((group) => ({
       slug: group.slug,
       name: group.name,

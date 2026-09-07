@@ -75,7 +75,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "smokey-barbecue",
-      name: "Smokey Barbecue",
+      name: "Smokey BBQ",
       priceCents: 0,
       description: "Deep, dark and smoky.",
       imageKey: "wings-smokey-barbecue",
@@ -178,6 +178,56 @@ const KEPT_OFF_DELIVERY =
 
 export const categories: CatalogCategory[] = [
   {
+    slug: "whats-new",
+    name: "What's New",
+    blurb: "Limited runs and the odd thing that is not food.",
+    items: [
+      {
+        slug: "ny-umbrella",
+        name: "NY Umbrella",
+        categorySlug: "whats-new",
+        description:
+          "A branded umbrella, folding, for the rain and the sun. Merchandise rather than food.",
+        variations: one(34900),
+        optionGroups: [],
+        active: false,
+        pricingNote:
+          FOODPANDA_PRICE +
+          " Also the only non-food item on the menu: it needs no pickup slot, " +
+          "no prep time and no kitchen ticket, so confirm it should be sold " +
+          "through an ordering flow built for food before switching it on.",
+      },
+      {
+        slug: "rainy-day-rush-bundle-a",
+        name: "Rainy Day Rush 2026 (Bundle A)",
+        categorySlug: "whats-new",
+        description:
+          "One half order of chicken wings, two rice, one carbonara, two 16oz juices, and a free NY Umbrella.",
+        variations: one(129900),
+        optionGroups: [],
+        active: false,
+        pricingNote:
+          FOODPANDA_PRICE +
+          " Seasonal: the name carries a year, so it needs retiring rather " +
+          "than repricing once the promotion ends.",
+      },
+      {
+        slug: "rainy-day-rush-bundle-b",
+        name: "Rainy Day Rush 2026 (Bundle B)",
+        categorySlug: "whats-new",
+        description:
+          "One carbonara, two flavoured fries, two 16oz juices, two classic hotdogs, and a free NY Umbrella.",
+        variations: one(129900),
+        optionGroups: [],
+        active: false,
+        pricingNote:
+          FOODPANDA_PRICE +
+          " Seasonal: the name carries a year, so it needs retiring rather " +
+          "than repricing once the promotion ends.",
+      },
+    ],
+  },
+  {
     slug: "chicken-wings",
     name: "Chicken",
     blurb: "Ten flavours, five levels of heat. The reason the place exists.",
@@ -219,7 +269,7 @@ export const categories: CatalogCategory[] = [
     items: [
       {
         slug: "ribs-original",
-        name: "Original Ribs",
+        name: "NY Ribs Original",
         categorySlug: "ny-specials",
         variations: one(34900),
         optionGroups: [],
@@ -228,7 +278,7 @@ export const categories: CatalogCategory[] = [
       },
       {
         slug: "ribs-spicy",
-        name: "Spicy Ribs",
+        name: "NY Ribs Spicy",
         categorySlug: "ny-specials",
         variations: one(34900),
         optionGroups: [],
@@ -352,7 +402,7 @@ export const categories: CatalogCategory[] = [
       },
       {
         slug: "jalapeno-cheesedog-meal",
-        name: "Jalapeno Cheesedog Meal",
+        name: "Jalapeño Cheesedog Meal",
         categorySlug: "breaktime-treats",
         variations: one(24800),
         optionGroups: [],
@@ -579,7 +629,7 @@ export const categories: CatalogCategory[] = [
       },
       {
         slug: "jalapeno-cheese-dog",
-        name: "Jalapeno Cheesedog",
+        name: "Jalapeño Cheesedog",
         code: "H2",
         categorySlug: "ny-hotdogs",
         variations: one(17900),
@@ -625,10 +675,33 @@ export const categories: CatalogCategory[] = [
         slug: "french-fries",
         name: "NY Fries",
         categorySlug: "sides",
-        variations: one(12800),
+        variations: [
+          { slug: "regular", name: "Regular", shortName: "REG", priceCents: 12800 },
+          {
+            slug: "small",
+            name: "Small",
+            shortName: "SMALL",
+            priceCents: 10300,
+            active: false,
+          },
+          {
+            slug: "medium",
+            name: "Medium",
+            shortName: "MED",
+            priceCents: 17200,
+            active: false,
+          },
+          {
+            slug: "large",
+            name: "Large",
+            shortName: "LARGE",
+            priceCents: 19500,
+            active: false,
+          },
+        ],
         optionGroups: [],
         pricingNote:
-          "Our list has one French Fries price of 128. Foodpanda sells NY Fries in three sizes (103 / 172 / 195), so the single price cannot be matched to a size. Renamed to NY Fries to match the current menu; the sizes need the owner.",
+          "Our list has one unlabelled French Fries price of 128, and 128 is none of Foodpanda's three (103 / 172 / 195), so there is no honest way to say which size we hold a price for. The three sizes are recorded switched off and the single Regular keeps selling until the owner says which is which. Expect to delete Regular at that point.",
       },
       {
         slug: "french-fries-cheese",
@@ -685,10 +758,26 @@ export const categories: CatalogCategory[] = [
         slug: "hungarian-rice-meal",
         name: "Hungarian With Rice",
         categorySlug: "rice-meals",
-        variations: one(18900),
+        variations: [
+          { slug: "regular", name: "Regular", shortName: "REG", priceCents: 18900 },
+          {
+            slug: "solo",
+            name: "Solo",
+            shortName: "SOLO",
+            priceCents: 21300,
+            active: false,
+          },
+          {
+            slug: "meal",
+            name: "Meal, with a drink",
+            shortName: "MEAL",
+            priceCents: 24800,
+            active: false,
+          },
+        ],
         optionGroups: [],
         pricingNote:
-          "Our list has one price of 189. Foodpanda splits this into Solo 213 and Meal 248, so which of the two our 189 is remains unknown.",
+          "Our list has one price of 189, and Foodpanda sells this as Solo 213 and Meal 248, the meal being the one with a drink. Which of the two our 189 is nobody can say, so both are recorded switched off and the single Regular keeps selling. Expect to delete Regular once the owner rules.",
       },
       {
         slug: "chicken-with-rice",
@@ -759,7 +848,7 @@ export const categories: CatalogCategory[] = [
     items: [
       {
         slug: "cucumber-lemonade",
-        name: "Cucumber Lemonade",
+        name: "Cucumber Lemonade Juice",
         categorySlug: "beverages",
         variations: [
           { slug: "8-oz", name: "8 oz", shortName: "8 OZ", priceCents: 9100 },
@@ -772,7 +861,7 @@ export const categories: CatalogCategory[] = [
       },
       {
         slug: "lemon-iced-tea",
-        name: "Lemon Iced Tea",
+        name: "Lemon Iced Tea Juice",
         categorySlug: "beverages",
         variations: [
           { slug: "8-oz", name: "8 oz", shortName: "8 OZ", priceCents: 9100 },
