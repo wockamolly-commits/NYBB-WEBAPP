@@ -73,8 +73,8 @@ describe("catalog integrity", () => {
 });
 
 describe("wings", () => {
-  it("carries the nine Hot Wings flavours", () => {
-    expect(wingFlavours.options).toHaveLength(9);
+  it("carries the ten Hot Wings flavours", () => {
+    expect(wingFlavours.options).toHaveLength(10);
     expect(wingFlavours.minSelect).toBe(1);
     expect(wingFlavours.maxSelect).toBe(1);
   });
@@ -86,12 +86,19 @@ describe("wings", () => {
   });
 
   it("excludes the Sports Lounge only flavours", () => {
-    // Lemon Pepper, Pesto, Hickory and Brad's Gravy are on the closed venue's
-    // eleven flavour list, and the archive still holds photography for them.
+    // Lemon Pepper, Pesto and Hickory are on the closed venue's eleven flavour
+    // list and nowhere else, and the archive still holds photography for them.
+    //
+    // Brad's Gravy was in this list until 2026-09-07 and did not belong: it is
+    // on both brands' lists. The archive's 2025/03 Hot Wings refresh carries a
+    // shot of it, and the live Foodpanda listing for SM City Cebu names it in
+    // "Chicken Flavor (6pcs)". Sharing a flavour with the closed venue is not
+    // the same as belonging only to it.
     const slugs = wingFlavours.options.map((flavour) => flavour.slug);
-    for (const excluded of ["lemon-pepper", "pesto", "hickory", "brads-gravy"]) {
+    for (const excluded of ["lemon-pepper", "pesto", "hickory"]) {
       expect(slugs).not.toContain(excluded);
     }
+    expect(slugs).toContain("brads-gravy");
   });
 
   it("runs the heat scale from 20 to 100 in five steps", () => {

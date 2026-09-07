@@ -1,10 +1,23 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { freshDatabase } from "./harness";
-import { categories as staticCategories } from "@/lib/catalog/menu";
+import { categories as catalogCategories } from "@/lib/catalog/menu";
 import { optionPriceCents } from "@/lib/catalog/pricing";
 import { hydrateMenuPayload, menuPayloadSchema } from "@/lib/menu/storefront";
 import { staticMenu } from "@/lib/menu/static";
+
+/**
+ * The catalog as the storefront sells it: `active: false` items dropped, and
+ * any category left empty dropped with them. `get_storefront_menu()` filters on
+ * `is_active`, so comparing it against the unfiltered catalog would fail on
+ * every row that is waiting for the owner to confirm a price.
+ */
+const staticCategories = catalogCategories
+  .map((category) => ({
+    ...category,
+    items: category.items.filter((item) => item.active !== false),
+  }))
+  .filter((category) => category.items.length > 0);
 
 /**
  * Tests over get_storefront_menu(), migration 0011.
@@ -68,46 +81,63 @@ describe("get_storefront_menu", () => {
     );
   });
 
-  it("prices the wings at the published half and full", () => {
+  it("prices the wings at the published half and full, bone-in and boneless", () => {
     const wings = seeded[0].items[0];
     expect(wings.slug).toBe("chicken-wings");
     expect(wings.variations).toEqual([
       { slug: "half", name: "Half, 6 pieces", shortName: "HALF", priceCents: 32900 },
       { slug: "full", name: "Full, 10 pieces", shortName: "FULL", priceCents: 52900 },
+      {
+        slug: "boneless-half",
+        name: "Boneless half, 6 pieces",
+        shortName: "BL HALF",
+        priceCents: 32900,
+      },
+      {
+        slug: "boneless-full",
+        name: "Boneless full, 10 pieces",
+        shortName: "BL FULL",
+        priceCents: 52900,
+      },
     ]);
   });
 
-  it("carries the Level of Hotness price per variation, not as one number", () => {
+  it("carries the Level of Hotness price as one flat number", () => {
+    // This asserted { half: 3000, full: 4000 } and { half: 4000, full: 6000 }
+    // until 2026-09-07. Heat is a flat PHP 29 now, so there are no variation
+    // prices to carry and the map has to come back empty rather than absent.
     const heat = seeded[0].items[0].optionGroups.find(
       (group) => group.slug === "level-of-hotness",
     );
     const level = (slug: string) => heat!.options.find((option) => option.slug === slug)!;
 
-    for (const slug of ["lite", "moderate", "hot", "wild"]) {
-      expect(level(slug).variationPriceCents, slug).toEqual({ half: 3000, full: 4000 });
+    for (const slug of ["lite", "moderate", "hot", "wild", "insane"]) {
+      expect(level(slug).priceCents, slug).toBe(2900);
+      expect(level(slug).variationPriceCents, slug).toEqual({});
     }
-    expect(level("insane").variationPriceCents).toEqual({ half: 4000, full: 6000 });
   });
 
-  it("keeps priceCents null on a variation-priced option", () => {
-    // Null is the statement that there is no flat price and the variation
-    // decides. jsonb_strip_nulls would have removed the key, which reads as
-    // "free" to anything doing `option.priceCents ?? 0`, so the key is merged
-    // back in after the strip. This asserts that it survived.
+  it("keeps a priceCents key on every option, including the zero one", () => {
+    // Null used to be the interesting case: jsonb_strip_nulls would remove the
+    // key, which reads as "free" to anything doing `option.priceCents ?? 0`, so
+    // the key is merged back in after the strip. The seed no longer contains a
+    // null-priced option, and "No heat" at zero is the nearest live hazard,
+    // since a stripped zero and a stripped null are indistinguishable
+    // downstream. The merge-back is still what this covers.
     const heat = seeded[0].items[0].optionGroups.find(
       (group) => group.slug === "level-of-hotness",
     )!;
-    const lite = heat.options.find((option) => option.slug === "lite")!;
+    const none = heat.options.find((option) => option.slug === "none")!;
 
-    expect("priceCents" in lite).toBe(true);
-    expect(lite.priceCents).toBeNull();
+    expect("priceCents" in none).toBe(true);
+    expect(none.priceCents).toBe(0);
   });
 
   it("charges nothing to choose a flavour", () => {
     const flavours = seeded[0].items[0].optionGroups.find(
       (group) => group.slug === "wing-flavour",
     )!;
-    expect(flavours.options).toHaveLength(9);
+    expect(flavours.options).toHaveLength(10);
     for (const flavour of flavours.options) {
       expect(flavour.priceCents, flavour.slug).toBe(0);
       expect(flavour.variationPriceCents, flavour.slug).toEqual({});

@@ -62,3 +62,7 @@ yarn-error.log*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# supabase CLI scratch. `supabase link` writes the project ref here; it is
+# per-machine state, not something the repository should carry.
+/supabase/.temp/

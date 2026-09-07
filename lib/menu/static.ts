@@ -70,11 +70,27 @@ function toItem(item: CatalogItem): MenuItem {
   };
 }
 
+/**
+ * The menu a customer may actually order from.
+ *
+ * `active: false` is dropped here, and a category left with nothing in it is
+ * dropped with it, because that is exactly what `get_storefront_menu()` does
+ * with `is_active`. The two sources are only interchangeable if they hide the
+ * same rows, and the rows being hidden are the ones carrying a Foodpanda
+ * delivery price that nobody has confirmed for pickup. Shipping those would put
+ * a wrong price in front of a customer, which is the one failure a
+ * server-authoritative pricing model exists to prevent.
+ *
+ * `catalogCategories` is the unfiltered list, for the workspace and for tests
+ * that need to see what is waiting on a price.
+ */
 export function staticMenu(): MenuCategory[] {
-  return categories.map((category) => ({
-    slug: category.slug,
-    name: category.name,
-    blurb: category.blurb,
-    items: category.items.map(toItem),
-  }));
+  return categories
+    .map((category) => ({
+      slug: category.slug,
+      name: category.name,
+      blurb: category.blurb,
+      items: category.items.filter((item) => item.active !== false).map(toItem),
+    }))
+    .filter((category) => category.items.length > 0);
 }

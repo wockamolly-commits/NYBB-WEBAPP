@@ -85,6 +85,18 @@ export type CatalogItem = {
    * can be confirmed with the owner rather than quietly becoming fact.
    */
   pricingNote?: string;
+  /**
+   * Whether the storefront may sell this. Defaults to true.
+   *
+   * `false` is how an item that is known to be on the menu but whose pickup
+   * price is not known ships: it is recorded, with its `pricingNote` saying
+   * where its placeholder number came from, and it cannot be ordered. The
+   * alternative was leaving it out, which loses the fact that it exists, or
+   * guessing a price, which is the one thing a server-authoritative pricing
+   * model must never do. `item_variations.price_cents` is `not null`, so there
+   * is no third option at the column.
+   */
+  active?: boolean;
 };
 
 export type CatalogCategory = {

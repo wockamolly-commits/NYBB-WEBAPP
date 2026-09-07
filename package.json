@@ -16,7 +16,8 @@
     "ingest:images": "tsx scripts/ingest-legacy-images.ts",
     "build:static-images": "tsx scripts/build-static-images.ts",
     "build:seed": "tsx scripts/build-seed.ts",
-    "build:mural": "tsx scripts/trace-mural.ts"
+    "build:mural": "tsx scripts/trace-mural.ts",
+    "build:prices-to-confirm": "tsx scripts/build-prices-to-confirm.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

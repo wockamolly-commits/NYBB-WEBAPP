@@ -53,7 +53,7 @@ const WINGS: PayloadLine = {
     { group_slug: "level-of-hotness", option_slug: "insane" },
   ],
 };
-const WINGS_CENTS = (52900 + 6000) * 2;
+const WINGS_CENTS = (52900 + 2900) * 2;
 
 /** Ribs carry no option groups, so they price without any choices. */
 const RIBS: PayloadLine = { item_slug: "ribs-original", variation_slug: "regular", qty: 1 };
@@ -310,7 +310,7 @@ describe("the discount arithmetic", () => {
 
   it("caps a percentage at the maximum discount when one is set", async () => {
     await makeVoucher(db, { code: "CAPPED", percentOff: 50, maxDiscountCents: 5000 });
-    // Half of 117800 is 58900, and the cap is what the customer gets.
+    // Half of 111600 is 55800, and the cap is what the customer gets.
     expect((await preview(db, "CAPPED", [WINGS])).discountCents).toBe(5000);
   });
 

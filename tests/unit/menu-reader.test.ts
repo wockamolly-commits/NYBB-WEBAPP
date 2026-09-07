@@ -50,14 +50,17 @@ describe("getStorefrontMenu without Supabase configured", () => {
     expect(menu.categories.length).toBeGreaterThan(0);
   });
 
-  it("still carries the variation-dependent heat prices", async () => {
+  it("carries the flat heat price, on every size", async () => {
+    // This asserted a null priceCents and { half: 4000, full: 6000 } until
+    // 2026-09-07. Heat is a flat PHP 29 now, so the reader has to carry a real
+    // number and an empty variation map rather than the other way round.
     const { categories } = await getStorefrontMenu();
     const wings = findItem(categories, "chicken-wings");
     const heat = findOptionGroup(wings, "level-of-hotness");
     const insane = heat?.options.find((option) => option.slug === "insane");
 
-    expect(insane?.priceCents).toBeNull();
-    expect(insane?.variationPriceCents).toEqual({ half: 4000, full: 6000 });
+    expect(insane?.priceCents).toBe(2900);
+    expect(insane?.variationPriceCents).toEqual({});
   });
 });
 

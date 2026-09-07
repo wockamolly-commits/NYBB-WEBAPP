@@ -165,17 +165,17 @@ describe("get_order_by_tracking, the customer's own order", () => {
     expect(wings).toMatchObject({
       variationLabel: "Full, 10 pieces",
       quantity: 2,
-      unitPriceCents: 58900,
-      lineTotalCents: 117800,
+      unitPriceCents: 55800,
+      lineTotalCents: 111600,
     });
     expect(wings?.options).toEqual([
       { group: "Flavour", name: "Classic Buffalo", priceCents: 0, heatPercent: null },
-      { group: "Level of Hotness", name: "Insane", priceCents: 6000, heatPercent: 100 },
+      { group: "Level of Hotness", name: "Insane", priceCents: 2900, heatPercent: 100 },
     ]);
   });
 
   it("carries the money and the counter payment that is still due", () => {
-    expect(tracked.subtotalCents).toBe(117800 + 34900);
+    expect(tracked.subtotalCents).toBe(111600 + 34900);
     expect(tracked.totalCents).toBe(tracked.subtotalCents);
     expect(tracked.discountCents).toBe(0);
     expect(tracked.payment).toMatchObject({

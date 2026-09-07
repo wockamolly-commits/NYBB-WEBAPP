@@ -79,6 +79,38 @@
     "treatment": "cutout",
     "source": "2025/03/smoky-Burger-bundle-1.jpg"
   },
+  "coffee-americano": {
+    "src": "/img/coffee-americano.124bf600.webp",
+    "width": 690,
+    "height": 690,
+    "blurDataURL": "data:image/webp;base64,UklGRnQAAABXRUJQVlA4IGgAAAAQAgCdASoMAAwAA4BaJbACdADhhOFhpEkAAP61khMsfQENY7Da6aGyB1Q12/nw1YyXdSZH4AWzysVr5mK3d34X2Yq9wQiGz1dGc+1VYAS5DanjIazPF/qfSUdayan9F/Y9HNPRAgAAAA==",
+    "treatment": "cutout",
+    "source": "2025/03/AMERICANO.jpg"
+  },
+  "coffee-dark-mocha": {
+    "src": "/img/coffee-dark-mocha.ae23e539.webp",
+    "width": 690,
+    "height": 690,
+    "blurDataURL": "data:image/webp;base64,UklGRmoAAABXRUJQVlA4IF4AAAAQAgCdASoMAAwAA4BaJbACdADdjT7lvb8AAP61qrE4LR8jUcXuQhBZ/BOuYUclC8V+WGN6LkeVbebBqowDRbk8boLbMe53FBeD1MbzX5wLDBv01bhqtvse/W7bbgAA",
+    "treatment": "cutout",
+    "source": "2025/03/DARK-MOCHA.jpg"
+  },
+  "coffee-hazelnut": {
+    "src": "/img/coffee-hazelnut.c5b7290d.webp",
+    "width": 690,
+    "height": 690,
+    "blurDataURL": "data:image/webp;base64,UklGRmYAAABXRUJQVlA4IFoAAADQAQCdASoMAAwAA4BaJbACdADzZepyQAD+taqxZmnntjzjMjQx9T0vsDThaMTooGc/Xm7sN5Xiwqlom94MXAPGE85BGydD81nTWPVAXFQnV10Hvu69E36XwAA=",
+    "treatment": "cutout",
+    "source": "2025/03/HAZELNUT.jpg"
+  },
+  "coffee-vanilla": {
+    "src": "/img/coffee-vanilla.a81ba615.webp",
+    "width": 690,
+    "height": 690,
+    "blurDataURL": "data:image/webp;base64,UklGRmQAAABXRUJQVlA4IFgAAADwAQCdASoMAAwAA4BaJbACdADhOWRSMGAA/rWqwJZY05QIJVUV1OoXeWCA0x8m7xnyLf4LiWI2Hhsp2uKwudbqw6lHK/H/NZ01jp5Y9XKNsg7G+D8GQAAA",
+    "treatment": "cutout",
+    "source": "2025/03/VANILLA.jpg"
+  },
   "hotdog-chili-cheese": {
     "src": "/img/hotdog-chili-cheese.1f01242d.webp",
     "width": 900,
@@ -239,6 +271,14 @@
     "blurDataURL": "data:image/webp;base64,UklGRmwAAABXRUJQVlA4IGAAAAAQAgCdASoMAAwAA4BaJbACdADcRTt1djAAAP6yOS8P0IME2snO7yGHx9rqMQIFa+pMApoSnrrUyjDSE1ka5cIUMkjbpb13BqH+Mg1JYjEr4jQYujUiYlb6RnJmEeIAAAA=",
     "treatment": "lifestyle",
     "source": "2024/05/BBQ-Lime-1.jpg"
+  },
+  "wings-brads-gravy": {
+    "src": "/img/wings-brads-gravy.6dd3f8b1.webp",
+    "width": 900,
+    "height": 900,
+    "blurDataURL": "data:image/webp;base64,UklGRmAAAABXRUJQVlA4IFQAAADwAQCdASoMAAwAA4BaJbACdAEDoiEP9AAAzKOfMS+1Am17Uf0DfBae40uA8POKDpU6BNnCVWG2VNX27XsiWNoS/1fr5OiD+t/DubX9SbNfYXIAAAA=",
+    "treatment": "lifestyle",
+    "source": "2024/05/Brads-Gravy-3.jpg"
   },
   "wings-cheezy": {
     "src": "/img/wings-cheezy.f5ffade9.webp",

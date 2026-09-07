@@ -197,7 +197,7 @@ function itemRows() {
   w("");
   w("insert into menu_items (");
   w("  category_id, slug, name, code, description,");
-  w("  image_source, image_treatment, pricing_note, is_featured, sort_order");
+  w("  image_source, image_treatment, pricing_note, is_featured, is_active, sort_order");
   w(") values");
 
   const rows = allItems().map(({ item, categorySlug, sort }) => {
@@ -208,7 +208,8 @@ function itemRows() {
       ` ${lit(item.slug)}, ${lit(item.name)}, ${lit(item.code ?? null)},`,
       ` ${lit(item.description ?? null)},`,
       ` ${lit(image?.source ?? null)}, ${lit(image?.treatment ?? null)},`,
-      ` ${lit(item.pricingNote ?? null)}, ${bool(Boolean(item.featured))}, ${sort})`,
+      ` ${lit(item.pricingNote ?? null)}, ${bool(Boolean(item.featured))},`,
+      ` ${bool(item.active ?? true)}, ${sort})`,
     ].join("");
   });
   w(rows.join(",\n"));
@@ -221,6 +222,10 @@ function itemRows() {
   w("  image_treatment = excluded.image_treatment,");
   w("  pricing_note = excluded.pricing_note,");
   w("  is_featured = excluded.is_featured,");
+  // is_active is deliberately NOT reasserted. It is in the insert list so a
+  // fresh database starts with the unpriced items switched off, but re-running
+  // the seed must never un-hide something the counter took off sale. Same
+  // bargain the availability columns have always had; see tests/sql/seed.test.
   w("  sort_order = excluded.sort_order;");
   w("");
 }

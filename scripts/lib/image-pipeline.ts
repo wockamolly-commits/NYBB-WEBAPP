@@ -50,6 +50,23 @@ export type Source = {
   lowRes?: boolean;
   /** Where the identification is inferred rather than read off the filename. */
   tentative?: string;
+  /**
+   * The region of the original that is usable, in pixels of the original.
+   *
+   * Only for sources that are promotional graphics rather than photographs.
+   * The Iced Coffee Series files are the case this exists for: each is a
+   * finished 1080x1080 social post with a headline set across the top and the
+   * flavour name set beside the cup. Both are part of the pixels, and a tile
+   * that reads "Iced Coffee Series / Hazelnut" beside eleven tiles that read
+   * nothing is the same defect the corner badge was cropped out for.
+   *
+   * The badge is measured because it varies with the source. This does not
+   * vary: the four files are one template, so the region is stated once rather
+   * than scanned for. The treatment window is then taken inside this region,
+   * so a cropped source is framed by exactly the same rules as an uncropped
+   * one.
+   */
+  crop?: { left: number; top: number; width: number; height: number };
 };
 
 /** Square product tiles. */
@@ -69,6 +86,11 @@ export const sources: Record<string, Source> = {
   "wings-honey-mustard": { file: "2024/05/Honey-Mustard-1.jpg", treatment: "lifestyle" },
   "wings-honey-garlic": { file: "2024/05/Honey-Garlic-1.jpg", treatment: "lifestyle" },
   "wings-sweet-spicy": { file: "2024/05/Sweet-Spicy-1.jpg", treatment: "lifestyle" },
+  // The tenth flavour. 2025/03/Brads-Gravy.jpg is the Hot Wings refresh's own
+  // copy, but at 1059x692 against this one's 5184x3456, so the 2024/05 shoot
+  // wins on the same reasoning as the six above. It carries an NY3 corner
+  // badge, which measureCornerBadge() crops.
+  "wings-brads-gravy": { file: "2024/05/Brads-Gravy-3.jpg", treatment: "lifestyle" },
   // These three exist only as 300x300 thumbnails. Correct-but-small beats
   // large-but-wrong, so they ship at their real size and are on the re-shoot ask.
   "wings-cheezy": {
@@ -129,6 +151,37 @@ export const sources: Record<string, Source> = {
   "waffle-chocolate": { file: "2025/03/chocolate-coffee.png", treatment: "transparent" },
   "waffle-bavarian": { file: "2025/03/bavarian-coffee.png", treatment: "transparent" },
   "waffle-sunrise": { file: "2025/03/egg-coffee.png", treatment: "transparent" },
+
+  // --- Iced Coffee Series --------------------------------------------------
+  // One template, four flavours, each a finished social post. The crop keeps
+  // the cup and its garnish and drops the headline above it and the flavour
+  // name beside it; see `crop` on the Source type. The ground left behind is
+  // the same flat orange the burger and hotdog cutouts sit on, so these tile
+  // with them rather than against them.
+  //
+  // 2025/03/Ice-Coffee-FB-complete-no-price-1.jpg is the same series as a
+  // four-cup lineup. It is a category image, not an item image, so it is not
+  // mapped to any of the four rows.
+  "coffee-americano": {
+    file: "2025/03/AMERICANO.jpg",
+    treatment: "cutout",
+    crop: { left: 110, top: 320, width: 690, height: 690 },
+  },
+  "coffee-vanilla": {
+    file: "2025/03/VANILLA.jpg",
+    treatment: "cutout",
+    crop: { left: 110, top: 320, width: 690, height: 690 },
+  },
+  "coffee-dark-mocha": {
+    file: "2025/03/DARK-MOCHA.jpg",
+    treatment: "cutout",
+    crop: { left: 110, top: 320, width: 690, height: 690 },
+  },
+  "coffee-hazelnut": {
+    file: "2025/03/HAZELNUT.jpg",
+    treatment: "cutout",
+    crop: { left: 110, top: 320, width: 690, height: 690 },
+  },
 
   // --- Brand ---------------------------------------------------------------
   wordmark: { file: "2024/05/hotWingsLogo.png", treatment: "mark" },
@@ -293,19 +346,44 @@ export async function renderDerivative(key: string): Promise<Derivative> {
   const keepAlpha = source.treatment === "transparent" || source.treatment === "mark";
   const isScene = source.treatment === "scene";
 
+  // The usable region of the original. Without a declared crop that is the
+  // whole file, which is every source but the four coffee posts.
+  const region = source.crop ?? { left: 0, top: 0, width: meta.width, height: meta.height };
+  if (
+    region.left < 0 ||
+    region.top < 0 ||
+    region.left + region.width > meta.width ||
+    region.top + region.height > meta.height
+  ) {
+    throw new Error(
+      `crop for "${key}" falls outside ${source.file} (${meta.width}x${meta.height})`,
+    );
+  }
+
   // Only the lifestyle shots can carry the badge, and only they can be
-  // measured for it safely.
+  // measured for it safely. A declared crop is already the statement of what
+  // to remove, so scanning the original's top edge would measure pixels the
+  // region has excluded.
   const badgeWidth =
-    source.treatment === "lifestyle" ? await measureCornerBadge(input, meta.width) : 0;
+    source.treatment === "lifestyle" && !source.crop
+      ? await measureCornerBadge(input, meta.width)
+      : 0;
 
   // A mark keeps its own proportions. Everything else is cropped: scenes to
-  // 3:2, products to the square that the tile grid is built on.
-  const window =
+  // 3:2, products to the square that the tile grid is built on. The window is
+  // measured inside the region and then offset back onto the original, so a
+  // cropped source is framed by the same rules as an uncropped one.
+  const framed =
     source.treatment === "mark"
-      ? { left: 0, top: 0, width: meta.width, height: meta.height }
+      ? { left: 0, top: 0, width: region.width, height: region.height }
       : isScene
-        ? sceneWindow(meta.width, meta.height)
-        : squareWindow(meta.width, meta.height, badgeWidth);
+        ? sceneWindow(region.width, region.height)
+        : squareWindow(region.width, region.height, badgeWidth);
+  const window = {
+    ...framed,
+    left: framed.left + region.left,
+    top: framed.top + region.top,
+  };
   const targetWidth = Math.min(isScene ? SCENE_WIDTH : TILE_WIDTH, window.width);
 
   // Every opaque source in this archive still carries an alpha channel it

@@ -16,9 +16,21 @@ const heat = (slug: string): CatalogOption => {
  * those three paths, plus the real menu values they have to produce.
  */
 describe("optionPriceCents", () => {
+  // Level of Hotness went flat on 2026-09-07, so the menu no longer contains a
+  // variation-priced option and path 1 has to be exercised against a synthetic
+  // one. The path is still live in `optionPriceCents` and the column is still
+  // in the schema, and the spec names all three paths as required coverage, so
+  // the test stays rather than following the data out.
+  const variationPriced: CatalogOption = {
+    slug: "size-priced",
+    name: "Size priced",
+    priceCents: null,
+    variationPriceCents: { half: 3000, full: 4000 },
+  };
+
   it("path 1: takes the variation specific price when one exists", () => {
-    expect(optionPriceCents(heat("hot"), "half")).toBe(3000);
-    expect(optionPriceCents(heat("hot"), "full")).toBe(4000);
+    expect(optionPriceCents(variationPriced, "half")).toBe(3000);
+    expect(optionPriceCents(variationPriced, "full")).toBe(4000);
   });
 
   it("path 2: falls back to the option's flat price", () => {
@@ -47,24 +59,30 @@ describe("optionPriceCents", () => {
     // A null flat price states that the variation decides. With no variation
     // there is nothing to decide from, so the display falls to zero rather than
     // inventing a number. Real charging happens in place_order, not here.
-    expect(optionPriceCents(heat("insane"), null)).toBe(0);
+    expect(optionPriceCents(variationPriced, null)).toBe(0);
   });
 
   it("matches the published Level of Hotness price list", () => {
-    for (const slug of ["lite", "moderate", "hot", "wild"]) {
-      expect(optionPriceCents(heat(slug), "half")).toBe(3000);
-      expect(optionPriceCents(heat(slug), "full")).toBe(4000);
+    // Flat PHP 29 on every level and every size, per the Foodpanda listing.
+    // It was 30 on a half and 40 on a full, with insane at 40 and 60, from the
+    // website's Our Menu page. That page is stale.
+    for (const slug of ["lite", "moderate", "hot", "wild", "insane"]) {
+      for (const size of ["half", "full", "boneless-half", "boneless-full"]) {
+        expect(optionPriceCents(heat(slug), size), `${slug} on ${size}`).toBe(2900);
+      }
     }
-
-    expect(optionPriceCents(heat("insane"), "half")).toBe(4000);
-    expect(optionPriceCents(heat("insane"), "full")).toBe(6000);
   });
 
-  it("keeps the half and full prices genuinely different", () => {
-    // The whole reason menu_option_variation_prices exists. If these ever
-    // collapse to one number, the flat option model has crept back in.
-    for (const level of wingHeat.options.filter((option) => option.priceCents === null)) {
-      expect(optionPriceCents(level, "half")).not.toBe(optionPriceCents(level, "full"));
+  it("prices every heat level the same on every size", () => {
+    // The inverse of the assertion this replaced, which required half and full
+    // to differ. Boneless is why it is worth stating: a size-dependent heat
+    // price would have needed two more numbers the moment boneless arrived,
+    // and nobody would have noticed them missing.
+    for (const level of wingHeat.options) {
+      const sizes = ["half", "full", "boneless-half", "boneless-full"].map((size) =>
+        optionPriceCents(level, size),
+      );
+      expect(new Set(sizes).size, level.slug).toBe(1);
     }
   });
 

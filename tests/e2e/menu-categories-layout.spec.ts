@@ -53,7 +53,7 @@ test.describe("categories", () => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     const count = page
       .locator("form")
-      .filter({ has: page.locator('input[value="Chicken Wings"]') })
+      .filter({ has: page.locator('input[value="Chicken"]') })
       // .first(): the delete dialog's own name plate, closed inside this same
       // form, is mono too.
       .locator("p.font-mono")
@@ -63,11 +63,11 @@ test.describe("categories", () => {
   });
 
   test("a row's Save takes the brand orange only once it is dirty", async ({ page }) => {
-    const save = page.getByRole("button", { name: "Save Chicken Wings" });
+    const save = page.getByRole("button", { name: "Save Chicken" });
     const atRest = await save.evaluate((node) => getComputedStyle(node).backgroundColor);
 
-    await page.locator('input[value="Chicken Wings"]').first().fill("Chicken Wings ");
-    const dirty = page.getByRole("button", { name: "Save changes to Chicken Wings" });
+    await page.locator('input[value="Chicken"]').first().fill("Chicken ");
+    const dirty = page.getByRole("button", { name: "Save changes to Chicken" });
     await expect(dirty).toBeVisible();
     expect(await dirty.evaluate((node) => getComputedStyle(node).backgroundColor)).not.toBe(atRest);
   });
@@ -76,7 +76,7 @@ test.describe("categories", () => {
     const names = await page
       .getByRole("button", { name: /^Delete category: / })
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("aria-label")));
-    expect(names).toContain("Delete category: Chicken Wings");
+    expect(names).toContain("Delete category: Chicken");
     expect(new Set(names).size).toBe(names.length);
   });
 

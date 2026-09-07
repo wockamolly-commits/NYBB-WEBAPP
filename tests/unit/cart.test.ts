@@ -168,9 +168,9 @@ describe("cartQuantity and snapshotTotalCents", () => {
   });
 
   it("totals the stored snapshots", () => {
-    // PHP 359 each (329 plus 30 of heat on a half), twice.
+    // PHP 358 each (329 plus 29 of heat), twice.
     const cart = cartOf(wingLine("classic-buffalo", "hot", "half", 2));
-    expect(snapshotTotalCents(cart)).toBe(71800);
+    expect(snapshotTotalCents(cart)).toBe(71600);
   });
 });
 
@@ -180,9 +180,9 @@ describe("resolveCart", () => {
     const resolved = resolveCart(categories, cart);
 
     expect(resolved.lines).toHaveLength(1);
-    expect(resolved.lines[0].unitPriceCents).toBe(56900);
-    expect(resolved.lines[0].totalCents).toBe(113800);
-    expect(resolved.subtotalCents).toBe(113800);
+    expect(resolved.lines[0].unitPriceCents).toBe(55800);
+    expect(resolved.lines[0].totalCents).toBe(111600);
+    expect(resolved.subtotalCents).toBe(111600);
     expect(resolved.quantity).toBe(2);
     expect(resolved.corrected).toBeNull();
     expect(resolved.dropped).toHaveLength(0);
@@ -254,8 +254,8 @@ describe("resolveCart", () => {
     const resolved = resolveCart(categories, cartOf(stale));
 
     expect(resolved.lines[0].repriced).toBe(true);
-    expect(resolved.lines[0].unitPriceCents).toBe(35900);
-    expect(resolved.corrected?.lines[0].unitPriceCents).toBe(35900);
+    expect(resolved.lines[0].unitPriceCents).toBe(35800);
+    expect(resolved.corrected?.lines[0].unitPriceCents).toBe(35800);
   });
 
   it("settles: resolving the corrected cart corrects nothing further", () => {
@@ -319,7 +319,7 @@ describe("lineHref", () => {
         unitPriceCents: 34900,
       }),
     );
-    expect(lineHref(resolved.lines[0])).toBe("/menu/ribs/ribs-original");
+    expect(lineHref(resolved.lines[0])).toBe("/menu/ny-specials/ribs-original");
   });
 });
 

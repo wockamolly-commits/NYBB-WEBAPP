@@ -33,20 +33,26 @@ describe("unitPriceCents", () => {
     expect(unitPriceCents(wings, select("half", "classic-buffalo", "none"))).toBe(32900);
   });
 
-  it("charges the half price of heat on a half order", () => {
-    // PHP 329 plus PHP 30.
-    expect(unitPriceCents(wings, select("half", "classic-buffalo", "hot"))).toBe(35900);
+  it("adds the heat charge to a half order", () => {
+    // PHP 329 plus PHP 29.
+    expect(unitPriceCents(wings, select("half", "classic-buffalo", "hot"))).toBe(35800);
   });
 
-  it("charges the full price of the same heat on a full order", () => {
-    // PHP 529 plus PHP 40, and the difference from the line above is the whole
-    // reason menu_option_variation_prices exists.
-    expect(unitPriceCents(wings, select("full", "classic-buffalo", "hot"))).toBe(56900);
+  it("adds the same heat charge to a full order", () => {
+    // PHP 529 plus the same PHP 29. Heat went flat on 2026-09-07; it used to
+    // be 30 on a half and 40 on a full.
+    expect(unitPriceCents(wings, select("full", "classic-buffalo", "hot"))).toBe(55800);
   });
 
-  it("prices Insane apart from the other four levels", () => {
-    expect(unitPriceCents(wings, select("half", "sweet-spicy", "insane"))).toBe(36900);
-    expect(unitPriceCents(wings, select("full", "sweet-spicy", "insane"))).toBe(58900);
+  it("prices Insane level with the other four levels", () => {
+    // Insane used to cost more than the rest. On the current menu it does not.
+    expect(unitPriceCents(wings, select("half", "sweet-spicy", "insane"))).toBe(35800);
+    expect(unitPriceCents(wings, select("full", "sweet-spicy", "insane"))).toBe(55800);
+  });
+
+  it("charges the same heat on boneless as on bone-in", () => {
+    expect(unitPriceCents(wings, select("boneless-half", "classic-buffalo", "hot"))).toBe(35800);
+    expect(unitPriceCents(wings, select("boneless-full", "classic-buffalo", "hot"))).toBe(55800);
   });
 
   it("charges nothing for the flavour itself", () => {
@@ -79,7 +85,7 @@ describe("lineTotalCents", () => {
   it("multiplies by quantity", () => {
     expect(
       lineTotalCents(wings, { ...select("full", "honey-garlic", "wild"), quantity: 3 }),
-    ).toBe((52900 + 4000) * 3);
+    ).toBe((52900 + 2900) * 3);
   });
 
   it("clamps a quantity below one", () => {
@@ -212,7 +218,11 @@ describe("previewImage", () => {
   });
 
   it("returns null rather than a broken image for an unphotographed item", () => {
-    const coffee = findItem(categories, "iced-americano") as MenuItem;
-    expect(previewImage(coffee, {}).image).toBeNull();
+    // French fries, not iced coffee. The coffee rows were the stand-in for
+    // "no photograph exists" until the Iced Coffee Series posts were cropped
+    // into the library; the three sides below are what is genuinely
+    // unphotographed, and the archive holds nothing that could change that.
+    const fries = findItem(categories, "french-fries") as MenuItem;
+    expect(previewImage(fries, {}).image).toBeNull();
   });
 });

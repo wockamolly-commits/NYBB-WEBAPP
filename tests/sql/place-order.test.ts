@@ -169,11 +169,10 @@ describe("place_order, the money", () => {
   it("prices a line from the price list, not from anything the client sent", async () => {
     const placed = await place(db, order([WINGS], slot));
 
-    // Full wings 529.00, Classic Buffalo free, Insane on a FULL order 60.00.
-    // Twice. The Insane figure is the point: on a HALF order it is 40.00, and
-    // an option price that depends on the chosen size is exactly what
-    // menu_option_variation_prices exists for.
-    expect(placed.subtotalCents).toBe((52900 + 6000) * 2);
+    // Full wings 529.00, Classic Buffalo free, Insane 29.00. Twice.
+    // Insane cost 60.00 on a full order and 40.00 on a half until 2026-09-07,
+    // when the menu went to a flat heat price on every size.
+    expect(placed.subtotalCents).toBe((52900 + 2900) * 2);
     expect(placed.totalCents).toBe(placed.subtotalCents);
     expect(placed.discountCents).toBe(0);
 
@@ -188,18 +187,26 @@ describe("place_order, the money", () => {
        where o.id = $1`,
       [placed.orderId],
     );
-    expect(stored.rows[0].unit_price_cents).toBe(58900);
-    expect(stored.rows[0].line_total_cents).toBe(117800);
-    expect(stored.rows[0].subtotal_cents).toBe(117800);
-    expect(Number(stored.rows[0].total_cents)).toBe(117800);
+    expect(stored.rows[0].unit_price_cents).toBe(55800);
+    expect(stored.rows[0].line_total_cents).toBe(111600);
+    expect(stored.rows[0].subtotal_cents).toBe(111600);
+    expect(Number(stored.rows[0].total_cents)).toBe(111600);
   });
 
-  it("charges the HALF price for the same heat level on a HALF order", async () => {
+  it("charges the same heat level the same on a HALF order", async () => {
     const placed = await place(
       db,
       order([{ ...WINGS, variation_slug: "half", qty: 1 }], slot),
     );
-    expect(placed.subtotalCents).toBe(32900 + 4000);
+    expect(placed.subtotalCents).toBe(32900 + 2900);
+  });
+
+  it("charges the same heat level the same on a BONELESS order", async () => {
+    const placed = await place(
+      db,
+      order([{ ...WINGS, variation_slug: "boneless-full", qty: 1 }], slot),
+    );
+    expect(placed.subtotalCents).toBe(52900 + 2900);
   });
 
   it("stores what each option added, rather than leaving it to be recomputed", async () => {
@@ -231,7 +238,7 @@ describe("place_order, the money", () => {
     expect(options.rows[1]).toMatchObject({
       group_name_snapshot: "Level of Hotness",
       name_snapshot: "Insane",
-      price_cents: 6000,
+      price_cents: 2900,
       heat_percent_snapshot: 100,
     });
   });
@@ -315,11 +322,11 @@ describe("place_order, what it will not sell", () => {
   it("refuses an item whose whole category has been taken off the board", async () => {
     // get_storefront_menu filters on the category too, so this function has to.
     // A filter it is missing sells something the menu is hiding.
-    await db.exec("update menu_categories set is_active = false where slug = 'ribs'");
+    await db.exec("update menu_categories set is_active = false where slug = 'ny-specials'");
     await expect(
       place(db, order([{ item_slug: "ribs-original", variation_slug: "regular", qty: 1 }], slot)),
     ).rejects.toThrow(/ITEM_UNAVAILABLE/);
-    await db.exec("update menu_categories set is_active = true where slug = 'ribs'");
+    await db.exec("update menu_categories set is_active = true where slug = 'ny-specials'");
   });
 
   it("refuses a line whose item is held at the ordering branch", async () => {
