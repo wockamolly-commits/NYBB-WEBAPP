@@ -121,7 +121,9 @@ export function WorkspaceSelect<Value extends string>({
         <Select.Positioner
           align="start"
           alignItemWithTrigger={false}
-          className="z-[100] outline-none select-none"
+          /* z-30 for the reason WorkspaceDateField's calendar is z-30:
+             under the sticky header, over the page. */
+          className="z-30 outline-none select-none"
           /* Down, always, the same rule the date field's calendar follows. A
              list that flips above its trigger on a short window and below it
              on a tall one is a list you have to look for, and these controls

@@ -547,6 +547,13 @@ avoids collisions, which is what keeps a popup inside a 375px screen. Nothing is
 this work: a list stops shrinking at 11rem and a calendar is never capped at all, so on a genuinely
 short window they run past the fold and the page scrolls to them.
 
+They also sit UNDER the sticky header rather than over it, at `z-30` against the header's `z-40`
+and page content's `z-20`. An anchored panel travels with its field, so a popup that outranked the
+header slid up and painted over the workspace nav as soon as the page scrolled, covering the logo
+and the links. Passing behind the header is what every other anchored thing on a scrolling page
+does, and nothing is lost by it: the panel opens downward, away from the header, so it is never
+clipped while the field it belongs to is on screen.
+
 Workspace date fields are the same rule applied to the calendar. The field itself stays a real
 `<input type="date">`, so it keeps segmented entry, typed dates and its `YYYY-MM-DD` value, but the
 browser's own panel is switched off and `components/ui/WorkspaceDateField.tsx` draws the calendar.

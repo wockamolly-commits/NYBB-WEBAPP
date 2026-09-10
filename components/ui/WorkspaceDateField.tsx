@@ -187,12 +187,23 @@ export function WorkspaceDateField({
         <Popover.Portal>
           <Popover.Positioner
             anchor={anchorRef}
+            /* Below the sticky header, which is z-40, and above page
+               content, which tops out at z-20.
+
+               A popup that outranks the header paints over the workspace
+               nav the moment the page scrolls: the panel is anchored, so it
+               travels up with its field, and at z-100 it crosses the header
+               and covers the logo and the nav links. An anchored panel
+               should pass BEHIND a sticky header, the way every other
+               anchored thing on a scrolling page does. It is never clipped
+               while its field is in view, because it opens downward, away
+               from the header. */
             /* The gap the browser's panel could not be given. `align="start"`
                sets the calendar's left edge on the field's left edge rather
                than on the small button that opened it, which is what makes it
                read as belonging to the field. */
             align="start"
-            className="z-[100] outline-none"
+            className="z-30 outline-none"
             /* Down, always. The positioner would otherwise flip the calendar
                above the field when the window is short, which is correct in
                the abstract and wrong here: the filter row sits near the top of
