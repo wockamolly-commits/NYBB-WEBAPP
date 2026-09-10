@@ -290,7 +290,7 @@ function optionGroupRows() {
   w("");
 
   w("insert into menu_options (");
-  w("  group_id, slug, name, description, price_cents, heat_percent,");
+  w("  group_id, slug, code, name, description, price_cents, heat_percent,");
   w("  image_source, sort_order");
   w(") values");
 
@@ -302,7 +302,8 @@ function optionGroupRows() {
         [
           "  (",
           `(select id from menu_option_groups where slug = ${lit(group.slug)}),`,
-          ` ${lit(option.slug)}, ${lit(option.name)}, ${lit(option.description ?? null)},`,
+          ` ${lit(option.slug)}, ${lit(option.code ?? null)}, ${lit(option.name)},`,
+          ` ${lit(option.description ?? null)},`,
           // Null is meaningful: it says this option has no flat price at all
           // and the variation decides. See menu_option_variation_prices below.
           ` ${option.priceCents === null ? "null" : option.priceCents},`,
@@ -314,6 +315,7 @@ function optionGroupRows() {
   }
   w(rows.join(",\n"));
   w("on conflict (group_id, slug) do update set");
+  w("  code = excluded.code,");
   w("  name = excluded.name,");
   w("  description = excluded.description,");
   w("  price_cents = excluded.price_cents,");

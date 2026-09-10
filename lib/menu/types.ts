@@ -35,6 +35,8 @@ export type MenuVariation = {
 export type MenuOption = {
   slug: string;
   name: string;
+  /** The menu's own code for this option: NY1, NY7. Wing flavours only. */
+  code?: string | null;
   description?: string | null;
   /**
    * The flat upcharge, or null when this option has no flat price at all and

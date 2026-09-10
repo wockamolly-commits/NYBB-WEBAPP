@@ -40,6 +40,7 @@ const wingFlavours: CatalogOptionGroup = {
   options: [
     {
       slug: "classic-buffalo",
+      code: "NY1",
       name: "Classic Buffalo",
       priceCents: 0,
       description: "The original. Tangy, buttery, unmistakably buffalo.",
@@ -47,6 +48,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "bbq-lime",
+      code: "NY2",
       name: "BBQ Lime",
       priceCents: 0,
       description: "Smoky barbecue cut with lime.",
@@ -54,6 +56,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "cheezy",
+      code: "NY3",
       name: "Cheezy",
       priceCents: 0,
       description: "Thick cheese sauce, poured on.",
@@ -61,6 +64,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "garlic-parmesan",
+      code: "NY4",
       name: "Garlic Parmesan",
       priceCents: 0,
       description: "Garlic butter and grated parmesan.",
@@ -68,6 +72,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "honey-mustard",
+      code: "NY5",
       name: "Honey Mustard",
       priceCents: 0,
       description: "Sweet and sharp in equal measure.",
@@ -75,6 +80,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "smokey-barbecue",
+      code: "NY6",
       name: "Smokey BBQ",
       priceCents: 0,
       description: "Deep, dark and smoky.",
@@ -82,6 +88,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "salted-egg",
+      code: "NY7",
       name: "Salted Egg",
       priceCents: 0,
       description: "Rich, savoury, a Filipino favourite.",
@@ -89,6 +96,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "honey-garlic",
+      code: "NY8",
       name: "Honey Garlic",
       priceCents: 0,
       description: "Sticky honey, toasted garlic.",
@@ -96,6 +104,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "sweet-spicy",
+      code: "NY9",
       name: "Sweet Spicy",
       priceCents: 0,
       description: "Sweet first, heat after.",
@@ -103,6 +112,7 @@ const wingFlavours: CatalogOptionGroup = {
     },
     {
       slug: "brads-gravy",
+      code: "NY10",
       name: "Brad's Gravy",
       priceCents: 0,
       description: "Savoury gravy of meat stock and mushroom.",

@@ -157,3 +157,31 @@ describe("branchAvailabilityGridSchema", () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+/**
+ * The code field, which is a string and therefore not exposed to the coercion
+ * trap above. These pin the part that is still easy to get wrong: a blank box
+ * must end up as null in the database, not as an empty string, because
+ * FlavourGrid decides whether to paint a badge by asking only whether a code
+ * is present. `""` is present.
+ */
+describe("optionSchema code", () => {
+  it("keeps a code, trimmed", () => {
+    const parsed = optionSchema.parse({ ...base, code: "  NY9 " });
+    expect(parsed.code).toBe("NY9");
+  });
+
+  it("reads a missing, blank or whitespace-only code as empty, which the action sends as null", () => {
+    for (const input of [undefined, "", "   "]) {
+      const parsed = optionSchema.parse({ ...base, ...(input === undefined ? {} : { code: input }) });
+      expect(parsed.code, JSON.stringify(input)).toBe("");
+      // This is the step the action takes, and the reason "" is safe here.
+      expect(parsed.code || null, JSON.stringify(input)).toBeNull();
+    }
+  });
+
+  it("refuses a code longer than the printed menu could carry", () => {
+    expect(optionSchema.safeParse({ ...base, code: "N".repeat(17) }).success).toBe(false);
+    expect(optionSchema.safeParse({ ...base, code: "N".repeat(16) }).success).toBe(true);
+  });
+});

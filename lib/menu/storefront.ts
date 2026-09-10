@@ -41,6 +41,7 @@ const partialImageSchema = z
 const optionSchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(1),
+  code: z.string().nullish(),
   description: z.string().nullish(),
   priceCents: z.number().int().nonnegative().nullable(),
   variationPriceCents: z.record(z.string(), z.number().int().nonnegative()),
@@ -113,6 +114,7 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
           description: option.description ?? null,
           priceCents: option.priceCents,
           variationPriceCents: option.variationPriceCents,
+          code: option.code ?? null,
           heatPercent: option.heatPercent ?? null,
           image: menuImageOf(resolveMenuImage(option.image)),
         })),

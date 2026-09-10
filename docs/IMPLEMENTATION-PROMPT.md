@@ -263,6 +263,9 @@ earns its place even now that only one brand trades. Do not import Sports Lounge
 >   because it is on that brand's eleven-flavour list too, but it is on both. The genuinely Sports
 >   Lounge only flavours are Lemon Pepper, Pesto and Hickory.
 > - **Boneless wings**, at the same price as bone-in, on all ten flavours.
+> - **The flavours are numbered `NY1` to `NY10`** on the menu, in the order listed above. The
+>   transcription missed them because they sit in the corner of each flavour photograph rather
+>   than in the text, which is also why they reached the catalog only in September 2026.
 > - **Level of Hotness is a flat PHP 29**, every level, every size. Not 30/40 by size with Insane
 >   dearer. `menu_option_variation_prices` therefore has no rows; the table stays because it is the
 >   correct model for the case and costs nothing empty.
@@ -580,6 +583,23 @@ not fight the orange, make it the system.
 the top-left, some with an internal shot code (`NY1`, `NY4`, `NY7`). It is part of the pixels. Crop
 it out during ingest, or align the square crop so it lands off-frame. Do not ship it: an unexplained
 code on a product card reads as a bug.
+
+> **Half wrong, corrected 2026-09-10.** The cropping is right and stays. The reading of the code
+> was wrong: `NY1` to `NY10` are not an internal shot list, they are the menu's own numbering of
+> the ten wing flavours, they run in the order this catalog already lists them, and the live
+> website prints them on the flavour tiles exactly as it prints `BB1` on a burger. Cropping them
+> out therefore threw away real menu information, and the owner noticed it missing.
+>
+> The fix is not to stop cropping. A number burned into a photograph cannot be reordered,
+> corrected, translated or read by a screen reader, and it lands wherever the crop happens to put
+> it. The number belongs in the data: `menu_options.code`, added in `0068`, mirroring
+> `menu_items.code` which has held `BB1` and `H3` since `0003`. The pixels stay cropped and the
+> code is drawn from the row.
+>
+> **Read the numbers off the 2025/03 shoot, never the 2024/05 one.** The two shoots number the
+> same photographs differently: 2024/05 has Brad's Gravy at `NY3` and Sweet Spicy at `NY10`, from
+> the nine-flavour menu that predates Brad's Gravy being the tenth. Seven of the ten agree, so
+> checking two or three of them confirms whichever answer you started with.
 
 > **Sharpened in Phase 0. It is not small.** On a 5184x3456 original the triangle spans 1801px
 > along the top edge, roughly 35% of the width; on a 300x300 thumbnail it spans 113px, roughly

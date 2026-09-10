@@ -92,7 +92,7 @@ describe("catalog write RPCs", () => {
     for (const signature of [
       "staff_save_menu_category(uuid, text, text, boolean)",
       "staff_save_menu_option_group(uuid, text, text, boolean)",
-      "staff_save_menu_option(uuid, uuid, text, text, bigint, int, boolean)",
+      "staff_save_menu_option(uuid, uuid, text, text, text, bigint, int, boolean)",
       "staff_set_menu_option_image(uuid, text, int, int, text, text)",
       "staff_delete_menu_entity(text, uuid)",
     ]) {
@@ -131,7 +131,7 @@ describe("catalog write RPCs", () => {
   it("refuses a cashier every configure write", async () => {
     await expect(asUser(db, CASHIER, `select staff_save_menu_category(null, 'Drinks', null, true)`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_save_menu_option_group(null, 'Dips', null, true)`)).rejects.toThrow(/FORBIDDEN/);
-    await expect(asUser(db, CASHIER, `select staff_save_menu_option(null, '${await groupId(db)}', 'Garlic', null, 2000, null, true)`)).rejects.toThrow(/FORBIDDEN/);
+    await expect(asUser(db, CASHIER, `select staff_save_menu_option(null, '${await groupId(db)}', 'Garlic', null, null, 2000, null, true)`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_set_menu_option_image('${await optionId(db)}', 'a/b.jpg', 800, 600, null, null)`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asOwner(db, CASHIER, `select staff_reorder_menu('category', array['${await categoryId(db)}'::uuid])`)).rejects.toThrow(/FORBIDDEN/);
     await expect(asUser(db, CASHIER, `select staff_delete_menu_entity('category', '${await categoryId(db)}')`)).rejects.toThrow(/FORBIDDEN/);
@@ -190,28 +190,54 @@ describe("catalog write RPCs", () => {
 
   it("stores a null option price as null rather than zero", async () => {
     const group = await groupId(db);
-    const created = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Insane', null, null, 100, true)`))[0]!.staff_save_menu_option;
+    const created = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Insane', null, null, null, 100, true)`))[0]!.staff_save_menu_option;
     expect(await scalar<number | null>(db, `select price_cents from menu_options where id = '${created}'`)).toBeNull();
     expect(await scalar<number>(db, `select heat_percent from menu_options where id = '${created}'`)).toBe(100);
   });
 
   it("makes an option slug unique inside its group and not across the menu", async () => {
     const hotness = await scalar<string>(db, "select id::text from menu_option_groups where slug = 'level-of-hotness'");
-    const created = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Classic Buffalo', null, null, null, true)`))[0]!.staff_save_menu_option;
+    const created = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Classic Buffalo', null, null, null, null, true)`))[0]!.staff_save_menu_option;
     // 'classic-buffalo' is already taken in Wing Flavour, and that is not a
     // collision here: menu_options is unique on (group_id, slug).
     expect(await slugOf(db, "menu_options", created)).toBe("classic-buffalo");
 
-    const twice = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Classic Buffalo', null, null, null, true)`))[0]!.staff_save_menu_option;
+    const twice = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Classic Buffalo', null, null, null, null, true)`))[0]!.staff_save_menu_option;
     expect(await slugOf(db, "menu_options", twice)).toMatch(/^classic-buffalo-[a-z0-9]{6}$/);
+  });
+
+  it("stores a menu code, and stores a blank one as null rather than as empty", async () => {
+    const group = await groupId(db);
+    const withCode = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER,
+      `select staff_save_menu_option(null, '${group}', 'Lemon Pepper', 'NY11', null, null, null, true)`))[0]!.staff_save_menu_option;
+    expect(await scalar<string>(db, `select code from menu_options where id = '${withCode}'`)).toBe("NY11");
+
+    // Blank is not a code. Stored as '' it would be a value, and the flavour
+    // tile would paint an empty badge above the name, because the tile asks
+    // only whether a code is present. AGENTS.md rule 6, in its string form.
+    const blank = (await asUser<{ staff_save_menu_option: string }>(db, MANAGER,
+      `select staff_save_menu_option(null, '${group}', 'Hickory', '   ', null, null, null, true)`))[0]!.staff_save_menu_option;
+    expect(await scalar<string | null>(db, `select code from menu_options where id = '${blank}'`)).toBeNull();
+
+    // And clearing an existing one puts it back to null rather than to ''.
+    await asUser(db, MANAGER,
+      `select staff_save_menu_option('${withCode}', '${group}', 'Lemon Pepper', '', null, null, null, true)`);
+    expect(await scalar<string | null>(db, `select code from menu_options where id = '${withCode}'`)).toBeNull();
+  });
+
+  it("refuses a code longer than the printed menu could carry", async () => {
+    const group = await groupId(db);
+    await expect(asUser(db, MANAGER,
+      `select staff_save_menu_option(null, '${group}', 'Pesto', '${"N".repeat(17)}', null, null, null, true)`),
+    ).rejects.toThrow(/INVALID_INPUT/);
   });
 
   it("refuses an out of range price, an out of range heat and a missing group", async () => {
     const group = await groupId(db);
-    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Gold Leaf', null, 10000001, null, true)`)).rejects.toThrow(/PRICE_RANGE/);
-    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Gold Leaf', null, -1, null, true)`)).rejects.toThrow(/PRICE_RANGE/);
-    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Nuclear', null, null, 101, true)`)).rejects.toThrow(/HEAT_RANGE/);
-    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '00000000-0000-4000-8000-0000000000ff', 'Nuclear', null, null, null, true)`)).rejects.toThrow(/GROUP_NOT_FOUND/);
+    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Gold Leaf', null, null, 10000001, null, true)`)).rejects.toThrow(/PRICE_RANGE/);
+    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Gold Leaf', null, null, -1, null, true)`)).rejects.toThrow(/PRICE_RANGE/);
+    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '${group}', 'Nuclear', null, null, null, 101, true)`)).rejects.toThrow(/HEAT_RANGE/);
+    await expect(asUser(db, MANAGER, `select staff_save_menu_option(null, '00000000-0000-4000-8000-0000000000ff', 'Nuclear', null, null, null, null, true)`)).rejects.toThrow(/GROUP_NOT_FOUND/);
   });
 
   // 0056, mirroring the guard staff_set_menu_item_image has carried since
@@ -310,7 +336,7 @@ describe("catalog write RPCs", () => {
 
   it("deletes an unlinked option group and the options under it", async () => {
     const hotness = await scalar<string>(db, "select id::text from menu_option_groups where slug = 'level-of-hotness'");
-    await asUser(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Insane', null, null, 100, true)`);
+    await asUser(db, MANAGER, `select staff_save_menu_option(null, '${hotness}', 'Insane', null, null, null, 100, true)`);
     await asUser(db, MANAGER, `select staff_delete_menu_entity('optionGroup', '${hotness}')`);
     expect(await scalar<number>(db, `select count(*)::int from menu_option_groups where slug = 'level-of-hotness'`)).toBe(0);
     expect(await scalar<number>(db, `select count(*)::int from menu_options where name = 'Insane'`)).toBe(0);
@@ -356,7 +382,7 @@ describe("catalog write RPCs", () => {
   it("records a created category under its own action", async () => {
     await asUser(db, MANAGER, `select staff_save_menu_category(null, 'Drinks', null, true)`);
     await asUser(db, MANAGER, `select staff_save_menu_option_group(null, 'Dips', null, true)`);
-    await asUser(db, MANAGER, `select staff_save_menu_option(null, '${await groupId(db)}', 'Garlic Parmesan', null, 3000, null, true)`);
+    await asUser(db, MANAGER, `select staff_save_menu_option(null, '${await groupId(db)}', 'Garlic Parmesan', null, null, 3000, null, true)`);
     const rows = await asUser<{ action: string }>(db, MANAGER, "select action from audit_logs order by id");
     expect(rows.map((row) => row.action)).toEqual([
       "menu.category.created",

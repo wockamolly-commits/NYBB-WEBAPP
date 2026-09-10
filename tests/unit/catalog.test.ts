@@ -18,6 +18,37 @@ describe("catalog integrity", () => {
     expect(new Set(itemSlugs).size).toBe(itemSlugs.length);
   });
 
+  /**
+   * The ten flavour codes, spelled out rather than generated from the array
+   * order, because generating them would assert only that this file agrees
+   * with itself. These are the numbers on the printed menu and on the badges
+   * in the 2025/03 shoot, and they are the point of the test.
+   *
+   * The 2024/05 shoot numbers the same photographs differently (Brad's Gravy
+   * NY3, Sweet Spicy NY10) from a nine-flavour menu that predates Brad's
+   * Gravy. Seven of ten agree, so a spot check of the wrong shoot passes.
+   */
+  it("numbers the wing flavours NY1 to NY10, as the printed menu does", () => {
+    expect(wingFlavours.options.map((option) => [option.slug, option.code])).toEqual([
+      ["classic-buffalo", "NY1"],
+      ["bbq-lime", "NY2"],
+      ["cheezy", "NY3"],
+      ["garlic-parmesan", "NY4"],
+      ["honey-mustard", "NY5"],
+      ["smokey-barbecue", "NY6"],
+      ["salted-egg", "NY7"],
+      ["honey-garlic", "NY8"],
+      ["sweet-spicy", "NY9"],
+      ["brads-gravy", "NY10"],
+    ]);
+  });
+
+  it("gives a code to the flavours and to nothing else", () => {
+    for (const option of wingHeat.options) {
+      expect(option.code, option.slug).toBeUndefined();
+    }
+  });
+
   it("gives every item at least one variation", () => {
     for (const item of allItems()) {
       expect(item.variations.length, item.slug).toBeGreaterThan(0);

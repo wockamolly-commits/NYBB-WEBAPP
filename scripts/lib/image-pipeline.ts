@@ -201,10 +201,16 @@ export const sources: Record<string, Source> = {
 /**
  * Measure the photographer's corner badge, in pixels.
  *
- * Several shots carry a flat orange triangle in the top-left, some with an
- * internal shot code (NY1, NY3, NY6). It is part of the pixels, and an
- * unexplained code on a product card reads as a bug, so it has to be cropped
- * out.
+ * Several shots carry a flat orange triangle in the top-left carrying the
+ * flavour's menu code (NY1, NY3, NY6). It is part of the pixels, and it still
+ * has to be cropped out: a number burned into a photograph cannot be
+ * reordered, corrected or read aloud, and it lands wherever the crop puts it.
+ *
+ * Cropping it does not discard it. The same number lives on
+ * menu_options.code, added in migration 0068 and read out of the 2025/03
+ * shoot's badges, and FlavourGrid draws it from there. Do not take the
+ * numbers off the 2024/05 shoot: it numbers Brad's Gravy NY3 and Sweet Spicy
+ * NY10, from the nine-flavour menu that predates Brad's Gravy.
  *
  * A fixed percentage inset was the obvious first answer and it was wrong: the
  * badge is a different fraction of the frame on a 5184px original than on a

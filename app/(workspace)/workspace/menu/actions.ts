@@ -321,6 +321,7 @@ export async function saveMenuOption(
     id: formData.get("id") ?? "",
     groupId: formData.get("groupId"),
     name: formData.get("name"),
+    code: formData.get("code") ?? "",
     description: formData.get("description") ?? "",
     pricing: formData.get("pricing"),
     priceCents: formData.get("priceCents") ?? 0,
@@ -339,6 +340,9 @@ export async function saveMenuOption(
     p_id: parsed.data.id || null,
     p_group_id: parsed.data.groupId,
     p_name: parsed.data.name,
+    // `|| null` and not `?? null`: an empty box is "" here, and "" must reach
+    // the database as null, not as a code with no characters in it.
+    p_code: parsed.data.code || null,
     p_description: parsed.data.description || null,
     p_price_cents: parsed.data.resolvedPriceCents,
     p_heat_percent: parsed.data.resolvedHeatPercent,

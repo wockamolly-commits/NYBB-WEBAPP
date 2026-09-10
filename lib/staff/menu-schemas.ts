@@ -39,6 +39,22 @@ export const optionSchema = z
     id: z.union([z.uuid(), z.literal("")]).default(""),
     groupId: z.uuid(),
     name: z.string().trim().min(1).max(100),
+    /**
+     * The printed menu's number for this option: NY1 to NY10 on the wing
+     * flavours, nothing on a heat level.
+     *
+     * A plain string, so none of the coercion hazard above applies: there is
+     * no `z.coerce` here to turn "" into a value, and the action sends
+     * `code || null`, so a cleared box reaches staff_save_menu_option as null
+     * and is stored as null. Blank means "no number on the menu", which is
+     * not the same as a code that happens to be empty: an empty string would
+     * render as an empty badge above the flavour name, because FlavourGrid
+     * only checks whether a code is present.
+     *
+     * 16 is the bound staff_save_menu_item already puts on an item's code,
+     * and the RPC enforces it again server side.
+     */
+    code: z.string().trim().max(16).default(""),
     description: z.string().trim().max(300).default(""),
     pricing: z.enum(["free", "flat", "bySize"]),
     priceCents: z.coerce.number().int().min(0).max(10_000_000).default(0),

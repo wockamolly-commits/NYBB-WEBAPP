@@ -59,6 +59,14 @@ export type CatalogOption = {
   slug: string;
   name: string;
   /**
+   * The menu's own code for this option: NY1, NY7.
+   *
+   * Only the wing flavours have one. It is the same kind of handle as
+   * `CatalogItem.code`, and it lives here rather than there because the
+   * flavours are options on one item, not items of their own.
+   */
+  code?: string;
+  /**
    * Flat upcharge in centavos, or null when the price depends on the chosen
    * variation, in which case `variationPriceCents` carries it.
    */

@@ -36,6 +36,7 @@ function toOption(option: CatalogOption): MenuOption {
   return {
     slug: option.slug,
     name: option.name,
+    code: option.code ?? null,
     description: option.description ?? null,
     priceCents: option.priceCents,
     variationPriceCents: option.variationPriceCents ?? {},

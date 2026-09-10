@@ -32,8 +32,8 @@ const rows: ManagedMenuRows = {
     { id: "grp-heat", slug: "level-of-hotness", name: "Level of Hotness", description: null, is_active: true, sort_order: 20 },
   ],
   options: [
-    { id: "opt-insane", group_id: "grp-heat", slug: "insane", name: "Insane", description: null, price_cents: null, heat_percent: 100, image_url: null, image_source: null, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 60 },
-    { id: "opt-none", group_id: "grp-heat", slug: "none", name: "No heat", description: null, price_cents: 0, heat_percent: 0, image_url: null, image_source: null, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 10 },
+    { id: "opt-insane", group_id: "grp-heat", slug: "insane", name: "Insane", code: null, description: null, price_cents: null, heat_percent: 100, image_url: null, image_source: null, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 60 },
+    { id: "opt-none", group_id: "grp-heat", slug: "none", name: "No heat", code: null, description: null, price_cents: 0, heat_percent: 0, image_url: null, image_source: null, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 10 },
   ],
   links: [
     { item_id: "item-wings", group_id: "grp-heat", is_required: false, min_select: 0, max_select: 1, sort_order: 20 },
@@ -61,7 +61,7 @@ const photoRows: ManagedMenuRows = {
     { id: "item-uploaded", category_id: "cat-wings", slug: "uploaded-photo", name: "Uploaded Photo", code: null, description: null, image_url: "https://storage.test/2026/abc.webp", image_source: null, image_width: 900, image_height: 900, image_blur_data_url: "data:image/webp;base64,AAA", image_treatment: "cutout", is_featured: false, is_active: true, sort_order: 30 },
   ],
   options: [
-    { id: "opt-archive", group_id: "grp-heat", slug: "archive-option", name: "Archive Option", description: null, price_cents: 0, heat_percent: 0, image_url: null, image_source: ARCHIVE_SOURCE_PATH, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 10 },
+    { id: "opt-archive", group_id: "grp-heat", slug: "archive-option", name: "Archive Option", code: null, description: null, price_cents: 0, heat_percent: 0, image_url: null, image_source: ARCHIVE_SOURCE_PATH, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 10 },
   ],
   holds: [],
   links: [],

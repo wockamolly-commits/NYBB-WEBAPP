@@ -65,6 +65,8 @@ export type ManagedOption = {
   groupId: string;
   slug: string;
   name: string;
+  /** The printed menu's number: NY1 to NY10 on the flavours. Null elsewhere. */
+  code: string | null;
   description: string | null;
   /**
    * Null means this option has no flat price and is priced per variation

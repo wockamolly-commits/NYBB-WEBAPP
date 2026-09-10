@@ -148,10 +148,11 @@ function pricingSummary(options: ManagedOption[]): string | null {
  * than a per-row one, so every row inside a group agrees about it and the
  * header agrees with them.
  */
-function optionColumns({ showAmount, showHeat }: ColumnSet): string {
+function optionColumns({ showAmount, showHeat, showCode }: ColumnSet): string {
   return tableColumns(
     "2.75rem", // photograph
     "minmax(6rem, 1.15fr)", // name
+    showCode && "5rem", // code
     "minmax(8rem, 1.9fr)", // description
     "10rem", // pricing, sized so "Priced by size" is not clipped
     showAmount && "5.5rem", // amount
@@ -175,7 +176,7 @@ function optionColumns({ showAmount, showHeat }: ColumnSet): string {
  * on the flavour group, where nothing will ever charge, it left a permanently
  * empty 88px track with a header over it.
  */
-type ColumnSet = { showAmount: boolean; showHeat: boolean };
+type ColumnSet = { showAmount: boolean; showHeat: boolean; showCode: boolean };
 
 /**
  * A whole option row's body: the photograph, the six fields, and the slot the
@@ -213,6 +214,8 @@ function OptionFieldset({
   namePlaceholder,
   name,
   onNameChange,
+  code,
+  onCodeChange,
   description,
   onDescriptionChange,
   pricing,
@@ -235,6 +238,8 @@ function OptionFieldset({
   namePlaceholder?: string;
   name: string;
   onNameChange: (value: string) => void;
+  code: string;
+  onCodeChange: (value: string) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
   pricing: PricingMode;
@@ -278,6 +283,22 @@ function OptionFieldset({
           />
         </div>
       </div>
+
+      {columns.showCode ? (
+        <div className="w-20 lg:w-auto lg:min-w-0">
+          <TableCellLabel htmlFor={`${idPrefix}-code`}>Code</TableCellLabel>
+          <WorkspaceInput
+            id={`${idPrefix}-code`}
+            value={code}
+            onChange={(event) => onCodeChange(event.target.value)}
+            placeholder="NY1"
+            maxLength={16}
+            disabled={disabled}
+            aria-label={`Menu code for ${rowName}`}
+            className={cn(TABLE_CELL_INPUT, "font-mono tabular-nums")}
+          />
+        </div>
+      ) : null}
 
       <div className="min-w-0">
         <TableCellLabel htmlFor={`${idPrefix}-description`}>Description</TableCellLabel>
@@ -349,6 +370,7 @@ function OptionFieldset({
           pricing is not "flat", and the server transform never reads this
           field except in that one branch, so this can never send a stray
           amount for a free or priced-by-size option. */}
+      <input type="hidden" name="code" value={code} />
       <input type="hidden" name="priceCents" value={priceCentsToSend} />
       {/* Unconditional, same reasoning: this must reach FormData whether or
           not the visible control is mounted, or hiding the field (because the
@@ -392,6 +414,7 @@ function OptionsHeaderRow({ columns }: { columns: ColumnSet }) {
           caption to be understood anyway. */}
       <span />
       <span>Name</span>
+      {columns.showCode ? <span>Code</span> : null}
       <span>Description</span>
       <span>Pricing</span>
       {columns.showAmount ? <span>Amount</span> : null}
@@ -499,6 +522,7 @@ function OptionRow({
   const [saveState, saveAction, savePending] = useActionState(saveMenuOption, initialState);
   const [deleteState, deleteAction, deletePending] = useActionState(deleteMenuEntity, initialState);
   const [name, setName] = useState(option.name);
+  const [code, setCode] = useState(option.code ?? "");
   const [description, setDescription] = useState(option.description ?? "");
   const [pricing, setPricing] = useState<PricingMode>(() => pricingModeFor(option.priceCents));
   const [amount, setAmount] = useState(() => centsToPesosInput(option.priceCents));
@@ -509,7 +533,7 @@ function OptionRow({
   const deleteFormId = useId();
   const pending = savePending || deletePending;
 
-  const current = { name, description, pricing, amount, heatPercent, isActive };
+  const current = { name, code, description, pricing, amount, heatPercent, isActive };
   const dirty = useDirty(current, saveState);
 
   function choosePricing(mode: PricingMode) {
@@ -532,6 +556,8 @@ function OptionRow({
           nameLabel="Name"
           name={name}
           onNameChange={setName}
+          code={code}
+          onCodeChange={setCode}
           description={description}
           onDescriptionChange={setDescription}
           pricing={pricing}
@@ -644,6 +670,7 @@ function NewOptionRow({
 }) {
   const [state, action, pending] = useActionState(saveMenuOption, initialState);
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [pricing, setPricing] = useState<PricingMode>("free");
   const [amount, setAmount] = useState("");
@@ -665,6 +692,8 @@ function NewOptionRow({
           namePlaceholder="New option"
           name={name}
           onNameChange={setName}
+          code={code}
+          onCodeChange={setCode}
           description={description}
           onDescriptionChange={setDescription}
           pricing={pricing}
@@ -750,6 +779,12 @@ function OptionGroupCard({
   // noise, so it stays hidden unless this group already has one, or the
   // person deliberately asks for it.
   const [showHeat, setShowHeat] = useState(() => group.options.some((option) => option.heatPercent !== null));
+  // Same rule as showHeat, for the same reason. The flavours carry NY1 to
+  // NY10 and every other group carries nothing, so a Code column held open
+  // everywhere would be an empty track with a header over it on the heat
+  // group. Seeded from the data, and openable by hand for a group that has
+  // no codes yet but should.
+  const [showCode, setShowCode] = useState(() => group.options.some((option) => option.code !== null));
   // Which rows currently want the amount column. Seeded from what is saved,
   // then kept up to date by the rows themselves, because a column has to be a
   // property of the table and not of whichever row happened to open it. See
@@ -762,6 +797,7 @@ function OptionGroupCard({
   const columns: ColumnSet = {
     showAmount: Object.values(flatRows).some(Boolean),
     showHeat,
+    showCode,
   };
 
   function reportPricing(rowKey: string) {
@@ -834,6 +870,18 @@ function OptionGroupCard({
             >
               <Settings2 aria-hidden className="size-4" />
               Show heat level
+            </Button>
+          )}
+          {showCode ? null : (
+            <Button
+              type="button"
+              tone="dark"
+              variant="ghost"
+              onClick={() => setShowCode(true)}
+              className="min-h-11 px-3"
+            >
+              <Settings2 aria-hidden className="size-4" />
+              Show menu code
             </Button>
           )}
           <Button

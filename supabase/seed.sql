@@ -283,26 +283,27 @@ on conflict (slug) do update set
   sort_order = excluded.sort_order;
 
 insert into menu_options (
-  group_id, slug, name, description, price_cents, heat_percent,
+  group_id, slug, code, name, description, price_cents, heat_percent,
   image_source, sort_order
 ) values
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'classic-buffalo', 'Classic Buffalo', 'The original. Tangy, buttery, unmistakably buffalo.', 0, null, '2024/05/Classic-Buffalo.jpg', 0),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'bbq-lime', 'BBQ Lime', 'Smoky barbecue cut with lime.', 0, null, '2024/05/BBQ-Lime-1.jpg', 1),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'cheezy', 'Cheezy', 'Thick cheese sauce, poured on.', 0, null, '2025/03/Cheezy.jpg', 2),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'garlic-parmesan', 'Garlic Parmesan', 'Garlic butter and grated parmesan.', 0, null, '2024/05/Garlic-Parmesan-1.jpg', 3),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'honey-mustard', 'Honey Mustard', 'Sweet and sharp in equal measure.', 0, null, '2024/05/Honey-Mustard-1.jpg', 4),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'smokey-barbecue', 'Smokey BBQ', 'Deep, dark and smoky.', 0, null, '2025/03/Smokey-Barbecue.jpg', 5),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'salted-egg', 'Salted Egg', 'Rich, savoury, a Filipino favourite.', 0, null, '2025/03/Salted-Egg.jpg', 6),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'honey-garlic', 'Honey Garlic', 'Sticky honey, toasted garlic.', 0, null, '2024/05/Honey-Garlic-1.jpg', 7),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'sweet-spicy', 'Sweet Spicy', 'Sweet first, heat after.', 0, null, '2024/05/Sweet-Spicy-1.jpg', 8),
-  ((select id from menu_option_groups where slug = 'wing-flavour'), 'brads-gravy', 'Brad''s Gravy', 'Savoury gravy of meat stock and mushroom.', 0, null, '2024/05/Brads-Gravy-3.jpg', 9),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'none', 'No heat', 'Flavour only.', 0, 0, null, 0),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'lite', 'Lite', null, 2900, 20, null, 1),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'moderate', 'Moderate', null, 2900, 40, null, 2),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'hot', 'Hot', null, 2900, 60, null, 3),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'wild', 'Wild', null, 2900, 80, null, 4),
-  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'insane', 'Insane', null, 2900, 100, null, 5)
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'classic-buffalo', 'NY1', 'Classic Buffalo', 'The original. Tangy, buttery, unmistakably buffalo.', 0, null, '2024/05/Classic-Buffalo.jpg', 0),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'bbq-lime', 'NY2', 'BBQ Lime', 'Smoky barbecue cut with lime.', 0, null, '2024/05/BBQ-Lime-1.jpg', 1),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'cheezy', 'NY3', 'Cheezy', 'Thick cheese sauce, poured on.', 0, null, '2025/03/Cheezy.jpg', 2),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'garlic-parmesan', 'NY4', 'Garlic Parmesan', 'Garlic butter and grated parmesan.', 0, null, '2024/05/Garlic-Parmesan-1.jpg', 3),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'honey-mustard', 'NY5', 'Honey Mustard', 'Sweet and sharp in equal measure.', 0, null, '2024/05/Honey-Mustard-1.jpg', 4),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'smokey-barbecue', 'NY6', 'Smokey BBQ', 'Deep, dark and smoky.', 0, null, '2025/03/Smokey-Barbecue.jpg', 5),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'salted-egg', 'NY7', 'Salted Egg', 'Rich, savoury, a Filipino favourite.', 0, null, '2025/03/Salted-Egg.jpg', 6),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'honey-garlic', 'NY8', 'Honey Garlic', 'Sticky honey, toasted garlic.', 0, null, '2024/05/Honey-Garlic-1.jpg', 7),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'sweet-spicy', 'NY9', 'Sweet Spicy', 'Sweet first, heat after.', 0, null, '2024/05/Sweet-Spicy-1.jpg', 8),
+  ((select id from menu_option_groups where slug = 'wing-flavour'), 'brads-gravy', 'NY10', 'Brad''s Gravy', 'Savoury gravy of meat stock and mushroom.', 0, null, '2024/05/Brads-Gravy-3.jpg', 9),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'none', null, 'No heat', 'Flavour only.', 0, 0, null, 0),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'lite', null, 'Lite', null, 2900, 20, null, 1),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'moderate', null, 'Moderate', null, 2900, 40, null, 2),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'hot', null, 'Hot', null, 2900, 60, null, 3),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'wild', null, 'Wild', null, 2900, 80, null, 4),
+  ((select id from menu_option_groups where slug = 'level-of-hotness'), 'insane', null, 'Insane', null, 2900, 100, null, 5)
 on conflict (group_id, slug) do update set
+  code = excluded.code,
   name = excluded.name,
   description = excluded.description,
   price_cents = excluded.price_cents,
