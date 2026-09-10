@@ -77,24 +77,26 @@ test.describe("as a business-wide manager", () => {
   });
 });
 
-test.describe("the date pickers", () => {
+test.describe("the filter row's popups", () => {
   /**
    * The calendar the browser used to draw was welded to the bottom edge of the
    * field, in a widget layer no stylesheet reaches, and on the filter card it
    * read as a rendering fault. WorkspaceDateField replaces it, and everything
    * that made the replacement worth doing is a measurement of the rendered
-   * page: where the panel sits, how far it is from the field, and whether it
-   * drags the body sideways on a phone. None of that is visible to a unit test.
+   * page: where the panel sits, how far it is from the field, whether the two
+   * fields agree, and whether it drags the body sideways on a phone. None of
+   * that is visible to a unit test.
+   *
+   * The counter dropdown is here for one assertion only, because the rule that
+   * both of these open downward is a rule about the row rather than about
+   * either control. A calendar that stays put beside a list that flips would
+   * be worse than both of them flipping.
    */
 
-  const FROM = "Choose the from date";
-  const THROUGH = "Choose the through date";
+  const FROM = "Choose a date, From";
+  const THROUGH = "Choose a date, Through";
 
   test("opens clear of the field, and on the field's own left edge", async ({ page }) => {
-    // Tall enough that there is room underneath, because the point of this
-    // test is where the panel goes when it has a choice. With less room it
-    // flips above the field, which is the positioner working rather than a
-    // regression, and the test below covers the flip.
     await page.setViewportSize({ width: 1280, height: 960 });
     await page.goto(ANALYTICS);
     await page.getByRole("button", { name: FROM }).click();
@@ -113,10 +115,6 @@ test.describe("the date pickers", () => {
   });
 
   test("places the second calendar exactly as it places the first", async ({ page }) => {
-    // Left at whatever height the runner gives it, so this also passes over a
-    // viewport short enough to flip the panel above the field: the two have to
-    // agree either way, which is the half of the complaint that was about the
-    // pair rather than about one of them.
     await page.goto(ANALYTICS);
 
     async function offsets(trigger: string, input: string) {
@@ -132,6 +130,36 @@ test.describe("the date pickers", () => {
     const through = await offsets(THROUGH, "#analytics-to");
     expect(through.offset).toBeCloseTo(from.offset, 0);
     expect(through.inset).toBeCloseTo(from.inset, 0);
+  });
+
+  test("opens downward even when the window is too short for it", async ({ page }) => {
+    // The positioner would flip the panel above the field here, and it used to.
+    // A control that appears above its field on one laptop and below it on the
+    // next is a control you have to look for, so the side is pinned and the
+    // page scrolls to the overflow instead.
+    await page.setViewportSize({ width: 1280, height: 560 });
+    await page.goto(ANALYTICS);
+    await page.getByRole("button", { name: FROM }).click();
+
+    const field = await page.locator("#analytics-from").boundingBox();
+    const calendar = await page.getByRole("grid").boundingBox();
+    if (!field || !calendar) throw new Error("the field or the calendar was not laid out");
+    expect(calendar.y).toBeGreaterThan(field.y + field.height);
+  });
+
+  test("the counter list opens downward in the same short window", async ({ page }) => {
+    // The same rule, on the other composite control in this row. A calendar
+    // that stays put next to a dropdown that flips would be worse than both of
+    // them flipping.
+    await page.setViewportSize({ width: 1280, height: 560 });
+    await page.goto(ANALYTICS);
+    const trigger = page.getByRole("combobox", { name: /counter/i });
+    await trigger.click();
+
+    const triggerBox = await trigger.boundingBox();
+    const list = await page.getByRole("listbox").boundingBox();
+    if (!triggerBox || !list) throw new Error("the trigger or the list was not laid out");
+    expect(list.y).toBeGreaterThan(triggerBox.y + triggerBox.height);
   });
 
   test("writes the day you pick into the field it belongs to", async ({ page }) => {

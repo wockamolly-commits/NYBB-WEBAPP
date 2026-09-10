@@ -538,6 +538,15 @@ popup is Charcoal with the same real edge, selected rows carry a check and a fai
 and the keyboard-highlighted row becomes Buffalo Orange with Char text. Base UI owns focus,
 keyboard navigation, dismissal and the hidden form value.
 
+Every composite popup in the Workspace opens downward and stays there. The positioner's default is
+to flip above the trigger when the window is short, which is right in the abstract and wrong on
+these screens: filter rows sit near the top of their pages, so a laptop only a little short of a
+desktop fires the flip, and a control that appears above its field on one machine and below it on
+the next is a control you have to look for. The side is pinned; only the sideways behaviour still
+avoids collisions, which is what keeps a popup inside a 375px screen. Nothing is squeezed to make
+this work: a list stops shrinking at 11rem and a calendar is never capped at all, so on a genuinely
+short window they run past the fold and the page scrolls to them.
+
 Workspace date fields are the same rule applied to the calendar. The field itself stays a real
 `<input type="date">`, so it keeps segmented entry, typed dates and its `YYYY-MM-DD` value, but the
 browser's own panel is switched off and `components/ui/WorkspaceDateField.tsx` draws the calendar.
@@ -547,10 +556,13 @@ edge running behind it, which read as a rendering fault rather than as a menu. O
 the only way it can have a gap, an alignment and the workspace's material. It uses the same Base UI
 positioner as the dropdown, at the same `10px` offset from the field and aligned to the field's left
 edge rather than to the small button that opens it, so a calendar and a dropdown on one row open the
-same distance from their fields and flip on the same rules near the bottom of the window. The panel
-is Charcoal on the same real edge, six rows always so it cannot change height as you page, the
-selected day is Buffalo Orange with Ink text, and today is signage yellow when it is not the
-selection.
+same distance from their fields and obey the same rule about which way they open. The panel is
+Charcoal on the same real edge, six rows always so it cannot change height as you page, the selected
+day is Buffalo Orange with Ink text, and today is signage yellow when it is not the selection.
+
+All three date filters in the Workspace use it: analytics, the audit log and order history. The one
+native date control left is the sold-out hold's `datetime-local`, which is why the shell still
+themes the browser's picker indicator.
 
 The Workspace shell also themes the browser surfaces around those controls: caret and selection,
 scrollbars, checkbox and radio states, file buttons, ranges and date-picker indicators. New admin

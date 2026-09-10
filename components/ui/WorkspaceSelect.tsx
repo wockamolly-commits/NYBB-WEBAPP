@@ -122,16 +122,33 @@ export function WorkspaceSelect<Value extends string>({
           align="start"
           alignItemWithTrigger={false}
           className="z-[100] outline-none select-none"
+          /* Down, always, the same rule the date field's calendar follows. A
+             list that flips above its trigger on a short window and below it
+             on a tall one is a list you have to look for, and these controls
+             sit on filter rows near the top of their pages where a slightly
+             short laptop was enough to fire the flip.
+
+             `align: "shift"` is the sideways behaviour and stays on, so a
+             trigger near the right edge still puts its list fully on screen
+             rather than hanging off it. */
+          collisionAvoidance={{ side: "none", align: "shift" }}
           collisionPadding={8}
+          side="bottom"
           sideOffset={6}
         >
           <Select.Popup
             className={cn(
-              "border-nybb-bone/40 bg-nybb-charcoal text-nybb-bone max-h-[var(--available-height)] min-w-[var(--anchor-width)] origin-[var(--transform-origin)] overflow-hidden rounded-md border outline-none",
+              "border-nybb-bone/40 bg-nybb-charcoal text-nybb-bone min-w-[var(--anchor-width)] origin-[var(--transform-origin)] overflow-hidden rounded-md border outline-none",
               "transition-[transform,opacity] duration-100 ease-out data-starting-style:scale-[0.98] data-starting-style:opacity-0 data-ending-style:scale-[0.98] data-ending-style:opacity-0 motion-reduce:transition-none",
             )}
           >
-            <Select.List className="max-h-[min(22rem,var(--available-height))] overflow-y-auto p-1.5">
+            {/* The floor under `--available-height` is what makes "always
+                down" survivable. Pinned to the bottom side, the space below a
+                trigger near the foot of the window can be forty pixels, and a
+                list clamped to that is a scroller two rows tall. Below 11rem
+                it stops shrinking and runs past the fold instead, where the
+                page can scroll to it. */}
+            <Select.List className="max-h-[min(22rem,max(var(--available-height),11rem))] overflow-y-auto p-1.5">
               {options.map((option) => (
                 <Select.Item
                   key={option.value}

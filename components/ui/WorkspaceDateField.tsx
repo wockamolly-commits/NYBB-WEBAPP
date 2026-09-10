@@ -168,7 +168,12 @@ export function WorkspaceDateField({
             className="w-full py-2.5 pr-12 pl-3.5 text-base sm:text-sm [&::-webkit-calendar-picker-indicator]:hidden"
           />
           <Popover.Trigger
-            aria-label={`Choose the ${label.toLowerCase()} date`}
+            /* Named for the field it belongs to, because a form with two of
+               these otherwise offers two buttons called the same thing. The
+               label goes after rather than into the sentence: "Recorded from"
+               and "Placed through" are phrases, not adjectives, and reading
+               them inline produces "choose the recorded from date". */
+            aria-label={`Choose a date, ${label}`}
             className={cn(
               PRESSABLE,
               "border-nybb-bone/15 text-nybb-orange absolute top-px right-px bottom-px grid w-11 place-items-center rounded-r-[0.35rem] border-l outline-none",
@@ -188,6 +193,21 @@ export function WorkspaceDateField({
                read as belonging to the field. */
             align="start"
             className="z-[100] outline-none"
+            /* Down, always. The positioner would otherwise flip the calendar
+               above the field when the window is short, which is correct in
+               the abstract and wrong here: the filter row sits near the top of
+               its page, so the flip fires on a laptop that is only a little
+               short, and a panel that sometimes appears above and sometimes
+               below the same field is a panel you have to look for.
+
+               `align: "shift"` stays on, because that is the sideways
+               behaviour, and it is what keeps the calendar inside a 375px
+               screen instead of hanging off the right edge and scrolling the
+               page. Nothing caps the height, so on a genuinely short window
+               the calendar runs past the fold and the page scrolls to it,
+               rather than becoming a squeezed box that scrolls inside
+               itself. */
+            collisionAvoidance={{ side: "none", align: "shift" }}
             collisionPadding={12}
             side="bottom"
             sideOffset={10}

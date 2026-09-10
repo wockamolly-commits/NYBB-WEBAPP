@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import { formatPeso } from "@/lib/format";
@@ -109,14 +110,18 @@ export default async function OrderHistoryPage({
           options={statusOptions}
           defaultValue={filters.status}
         />
-        <div>
-          <WorkspaceFieldLabel htmlFor="history-from">Placed from</WorkspaceFieldLabel>
-          <WorkspaceInput id="history-from" name="from" type="date" defaultValue={filters.from} />
-        </div>
-        <div>
-          <WorkspaceFieldLabel htmlFor="history-to">Placed through</WorkspaceFieldLabel>
-          <WorkspaceInput id="history-to" name="to" type="date" defaultValue={filters.to} />
-        </div>
+        <WorkspaceDateField
+          id="history-from"
+          name="from"
+          label="Placed from"
+          defaultValue={filters.from}
+        />
+        <WorkspaceDateField
+          id="history-to"
+          name="to"
+          label="Placed through"
+          defaultValue={filters.to}
+        />
         <div className="flex items-end gap-2">
           <Button type="submit" tone="dark" className="flex-1">Filter</Button>
           <ButtonLink href="/workspace/orders/history" tone="dark" variant="ghost">Reset</ButtonLink>

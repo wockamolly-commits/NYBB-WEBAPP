@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CalendarClock, ShieldAlert, UserRound } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import {
   auditFilterParams,
@@ -137,14 +138,18 @@ export default async function AuditLogPage({
             placeholder="Action or target id"
           />
         </div>
-        <div>
-          <WorkspaceFieldLabel htmlFor="audit-from">Recorded from</WorkspaceFieldLabel>
-          <WorkspaceInput id="audit-from" name="from" type="date" defaultValue={filters.from} />
-        </div>
-        <div>
-          <WorkspaceFieldLabel htmlFor="audit-to">Recorded through</WorkspaceFieldLabel>
-          <WorkspaceInput id="audit-to" name="to" type="date" defaultValue={filters.to} />
-        </div>
+        <WorkspaceDateField
+          id="audit-from"
+          name="from"
+          label="Recorded from"
+          defaultValue={filters.from}
+        />
+        <WorkspaceDateField
+          id="audit-to"
+          name="to"
+          label="Recorded through"
+          defaultValue={filters.to}
+        />
         <div className="flex items-end gap-2">
           <Button type="submit" tone="dark" className="flex-1">Filter</Button>
           <ButtonLink href="/workspace/audit" tone="dark" variant="ghost">Reset</ButtonLink>
