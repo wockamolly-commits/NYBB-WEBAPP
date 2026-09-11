@@ -980,11 +980,20 @@ sits between the delivered files and anything shipped. `scripts/trace-mural.ts` 
 
 **Where it appears.** The 404, where the marquee corner is the whole page. The landing hero, where
 the same corner takes the right half of the dark band in bone at full strength, on a wash that puts
-the film out of its way (`components/site/HeroWall.tsx`). The empty cart, which gets the traffic
-signal, a subject chosen because a signal at rest is what a screen about nothing having moved yet
-should show. The no-photo tile, which gets one of three small motifs at 14% behind the item name.
+the film out of its way (`components/site/HeroWall.tsx`). The no-photo tile, which gets one of
+three small motifs at 14% behind the item name.
 And the footer, which is chrome and carries the filled skyline rather than a line drawing. One scene
 per route, and the footer never counts against that.
+
+The empty cart carried the traffic signal once, and it was withdrawn. The wall behind every
+marketing page already has signals in it, so the cart restated its own background at a different
+size and weight, and in a column with its crop edges showing it was the framed picture The Drawing
+Runs Off The Page Rule forbids. The empty cart is now a charcoal card under the counter bar, with the
+heat scale quoted as five ascending bars beside the message (`HeatSteps` in
+`components/cart/CartView.tsx`). A drawing is not the default answer to an empty state; the test is
+whether the page already shows the same form. The bars are the one ramp on that route, which keeps
+The One Heat Surface Per Page Rule: nobody chooses a level on the cart, so there is no second surface
+for them to restate, and they go the moment a line is added.
 
 The landing hero is the placement that answers the obvious objection to using the marquee crop
 twice: it carries the shop's name, and the header draws the wordmark eighty pixels above it. The
