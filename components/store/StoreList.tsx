@@ -1,10 +1,9 @@
 "use client";
 
-import { Check, Phone } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
-import { PRESSABLE } from "@/components/ui/Button";
 import { branchFormatLabel } from "@/lib/catalog";
 import { telHref } from "@/lib/phone";
 import type { Store } from "@/lib/branches/types";
@@ -14,20 +13,38 @@ import { cn } from "@/lib/utils";
  * Choosing the counter, which on a pickup-only platform is the first real
  * decision in the order.
  *
- * WHY THE CHOSEN CARD SETS INK AT 80% AND NOT AT 75%.
+ * WHY THE CHOSEN ROW SETS INK AT 80% AND NOT AT 75%.
  *
  * The selected state is the system's existing vocabulary, `bg-nybb-orange`
  * with ink on top, which is what a chosen pickup window already looks like.
  * The alpha is not borrowed with it. Composited through a 1x1 canvas, ink at
  * 75% over Buffalo Orange measures 4.37:1, which is under AA for anything that
- * is not large text, and every secondary line on this card is 12px or 14px.
+ * is not large text, and every secondary line on this row is 12px or 14px.
  * 80% measures 4.74:1 and full ink 6.02:1. One value across all three
  * secondary lines, because three alphas on one surface is drift rather than
  * hierarchy.
  *
+ * A BOARD OF ROWS, NOT A GRID OF CARDS, AND NOT A DROPDOWN.
+ *
+ * This was a grid of boxes, one charcoal card per counter standing on the
+ * amber ground, and it failed twice. The hover borrowed the pickup windows'
+ * `bg-nybb-bone/5`, which is right on a charcoal panel and wrong here:
+ * a background utility on hover replaces the card's own fill rather than
+ * tinting it, so the card went transparent and bone text landed on signage
+ * yellow at roughly 1.1:1. And same-size boxes made the page read as a
+ * brochure of shops when it is a choice between kitchens.
+ *
+ * A dropdown was considered and rejected. It hides exactly what the choice
+ * turns on (where the counter is, how long it cooks, whether it is open this
+ * minute) behind a tap, then asks for a second tap to confirm, which is the
+ * cost this product cannot spend in the queue. A single charcoal board with
+ * one row per counter keeps everything readable at once, lines the prep times
+ * up for comparison, and because the board itself is the dark ground, every
+ * hover and press state is a tint over charcoal and can never wash out.
+ *
  * ONE PRESS, NOT A RADIO PLUS A SUBMIT.
  *
- * The card is the control. A list of radios under a Continue button is the
+ * The row is the control. A list of radios under a Continue button is the
  * safe pattern and it costs a tap, and the tap is spent by the customer this
  * product is hardest on: standing in the queue, one hand, somebody behind
  * them. There is nothing to review between choosing and continuing, because
@@ -41,9 +58,34 @@ import { cn } from "@/lib/utils";
  * they can see, and the honest version of that page is worth more than the
  * tidy one: it names the shop, says plainly that online ordering is not open
  * there yet, and gives them the number that is. They are not disabled buttons.
- * A disabled control invites pressing; a card with a phone number in it
- * resolves the problem.
+ * A disabled control invites pressing; a row with a phone number in it
+ * resolves the problem. They sit on a second board of the same shape, so the
+ * two lists read as one directory split by what each counter can do.
  */
+
+/**
+ * The row geometry both boards share, so a name, an address and the thing
+ * you can do there sit in the same three places on every counter.
+ *
+ * Below `lg` the row is two columns: the counter on the left, stacked, and its
+ * action pinned right and centred, where a thumb finds it. From `lg` the
+ * details move into a middle column of their own, which is what lets the prep
+ * times line up down the board instead of wandering with each address. The
+ * action column is a fixed width for the same reason: sized to its content,
+ * "Continue" is narrower than "Collect from here" and the chosen row's
+ * details would start a step to the right of everyone else's.
+ */
+const ROW_GRID =
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-5 py-4 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_11rem] lg:gap-x-10";
+const ROW_NAME = "col-start-1 row-start-1 min-w-0";
+const ROW_DETAILS = "col-start-1 row-start-2 mt-2 min-w-0 lg:col-start-2 lg:row-start-1 lg:mt-0";
+const ROW_ACTION =
+  "col-start-2 row-span-2 row-start-1 self-center justify-self-end lg:col-start-3 lg:row-span-1";
+
+/** One charcoal board, rows split by a hairline rather than by gaps. */
+const BOARD =
+  "bg-nybb-charcoal text-nybb-bone divide-nybb-bone/10 overflow-hidden rounded-md divide-y";
+
 export function StoreList({
   stores,
   selectedSlug,
@@ -106,7 +148,7 @@ export function StoreList({
         setChoosing(null);
         // The list said this counter was available and the server disagreed,
         // which means it changed underneath the page. Re-render it from the
-        // truth rather than leaving a card that lies.
+        // truth rather than leaving a row that lies.
         //
         // This one stays inside the transition. It refreshes the route the
         // action was already going to re-render, so it agrees with the
@@ -135,10 +177,11 @@ export function StoreList({
       ) : null}
 
       {orderable.length > 0 ? (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className={BOARD}>
           {orderable.map((store) => {
             const selected = store.slug === selectedSlug;
             const busy = choosing === store.slug;
+            const detailsId = `counter-${store.slug}-details`;
 
             return (
               <li key={store.slug}>
@@ -146,93 +189,131 @@ export function StoreList({
                   type="button"
                   onClick={() => choose(store)}
                   disabled={pending}
+                  aria-busy={busy || undefined}
                   aria-label={
                     selected
                       ? `Continue with ${store.name}`
                       : `Collect from ${store.name}`
                   }
+                  aria-describedby={detailsId}
                   className={cn(
-                    PRESSABLE,
-                    // h-full so a card carrying a closed-now line does not
-                    // stand taller than the one beside it. Same lesson the
-                    // slot grid and the product tiles already learned.
-                    "flex h-full w-full flex-col rounded-md p-5 text-left",
+                    ROW_GRID,
+                    // Not PRESSABLE. A 2% scale on a row the width of the
+                    // board moves its edges by twenty pixels inside a panel
+                    // that clips them, which reads as the board jumping. The
+                    // press is a deeper tint instead, on the same timing.
+                    "group w-full text-left transition-colors duration-200 ease-out active:duration-75",
+                    "disabled:cursor-progress",
+                    // The board clips its corners, so the ring is drawn inside
+                    // the row, where the clip cannot eat it.
+                    "focus-visible:outline-offset-[-3px]",
                     selected
-                      ? "bg-nybb-orange text-nybb-ink"
-                      : // The selection-control hover this system already uses on the
-                        // pickup windows: the border firms up and the ground
-                        // lifts by a fraction of bone. Graphite was the first
-                        // choice and it is the wrong token, because DESIGN.md
-                        // assigns graphite to pressed states and input fills,
-                        // so a card that went graphite on hover would be
-                        // showing its pressed state before it was pressed.
-                        "bg-nybb-charcoal text-nybb-bone border-nybb-bone/25 hover:border-nybb-bone/60 hover:bg-nybb-bone/5 border",
+                      ? // The system's chosen state: orange fill, ink on top.
+                        // The ring flips to ink, because the board's orange
+                        // ring on an orange row is no ring at all.
+                        "bg-nybb-orange text-nybb-ink [--focus-ring:var(--color-nybb-ink)]"
+                      : // A tint over charcoal, never a replacement for it.
+                        // This is the whole fix: the board is the dark ground,
+                        // so the row has nothing to lose by lifting.
+                        "hover:bg-nybb-bone/[0.06] active:bg-nybb-bone/10 disabled:hover:bg-transparent",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "font-display type-caps block",
-                      selected ? "text-nybb-ink/80" : "text-nybb-bone/60",
-                    )}
-                  >
-                    {branchFormatLabel[store.format]}
+                  <span className={ROW_NAME}>
+                    <span
+                      className={cn(
+                        // Inline, not flex, so a long label at 320px wraps as
+                        // a line of text instead of splitting into columns.
+                        "font-display type-caps block",
+                        selected ? "text-nybb-ink/80" : "text-nybb-bone/60",
+                      )}
+                    >
+                      {selected ? (
+                        <>
+                          <Check
+                            aria-hidden
+                            className="mr-1.5 inline size-3.5 align-[-0.15em]"
+                            strokeWidth={3}
+                          />
+                          Your counter{" "}
+                          <span aria-hidden className="mx-0.5">
+                            ·
+                          </span>{" "}
+                        </>
+                      ) : null}
+                      {branchFormatLabel[store.format]}
+                    </span>
+                    <span className="font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl">
+                      {store.shortName}
+                    </span>
                   </span>
 
-                  <span className="font-display mt-2 block text-xl leading-tight">
-                    {store.shortName}
-                  </span>
-
                   <span
+                    id={detailsId}
                     className={cn(
-                      "mt-2 block text-sm leading-relaxed",
+                      ROW_DETAILS,
+                      "block text-sm leading-relaxed",
                       selected ? "text-nybb-ink/80" : "text-nybb-bone/65",
                     )}
                   >
-                    {store.addressLine}
-                    <br />
-                    {store.city}
+                    <span className="block">
+                      {store.addressLine}, {store.city}
+                    </span>
+
+                    {/* The number that decides whether this counter suits the
+                        next hour, and it is genuinely per branch: a forecourt
+                        and a food hall do not cook at the same pace. Mono
+                        because it is a measurement compared down the board. */}
+                    {store.branch ? (
+                      <span
+                        className={cn(
+                          "font-mono-tabular mt-1 block",
+                          selected ? "text-nybb-ink" : "text-nybb-bone/80",
+                        )}
+                      >
+                        Ready {store.branch.prepMinutes} min from ordering
+                      </span>
+                    ) : null}
+
+                    {store.closedNow ? (
+                      <span className="mt-1 block">
+                        Closed right now. Checkout shows its next windows.
+                      </span>
+                    ) : null}
                   </span>
 
-                  {/* The number that decides whether this counter suits the
-                      next hour, and it is genuinely per branch: a forecourt
-                      and a food hall do not cook at the same pace. Mono
-                      because it is a measurement compared between cards. */}
-                  {store.branch ? (
-                    <span
-                      className={cn(
-                        "font-mono-tabular mt-4 block text-sm",
-                        selected ? "text-nybb-ink/80" : "text-nybb-bone/75",
-                      )}
-                    >
-                      Ready {store.branch.prepMinutes} min from ordering
-                    </span>
-                  ) : null}
-
-                  {store.closedNow ? (
-                    <span
-                      className={cn(
-                        "mt-1.5 block text-sm leading-relaxed",
-                        selected ? "text-nybb-ink/80" : "text-nybb-bone/65",
-                      )}
-                    >
-                      Closed right now. Checkout shows its next windows.
-                    </span>
-                  ) : null}
-
                   <span
+                    aria-hidden
                     className={cn(
-                      "font-display mt-auto flex items-center gap-2 pt-5 text-sm tracking-[0.06em]",
-                      selected ? "text-nybb-ink" : "text-nybb-orange",
+                      ROW_ACTION,
+                      "font-display flex min-h-11 items-center gap-2 text-sm tracking-[0.06em] uppercase",
+                      selected
+                        ? "text-nybb-ink"
+                        : "text-nybb-orange group-hover:text-nybb-orange-lit transition-colors",
                     )}
                   >
-                    {selected ? (
-                      <Check aria-hidden className="size-4" strokeWidth={2.5} />
-                    ) : null}
-                    {busy
-                      ? "Choosing"
-                      : selected
-                        ? "Your counter, continue"
-                        : "Collect from here"}
+                    {busy ? (
+                      <>
+                        <span className="hidden sm:inline">Choosing</span>
+                        <LoaderCircle
+                          className="size-5 animate-spin motion-reduce:animate-none"
+                          strokeWidth={2.25}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {/* On a phone the arrow alone says it, and the counter
+                            gets the width back. The chosen row does not need
+                            the word there either: its label already says
+                            "Your counter", and the orange says the rest. */}
+                        <span className="hidden sm:inline">
+                          {selected ? "Continue" : "Collect from here"}
+                        </span>
+                        <ArrowRight
+                          className="size-5 transition-transform duration-200 ease-out group-hover:translate-x-1 group-disabled:translate-x-0 motion-reduce:transition-none"
+                          strokeWidth={2.25}
+                        />
+                      </>
+                    )}
                   </span>
                 </button>
               </li>
@@ -268,37 +349,46 @@ export function StoreList({
               : "The same menu and the same prices apply at every one."}
           </p>
 
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className={cn(BOARD, "mt-6")}>
             {closed.map((store) => (
-              <li
-                key={store.slug}
-                className="bg-nybb-charcoal text-nybb-bone flex flex-col rounded-md p-5"
-              >
-                <p className="font-display type-caps text-nybb-bone/60">
-                  {branchFormatLabel[store.format]}
-                </p>
-                <h3 className="font-display mt-2 text-xl leading-tight">
-                  {store.shortName}
-                </h3>
-                <p className="text-nybb-bone/65 mt-2 text-sm leading-relaxed">
-                  {store.addressLine}
-                  <br />
-                  {store.city}
-                </p>
-                <p className="text-nybb-bone/75 mt-4 text-sm leading-relaxed">
-                  {!orderingOpen
-                    ? "Takes orders by phone."
-                    : store.blockedReason === "not_accepting"
-                      ? "Not taking orders at the moment."
-                      : "Not on online ordering yet."}
-                </p>
+              <li key={store.slug} className={ROW_GRID}>
+                <div className={ROW_NAME}>
+                  <p className="font-display type-caps text-nybb-bone/60">
+                    {branchFormatLabel[store.format]}
+                  </p>
+                  <h3 className="font-display mt-1.5 text-xl leading-tight text-balance sm:text-2xl">
+                    {store.shortName}
+                  </h3>
+                </div>
 
-                <ul className="mt-auto pt-4">
+                <div className={cn(ROW_DETAILS, "text-sm leading-relaxed")}>
+                  <p className="text-nybb-bone/65">
+                    {store.addressLine}, {store.city}
+                  </p>
+                  <p className="text-nybb-bone/80 mt-1">
+                    {!orderingOpen
+                      ? "Takes orders by phone."
+                      : store.blockedReason === "not_accepting"
+                        ? "Not taking orders at the moment."
+                        : "Not on online ordering yet."}
+                  </p>
+                </div>
+
+                {/* Below `sm` the numbers drop under the address rather than
+                    beside it. A phone column on the right would squeeze the
+                    address into a strip a few words wide. */}
+                <ul
+                  className={cn(
+                    ROW_ACTION,
+                    "max-sm:col-start-1 max-sm:row-span-1 max-sm:row-start-3 max-sm:mt-1 max-sm:justify-self-start",
+                    "flex flex-col items-start sm:items-end",
+                  )}
+                >
                   {store.phones.map((phone) => (
                     <li key={phone}>
                       <a
                         href={telHref(phone)}
-                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center gap-2 text-sm transition-colors"
+                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center gap-2 text-sm whitespace-nowrap transition-colors"
                       >
                         <Phone aria-hidden className="size-4" strokeWidth={2} />
                         {phone}
