@@ -1,9 +1,12 @@
 "use client";
 
-import { ArrowRight, Check, LoaderCircle, Phone } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, Navigation, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
+import { BranchDialog } from "@/components/branches/BranchDialog";
+import { buttonStyles } from "@/components/ui/Button";
+import type { BranchEntry } from "@/lib/branches/entries";
 import { branchFormatLabel } from "@/lib/catalog";
 import { distanceLabel, distancesBySlug, suggestNearest } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
@@ -92,11 +95,18 @@ const BOARD =
 export function StoreList({
   stores,
   selectedSlug,
+  entries = [],
   next,
   orderingOpen = true,
 }: {
   stores: Store[];
   selectedSlug: string | null;
+  /**
+   * The detail sheet for each catalog counter: map, address, phones, week.
+   * Opened from the nearest-counter suggestion. A counter with no entry has
+   * no sheet, and its suggestion is simply not clickable.
+   */
+  entries?: BranchEntry[];
   /** Where a chosen counter leads. Validated on the server that rendered it. */
   next: string;
   /**
@@ -115,6 +125,10 @@ export function StoreList({
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const navigated = useRef(false);
+  // The slug stays after closing so the sheet keeps its content through the
+  // closing fade. See BranchDialog.
+  const [detailSlug, setDetailSlug] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   /**
    * The navigation waits for the transition to settle rather than happening
@@ -136,6 +150,10 @@ export function StoreList({
   useEffect(() => {
     if (!leaving || pending || navigated.current) return;
     navigated.current = true;
+    // A counter chosen from inside the sheet has done what the sheet was
+    // opened for. Closed here rather than on the press, so the sheet shows
+    // its own "Choosing" until the choice has landed.
+    setDetailOpen(false);
     const go = () => router.push(next);
     go();
   }, [leaving, pending, router, next]);
@@ -149,6 +167,9 @@ export function StoreList({
       if (!result.ok) {
         setError(result.error);
         setChoosing(null);
+        // The error is announced on the page, which the open sheet makes
+        // inert. Close it so the message can be read and acted on.
+        setDetailOpen(false);
         // The list said this counter was available and the server disagreed,
         // which means it changed underneath the page. Re-render it from the
         // truth rather than leaving a row that lies.
@@ -176,6 +197,15 @@ export function StoreList({
   const suggestion = position ? suggestNearest(orderable, position) : null;
   const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
 
+  const detailEntry = entries.find((entry) => entry.slug === detailSlug) ?? null;
+  const detailStore = stores.find((store) => store.slug === detailSlug) ?? null;
+  const detailKm = detailSlug ? distances?.get(detailSlug) : undefined;
+
+  function openDetails(slug: string) {
+    setDetailSlug(slug);
+    setDetailOpen(true);
+  }
+
   return (
     <div className="mt-8">
       {error ? (
@@ -199,8 +229,79 @@ export function StoreList({
           busy={suggestion !== null && suggestion.kind !== "none" && choosing === suggestion.store.slug}
           onLocate={locate}
           onChoose={choose}
+          onOpenDetails={
+            nearestSlug && entries.some((entry) => entry.slug === nearestSlug)
+              ? () => openDetails(nearestSlug)
+              : undefined
+          }
         />
       ) : null}
+
+      <BranchDialog
+        branch={detailEntry}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line` : null}
+        actions={
+          // Only a counter this page can choose gets the choice in its sheet.
+          // Anything else falls back to the directory's Directions and Call.
+          detailEntry && detailStore?.orderable && orderingOpen ? (
+            <>
+              <button
+                type="button"
+                onClick={() => choose(detailStore)}
+                disabled={pending}
+                aria-busy={choosing === detailStore.slug || undefined}
+                className={buttonStyles({
+                  tone: "dark",
+                  variant: "primary",
+                  size: "lg",
+                  className: "sm:flex-1",
+                })}
+              >
+                {choosing === detailStore.slug ? (
+                  <>
+                    <LoaderCircle
+                      aria-hidden
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      strokeWidth={2.25}
+                    />
+                    Choosing
+                  </>
+                ) : detailStore.slug === selectedSlug ? (
+                  <>
+                    Continue
+                    <ArrowRight aria-hidden className="size-4" strokeWidth={2.25} />
+                  </>
+                ) : (
+                  <>
+                    Collect from here
+                    <ArrowRight aria-hidden className="size-4" strokeWidth={2.25} />
+                  </>
+                )}
+              </button>
+              {/* Secondary here, where the directory makes it primary: on
+                  this page the sheet is a step in choosing, and the choice is
+                  the thing it exists to help with. */}
+              <a
+                href={detailEntry.directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonStyles({
+                  tone: "dark",
+                  variant: "secondary",
+                  size: "lg",
+                  className: "sm:flex-1",
+                })}
+              >
+                <Navigation aria-hidden className="size-4" />
+                Get directions
+                <span className="sr-only"> (opens Google Maps)</span>
+              </a>
+            </>
+          ) : undefined
+        }
+      />
 
       {orderable.length > 0 ? (
         <ul className={BOARD}>

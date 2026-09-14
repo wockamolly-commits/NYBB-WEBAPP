@@ -1,9 +1,10 @@
 "use client";
 
-import { LoaderCircle, LocateFixed } from "lucide-react";
+import { ArrowUpRight, LoaderCircle, LocateFixed, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { distanceLabel, type NearestSuggestion } from "@/lib/branches/nearest";
 import type { Store } from "@/lib/branches/types";
+import { cn } from "@/lib/utils";
 import type { CustomerLocation } from "./useCustomerLocation";
 
 /**
@@ -24,6 +25,15 @@ import type { CustomerLocation } from "./useCustomerLocation";
  * on the way to work wants the counter by the office), and every row below
  * stays exactly as pressable as it was.
  *
+ * THE SUGGESTED COUNTER OPENS ITS SHEET.
+ *
+ * Once a counter is named, the whole card opens the same map-and-hours sheet
+ * the Branches page uses, so somebody can see where that forecourt actually
+ * is before collecting from it. It is the directory card's stretched trigger:
+ * the name is the button and its ::after covers the card, while "Collect from
+ * here" sits above that layer and still chooses in one press. Only the named
+ * state opens anything; every other state has no counter to show.
+ *
  * Returns nothing only when the browser has no geolocation at all, which is
  * the one state with nothing honest to put here.
  */
@@ -35,6 +45,7 @@ export function NearestCounter({
   busy,
   onLocate,
   onChoose,
+  onOpenDetails,
 }: {
   location: CustomerLocation;
   /** Null until there is a position to measure from. */
@@ -46,6 +57,8 @@ export function NearestCounter({
   busy: boolean;
   onLocate: () => void;
   onChoose: (store: Store) => void;
+  /** Opens the suggested counter's detail sheet. Absent when it has none. */
+  onOpenDetails?: () => void;
 }) {
   if (location.status === "unsupported") return null;
 
@@ -55,7 +68,15 @@ export function NearestCounter({
       data-testid="nearest-counter"
       // The reserved height is the tallest of the states at each width, so
       // the board below starts in the same place whichever one lands.
-      className="border-nybb-ink/55 text-nybb-ink mb-6 flex min-h-[11.75rem] items-center rounded-md border p-4 sm:min-h-[8rem] sm:px-5"
+      className={cn(
+        "border-nybb-ink/55 text-nybb-ink relative mb-6 flex min-h-[13.375rem] items-center rounded-md border p-4 sm:min-h-[9rem] sm:px-5",
+        "transition-colors duration-200 ease-out",
+        // The ghost tier's tint on this ground, over the card rather than the
+        // name, because the whole card is the target.
+        "has-[[data-card-trigger]:hover]:bg-nybb-ink/[0.06] has-[[data-card-trigger]:active]:bg-nybb-ink/10",
+        // The ring belongs to the card, for the same reason. Ink on amber.
+        "has-[[data-card-trigger]:focus-visible]:outline-nybb-ink has-[[data-card-trigger]:focus-visible]:outline-[3px] has-[[data-card-trigger]:focus-visible]:outline-offset-2",
+      )}
     >
       <h2 id="nearest-counter-heading" className="sr-only">
         Nearest counter
@@ -71,6 +92,7 @@ export function NearestCounter({
           busy={busy}
           onLocate={onLocate}
           onChoose={onChoose}
+          onOpenDetails={onOpenDetails}
         />
       </div>
     </section>
@@ -85,6 +107,7 @@ function Body({
   busy,
   onLocate,
   onChoose,
+  onOpenDetails,
 }: Parameters<typeof NearestCounter>[0]) {
   switch (location.status) {
     case "checking":
@@ -185,6 +208,7 @@ function Body({
           pending={pending}
           busy={busy}
           onChoose={onChoose}
+          onOpenDetails={onOpenDetails}
         />
       );
   }
@@ -197,6 +221,7 @@ function Suggested({
   pending,
   busy,
   onChoose,
+  onOpenDetails,
 }: {
   store: Store;
   km: number;
@@ -204,11 +229,13 @@ function Suggested({
   pending: boolean;
   busy: boolean;
   onChoose: (store: Store) => void;
+  onOpenDetails?: () => void;
 }) {
   return (
     <Layout
       label="Nearest to you"
       title={store.shortName}
+      onOpen={onOpenDetails}
       body={
         alreadyChosen
           ? `${distanceLabel(km)} in a straight line. It is already your counter.`
@@ -250,11 +277,14 @@ function Layout({
   title,
   body,
   action,
+  onOpen,
 }: {
   label: string;
   title: string;
   body: string;
   action?: React.ReactNode;
+  /** Makes the whole card open the counter's sheet. */
+  onOpen?: () => void;
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
@@ -262,11 +292,41 @@ function Layout({
         <LocateFixed aria-hidden className="mt-0.5 size-5 shrink-0" strokeWidth={2} />
         <div className="min-w-0">
           <p className="type-caps text-nybb-ink/75">{label}</p>
-          <p className="font-display mt-1 text-lg leading-tight text-balance">{title}</p>
+          <p className="font-display mt-1 text-lg leading-tight text-balance">
+            {onOpen ? (
+              <button
+                type="button"
+                data-card-trigger
+                onClick={onOpen}
+                aria-haspopup="dialog"
+                // Case inherited, because the browser's own button style
+                // resets it and the display face is uppercase by definition.
+                className="text-left [text-transform:inherit] after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:outline-none"
+              >
+                {title}
+                <span className="sr-only">, map and opening hours</span>
+              </button>
+            ) : (
+              title
+            )}
+          </p>
           <p className="text-nybb-ink/75 mt-1 max-w-prose text-sm leading-relaxed">{body}</p>
+          {/* The affordance, drawn rather than announced: the trigger above
+              already says it and already covers this line. */}
+          {onOpen ? (
+            <p
+              aria-hidden
+              className="font-display mt-2 flex items-center gap-1.5 text-sm tracking-[0.06em] uppercase"
+            >
+              <MapPin className="size-4" />
+              Map and hours
+              <ArrowUpRight className="size-4" />
+            </p>
+          ) : null}
         </div>
       </div>
-      {action ?? null}
+      {/* Above the stretched trigger's layer, so it still chooses. */}
+      {action ? <div className="relative z-10">{action}</div> : null}
     </div>
   );
 }

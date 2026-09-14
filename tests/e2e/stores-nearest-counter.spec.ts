@@ -140,5 +140,69 @@ test("chooses the suggested counter from the suggestion's own button", async ({
   // Back on the picker, now with that counter chosen.
   await expect(row(page, CENTRAL_BLOC.name)).toContainText("Your counter");
   await expect(slot(page)).toContainText("It is already your counter");
-  await expect(slot(page).getByRole("button")).toHaveCount(0);
+  // Nothing left to choose on the card. Its name still opens the sheet.
+  await expect(slot(page).getByRole("button", { name: /^Collect from/ })).toHaveCount(0);
+});
+
+test.describe("the nearest counter's detail sheet", () => {
+  test.beforeEach(async ({ context }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({
+      latitude: CENTRAL_BLOC.pin!.lat,
+      longitude: CENTRAL_BLOC.pin!.lng,
+    });
+  });
+
+  test("opens from anywhere on the card, with the map and the address", async ({ page }) => {
+    await page.goto("/stores");
+    await expect(slot(page)).toContainText("Nearest to you");
+
+    // Not the name itself: the drawn affordance, which only the stretched
+    // trigger's layer makes pressable. Pressed by position, the way a finger
+    // does, because Playwright rightly refuses to click an element that
+    // another layer covers, and covering it is the point.
+    const affordance = await slot(page).getByText("Map and hours").boundingBox();
+    await page.mouse.click(
+      affordance!.x + affordance!.width / 2,
+      affordance!.y + affordance!.height / 2,
+    );
+
+    const sheet = page.getByRole("dialog", { name: "Central Bloc, IT Park" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator("iframe[title^='Map showing']")).toHaveAttribute(
+      "src",
+      /google\.com\/maps/,
+    );
+    await expect(sheet).toContainText("Central Bloc, Cebu IT Park, Lahug");
+    await expect(sheet).toContainText("Under 100 m away in a straight line");
+    await expect(sheet.getByRole("link", { name: /Get directions/ })).toBeVisible();
+
+    // Escape closes it and hands focus back to the card that opened it.
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+    await expect(slot(page).getByRole("button", { name: /map and opening hours$/ })).toBeFocused();
+  });
+
+  test("chooses the counter from inside the sheet", async ({ page }) => {
+    await page.goto(`/stores?next=${encodeURIComponent("/stores")}`);
+    await slot(page)
+      .getByRole("button", { name: /map and opening hours$/ })
+      .click();
+
+    const sheet = page.getByRole("dialog", { name: "Central Bloc, IT Park" });
+    await sheet.getByRole("button", { name: "Collect from here" }).click();
+
+    await expect(sheet).toBeHidden();
+    await expect(row(page, CENTRAL_BLOC.name)).toContainText("Your counter");
+  });
+
+  test("still chooses in one press from the card's own button", async ({ page }) => {
+    await page.goto(`/stores?next=${encodeURIComponent("/stores")}`);
+    await slot(page)
+      .getByRole("button", { name: `Collect from ${CENTRAL_BLOC.name}` })
+      .click();
+
+    await expect(row(page, CENTRAL_BLOC.name)).toContainText("Your counter");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
 });
