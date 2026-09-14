@@ -87,29 +87,51 @@ export function ProductTile({
           )}
         </div>
 
-        <div className="flex flex-1 flex-col px-3 py-2.5 sm:px-4 sm:py-3.5">
+        {/* The plate is two zones: the name block on top, and a footer row
+            that holds the price and, when there is one, the Add button.
+
+            The button used to float in the bottom corner while only the price
+            made room for it, so a two line name like "Rainy Day Rush 2026
+            (Bundle A)" ran straight underneath it. The name now owns the full
+            width of the plate, and nothing shares a line with it.
+
+            The padding is the same on all four sides, so the 44px button sits
+            in the corner with an even margin rather than hanging lower than
+            the text beside it. Its absolute offsets below repeat these values;
+            change one and change the other. */}
+        <div className="flex flex-1 flex-col p-3 sm:p-4">
           {/* The code gets its own line. Inline, it was competing with the
               name for a 111px column and producing "BB1 The / Rookie", which
               reads as a broken sentence rather than as a menu number. */}
           {item.code ? (
-            <span className="font-mono-tabular text-nybb-bone/60 mb-1 block text-xs leading-none">
+            <span className="font-mono-tabular text-nybb-bone/60 mb-1.5 block text-xs leading-none">
               {item.code}
             </span>
           ) : null}
 
-          <h3 className="text-sm leading-snug font-medium text-balance">{item.name}</h3>
+          {/* The gap above the footer is a margin here, not padding on the
+              footer. Padding would count inside the footer's 44px and centre
+              the price 6px below the button it is meant to line up with. */}
+          <h3 className="mb-3 text-sm leading-snug font-medium text-balance">{item.name}</h3>
 
-          {/* mt-auto, so the price sits on the floor of the card rather than
-              wherever the name happened to stop. pr-16 only when a button is
-              actually reserving that corner; see quickAddable above. */}
-          <p
+          {/* mt-auto, so the footer sits on the floor of the card rather than
+              wherever the name happened to stop. It is 44px tall on every
+              tile, button or not: the price is centred in it, so in a row
+              that mixes quick-add items with configured ones every price
+              still lands on one line. The reserve on the right is only there
+              when a button is actually taking that corner; see quickAddable
+              above. The button is a 44px square below md and grows its word
+              from md, so the reserve grows with it. */}
+          <div
             className={cn(
-              "font-mono-tabular text-nybb-orange mt-auto pt-2 text-sm",
-              quickAddable && "pr-16",
+              "mt-auto flex min-h-11 items-center",
+              quickAddable && "pr-14 md:pr-28",
             )}
           >
-            {formatPesoRange(fromCents, toCents)}
-          </p>
+            <p className="font-mono-tabular text-nybb-orange text-base leading-none font-medium">
+              {formatPesoRange(fromCents, toCents)}
+            </p>
+          </div>
         </div>
       </Link>
 
@@ -118,8 +140,10 @@ export function ProductTile({
         // invalid HTML and every browser guesses differently about which one
         // a tap meant. z-10 lives here, on the positioned wrapper, rather than
         // on a div nested inside QuickAddButton, so the stacking is owned by
-        // the component that owns the positioning.
-        <div className="absolute right-2 bottom-2 z-10 sm:right-3 sm:bottom-3">
+        // the component that owns the positioning. The offsets match the
+        // plate's padding, which is what puts the button exactly over the
+        // footer row's right end, centred on the same line as the price.
+        <div className="absolute right-3 bottom-3 z-10 sm:right-4 sm:bottom-4">
           <QuickAddButton item={item} />
         </div>
       ) : null}

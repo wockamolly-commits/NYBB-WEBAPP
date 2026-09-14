@@ -78,10 +78,14 @@ export function QuickAddButton({ item }: { item: MenuItem }) {
         variant="secondary"
         onClick={add}
         aria-label={`Add ${item.name} to your cart`}
-        // Spacing only: a tighter horizontal pad than the default px-5 for a
-        // control this small. Height stays at the recipe's default min-h-11,
-        // the 44px touch-target floor, and is never overridden smaller.
-        className="px-3 text-xs"
+        // A 44px square below md, the icon alone, and the word joins it from
+        // md. A phone tile's plate is about 110px wide, and "+ Cart full"
+        // beside a price does not fit in it, so the word would either wrap,
+        // cover the price, or push the name aside, which is the collision
+        // this layout exists to remove. The square is still the 44px touch
+        // floor, the aria-label names the action at every width, and the
+        // icon itself changes with the state, so nothing rests on the word.
+        className="size-11 px-0 text-xs md:w-auto md:px-3"
       >
         {state === "added" ? (
           <Check aria-hidden className="size-4" />
@@ -90,7 +94,9 @@ export function QuickAddButton({ item }: { item: MenuItem }) {
         ) : (
           <Plus aria-hidden className="size-4" />
         )}
-        {state === "added" ? "Added" : state === "full" ? "Cart full" : "Add"}
+        <span className="hidden md:inline">
+          {state === "added" ? "Added" : state === "full" ? "Cart full" : "Add"}
+        </span>
       </Button>
       <span aria-live="polite" className="sr-only">
         {cleared

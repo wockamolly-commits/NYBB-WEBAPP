@@ -515,6 +515,13 @@ makes a control feel connected to the finger rather than animated.
 - **Product tiles** are a square orange image frame above a black name plate, with the item code on
   its own line in mono, the name balanced, and the price pinned to the bottom of the card. The
   photograph scales 4% on hover over 500ms.
+- **The tile's footer row** is 44px on every tile, whether or not it holds a button, with the price
+  centred in it, so a row mixing quick-add items with configured ones still puts every price on one
+  line. The name above it always gets the full width of the plate and never shares a line with the
+  button. The plate's padding is even on all four sides (`0.75rem`, `1rem` from `sm`), which is what
+  sits the Add button in the corner with an even margin, centred on the price.
+- **The quick-add button** is a 44px square carrying only its icon below `md`, and gains its word
+  from `md` up. A phone plate is about 110px wide and cannot hold a price beside "Cart full".
 
 ### Inputs and fields
 
