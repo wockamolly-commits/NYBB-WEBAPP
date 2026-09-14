@@ -1154,7 +1154,7 @@ a maintenance liability and a confusing demo.
 | Feature | Class |
 |---|---|
 | Nonce-based CSP via `proxy.ts` | **Keep as-is** |
-| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Modify**: drop `geolocation=(self)`, pickup has no GPS need |
+| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Keep** `geolocation=(self)`. Originally dropped because pickup has no delivery address to capture; restored 2026-09-14 for the nearest counter suggestion on `/stores`, which reads position in the browser only and never sends it to the server |
 | Postgres-backed rate limiting | **Keep as-is** |
 | Constant-time cron authentication | **Keep as-is** |
 | Audit logging of staff actions | **Keep as-is** |

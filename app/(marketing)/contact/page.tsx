@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { BranchDirectory, type BranchEntry } from "@/components/branches/BranchDirectory";
+import { BranchDirectory } from "@/components/branches/BranchDirectory";
 import { BranchesLiveRefresh } from "@/components/branches/BranchesLiveRefresh";
 import { ButtonLink } from "@/components/ui/Button";
-import { summarizeWeek, weekdayIn, weekFor, type StoreHoursRow } from "@/lib/branches/hours";
+import { branchEntries } from "@/lib/branches/entries";
+import type { StoreHoursRow } from "@/lib/branches/hours";
 import { getStoreHours } from "@/lib/branches/hours-reader";
-import { directionsUrl, mapEmbedUrl } from "@/lib/branches/map";
 import { listStores } from "@/lib/branches/reader";
 import type { Store } from "@/lib/branches/types";
-import { branchFormatLabel, branches, catalogImage } from "@/lib/catalog";
+import { branches, catalogImage } from "@/lib/catalog";
 import { telHref } from "@/lib/phone";
 
 export const metadata: Metadata = {
@@ -45,32 +45,9 @@ async function readLive(): Promise<{ stores: Store[]; hours: StoreHoursRow[] | n
 export default async function ContactPage() {
   const hero = catalogImage("branch-mango-avenue");
   const { stores, hours } = await readLive();
-  const bySlug = new Map(stores.map((store) => [store.slug, store]));
-
-  const entries: BranchEntry[] = branches.map((branch) => {
-    const live = bySlug.get(branch.slug)?.branch ?? null;
-    const week = hours ? weekFor(hours, branch.slug) : null;
-
-    return {
-      slug: branch.slug,
-      // The workspace can rename a live branch without a deploy, so the
-      // database's name wins wherever it has one. The address and the pin
-      // stay the catalog's, because the map has to agree with the street.
-      shortName: live?.shortName ?? branch.shortName,
-      formatLabel: branchFormatLabel[branch.format],
-      addressLine: branch.addressLine,
-      city: branch.city,
-      phones: live?.phones.length ? live.phones : branch.phones,
-      mapUrl: mapEmbedUrl(branch),
-      directionsUrl: directionsUrl(branch),
-      pinned: Boolean(branch.pin),
-      week,
-      hoursUnavailable: hours === null,
-      summary: summarizeWeek(week),
-      openNow: live ? live.isOpenNow : null,
-      today: weekdayIn(live?.timezone ?? "Asia/Manila"),
-    };
-  });
+  // Shared with the counter picker, which opens the same sheet. See the
+  // function for which of the catalog and the database wins each field.
+  const entries = branchEntries(branches, stores, hours);
 
   const hoursUnavailable = hours === null;
   const allPublished = entries.every((entry) => entry.week);

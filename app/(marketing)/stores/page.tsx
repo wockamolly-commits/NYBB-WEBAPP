@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { StoreList } from "@/components/store/StoreList";
 import { ButtonLink } from "@/components/ui/Button";
+import { branchEntries } from "@/lib/branches/entries";
+import type { StoreHoursRow } from "@/lib/branches/hours";
+import { getStoreHours } from "@/lib/branches/hours-reader";
 import { safeReturnTo } from "@/lib/branches/href";
+import { branches as catalogBranches } from "@/lib/catalog/branches";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 
@@ -28,16 +32,38 @@ export const metadata: Metadata = {
  * and a customer holding a cached list would choose a shop that has closed.
  */
 
+/**
+ * The opening hours, or null when they could not be read.
+ *
+ * Caught here because hours are a detail inside a sheet, and the picker's job
+ * is choosing a counter. A failed read says so in the sheet, the way the
+ * Branches page does, and never takes the page down with it.
+ */
+async function readHours(): Promise<StoreHoursRow[] | null> {
+  try {
+    return await getStoreHours();
+  } catch (error) {
+    console.error("[stores] hours read failed", error);
+    return null;
+  }
+}
+
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function StoresPage({ searchParams }: PageProps) {
-  const [selection, query, orderingOpen] = await Promise.all([
+  const [selection, query, orderingOpen, hours] = await Promise.all([
     getStoreSelection(),
     searchParams,
     onlineOrderingOpen(),
+    readHours(),
   ]);
+
+  // For the detail sheet the nearest-counter suggestion opens, the same one
+  // the Branches page shows. The stores come from the selection already read
+  // above, so this costs no second orderable-branches round trip.
+  const entries = branchEntries(catalogBranches, selection.stores, hours);
 
   // Validated here rather than in the client component, because a query string
   // is a value a stranger can set and an unchecked one sent to router.push is
@@ -73,6 +99,7 @@ export default async function StoresPage({ searchParams }: PageProps) {
       <StoreList
         stores={selection.stores}
         selectedSlug={selection.selected?.slug ?? null}
+        entries={entries}
         next={next}
         orderingOpen={orderingOpen}
       />

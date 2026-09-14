@@ -55,6 +55,12 @@ export type Store = {
   addressLine: string;
   city: string;
   phones: string[];
+  /**
+   * The counter's confirmed map pin, from the catalog. Null for a branch whose
+   * pin nobody has checked, and for a branch the catalog does not know yet.
+   * The database carries no coordinates, so there is no second source.
+   */
+  pin: { lat: number; lng: number } | null;
   /** Present only for a store the platform is live on. */
   branch: OrderableBranch | null;
   /** Whether a customer may choose this store and reach checkout on it. */

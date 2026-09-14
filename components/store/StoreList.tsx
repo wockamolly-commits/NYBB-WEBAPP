@@ -1,13 +1,19 @@
 "use client";
 
-import { ArrowRight, Check, LoaderCircle, Phone } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, Navigation, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
+import { BranchDialog } from "@/components/branches/BranchDialog";
+import { buttonStyles } from "@/components/ui/Button";
+import type { BranchEntry } from "@/lib/branches/entries";
 import { branchFormatLabel } from "@/lib/catalog";
+import { distanceLabel, distancesBySlug, suggestNearest } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
 import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
+import { NearestCounter } from "./NearestCounter";
+import { useCustomerLocation } from "./useCustomerLocation";
 
 /**
  * Choosing the counter, which on a pickup-only platform is the first real
@@ -89,11 +95,18 @@ const BOARD =
 export function StoreList({
   stores,
   selectedSlug,
+  entries = [],
   next,
   orderingOpen = true,
 }: {
   stores: Store[];
   selectedSlug: string | null;
+  /**
+   * The detail sheet for each catalog counter: map, address, phones, week.
+   * Opened from the nearest-counter suggestion. A counter with no entry has
+   * no sheet, and its suggestion is simply not clickable.
+   */
+  entries?: BranchEntry[];
   /** Where a chosen counter leads. Validated on the server that rendered it. */
   next: string;
   /**
@@ -112,6 +125,10 @@ export function StoreList({
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const navigated = useRef(false);
+  // The slug stays after closing so the sheet keeps its content through the
+  // closing fade. See BranchDialog.
+  const [detailSlug, setDetailSlug] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   /**
    * The navigation waits for the transition to settle rather than happening
@@ -133,6 +150,10 @@ export function StoreList({
   useEffect(() => {
     if (!leaving || pending || navigated.current) return;
     navigated.current = true;
+    // A counter chosen from inside the sheet has done what the sheet was
+    // opened for. Closed here rather than on the press, so the sheet shows
+    // its own "Choosing" until the choice has landed.
+    setDetailOpen(false);
     const go = () => router.push(next);
     go();
   }, [leaving, pending, router, next]);
@@ -146,6 +167,9 @@ export function StoreList({
       if (!result.ok) {
         setError(result.error);
         setChoosing(null);
+        // The error is announced on the page, which the open sheet makes
+        // inert. Close it so the message can be read and acted on.
+        setDetailOpen(false);
         // The list said this counter was available and the server disagreed,
         // which means it changed underneath the page. Re-render it from the
         // truth rather than leaving a row that lies.
@@ -165,6 +189,23 @@ export function StoreList({
   const orderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
   const closed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
 
+  // Worked out here, in the browser, from a position that never leaves it.
+  // See lib/branches/nearest.ts. Nine stores, so there is nothing to memoise.
+  const { location, locate } = useCustomerLocation();
+  const position = location.status === "located" ? location.position : null;
+  const distances = position ? distancesBySlug(stores, position) : null;
+  const suggestion = position ? suggestNearest(orderable, position) : null;
+  const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
+
+  const detailEntry = entries.find((entry) => entry.slug === detailSlug) ?? null;
+  const detailStore = stores.find((store) => store.slug === detailSlug) ?? null;
+  const detailKm = detailSlug ? distances?.get(detailSlug) : undefined;
+
+  function openDetails(slug: string) {
+    setDetailSlug(slug);
+    setDetailOpen(true);
+  }
+
   return (
     <div className="mt-8">
       {error ? (
@@ -176,12 +217,99 @@ export function StoreList({
         </p>
       ) : null}
 
+      {/* Only above a board with something on it to choose. With no counter
+          taking online orders there is nothing for the suggestion's button to
+          do, and the phone-only rows still show their distances. */}
+      {orderable.length > 0 ? (
+        <NearestCounter
+          location={location}
+          suggestion={suggestion}
+          selectedSlug={selectedSlug}
+          pending={pending}
+          busy={suggestion !== null && suggestion.kind !== "none" && choosing === suggestion.store.slug}
+          onLocate={locate}
+          onChoose={choose}
+          onOpenDetails={
+            nearestSlug && entries.some((entry) => entry.slug === nearestSlug)
+              ? () => openDetails(nearestSlug)
+              : undefined
+          }
+        />
+      ) : null}
+
+      <BranchDialog
+        branch={detailEntry}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line` : null}
+        actions={
+          // Only a counter this page can choose gets the choice in its sheet.
+          // Anything else falls back to the directory's Directions and Call.
+          detailEntry && detailStore?.orderable && orderingOpen ? (
+            <>
+              <button
+                type="button"
+                onClick={() => choose(detailStore)}
+                disabled={pending}
+                aria-busy={choosing === detailStore.slug || undefined}
+                className={buttonStyles({
+                  tone: "dark",
+                  variant: "primary",
+                  size: "lg",
+                  className: "sm:flex-1",
+                })}
+              >
+                {choosing === detailStore.slug ? (
+                  <>
+                    <LoaderCircle
+                      aria-hidden
+                      className="size-4 animate-spin motion-reduce:animate-none"
+                      strokeWidth={2.25}
+                    />
+                    Choosing
+                  </>
+                ) : detailStore.slug === selectedSlug ? (
+                  <>
+                    Continue
+                    <ArrowRight aria-hidden className="size-4" strokeWidth={2.25} />
+                  </>
+                ) : (
+                  <>
+                    Collect from here
+                    <ArrowRight aria-hidden className="size-4" strokeWidth={2.25} />
+                  </>
+                )}
+              </button>
+              {/* Secondary here, where the directory makes it primary: on
+                  this page the sheet is a step in choosing, and the choice is
+                  the thing it exists to help with. */}
+              <a
+                href={detailEntry.directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonStyles({
+                  tone: "dark",
+                  variant: "secondary",
+                  size: "lg",
+                  className: "sm:flex-1",
+                })}
+              >
+                <Navigation aria-hidden className="size-4" />
+                Get directions
+                <span className="sr-only"> (opens Google Maps)</span>
+              </a>
+            </>
+          ) : undefined
+        }
+      />
+
       {orderable.length > 0 ? (
         <ul className={BOARD}>
           {orderable.map((store) => {
             const selected = store.slug === selectedSlug;
             const busy = choosing === store.slug;
             const detailsId = `counter-${store.slug}-details`;
+            const km = distances?.get(store.slug);
 
             return (
               <li key={store.slug}>
@@ -240,6 +368,14 @@ export function StoreList({
                           </span>{" "}
                         </>
                       ) : null}
+                      {store.slug === nearestSlug ? (
+                        <>
+                          Nearest{" "}
+                          <span aria-hidden className="mx-0.5">
+                            ·
+                          </span>{" "}
+                        </>
+                      ) : null}
                       {branchFormatLabel[store.format]}
                     </span>
                     <span className="font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl">
@@ -258,6 +394,10 @@ export function StoreList({
                     <span className="block">
                       {store.addressLine}, {store.city}
                     </span>
+
+                    {km !== undefined ? (
+                      <span className="mt-1 block">{distanceLabel(km)}</span>
+                    ) : null}
 
                     {/* The number that decides whether this counter suits the
                         next hour, and it is genuinely per branch: a forecourt
@@ -365,6 +505,11 @@ export function StoreList({
                   <p className="text-nybb-bone/65">
                     {store.addressLine}, {store.city}
                   </p>
+                  {distances?.has(store.slug) ? (
+                    <p className="text-nybb-bone/65 mt-1">
+                      {distanceLabel(distances.get(store.slug)!)}
+                    </p>
+                  ) : null}
                   <p className="text-nybb-bone/80 mt-1">
                     {!orderingOpen
                       ? "Takes orders by phone."
