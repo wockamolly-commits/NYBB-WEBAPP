@@ -868,6 +868,48 @@
     background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
   }
 
+  /* The sheet's scrollbars, split by engine for the reason given above the
+     workspace scrollbar: setting either standard property hands Chrome's
+     bar to a renderer that draws stepper arrows nothing can remove.
+
+     Left to the system, the details column carried a white Windows gutter
+     with an arrow at each end, running the sheet's full height and pressed
+     against the close button: the one light, detached strip on a charcoal
+     surface. This is a bone thumb with no track, inset from both ends so it
+     starts and stops inside the surface rather than at its corners. The
+     0.625rem width is subtracted from the column's right padding in
+     BranchDialog.tsx; change one and change the other. */
+  .branch-dialog ::-webkit-scrollbar {
+    width: 0.625rem;
+  }
+
+  .branch-dialog ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  .branch-dialog ::-webkit-scrollbar-track {
+    margin-block: 0.5rem;
+    background: transparent;
+  }
+
+  .branch-dialog ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+    background-color: color-mix(in oklab, var(--color-nybb-bone) 25%, transparent);
+  }
+
+  .branch-dialog ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--color-nybb-bone) 45%, transparent);
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    .branch-dialog * {
+      scrollbar-color: color-mix(in oklab, var(--color-nybb-bone) 25%, transparent) transparent;
+      scrollbar-width: thin;
+    }
+  }
+
   /* A modal dialog makes the page inert but does not stop it scrolling,
      so a wheel over the backdrop moved the directory behind the sheet. */
   html:has(.branch-dialog[open]) {
