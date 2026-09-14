@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
 import { branchFormatLabel } from "@/lib/catalog";
+import { distanceLabel, distancesBySlug, suggestNearest } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
 import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
+import { NearestCounter } from "./NearestCounter";
+import { useCustomerLocation } from "./useCustomerLocation";
 
 /**
  * Choosing the counter, which on a pickup-only platform is the first real
@@ -165,6 +168,14 @@ export function StoreList({
   const orderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
   const closed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
 
+  // Worked out here, in the browser, from a position that never leaves it.
+  // See lib/branches/nearest.ts. Nine stores, so there is nothing to memoise.
+  const { location, locate } = useCustomerLocation();
+  const position = location.status === "located" ? location.position : null;
+  const distances = position ? distancesBySlug(stores, position) : null;
+  const suggestion = position ? suggestNearest(orderable, position) : null;
+  const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
+
   return (
     <div className="mt-8">
       {error ? (
@@ -176,12 +187,28 @@ export function StoreList({
         </p>
       ) : null}
 
+      {/* Only above a board with something on it to choose. With no counter
+          taking online orders there is nothing for the suggestion's button to
+          do, and the phone-only rows still show their distances. */}
+      {orderable.length > 0 ? (
+        <NearestCounter
+          location={location}
+          suggestion={suggestion}
+          selectedSlug={selectedSlug}
+          pending={pending}
+          busy={suggestion !== null && suggestion.kind !== "none" && choosing === suggestion.store.slug}
+          onLocate={locate}
+          onChoose={choose}
+        />
+      ) : null}
+
       {orderable.length > 0 ? (
         <ul className={BOARD}>
           {orderable.map((store) => {
             const selected = store.slug === selectedSlug;
             const busy = choosing === store.slug;
             const detailsId = `counter-${store.slug}-details`;
+            const km = distances?.get(store.slug);
 
             return (
               <li key={store.slug}>
@@ -240,6 +267,14 @@ export function StoreList({
                           </span>{" "}
                         </>
                       ) : null}
+                      {store.slug === nearestSlug ? (
+                        <>
+                          Nearest{" "}
+                          <span aria-hidden className="mx-0.5">
+                            ·
+                          </span>{" "}
+                        </>
+                      ) : null}
                       {branchFormatLabel[store.format]}
                     </span>
                     <span className="font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl">
@@ -258,6 +293,10 @@ export function StoreList({
                     <span className="block">
                       {store.addressLine}, {store.city}
                     </span>
+
+                    {km !== undefined ? (
+                      <span className="mt-1 block">{distanceLabel(km)}</span>
+                    ) : null}
 
                     {/* The number that decides whether this counter suits the
                         next hour, and it is genuinely per branch: a forecourt
@@ -365,6 +404,11 @@ export function StoreList({
                   <p className="text-nybb-bone/65">
                     {store.addressLine}, {store.city}
                   </p>
+                  {distances?.has(store.slug) ? (
+                    <p className="text-nybb-bone/65 mt-1">
+                      {distanceLabel(distances.get(store.slug)!)}
+                    </p>
+                  ) : null}
                   <p className="text-nybb-bone/80 mt-1">
                     {!orderingOpen
                       ? "Takes orders by phone."

@@ -39,12 +39,14 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
-    // Pickup-only: nothing in this app reads location, so geolocation is denied
-    // outright rather than self-allowed. The reference project needed
-    // geolocation=(self) for delivery address capture; that feature does not
-    // exist here.
+    // Geolocation is allowed for this origin only. The counter picker offers
+    // the nearest counter from the customer's position, worked out in the
+    // browser and never sent here (see lib/branches/nearest.ts). `(self)`
+    // rather than `*` keeps the Google Maps frame on /contact from asking: an
+    // embedded document gets no location from this page. Camera and
+    // microphone are still denied outright, because nothing uses them.
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "camera=(), microphone=(), geolocation=(self)",
   },
 ];
 

@@ -38,6 +38,7 @@ export function mergeStores(
       addressLine: branch?.addressLine || entry.addressLine,
       city: branch?.city || entry.city,
       phones: branch?.phones.length ? branch.phones : entry.phones,
+      pin: entry.pin ?? null,
       branch,
     });
   });
@@ -54,6 +55,7 @@ export function mergeStores(
         addressLine: branch.addressLine,
         city: branch.city,
         phones: branch.phones,
+        pin: null,
         branch,
       }),
     );
