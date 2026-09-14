@@ -88,6 +88,9 @@ describe("migrations", () => {
       "0067",
       "0068",
       "0069",
+      "0070",
+      "0071",
+      "0072",
     ]);
   });
 
@@ -407,6 +410,11 @@ describe("migrations", () => {
     // bounded by the address rate limit the Server Action in front of it
     // applies, the same one cart writes already use, and no refusal it returns
     // ever describes a voucher's value, cap, scope or owner.
+    //
+    // get_store_hours (0071) is the weekly schedule of each active branch, for
+    // the branches page. A slug, a weekday and a window: the hours painted on
+    // the shop door. No branch ids, no audit columns, and nothing for a branch
+    // that is switched off.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -415,6 +423,7 @@ describe("migrations", () => {
       "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
+      "get_store_hours",
       "get_storefront_menu",
       "place_order",
       "preview_voucher",

@@ -11,6 +11,13 @@ import type { Branch } from "./types";
  * spec section 28 and only the owner can answer it, so nothing here is marked
  * as the launch branch.
  *
+ * `pin` is read off each branch's own Google Maps listing, checked on
+ * 2026-09-14 against the address printed here. Two are missing on purpose.
+ * Shell Cebu Country Club and Shell Naga have no listing of their own, and a
+ * search for their street returns several Shell forecourts each, so choosing
+ * one would be a guess dressed as a location. They map from their address
+ * until somebody who has stood at the counter confirms the pin.
+ *
  * `format` is not decoration. A petrol forecourt, a mall food hall and a
  * hospital kiosk have different pickup behaviour, which is why prep_minutes and
  * pickup_slot_capacity live per branch rather than in global settings.
@@ -25,6 +32,7 @@ export const branches: Branch[] = [
     phones: ["0906-440-5297"],
     imageKey: "branch-mango-avenue",
     format: "street",
+    pin: { lat: 10.3107153, lng: 123.8962067 },
   },
   {
     slug: "garden-bloc",
@@ -34,6 +42,7 @@ export const branches: Branch[] = [
     city: "Cebu City",
     phones: ["0906-331-3631", "(032) 318-2405"],
     format: "street",
+    pin: { lat: 10.3311738, lng: 123.9058611 },
   },
   {
     slug: "shell-gorordo",
@@ -43,6 +52,7 @@ export const branches: Branch[] = [
     city: "Cebu City",
     phones: ["0917-114-1392"],
     format: "petrol",
+    pin: { lat: 10.3203694, lng: 123.8994126 },
   },
   {
     slug: "shell-cebu-country-club",
@@ -61,6 +71,7 @@ export const branches: Branch[] = [
     city: "Mandaue City",
     phones: ["0906-538-1220"],
     format: "petrol",
+    pin: { lat: 10.3523453, lng: 123.9498601 },
   },
   {
     slug: "shell-naga",
@@ -79,6 +90,7 @@ export const branches: Branch[] = [
     city: "Cebu City",
     phones: ["0969-328-2875"],
     format: "hospital",
+    pin: { lat: 10.3101696, lng: 123.8899021 },
   },
   {
     slug: "nustar",
@@ -88,6 +100,7 @@ export const branches: Branch[] = [
     city: "Cebu City",
     phones: ["0917-790-0243"],
     format: "casino",
+    pin: { lat: 10.2715457, lng: 123.8802395 },
   },
   {
     slug: "sm-city-cebu",
@@ -98,6 +111,7 @@ export const branches: Branch[] = [
     phones: ["0917-790-0386"],
     imageKey: "branch-sm-city",
     format: "food-hall",
+    pin: { lat: 10.3120356, lng: 123.9179292 },
   },
 ];
 

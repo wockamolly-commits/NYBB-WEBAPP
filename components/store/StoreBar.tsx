@@ -51,7 +51,13 @@ export function StoreBar({
         className,
       )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
+      {/* A grid, not a wrapping row. As `flex-wrap` the address took the full
+          line on a phone, so the button broke onto a row of its own and hung
+          off the right edge with a hole beside it, which read as an accident.
+          Now the break is decided: stacked on a phone, with the button across
+          the full card where the thumb is, and from `sm` up two columns in
+          which the text column wraps and the button keeps its place. */}
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-6">
         <div className="flex min-w-0 items-start gap-3">
           <MapPin
             aria-hidden
@@ -91,7 +97,7 @@ export function StoreBar({
           href={href}
           tone="dark"
           variant={selected ? "secondary" : "primary"}
-          className="ml-auto"
+          className="w-full sm:w-auto"
         >
           {selected ? "Change counter" : "Choose a counter"}
         </ButtonLink>

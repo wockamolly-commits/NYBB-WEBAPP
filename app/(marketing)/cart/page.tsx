@@ -4,7 +4,13 @@ import { ReorderNotice } from "@/components/cart/ReorderNotice";
 import { StoreBar } from "@/components/store/StoreBar";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
-import { getStorefrontMenu } from "@/lib/menu";
+import {
+  findItem,
+  findOptionGroup,
+  getStorefrontMenu,
+  WINGS_ITEM_SLUG,
+  WING_HEAT_GROUP_SLUG,
+} from "@/lib/menu";
 
 export const metadata: Metadata = {
   title: "Your cart",
@@ -48,6 +54,19 @@ export default async function CartPage() {
 
   const canOrder = orderingOpen && selection.stores.some((store) => store.orderable);
 
+  // The empty cart draws the heat scale, so it reads the stops from the menu
+  // it was priced from rather than from a list of its own.
+  const heatLevels = (
+    findOptionGroup(findItem(categories, WINGS_ITEM_SLUG), WING_HEAT_GROUP_SLUG)
+      ?.options ?? []
+  )
+    .filter((option) => (option.heatPercent ?? 0) > 0)
+    .map((option) => ({
+      slug: option.slug,
+      name: option.name,
+      percent: option.heatPercent ?? 0,
+    }));
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="font-display heading-page">Your cart</h1>
@@ -63,6 +82,7 @@ export default async function CartPage() {
       <ReorderNotice />
       <CartView
         categories={categories}
+        heatLevels={heatLevels}
         storeName={selection.selected?.shortName ?? null}
         orderingOpen={canOrder}
       />

@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
-import { MuralArt } from "@/components/mural/MuralArt";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { cartQuantity, lineHref, resolveCart } from "@/lib/cart/lines";
@@ -22,6 +21,7 @@ import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
 import { previewImage } from "@/lib/menu/preview";
 import type { MenuCategory } from "@/lib/menu/types";
+import { cn } from "@/lib/utils";
 
 /**
  * The cart, resolved against the live menu.
@@ -69,12 +69,85 @@ function DroppedNotice({ dropped, repriced }: CartChanges) {
   );
 }
 
+/** Static class names, so Tailwind's scanner can see all five. */
+const HEAT_RAMP = [
+  "bg-nybb-heat-1",
+  "bg-nybb-heat-2",
+  "bg-nybb-heat-3",
+  "bg-nybb-heat-4",
+  "bg-nybb-heat-5",
+] as const;
+
+export type EmptyCartHeatLevel = { slug: string; name: string; percent: number };
+
+/**
+ * The five heat stops as ascending bars, the empty cart's one picture.
+ *
+ * A quotation of the landing page's HeatScale rather than a second copy of it:
+ * no prices, no reveal, and small. The prices belong to the menu the button
+ * leads to, and the grow-in animation is kept to the landing page, where it
+ * is the section's whole point. This one is drawn from the first frame.
+ *
+ * Decoration, so it is hidden from screen readers. The sentence beside it
+ * already says "five levels of heat", and reading out five names and five
+ * percentages after it would be the same fact twice.
+ *
+ * The names only show from `sm` up. At 320px the five columns are about
+ * forty pixels wide and "Moderate" does not fit in one, so a phone gets the
+ * percentages, which are the part a bar graph is actually drawing.
+ */
+function HeatSteps({
+  levels,
+  className,
+}: {
+  levels: EmptyCartHeatLevel[];
+  className?: string;
+}) {
+  return (
+    <div aria-hidden className={cn("w-full max-w-md lg:w-96 lg:max-w-none", className)}>
+      <p className="type-caps text-nybb-bone/55">Level of Hotness</p>
+      <ol className="border-nybb-bone/15 mt-4 grid grid-cols-5 items-end gap-2 border-b sm:gap-3">
+        {levels.map((level, index) => (
+          <li key={level.slug} className="flex h-16 items-end sm:h-24 lg:h-32">
+            <span
+              className={cn(
+                "block w-full rounded-t-[2px]",
+                HEAT_RAMP[index] ?? HEAT_RAMP[HEAT_RAMP.length - 1],
+              )}
+              style={{ height: `${level.percent}%` }}
+            />
+          </li>
+        ))}
+      </ol>
+      <ol className="mt-2.5 grid grid-cols-5 gap-2 sm:gap-3">
+        {levels.map((level) => (
+          <li key={level.slug} className="min-w-0">
+            <p className="font-display hidden truncate text-xs leading-none tracking-[0.04em] uppercase sm:block">
+              {level.name}
+            </p>
+            <p className="font-mono-tabular text-nybb-bone/55 text-xs leading-none sm:mt-1.5">
+              {level.percent}%
+            </p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function CartView({
   categories,
+  heatLevels = [],
   storeName = null,
   orderingOpen = true,
 }: {
   categories: MenuCategory[];
+  /**
+   * The wings' heat stops, read from the same menu by the page. Passed in
+   * rather than looked up here, because the menu module's lookups sit beside
+   * the Supabase read and this is a client component.
+   */
+  heatLevels?: EmptyCartHeatLevel[];
   /** The chosen counter's short name, or null when none has been chosen. */
   storeName?: string | null;
   /**
@@ -162,40 +235,51 @@ export function CartView({
             </div>
           </div>
         ) : (
-          // The empty cart, and the only state on this screen that gets a
-          // drawing. The undo panel above is a live offer with a deadline on
-          // it, and hanging an illustration next to that would slow down the
-          // one state here somebody needs to act on quickly. The states already
-          // differ structurally, which is the point of the rule: this one is
-          // wide and drawn, that one is a bordered panel with a control in it.
+          // The empty cart. A charcoal card, the same surface as the counter
+          // bar above it, so the page reads as two stacked facts about this
+          // order: where it is collected from, and that nothing is in it yet.
           //
-          // A signal at rest, because the whole message is that nothing has
-          // moved yet. Decoration, so it is hidden from screen readers: the
-          // sentence beside it is the content.
-          // Held to max-w-3xl and aligned to the top. Left to fill the page
-          // the drawing sat at the far left and the sentence at the far right
-          // with a void between them, which reads as two unrelated things
-          // rather than as one empty state. Top alignment rather than centred,
-          // so the first line of the message and the top of the drawing share a
-          // rail and the pair has an edge in common.
-          <div className="mt-8 flex max-w-3xl flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-            <MuralArt
-              motif="signal"
-              className="text-nybb-ink w-44 shrink-0 sm:w-52"
-            />
-            <div className="sm:pt-1">
-              <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
-                Nothing in the cart yet. Wings come in ten flavours and five
-                levels of heat, and every one of them is priced before you
-                commit to it.
-              </p>
-              <div className="mt-6">
-                <ButtonLink href="/menu" tone="light">
+          // IT USED TO CARRY THE TRAFFIC SIGNAL FROM THE WALL, AND THAT WAS
+          // WRONG TWICE. The wall drawing behind every marketing page already
+          // has signals in it, so the cart restated the background at a
+          // different size and weight, which read as a mistake rather than a
+          // choice. And it sat in a column with its crop edges showing: the
+          // framed picture laid on the page that The Drawing Runs Off The Page
+          // Rule exists to prevent. Full strength black beside a 70% sentence
+          // also made the drawing the loudest thing in the state, above the
+          // message and the button.
+          //
+          // What replaces it is the heat scale, which is the one object this
+          // restaurant has that no template does, and which the sentence
+          // itself mentions. It needs the dark card: heat one is signage
+          // yellow, and on the amber ground it would vanish.
+          //
+          // The undo panel above stays a dashed outline on the bare ground.
+          // It is a live offer with a deadline on it, and the states differ
+          // structurally rather than by colour.
+          <section
+            aria-labelledby="empty-cart-title"
+            className="bg-nybb-charcoal text-nybb-bone mt-6 rounded-md first:mt-0"
+          >
+            <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-16 lg:p-10">
+              <div className="max-w-[44ch]">
+                <h2 id="empty-cart-title" className="font-display heading-minor">
+                  Nothing in the cart yet
+                </h2>
+                <p className="text-nybb-bone/70 mt-4 leading-relaxed">
+                  Wings come in ten flavours and five levels of heat, and every
+                  one of them is priced before you commit to it.
+                </p>
+                <ButtonLink href="/menu" tone="dark" className="mt-7">
                   Browse the menu
                 </ButtonLink>
               </div>
+
+              {heatLevels.length > 0 ? (
+                <HeatSteps levels={heatLevels} className="order-first lg:order-none" />
+              ) : null}
             </div>
-          </div>
+          </section>
         )}
       </div>
     );
