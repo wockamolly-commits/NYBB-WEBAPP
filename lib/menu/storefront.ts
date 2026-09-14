@@ -62,7 +62,8 @@ const categoriesSchema = z.array(
         description: z.string().nullish(),
         categorySlug: z.string().min(1),
         featured: z.boolean(),
-        pricingNote: z.string().nullish(),
+        // pricing_note is deliberately not read: an object schema strips
+        // keys it does not name, which is what keeps it out of MenuItem.
         image: partialImageSchema,
         variations: z
           .array(
@@ -100,7 +101,6 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
       description: item.description ?? null,
       categorySlug: item.categorySlug,
       featured: item.featured,
-      pricingNote: item.pricingNote ?? null,
       image: menuImageOf(resolveMenuImage(item.image)),
       variations: item.variations,
       optionGroups: item.optionGroups.map((group) => ({

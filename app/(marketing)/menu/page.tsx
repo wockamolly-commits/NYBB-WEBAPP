@@ -8,6 +8,7 @@ import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { getStorefrontMenu, WING_FLAVOUR_GROUP_SLUG } from "@/lib/menu";
 import { findOptionGroup } from "@/lib/menu";
+import { formatPesoCompact } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Menu",
@@ -87,11 +88,25 @@ export default async function MenuPage() {
             </div>
             <p className="text-nybb-ink/70 mt-2 text-sm">
               {category.blurb}
-              {category.slug === "chicken-wings" ? (
-                <span className="font-mono-tabular text-nybb-ink ml-2">
-                  Half 329 / Full 529
-                </span>
-              ) : null}
+              {/* Read from the wings item, not typed. This was the literal
+                  "Half 329 / Full 529": the one price on the storefront that
+                  would not follow an owner's price change, and the only one
+                  without a peso sign once the rest gained it. Half and Full
+                  are looked up by slug, as the landing page does, because
+                  the item also carries boneless sizes this line never named. */}
+              {category.slug === "chicken-wings"
+                ? (() => {
+                    const sizes = category.items[0]?.variations ?? [];
+                    const half = sizes.find((variation) => variation.slug === "half");
+                    const full = sizes.find((variation) => variation.slug === "full");
+                    return half && full ? (
+                      <span className="font-mono-tabular text-nybb-ink ml-2">
+                        Half {formatPesoCompact(half.priceCents)} / Full{" "}
+                        {formatPesoCompact(full.priceCents)}
+                      </span>
+                    ) : null;
+                  })()
+                : null}
             </p>
 
             {/* Wings show the flavour grid instead of a product tile. One tile
