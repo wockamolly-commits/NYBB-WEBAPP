@@ -69,7 +69,9 @@ function BranchCard({ branch, onOpen }: { branch: BranchEntry; onOpen: () => voi
           data-card-trigger
           onClick={onOpen}
           aria-haspopup="dialog"
-          className="text-left after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:outline-none"
+          // Case inherited, because the browser's own button style resets it
+          // and the display face is uppercase by definition.
+          className="text-left [text-transform:inherit] after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:outline-none"
         >
           {branch.shortName}
         </button>
