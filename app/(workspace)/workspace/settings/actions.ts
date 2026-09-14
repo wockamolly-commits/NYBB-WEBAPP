@@ -109,7 +109,7 @@ export async function saveStoreHours(
   refreshWorkspace();
   return {
     status: "success",
-    message: "Opening hours saved. Customers see the new schedule on their next visit.",
+    message: "Opening hours saved. The branches page shows the new schedule straight away.",
     savedHours: parsed.data.hours.map((day) => ({
       weekday: day.weekday,
       isClosed: day.is_closed,

@@ -143,4 +143,14 @@ export type Branch = {
    * capacity are per branch in the schema rather than global.
    */
   format: "street" | "mall" | "food-hall" | "petrol" | "hospital" | "casino";
+  /**
+   * Where the counter actually is, as the branch's own Google Maps listing
+   * places it.
+   *
+   * Optional, and absent is a real answer rather than a gap to fill: a pin
+   * nobody has checked is worse than none, because a customer follows it. A
+   * branch without one is mapped from its address instead, which lands on the
+   * right street without claiming the right door. See `lib/branches/map.ts`.
+   */
+  pin?: { lat: number; lng: number };
 };

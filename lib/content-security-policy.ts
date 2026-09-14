@@ -17,9 +17,11 @@ type ContentSecurityPolicyOptions = {
  * for a feature that is not built yet is a standing weakening of the policy for
  * no benefit, so:
  *
- *   - Google Maps is absent. This is a pickup-only platform. The branch card
- *     uses a static image and an outbound directions link, neither of which
- *     needs a script or an XHR origin.
+ *   - Google Maps is admitted as a frame and as nothing else. The branch
+ *     detail dialog on /contact frames the Maps embed, which is a document on
+ *     Google's origin running under Google's policy, so it needs `frame-src`
+ *     and no script, XHR or image origin here. The Maps JavaScript API, which
+ *     would need all three, stays out. See `lib/branches/map.ts`.
  *   - PayMongo is gated behind `paymentsEnabled` and stays off until the online
  *     prepay rail ships.
  */
@@ -66,7 +68,7 @@ export function contentSecurityPolicy(
     `media-src 'self'`,
     `font-src 'self' data: https://fonts.gstatic.com`,
     `connect-src 'self'${supabaseConnect}${paymentsConnect}`,
-    `frame-src 'self'${paymentsFrame}`,
+    `frame-src 'self' https://www.google.com${paymentsFrame}`,
     `worker-src 'self' blob:`,
     `manifest-src 'self'`,
     `base-uri 'self'`,

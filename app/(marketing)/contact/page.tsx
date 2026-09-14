@@ -1,25 +1,89 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { BranchDirectory, type BranchEntry } from "@/components/branches/BranchDirectory";
+import { BranchesLiveRefresh } from "@/components/branches/BranchesLiveRefresh";
 import { ButtonLink } from "@/components/ui/Button";
+import { summarizeWeek, weekdayIn, weekFor, type StoreHoursRow } from "@/lib/branches/hours";
+import { getStoreHours } from "@/lib/branches/hours-reader";
+import { directionsUrl, mapEmbedUrl } from "@/lib/branches/map";
+import { listStores } from "@/lib/branches/reader";
+import type { Store } from "@/lib/branches/types";
 import { branchFormatLabel, branches, catalogImage } from "@/lib/catalog";
 import { telHref } from "@/lib/phone";
 
 export const metadata: Metadata = {
   title: "Branches",
   description:
-    "Every NYBB Hot Wings counter in Cebu, with addresses and phone numbers.",
+    "Every NYBB Hot Wings counter in Cebu, with addresses, phone numbers, opening hours and a map.",
 };
 
-export default function ContactPage() {
+/**
+ * The directory is published fact first and live data second.
+ *
+ * The nine counters, their streets, their numbers and their pins come from the
+ * catalog and need no database. Whether a counter is open this minute and what
+ * its week looks like come from Postgres. If that read fails, the page still
+ * lists every counter with a map and a number to call, and says the hours
+ * could not be loaded: a directory that returns a 500 because an opening time
+ * could not be fetched has lost the one job it had.
+ *
+ * `hours` is null when the read failed, never an empty list, so a failed read
+ * is not rendered as a counter with no schedule. See `getStoreHours`.
+ */
+async function readLive(): Promise<{ stores: Store[]; hours: StoreHoursRow[] | null }> {
+  const [stores, hours] = await Promise.allSettled([listStores(), getStoreHours()]);
+
+  if (stores.status === "rejected") console.error("[contact] stores read failed", stores.reason);
+  if (hours.status === "rejected") console.error("[contact] hours read failed", hours.reason);
+
+  return {
+    stores: stores.status === "fulfilled" ? stores.value : [],
+    hours: hours.status === "fulfilled" ? hours.value : null,
+  };
+}
+
+export default async function ContactPage() {
   const hero = catalogImage("branch-mango-avenue");
+  const { stores, hours } = await readLive();
+  const bySlug = new Map(stores.map((store) => [store.slug, store]));
+
+  const entries: BranchEntry[] = branches.map((branch) => {
+    const live = bySlug.get(branch.slug)?.branch ?? null;
+    const week = hours ? weekFor(hours, branch.slug) : null;
+
+    return {
+      slug: branch.slug,
+      // The workspace can rename a live branch without a deploy, so the
+      // database's name wins wherever it has one. The address and the pin
+      // stay the catalog's, because the map has to agree with the street.
+      shortName: live?.shortName ?? branch.shortName,
+      formatLabel: branchFormatLabel[branch.format],
+      addressLine: branch.addressLine,
+      city: branch.city,
+      phones: live?.phones.length ? live.phones : branch.phones,
+      mapUrl: mapEmbedUrl(branch),
+      directionsUrl: directionsUrl(branch),
+      pinned: Boolean(branch.pin),
+      week,
+      hoursUnavailable: hours === null,
+      summary: summarizeWeek(week),
+      openNow: live ? live.isOpenNow : null,
+      today: weekdayIn(live?.timezone ?? "Asia/Manila"),
+    };
+  });
+
+  const hoursUnavailable = hours === null;
+  const allPublished = entries.every((entry) => entry.week);
+  const nonePublished = entries.every((entry) => !entry.week);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="font-display heading-page">Branches</h1>
       <p className="text-nybb-ink/75 mt-4 max-w-lg text-base leading-relaxed">
         {branches.length} counters across Cebu, from street fronts to food halls
-        to petrol stations. Call the one you want to collect from, or pick it on
-        the ordering page and the kitchen will hold a window for you.
+        to petrol stations. Open any of them for a map, its hours and directions,
+        or pick one on the ordering page and the kitchen will hold a window for
+        you.
       </p>
 
       {/* A directory and a decision are different jobs, so they are different
@@ -47,51 +111,23 @@ export default function ContactPage() {
         />
       ) : null}
 
-      <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {branches.map((branch) => (
-          <li
-            key={branch.slug}
-            className="bg-nybb-charcoal text-nybb-bone flex flex-col rounded-md p-5"
-          >
-            {/* The display face, not mono. "FOOD HALL" carries no digits and
-                nothing here has to align in a column, so mono was doing the
-                job of looking technical rather than the job it is loaded for.
-                Anton at this size is the site's own label voice. */}
-            <p className="font-display type-caps text-nybb-bone/60">
-              {branchFormatLabel[branch.format]}
-            </p>
-            <h2 className="font-display mt-2 text-xl leading-tight">
-              {branch.shortName}
-            </h2>
-            <p className="text-nybb-bone/65 mt-2 text-sm leading-relaxed">
-              {branch.addressLine}
-              <br />
-              {branch.city}
-            </p>
-            <ul className="mt-3">
-              {branch.phones.map((phone) => (
-                <li key={phone}>
-                  <a
-                    href={telHref(phone)}
-                    className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center text-sm transition-colors"
-                  >
-                    {phone}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+      <BranchDirectory branches={entries} />
+      <BranchesLiveRefresh />
 
-      {/* Weekday hours are not published anywhere the site can read, and
-          guessing them is exactly how the reference project shipped a
-          placeholder schedule that silently gated ordering. So the page says
-          what is true. */}
-      <p className="border-nybb-ink/40 text-nybb-ink/75 mt-8 rounded-md border border-dashed p-4 text-sm">
-        Opening hours vary by branch and are not published here yet. Call ahead
-        if you are travelling for a specific counter.
-      </p>
+      {/* Hours come from the owner's schedule in the workspace, and only for
+          counters this platform is live on. Guessing the rest is exactly how
+          the reference project shipped a placeholder schedule that silently
+          gated ordering, so the page says what is true, and says it in
+          whichever of three shapes the data is actually in. */}
+      {!allPublished ? (
+        <p className="border-nybb-ink/40 text-nybb-ink/75 mt-8 rounded-md border border-dashed p-4 text-sm">
+          {hoursUnavailable
+            ? "Opening hours could not be loaded just now. Call ahead if you are travelling for a specific counter."
+            : nonePublished
+            ? "Opening hours vary by branch and are not published here yet. Call ahead if you are travelling for a specific counter."
+            : "Opening hours are published for the counters taking online orders. For the others, call ahead if you are travelling for a specific counter."}
+        </p>
+      ) : null}
 
       {/* A dark panel, not an orange tint.
 

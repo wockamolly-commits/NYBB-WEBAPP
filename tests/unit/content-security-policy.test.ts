@@ -73,13 +73,20 @@ describe("contentSecurityPolicy", () => {
     expect(directive(csp, "img-src")).toContain("https://*.paymongo.com");
   });
 
-  it("never admits Google Maps: this is a pickup-only platform", () => {
+  it("admits the Google Maps embed as a frame, and Google nowhere else", () => {
     const csp = contentSecurityPolicy("n", {
       ...PROD,
       paymentsEnabled: true,
       supabaseUrl: "https://abc.supabase.co",
     });
-    expect(csp).not.toContain("googleapis.com/maps");
+    expect(directive(csp, "frame-src")).toContain("https://www.google.com");
+    // The Maps JavaScript API would need these, and it is not what the branch
+    // dialog uses. A frame runs under its own origin's policy; a script runs
+    // under ours.
+    for (const name of ["script-src", "connect-src", "img-src"]) {
+      expect(directive(csp, name)).not.toContain("google");
+    }
+    expect(csp).not.toContain("maps.googleapis.com");
     expect(csp).not.toContain("maps.gstatic.com");
   });
 

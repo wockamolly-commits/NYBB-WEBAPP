@@ -595,7 +595,8 @@ screen on a tablet.
 
 ### The delete confirmation
 
-The Workspace's one interrupting surface, and the only dialog in the system. It is a native
+The Workspace's one interrupting surface, and one of the system's two dialogs (the other is the
+branch sheet below). It is a native
 `<dialog>` opened with `showModal()`, so the top layer, the focus trap, Escape and the inert page
 behind it are the browser's work rather than a hand-rolled trap. It replaced `window.confirm`, which
 was the one surface in the app that nothing in this document could reach: it announces the origin,
@@ -635,6 +636,34 @@ the screen, carried at the same weight as Save. The dialog is unchanged, so noth
 only the repetition is. The accessible name does not shrink with the button: `triggerLabel` names
 the record ("Delete option: Classic Buffalo"), because a screen reader must never meet fifteen
 buttons called the same thing.
+
+### The branch sheet
+
+The detail each card on `/contact` opens: a map, the address, the numbers, the week of hours, and
+the two things somebody does next. `components/branches/BranchDirectory.tsx` is the implementation.
+It is the delete confirmation's material at a larger size, and it shares that dialog's backdrop,
+edge and 140ms rise from the same selectors rather than restating them.
+
+- **Map first.** On a phone the map takes the top of the sheet at 4:3 and the details scroll beneath
+  it; from `md` it takes the left half at full height. It is the one thing on the sheet the card did
+  not already say. The frame mounts only when the sheet opens, so a visitor who opens nothing sends
+  Google nothing, and it fades in over a graphite placeholder rather than flashing white.
+- **A pin or the street, never a guess.** `pin` in `lib/catalog/branches.ts` is read off the
+  branch's own Google listing. A branch whose listing could not be told apart from its neighbours
+  maps from its address and says so in one line under it.
+- **The card is the target.** The name is a button whose `::after` covers the plate, so the whole
+  card opens the sheet while the phone numbers sit above that layer and still dial. The focus ring
+  is drawn on the card, in ink, because a ring around the name would say the name is the control.
+- **Hours are a table, Monday first, today marked twice**: a bone tint across the row and the word
+  TODAY in signage yellow, because a tint alone is colour carrying a meaning. Times are mono so the
+  column aligns. A week nobody has published is one dashed-border sentence, not seven "Not set" rows.
+- **Open or shut is shape and colour**: a filled orange dot with "Open now", a bone ring with "Closed
+  now". Shown only for a counter this platform is live on, because for the others nobody can say.
+- **Actions stick to the foot** of whatever is scrolling, on a charcoal fill with a bone at 15% rule.
+  Get directions is the primary fill, because somebody who opened a map is asking how to get there;
+  Call is secondary. They stack on a phone with Directions on top.
+- **Focus opens on Close**, named explicitly, because Chrome counts a scrollable box as focusable and
+  `showModal()` otherwise lands on the sheet's scroll container.
 
 ### The workspace table
 

@@ -785,7 +785,9 @@
      the duration, and the end state of both properties is the resting one,
      so a reduced motion visitor gets the panel placed rather than moved. */
   .confirm-dialog,
-  .confirm-dialog::backdrop {
+  .confirm-dialog::backdrop,
+  .branch-dialog,
+  .branch-dialog::backdrop {
     opacity: 0;
     transition:
       opacity 140ms ease-out,
@@ -794,28 +796,82 @@
       display 140ms ease-out allow-discrete;
   }
 
-  .confirm-dialog {
+  .confirm-dialog,
+  .branch-dialog {
     transform: translateY(0.5rem);
   }
 
   .confirm-dialog[open],
-  .confirm-dialog[open]::backdrop {
+  .confirm-dialog[open]::backdrop,
+  .branch-dialog[open],
+  .branch-dialog[open]::backdrop {
     opacity: 1;
   }
 
-  .confirm-dialog[open] {
+  .confirm-dialog[open],
+  .branch-dialog[open] {
     transform: translateY(0);
   }
 
   @starting-style {
     .confirm-dialog[open],
-    .confirm-dialog[open]::backdrop {
+    .confirm-dialog[open]::backdrop,
+    .branch-dialog[open],
+    .branch-dialog[open]::backdrop {
       opacity: 0;
     }
 
-    .confirm-dialog[open] {
+    .confirm-dialog[open],
+    .branch-dialog[open] {
       transform: translateY(0.5rem);
     }
+  }
+
+  /* The branch detail sheet on /contact.
+     ================================================================
+     The confirmation's material at a larger size: charcoal, one radius,
+     a real edge at 40% bone for the same measured reason (charcoal over
+     the scrim is 1.1:1), the same unblurred Char backdrop and the same
+     140ms rise, which the selectors above now share rather than restate.
+
+     It is wide because half of it is a map. 60rem holds a map column
+     that shows a few blocks of street beside a details column that sets
+     the week of hours without wrapping. On a phone it keeps a half rem
+     of backdrop on every side, so it still reads as a sheet over the
+     page and the tap outside it still has somewhere to land.
+
+     The dialog clips and its content scrolls, which is what lets the
+     action bar stick to the foot of whatever is scrolling. dvh rather
+     than vh, because a phone's collapsing toolbar makes 100vh taller
+     than the screen and would push that bar under it. */
+  .branch-dialog {
+    width: 100%;
+    max-width: min(60rem, calc(100vw - 1rem));
+    max-height: calc(100dvh - 1rem);
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--color-nybb-bone) 40%, transparent);
+    border-radius: 0.4rem;
+    background: var(--color-nybb-charcoal);
+    color: var(--color-nybb-bone);
+  }
+
+  @media (min-width: 640px) {
+    .branch-dialog {
+      max-width: min(60rem, calc(100vw - 3rem));
+      max-height: min(44rem, calc(100dvh - 3rem));
+    }
+  }
+
+  .branch-dialog::backdrop {
+    background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
+  }
+
+  /* A modal dialog makes the page inert but does not stop it scrolling,
+     so a wheel over the backdrop moved the directory behind the sheet. */
+  html:has(.branch-dialog[open]) {
+    overflow: hidden;
   }
 
   /* Billboard headings. Uppercase and tight, because the display face
