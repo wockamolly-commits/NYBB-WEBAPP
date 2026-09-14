@@ -6,7 +6,7 @@ import { TextLink } from "@/components/ui/TextLink";
 import { getStoreSelection, selectedBranchSlug } from "@/lib/branches/selection";
 import { itemPriceRange } from "@/lib/catalog/pricing";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
-import { formatPesoRange } from "@/lib/format";
+import { formatPesoCompact, formatPesoRange } from "@/lib/format";
 import { findCategory, getStorefrontMenu } from "@/lib/menu";
 import type { MenuItem } from "@/lib/menu/types";
 
@@ -53,12 +53,12 @@ export async function generateMetadata({
   );
   if (!item) return {};
 
-  const { fromCents, toCents } = itemPriceRange(item);
+  const { fromCents } = itemPriceRange(item);
   return {
     title: item.name,
     description:
       item.description ??
-      `${item.name} at New York Buffalo Brad's Hot Wings. From PHP ${formatPesoRange(fromCents, toCents)}.`,
+      `${item.name} at New York Buffalo Brad's Hot Wings. From ${formatPesoCompact(fromCents)}.`,
   };
 }
 
@@ -116,15 +116,6 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
               {item.description ? (
                 <p className="text-nybb-ink/75 mt-4 max-w-prose leading-relaxed">
                   {item.description}
-                </p>
-              ) : null}
-
-              {/* Surfaced, not hidden. This marks a price the printed menu
-                  left ambiguous and that the catalog had to interpret, and it
-                  stays visible until the owner confirms the reading. */}
-              {item.pricingNote ? (
-                <p className="border-nybb-ink/25 text-nybb-ink/75 mt-5 max-w-prose rounded-md border border-dashed p-3 text-xs leading-relaxed">
-                  {item.pricingNote}
                 </p>
               ) : null}
             </>

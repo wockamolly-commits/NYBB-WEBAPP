@@ -53,7 +53,6 @@ function toItem(item: CatalogItem): MenuItem {
     description: item.description ?? null,
     categorySlug: item.categorySlug,
     featured: item.featured ?? false,
-    pricingNote: item.pricingNote ?? null,
     image: toImage(catalogImage(item.imageKey)),
     // Inactive sizes are dropped here for the same reason inactive items are,
     // and against the same filter in get_storefront_menu(): `where iv.is_active`.

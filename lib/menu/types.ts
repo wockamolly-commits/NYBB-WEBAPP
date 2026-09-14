@@ -67,7 +67,12 @@ export type MenuItem = {
   description?: string | null;
   categorySlug: string;
   featured: boolean;
-  pricingNote?: string | null;
+  // No pricingNote. The catalog's notes are the business talking to itself
+  // (where a price came from, what the owner still has to confirm), and this
+  // type is what the storefront renders and ships to the browser. It used to
+  // carry the note and the item page printed it, so a customer ordering wings
+  // read about Foodpanda's delivery prices. The note stays in lib/catalog and
+  // in menu_items.pricing_note; it just never enters the customer's menu.
   image: MenuImage | null;
   variations: MenuVariation[];
   optionGroups: MenuOptionGroup[];
