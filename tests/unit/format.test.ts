@@ -22,22 +22,31 @@ describe("formatPeso", () => {
 
 describe("formatPesoCompact", () => {
   it("drops the decimals on a whole peso value", () => {
-    expect(formatPesoCompact(32900)).toBe("329");
-    expect(formatPesoCompact(3000)).toBe("30");
+    expect(formatPesoCompact(32900)).toBe("₱329");
+    expect(formatPesoCompact(3000)).toBe("₱30");
   });
 
   it("keeps them when there are centavos", () => {
-    expect(formatPesoCompact(10550)).toBe("105.50");
+    expect(formatPesoCompact(10550)).toBe("₱105.50");
+  });
+
+  it("groups thousands the way the full form does", () => {
+    expect(formatPesoCompact(129900)).toBe("₱1,299");
+    expect(formatPeso(129900)).toBe("₱1,299.00");
+  });
+
+  it("uses the same sign as the full form, so menu and cart agree", () => {
+    expect(formatPesoCompact(32900)[0]).toBe(formatPeso(32900)[0]);
   });
 });
 
 describe("formatPesoRange", () => {
   it("collapses when both ends match", () => {
-    expect(formatPesoRange(34900, 34900)).toBe("349");
+    expect(formatPesoRange(34900, 34900)).toBe("₱349");
   });
 
-  it("spans when they differ", () => {
-    expect(formatPesoRange(32900, 52900)).toBe("329-529");
+  it("spans when they differ, with the sign on both ends", () => {
+    expect(formatPesoRange(32900, 52900)).toBe("₱329-₱529");
   });
 });
 
