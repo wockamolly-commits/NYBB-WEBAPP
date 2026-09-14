@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, LoaderCircle, Navigation, Phone } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, MapPin, Navigation, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { chooseStore } from "@/app/actions/store";
@@ -8,7 +8,12 @@ import { BranchDialog } from "@/components/branches/BranchDialog";
 import { buttonStyles } from "@/components/ui/Button";
 import type { BranchEntry } from "@/lib/branches/entries";
 import { branchFormatLabel } from "@/lib/catalog";
-import { distanceLabel, distancesBySlug, suggestNearest } from "@/lib/branches/nearest";
+import {
+  distanceLabel,
+  distancesBySlug,
+  rankByDistance,
+  suggestNearest,
+} from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
 import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
@@ -67,7 +72,29 @@ import { useCustomerLocation } from "./useCustomerLocation";
  * A disabled control invites pressing; a row with a phone number in it
  * resolves the problem. They sit on a second board of the same shape, so the
  * two lists read as one directory split by what each counter can do.
+ *
+ * NEAREST FIRST, ONCE THE PAGE KNOWS WHERE THE CUSTOMER IS.
+ *
+ * Until then both boards run in the order the business publishes its counters
+ * in. When a position arrives, each board is re-ranked nearest first, every
+ * pinned counter carries its distance as the first line of its details, and a
+ * counter with no confirmed pin drops below the ones that have a distance.
+ *
+ * Moving the rows has a cost on a page where every row chooses in one press:
+ * for somebody who allowed location on an earlier visit, the position lands a
+ * moment after the page does, and a thumb already on its way down to a row
+ * could land on a different counter. So a row ignores a press for a short
+ * moment after the board it sits on has been re-ranked (REORDER_GRACE_MS).
+ * Somebody who pressed "Find my nearest counter" is looking at that button,
+ * not at a row, when the board moves.
  */
+
+/**
+ * How long a row ignores a press after its board was re-ranked. Long enough
+ * to cover a press already on its way when the rows moved; short enough that
+ * nobody who has read the new order can press inside it.
+ */
+const REORDER_GRACE_MS = 600;
 
 /**
  * The row geometry both boards share, so a name, an address and the thing
@@ -125,6 +152,7 @@ export function StoreList({
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const navigated = useRef(false);
+  const settling = useRef(false);
   // The slug stays after closing so the sheet keeps its content through the
   // closing fade. See BranchDialog.
   const [detailSlug, setDetailSlug] = useState<string | null>(null);
@@ -186,16 +214,36 @@ export function StoreList({
     });
   }
 
-  const orderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
-  const closed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
-
-  // Worked out here, in the browser, from a position that never leaves it.
-  // See lib/branches/nearest.ts. Nine stores, so there is nothing to memoise.
+  // Worked out here, in the browser. See lib/branches/nearest.ts. Nine
+  // stores, so there is nothing to memoise.
   const { location, locate } = useCustomerLocation();
   const position = location.status === "located" ? location.position : null;
   const distances = position ? distancesBySlug(stores, position) : null;
+
+  const publishedOrderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
+  const publishedClosed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
+  const orderable = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
+  const closed = distances ? rankByDistance(publishedClosed, distances) : publishedClosed;
+
   const suggestion = position ? suggestNearest(orderable, position) : null;
   const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
+
+  // Raised for REORDER_GRACE_MS when the order of the choosable rows changes,
+  // and read by a row's press. The first render's order is not a change.
+  const rankedOrder = orderable.map((store) => store.slug).join(",");
+  const lastOrder = useRef(rankedOrder);
+  useEffect(() => {
+    if (lastOrder.current === rankedOrder) return;
+    lastOrder.current = rankedOrder;
+    settling.current = true;
+    const timer = window.setTimeout(() => {
+      settling.current = false;
+    }, REORDER_GRACE_MS);
+    return () => {
+      window.clearTimeout(timer);
+      settling.current = false;
+    };
+  }, [rankedOrder]);
 
   const detailEntry = entries.find((entry) => entry.slug === detailSlug) ?? null;
   const detailStore = stores.find((store) => store.slug === detailSlug) ?? null;
@@ -241,7 +289,7 @@ export function StoreList({
         branch={detailEntry}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line` : null}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line.` : null}
         actions={
           // Only a counter this page can choose gets the choice in its sheet.
           // Anything else falls back to the directory's Directions and Call.
@@ -315,7 +363,11 @@ export function StoreList({
               <li key={store.slug}>
                 <button
                   type="button"
-                  onClick={() => choose(store)}
+                  onClick={() => {
+                    // See REORDER_GRACE_MS: this row may have just moved.
+                    if (settling.current) return;
+                    choose(store);
+                  }}
                   disabled={pending}
                   aria-busy={busy || undefined}
                   aria-label={
@@ -391,13 +443,16 @@ export function StoreList({
                       selected ? "text-nybb-ink/80" : "text-nybb-bone/65",
                     )}
                   >
+                    {km !== undefined ? (
+                      <Distance
+                        km={km}
+                        className={cn("mb-1", selected ? "text-nybb-ink" : "text-nybb-bone")}
+                      />
+                    ) : null}
+
                     <span className="block">
                       {store.addressLine}, {store.city}
                     </span>
-
-                    {km !== undefined ? (
-                      <span className="mt-1 block">{distanceLabel(km)}</span>
-                    ) : null}
 
                     {/* The number that decides whether this counter suits the
                         next hour, and it is genuinely per branch: a forecourt
@@ -502,14 +557,12 @@ export function StoreList({
                 </div>
 
                 <div className={cn(ROW_DETAILS, "text-sm leading-relaxed")}>
+                  {distances?.has(store.slug) ? (
+                    <Distance km={distances.get(store.slug)!} className="text-nybb-bone mb-1" />
+                  ) : null}
                   <p className="text-nybb-bone/65">
                     {store.addressLine}, {store.city}
                   </p>
-                  {distances?.has(store.slug) ? (
-                    <p className="text-nybb-bone/65 mt-1">
-                      {distanceLabel(distances.get(store.slug)!)}
-                    </p>
-                  ) : null}
                   <p className="text-nybb-bone/80 mt-1">
                     {!orderingOpen
                       ? "Takes orders by phone."
@@ -547,5 +600,22 @@ export function StoreList({
         </section>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A counter's distance, as the first line of its details.
+ *
+ * Set apart from the address under it by weight rather than by a new colour:
+ * full strength where the address is dimmed, the tabular face the prep time
+ * already uses for a number compared down the board, and a pin in front. A
+ * span, so it is valid inside a row's button as well as a phone-only row.
+ */
+function Distance({ km, className }: { km: number; className?: string }) {
+  return (
+    <span className={cn("font-mono-tabular flex items-center gap-1.5", className)}>
+      <MapPin aria-hidden className="size-3.5 shrink-0" strokeWidth={2.25} />
+      {distanceLabel(km)}
+    </span>
   );
 }

@@ -41,6 +41,23 @@ import { cn } from "@/lib/utils";
  * The actions sit at the foot of the details and stick there, so on a phone
  * they stay in thumb reach however far the hours ran.
  *
+ * WHAT SCROLLS, AND WHERE THE WAY OUT SITS.
+ * ================================================================
+ * From `md` the details column is three stacked parts: the name, the details,
+ * the actions. Only the middle one scrolls, so its scrollbar runs between two
+ * hairlines instead of the full height of the sheet, and never alongside the
+ * close button. The close button belongs to the name's band: a quiet ghost
+ * square aligned to the column's padding, the same tier the rest of the
+ * system uses for a control that should be findable without being loud.
+ *
+ * Below `md` the whole sheet scrolls, map first. There the close button floats
+ * over the map, pinned to the sheet rather than to what scrolls, so it is
+ * still in the corner after the hours have scrolled past, and it keeps a solid
+ * ink fill because the map under it is light.
+ *
+ * The scrollbars themselves are drawn in globals.css: a thin bone thumb with
+ * no track and no stepper arrows, instead of the system's white gutter.
+ *
  * THE MAP LOADS ONLY WHEN ASKED FOR.
  * ================================================================
  * The frame mounts when the dialog opens and not before, so a visitor who
@@ -151,11 +168,15 @@ function BranchDetail({
   const hoursId = useId();
 
   return (
-    <div className="bg-nybb-charcoal text-nybb-bone relative grid max-h-[inherit] overflow-y-auto overscroll-contain md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:overflow-hidden">
+    <div className="bg-nybb-charcoal text-nybb-bone relative flex max-h-[inherit] flex-col">
       {/* Focused on open (see the effect above): the way out is the control
-          already selected, and nothing irreversible is on this sheet. Ink
-          rather than charcoal, because it sits over the map on a phone and the
-          map is light. */}
+          already selected, and nothing irreversible is on this sheet.
+
+          Positioned on this wrapper, which never scrolls, so it stays in the
+          corner however far the sheet below it has scrolled. Below md it floats
+          over the light map and needs the ink fill; from md it sits in the
+          name's band on charcoal and drops to the ghost tier, inset so its
+          icon lines up with the column's own padding. */}
       <button
         type="button"
         data-dialog-close
@@ -163,101 +184,113 @@ function BranchDetail({
         aria-label="Close"
         className={buttonStyles({
           tone: "dark",
-          variant: "primary",
+          variant: "ghost",
           size: "icon",
-          className:
-            "bg-nybb-ink text-nybb-bone hover:bg-nybb-graphite active:bg-nybb-graphite absolute top-3 right-3 z-20",
+          className: cn(
+            "absolute top-3 right-3 z-20",
+            "bg-nybb-ink/90 text-nybb-bone hover:bg-nybb-ink active:bg-nybb-graphite",
+            "md:text-nybb-bone/70 md:hover:text-nybb-bone md:active:bg-nybb-bone/15 md:top-4 md:right-4 md:bg-transparent md:hover:bg-nybb-bone/10",
+          ),
         })}
       >
         <X aria-hidden className="size-5" />
       </button>
 
-      <div className="bg-nybb-graphite relative aspect-[4/3] w-full sm:aspect-[16/10] md:aspect-auto md:h-full md:min-h-[min(34rem,calc(100dvh-3rem))]">
-        {!mapLoaded ? (
-          <div className="text-nybb-bone/60 absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm">
-            <LoaderCircle aria-hidden className="size-5 animate-spin motion-reduce:animate-none" />
-            Loading map
-          </div>
-        ) : null}
-        {showMap ? (
-          <iframe
-            src={branch.mapUrl}
-            title={`Map showing NYBB Hot Wings, ${branch.shortName}`}
-            onLoad={() => setMapLoaded(true)}
-            referrerPolicy="strict-origin-when-cross-origin"
-            className={cn(
-              "absolute inset-0 size-full border-0 transition-opacity duration-300 ease-out",
-              mapLoaded ? "opacity-100" : "opacity-0",
-            )}
-          />
-        ) : null}
-      </div>
-
-      <div className="flex min-h-0 flex-col md:max-h-[inherit] md:overflow-y-auto md:overscroll-contain">
-        <div className="px-5 pt-6 pb-2 sm:px-7 sm:pt-7">
-          <p className="font-display type-caps text-nybb-yellow">{branch.formatLabel}</p>
-          {/* The right padding clears the close button, and only the heading
-              needs it: rules and rows below run the column's full width. */}
-          <h2 id={`branch-${branch.slug}-title`} className="font-display heading-minor mt-3 md:pr-12">
-            {branch.shortName}
-          </h2>
-          {branch.openNow !== null ? (
-            <p className="mt-3 text-sm">
-              <OpenState open={branch.openNow} />
-            </p>
+      <div className="grid max-h-[inherit] min-h-0 overflow-y-auto overscroll-contain md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:overflow-hidden">
+        <div className="bg-nybb-graphite relative aspect-[4/3] w-full sm:aspect-[16/10] md:aspect-auto md:h-full md:min-h-[min(34rem,calc(100dvh-3rem))]">
+          {!mapLoaded ? (
+            <div className="text-nybb-bone/60 absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm">
+              <LoaderCircle aria-hidden className="size-5 animate-spin motion-reduce:animate-none" />
+              Loading map
+            </div>
           ) : null}
-          {detail ? <p className="text-nybb-bone/80 mt-2 text-sm">{detail}</p> : null}
-
-          <dl className="mt-6">
-            <DetailRow label="Address">
-              <p className="leading-relaxed">
-                {branch.addressLine}
-                <br />
-                {branch.city}
-              </p>
-              {!branch.pinned ? (
-                <p className="text-nybb-bone/65 mt-1.5 text-sm">
-                  The map shows the street, not the exact counter.
-                </p>
-              ) : null}
-            </DetailRow>
-
-            <DetailRow label={branch.phones.length > 1 ? "Phone numbers" : "Phone"}>
-              <ul>
-                {branch.phones.map((phone) => (
-                  <li key={phone}>
-                    <a
-                      href={telHref(phone)}
-                      className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center transition-colors"
-                    >
-                      {phone}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </DetailRow>
-
-            <DetailRow label="Opening hours" labelId={hoursId}>
-              {branch.week ? (
-                <HoursTable week={branch.week} today={branch.today} labelledBy={hoursId} />
-              ) : branch.hoursUnavailable ? (
-                <p className="border-nybb-bone/40 text-nybb-bone/80 rounded-md border border-dashed px-4 py-3 text-sm leading-relaxed">
-                  Hours could not be loaded just now. Call before you travel.
-                </p>
-              ) : (
-                <p className="border-nybb-bone/40 text-nybb-bone/80 rounded-md border border-dashed px-4 py-3 text-sm leading-relaxed">
-                  Not published for this counter yet. Call before you travel.
-                </p>
+          {showMap ? (
+            <iframe
+              src={branch.mapUrl}
+              title={`Map showing NYBB Hot Wings, ${branch.shortName}`}
+              onLoad={() => setMapLoaded(true)}
+              referrerPolicy="strict-origin-when-cross-origin"
+              className={cn(
+                "absolute inset-0 size-full border-0 transition-opacity duration-300 ease-out",
+                mapLoaded ? "opacity-100" : "opacity-0",
               )}
-            </DetailRow>
-          </dl>
+            />
+          ) : null}
         </div>
 
-        {/* Sticky to the foot of whichever box is scrolling: the whole sheet
-            on a phone, the details column from md. The charcoal fill is what
-            lets rows scroll under it without showing through. */}
-        <div className="bg-nybb-charcoal border-nybb-bone/15 sticky bottom-0 mt-auto flex flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:px-7">
-          {actions ?? <DirectoryActions branch={branch} />}
+        <div className="flex min-h-0 flex-col md:max-h-[inherit]">
+          {/* The name's band. From md it holds still above the details and
+              shares its top edge with the close button. */}
+          <div className="md:border-nybb-bone/15 px-5 pt-6 pb-6 sm:px-7 sm:pt-7 md:border-b md:pr-20 md:pb-5">
+            <p className="font-display type-caps text-nybb-yellow">{branch.formatLabel}</p>
+            <h2 id={`branch-${branch.slug}-title`} className="font-display heading-minor mt-3">
+              {branch.shortName}
+            </h2>
+            {branch.openNow !== null ? (
+              <p className="mt-3 text-sm">
+                <OpenState open={branch.openNow} />
+              </p>
+            ) : null}
+            {detail ? <p className="text-nybb-bone/80 mt-2 text-sm leading-relaxed">{detail}</p> : null}
+          </div>
+
+          {/* The one part that scrolls from md. The gutter is always kept and
+              taken out of the right padding (1.75rem less the 0.625rem bar in
+              globals.css), so the hours end on the same line as the buttons
+              below them whether this counter's week needs a scrollbar or not. */}
+          <div className="min-h-0 flex-1 px-5 sm:px-7 md:overflow-y-auto md:overscroll-contain md:pt-5 md:pr-[1.125rem] md:[scrollbar-gutter:stable]">
+            <dl className="pb-4">
+              <DetailRow label="Address">
+                <p className="leading-relaxed">
+                  {branch.addressLine}
+                  <br />
+                  {branch.city}
+                </p>
+                {!branch.pinned ? (
+                  <p className="text-nybb-bone/65 mt-1.5 text-sm">
+                    The map shows the street, not the exact counter.
+                  </p>
+                ) : null}
+              </DetailRow>
+
+              <DetailRow label={branch.phones.length > 1 ? "Phone numbers" : "Phone"}>
+                <ul>
+                  {branch.phones.map((phone) => (
+                    <li key={phone}>
+                      <a
+                        href={telHref(phone)}
+                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center transition-colors"
+                      >
+                        {phone}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </DetailRow>
+
+              <DetailRow label="Opening hours" labelId={hoursId}>
+                {branch.week ? (
+                  <HoursTable week={branch.week} today={branch.today} labelledBy={hoursId} />
+                ) : branch.hoursUnavailable ? (
+                  <p className="border-nybb-bone/40 text-nybb-bone/80 rounded-md border border-dashed px-4 py-3 text-sm leading-relaxed">
+                    Hours could not be loaded just now. Call before you travel.
+                  </p>
+                ) : (
+                  <p className="border-nybb-bone/40 text-nybb-bone/80 rounded-md border border-dashed px-4 py-3 text-sm leading-relaxed">
+                    Not published for this counter yet. Call before you travel.
+                  </p>
+                )}
+              </DetailRow>
+            </dl>
+          </div>
+
+          {/* Sticky to the foot of the sheet on a phone, where the whole sheet
+              scrolls; from md it simply sits below the scrolling details. The
+              charcoal fill is what lets rows scroll under it without showing
+              through. */}
+          <div className="bg-nybb-charcoal border-nybb-bone/15 sticky bottom-0 mt-auto flex flex-col gap-3 border-t px-5 py-4 sm:flex-row sm:px-7">
+            {actions ?? <DirectoryActions branch={branch} />}
+          </div>
         </div>
       </div>
     </div>
