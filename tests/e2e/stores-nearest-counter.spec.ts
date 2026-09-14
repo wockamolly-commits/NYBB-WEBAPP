@@ -72,23 +72,37 @@ test("suggests the nearest counter without a tap when location is already allowe
   await expect(row(page, CENTRAL_BLOC.name)).not.toContainText("Your counter");
 });
 
-test("keeps the list in the published order once the suggestion lands", async ({
-  page,
-  context,
-}) => {
+test("ranks the list nearest first once the location lands", async ({ page, context }) => {
   await page.goto("/stores");
   await expect(slot(page)).toContainText("Find my nearest counter");
   const before = await rowNames(page);
 
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation({
-    latitude: 10.3107153,
-    longitude: 123.8962067,
+    latitude: CENTRAL_BLOC.pin!.lat,
+    longitude: CENTRAL_BLOC.pin!.lng,
   });
   await slot(page).getByRole("button", { name: "Find my nearest counter" }).click();
 
-  await expect(slot(page)).toContainText("Nearest to you");
-  expect(await rowNames(page)).toEqual(before);
+  await expect(slot(page)).toContainText("The list below runs nearest first");
+
+  // The same counters, now with the nearest one at the top of the board.
+  const after = await rowNames(page);
+  expect([...after].sort()).toEqual([...before].sort());
+  expect(after[0]).toBe(`Collect from ${CENTRAL_BLOC.name}`);
+
+  // Every row that has a distance runs in rising order down the board.
+  const metres = await page
+    .getByRole("listitem")
+    .getByRole("button", { name: /^(Collect from|Continue with) NYBB/ })
+    .evaluateAll((buttons) =>
+      buttons
+        .map((b) => b.textContent ?? "")
+        .map((text) => /Under 100 m|About ([\d.]+) (m|km)/.exec(text))
+        .filter((match) => match !== null)
+        .map((match) => (match[1] ? Number(match[1]) * (match[2] === "km" ? 1000 : 1) : 0)),
+    );
+  expect(metres).toEqual([...metres].sort((a, b) => a - b));
 });
 
 test("falls back to the list when location is refused", async ({ page }) => {

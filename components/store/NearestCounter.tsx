@@ -8,17 +8,16 @@ import { cn } from "@/lib/utils";
 import type { CustomerLocation } from "./useCustomerLocation";
 
 /**
- * The nearest counter, said above the list rather than by reordering it.
+ * The nearest counter, said above the list as well as by the list's order.
  *
- * WHY THE LIST DOES NOT MOVE.
+ * THE LIST MOVES, AND THIS SLOT DOES NOT.
  *
- * Every row on the board below is a one-press control. Location arrives a
- * second or two after the page does, and re-sorting the rows at that moment
- * would slide a different counter under a thumb that was already on its way
- * down, which on this page chooses the wrong kitchen. So the rows stay in the
- * business's order, each pinned counter gains its distance in place, and the
- * suggestion lives here, in a slot whose height is reserved from the first
- * render so nothing beneath it shifts when it fills.
+ * Once a position arrives the boards below re-rank nearest first (see
+ * StoreList, including the short grace period that stops a press already on
+ * its way from landing on a row that just moved). This card says the answer
+ * in words and offers it as a button, in a slot whose height is reserved from
+ * the first render, so the boards at least start in the same place when it
+ * fills.
  *
  * NOTHING IS CHOSEN FOR THE CUSTOMER. The suggestion is a button, not a
  * default. The nearest counter is not always the right one (somebody ordering
@@ -238,8 +237,8 @@ function Suggested({
       onOpen={onOpenDetails}
       body={
         alreadyChosen
-          ? `${distanceLabel(km)} in a straight line. It is already your counter.`
-          : `${distanceLabel(km)} in a straight line. ${store.addressLine}, ${store.city}.`
+          ? `${distanceLabel(km)} in a straight line. It is already your counter. The list below runs nearest first.`
+          : `${distanceLabel(km)} in a straight line. The list below runs nearest first.`
       }
       action={
         alreadyChosen ? null : (

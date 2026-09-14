@@ -6,6 +6,7 @@ import {
   distanceLabel,
   distancesBySlug,
   formatDistance,
+  rankByDistance,
   suggestNearest,
 } from "@/lib/branches/nearest";
 import type { Branch } from "@/lib/catalog/types";
@@ -99,6 +100,47 @@ describe("distances shown on each row", () => {
     expect(distances.get("mango")).toBe(0);
     expect(distances.get("sm-city")).toBeGreaterThan(0);
     expect(distances.has("shell-naga")).toBe(false);
+  });
+});
+
+describe("the order the boards run in once there is a position", () => {
+  const slugs = (stores: { slug: string }[]) => stores.map((store) => store.slug);
+
+  it("puts the nearest counter first", () => {
+    const stores = storesFrom(
+      [catalogEntry("mango", MANGO), catalogEntry("sm-city", SM_CITY), catalogEntry("central-bloc", CENTRAL_BLOC)],
+      [],
+    );
+    const standingInLahug = { lat: 10.33, lng: 123.905 };
+
+    expect(slugs(rankByDistance(stores, distancesBySlug(stores, standingInLahug)))).toEqual([
+      "central-bloc",
+      "mango",
+      "sm-city",
+    ]);
+  });
+
+  // No distance is not a distance of zero, and not a reason to go first.
+  it("puts counters with no pin after every counter with a distance, in published order", () => {
+    const stores = storesFrom(
+      [catalogEntry("naga"), catalogEntry("sm-city", SM_CITY), catalogEntry("country-club"), catalogEntry("mango", MANGO)],
+      [],
+    );
+
+    expect(slugs(rankByDistance(stores, distancesBySlug(stores, MANGO)))).toEqual([
+      "mango",
+      "sm-city",
+      "naga",
+      "country-club",
+    ]);
+  });
+
+  it("keeps the published order between counters equally near, and leaves its input alone", () => {
+    const stores = storesFrom([catalogEntry("first", MANGO), catalogEntry("second", MANGO)], []);
+    const ranked = rankByDistance(stores, distancesBySlug(stores, SM_CITY));
+
+    expect(slugs(ranked)).toEqual(["first", "second"]);
+    expect(ranked).not.toBe(stores);
   });
 });
 

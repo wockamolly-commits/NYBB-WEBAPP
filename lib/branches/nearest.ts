@@ -14,10 +14,11 @@ import type { Store } from "./types";
  *
  * STRAIGHT LINE, AND THE COPY SAYS SO.
  *
- * Road distance would need a routing service, which is a third party this
- * site's Content Security Policy keeps out and a place the location would have
- * to be sent. Across Cebu City a straight line ranks counters the same way the
- * roads mostly do, and every distance on the page is written as "about".
+ * Road distance for every row would need a routing service, which is a third
+ * party this site's Content Security Policy keeps out and a place the location
+ * would have to be sent nine times over. Across Cebu City a straight line ranks
+ * counters the same way the roads mostly do, and every distance on the page is
+ * written as "about".
  */
 
 export type LatLng = { lat: number; lng: number };
@@ -89,6 +90,30 @@ export function suggestNearest(stores: Store[], from: LatLng): NearestSuggestion
 
   if (!best) return { kind: "none" };
   return { kind: best.km <= RECOMMEND_WITHIN_KM ? "nearest" : "far", ...best };
+}
+
+/**
+ * Counters nearest first.
+ *
+ * A counter with no pin has no distance, so it goes after every counter that
+ * has one rather than being ranked by a guess. Ties, and the unpinned among
+ * themselves, keep the order they came in, which is the order the business
+ * publishes its counters in. Returns a new array.
+ */
+export function rankByDistance<T extends { slug: string }>(
+  stores: T[],
+  distances: Map<string, number>,
+): T[] {
+  return stores
+    .map((store, index) => ({ store, index, km: distances.get(store.slug) }))
+    .sort((a, b) => {
+      if (a.km === undefined || b.km === undefined) {
+        if (a.km !== b.km) return a.km === undefined ? 1 : -1;
+        return a.index - b.index;
+      }
+      return a.km - b.km || a.index - b.index;
+    })
+    .map(({ store }) => store);
 }
 
 const wholeKilometres = new Intl.NumberFormat("en-PH", {
