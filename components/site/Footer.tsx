@@ -200,6 +200,18 @@ export function Footer({ flush = false }: { flush?: boolean }) {
                   Contact
                 </Link>
               </li>
+              {/* The page first, the mailbox second. /franchise carries the
+                  figures and the inquiry form, so it is the route somebody
+                  wanting to open a counter should land on; the address below it
+                  stays for people who would rather write than fill in a form. */}
+              <li>
+                <Link
+                  href="/franchise"
+                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
+                >
+                  Franchise
+                </Link>
+              </li>
               <li>
                 <a
                   href="mailto:franchise@5bdf.ph"
