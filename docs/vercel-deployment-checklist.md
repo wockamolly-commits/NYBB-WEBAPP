@@ -60,6 +60,29 @@ the full test suite were green throughout.
   that sender delivers ONLY to the address the Resend account was created with.** So
   `FRANCHISE_ALERT_TO` currently has to be that address and cannot be `franchise@5bdf.ph`. When a
   domain is verified, change those two values and redeploy. No code changes.
+- **`FRANCHISE_ALERT_TO` is `stevenvillacampa@gmail.com` as of 2026-09-16**, which is also the
+  address the Resend account was created with, so the constraint above is satisfied. It is stored
+  as a **Config** value rather than a Secret, deliberately: Vercel keeps Secret values write-only,
+  so the previous one could not be read back by the dashboard, the CLI or anybody else, and
+  "which inbox receives our franchise leads" turned into a question nobody could answer. A
+  recipient address is not a credential. `RESEND_API_KEY` stays a Secret, because it is one.
+- **Email only fires from a real deployment, never from `localhost:3000`, and this wasted an hour
+  on 2026-09-16.** `.env.local` holds no `RESEND_API_KEY`, so `sendFranchiseAlert` returns
+  `unconfigured` and stops before the provider is contacted. The form still says "sent", the lead
+  is still stored, and nothing anywhere reports that no mail was attempted. Three local test
+  submissions were read as a production failure and the hunt went through the Resend dashboard,
+  the environment variables and the mail account before the live URL was tried and worked first
+  time. Two things now make that visible: `noteSkip` in `lib/email/franchise-alert.ts` prints a
+  line outside production, and the Resend dashboard's API key page shows a "last used" date, which
+  stays put when the app never calls out at all.
+  **Test franchise mail at `https://nybb-order.vercel.app/franchise` and nowhere else.**
+- **A local submission is not distinguishable from a live one by its stored row.** `source_ip` is
+  never written: `clientAddress` feeds the rate limiter only and is not passed to
+  `submit_franchise_inquiry`, so the column is null on every row. The rate limiter is not a
+  shortcut either, because the dev server fills in `::1` and that parses as a real address, so a
+  local submission writes a `rate_limits` row exactly as a live one does. Its key is the SHA-256
+  of the bucket, and the loopback bucket `0:0:0:0::/64` hashes to `10ea03e3675d129636e7d804aa44d8eb`.
+  A row under that key came from somebody's own machine.
 - **The VAPID pair is set as of 2026-08-19**, along with `VAPID_SUBJECT` and `SUPER_ADMIN_EMAIL`.
   Confirmed by the staff opt-in on `/workspace/orders` offering a button rather than saying it is
   not configured on this deployment, which is the distinction that proves the public key reached
