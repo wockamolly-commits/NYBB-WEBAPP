@@ -39,24 +39,29 @@ export default function FranchisePage() {
         </div>
 
         <aside className="text-nybb-ink/75 space-y-8 text-sm leading-relaxed">
-          <section>
-            <h2 className="type-caps text-nybb-ink/50">The numbers</h2>
-            <dl className="mt-3 space-y-2">
-              <div className="flex justify-between gap-4">
-                <dt>Franchise fee</dt>
-                <dd className="text-nybb-ink font-mono">PHP 1,000,000</dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt>Capital investment</dt>
-                <dd className="text-nybb-ink font-mono">PHP 9,000,000</dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-xs">
-              Indicative figures published by the franchisor. The terms that apply to you come
-              from Five Brad Dragons directly.
-            </p>
-          </section>
+          {/* THE FEE AND THE CAPITAL FIGURE ARE DELIBERATELY NOT PRINTED HERE.
+              ================================================================
+              They were, as a two row table under the heading "The numbers":
+              PHP 1,000,000 of franchise fee and PHP 9,000,000 of capital. Both
+              are still true and both are published by the franchisor, so this
+              is not a correction. It is a decision about what this page is for.
 
+              A number that large, read cold and with nothing beside it, is the
+              whole conversation. It answers "can I afford this" before the page
+              has said what the money buys, what support comes with it or what a
+              counter actually returns, and none of that is written yet: the
+              sales case is the F2 work, still blocked on copy from Marketing.
+              So the figures were doing the arguing with no argument behind
+              them, and the form below them is the thing this page exists for.
+
+              The inquiry asks for four fields and a sentence. Somebody who
+              sends it gets the terms that apply to them from Five Brad Dragons
+              directly, which the removed caption already said was the only
+              place binding terms come from.
+
+              If they come back, they belong beside the case for them, not in
+              the margin of a contact form. The numbers themselves are kept in
+              docs/IMPLEMENTATION-PROMPT.md and PRODUCT.md. */}
           <section>
             <h2 className="type-caps text-nybb-ink/50">Talk to a person</h2>
             <p className="mt-3">

@@ -65,7 +65,10 @@ the site carries the investment case as content:
 
 - The offer: what a franchisee gets, support, supply, territory
 - The numbers: PHP 1,000,000 franchise fee, PHP 9,000,000 capital investment
-  (spec section 3)
+  (spec section 3). **Reversed 2026-09-16 at the owner's request:** the figures
+  shipped as a "The numbers" table on `/franchise` and have been removed. They
+  were arguing the investment case on a page that does not yet carry one, which
+  is what the pages above it are for. They may return beside that case.
 - The process and timeline, from inquiry to opening
 - Branch showcase, using the existing verified image archive
 - FAQ
