@@ -178,7 +178,9 @@ to the remaining items:
   and lead generation. It said "with customer ordering living entirely in the app" when written;
   the app was dropped later the same day, so ordering is on the website too, secondary to
   franchise in the landing page's hierarchy rather than absent. Franchise fee PHP 1,000,000,
-  capital investment PHP 9,000,000.
+  capital investment PHP 9,000,000. Both figures are recorded here and are deliberately not shown
+  on `/franchise` as of 2026-09-16: the page is a contact form, not the sales case, so the ask is
+  the inquiry and the terms come from Five Brad Dragons directly. See spec section 3.
 
 ## Evidence on Hand
 

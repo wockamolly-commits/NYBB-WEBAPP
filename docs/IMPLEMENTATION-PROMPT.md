@@ -183,6 +183,15 @@ Parent: **Five Brad Dragons Food Franchise Corporation**, Unit D, 20th Floor, La
 Center, Mindanao Ave., Cebu Business Park, Cebu City. Franchise contact `franchise@5bdf.ph`,
 (032) 520-4930. Franchise fee PHP 1,000,000, capital investment PHP 9,000,000.
 
+**Those two figures are deliberately not printed on `/franchise` as of 2026-09-16.** They were, as
+a "The numbers" table in the page's right column, and the owner asked for them out. The reasoning
+is worth keeping because it constrains where they may come back: a figure that size, read with
+nothing beside it, answers "can I afford this" before the page has said what the money buys, and
+the pages that would say so (the offer, the support, the process) are the F2 work still blocked on
+copy from Marketing. The inquiry form is what this page is for, and the terms that bind anybody
+come from Five Brad Dragons directly. The numbers stay recorded here and in PRODUCT.md. When the
+sales case exists, they belong beside it rather than in the margin of a contact form.
+
 **Locations listed in the footer today.** Seed these as `branches` rows, all inactive except the
 chosen pilot:
 
