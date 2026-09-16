@@ -558,6 +558,25 @@ export default async function Home() {
                   : " Online ordering is not open yet, so the counter nearest you will take it on the phone."}
               </p>
 
+              {/* The way into /franchise from the section that counts the
+                  counters, which is the one place on the page where "there
+                  could be one more of these" is the obvious next thought.
+
+                  Secondary rather than the orange fill: the primary action on
+                  this page is ordering dinner, and a business to business ask
+                  cannot outrank it. Bordered bone on ink is still a control
+                  rather than a caption, which is what the quiet line further
+                  down is not. Same tone as the ground it sits on, per the rule
+                  in components/ui/Button.tsx. */}
+              <ButtonLink
+                href="/franchise"
+                tone="dark"
+                variant="secondary"
+                className="mt-7"
+              >
+                Open your own counter
+              </ButtonLink>
+
               {counter ? (
                 <Image
                   src={counter.src}
