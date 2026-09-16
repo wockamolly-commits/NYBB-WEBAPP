@@ -127,6 +127,44 @@ describe("sendFranchiseAlert", () => {
       expect(result).toEqual({ ok: false, reason: "disabled" });
       expect(mocks.send).not.toHaveBeenCalled();
     });
+
+    /**
+     * The silence is the bug this guards. Both skips are legitimate states and
+     * neither is an error, so neither logged anything, and on a developer's
+     * machine (no key in `.env.local`) that made a submission that sent no mail
+     * indistinguishable from one that did. On 2026-09-16 three local test leads
+     * were read as a production outage and the hunt ran through the provider,
+     * the deployment and the mail account before the live URL was tried.
+     *
+     * The message must name the reason, because "no key here" and "the owner
+     * turned it off" have different fixes, and it must say the lead was stored,
+     * because that is the question anybody reading it is actually asking.
+     */
+    it("says out loud that no mail was attempted, and why", async () => {
+      const info = vi.spyOn(console, "info").mockImplementation(() => {});
+
+      vi.stubEnv("RESEND_API_KEY", "");
+      await sendFranchiseAlert(inquiry);
+      expect(info).toHaveBeenCalledWith(expect.stringContaining("RESEND_API_KEY"));
+      expect(info).toHaveBeenCalledWith(expect.stringContaining("still stored"));
+
+      info.mockClear();
+      vi.stubEnv("RESEND_API_KEY", "re_test_key");
+      mocks.settings.mockResolvedValue({ data: { email_enabled: false }, error: null });
+      await sendFranchiseAlert(inquiry);
+      expect(info).toHaveBeenCalledWith(expect.stringContaining("email_enabled"));
+    });
+
+    /** Production is a deliberate configuration, so a line per lead is noise. */
+    it("stays silent in production", async () => {
+      const info = vi.spyOn(console, "info").mockImplementation(() => {});
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RESEND_API_KEY", "");
+
+      await sendFranchiseAlert(inquiry);
+
+      expect(info).not.toHaveBeenCalled();
+    });
   });
 
   describe("when it goes wrong", () => {

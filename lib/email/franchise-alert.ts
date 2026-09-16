@@ -35,6 +35,40 @@ export type FranchiseAlertResult =
   | { ok: true }
   | { ok: false; reason: "unconfigured" | "disabled" | "send_failed" };
 
+/**
+ * Saying out loud, in development only, that no mail was attempted.
+ *
+ * THIS EXISTS BECAUSE THE SILENCE COST AN HOUR.
+ * ================================================================
+ * `unconfigured` and `disabled` are not failures, which is why neither logged
+ * anything: a deployment with no Resend key is a feature that is off, and the
+ * form is supposed to behave exactly as it did before any of this existed.
+ * True in production. False on a developer's machine, where `.env.local`
+ * deliberately holds no key, so every local submission returns `unconfigured`
+ * and looks from the outside precisely like a successful send.
+ *
+ * On 2026-09-16 that cost a long session: three test inquiries submitted
+ * against `localhost:3000`, no mail arriving, and the investigation went to the
+ * provider's dashboard, the deployment's environment variables and the mail
+ * account's own settings before the owner tried the live URL and it worked
+ * first time. Nothing was broken. The code had simply declined to say it had
+ * done nothing.
+ *
+ * Production stays silent, because there a skip is a deliberate configuration
+ * and a line per lead would be noise. The lead's own details never appear here:
+ * the file header's rule about logs holds, and there is nothing to say beyond
+ * which switch was open.
+ */
+function noteSkip(reason: "unconfigured" | "disabled"): void {
+  if (process.env.NODE_ENV === "production") return;
+
+  console.info(
+    reason === "unconfigured"
+      ? "[email] skipped: no RESEND_API_KEY or RESEND_FROM in this environment, so no mail was attempted. This is expected locally. The lead was still stored."
+      : "[email] skipped: app_settings.email_enabled is false, or the settings row could not be read. The lead was still stored.",
+  );
+}
+
 /** Written out rather than left blank, so an empty line reads as an answer. */
 const NOT_GIVEN = "Not given";
 
@@ -139,8 +173,14 @@ export async function sendFranchiseAlert(
   inquiry: FranchiseInquiry,
 ): Promise<FranchiseAlertResult> {
   try {
-    if (!emailConfigured()) return { ok: false, reason: "unconfigured" };
-    if (!(await emailEnabled())) return { ok: false, reason: "disabled" };
+    if (!emailConfigured()) {
+      noteSkip("unconfigured");
+      return { ok: false, reason: "unconfigured" };
+    }
+    if (!(await emailEnabled())) {
+      noteSkip("disabled");
+      return { ok: false, reason: "disabled" };
+    }
 
     const { subject, text, html } = franchiseAlertMessage(inquiry);
     const result: EmailResult = await sendEmail({
