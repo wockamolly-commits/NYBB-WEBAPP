@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { HeatMeter } from "@/components/menu/HeatMeter";
+import { HeatSlider } from "@/components/menu/HeatSlider";
 import { NoPhotoTile } from "@/components/menu/NoPhotoTile";
 import { Button, PRESSABLE } from "@/components/ui/Button";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
@@ -21,6 +21,7 @@ import {
   toggleOption,
   unitPriceCents,
 } from "@/lib/menu/line-pricing";
+import { heatStops } from "@/lib/menu/heat-slider";
 import { orderingCopy } from "@/lib/menu/ordering-copy";
 import { previewImage } from "@/lib/menu/preview";
 import type { MenuItem, MenuOption, MenuOptionGroup } from "@/lib/menu/types";
@@ -35,8 +36,9 @@ import { cn } from "@/lib/utils";
  *   - a group whose options all carry photography renders as a visual grid,
  *     which is what makes the nine wing flavours the screen rather than a
  *     dropdown on it;
- *   - a group whose options carry a heat percentage renders on the heat meter,
- *     with the upcharge for the size currently selected;
+ *   - a group whose options carry a heat percentage renders as the sliding
+ *     heat bar, which is the control and not a picture beside one, with the
+ *     upcharge for the size currently selected;
  *   - anything else renders as a plain priced list.
  *
  * That matters beyond tidiness. The menu is owner-editable from Phase 4, so a
@@ -187,6 +189,21 @@ export function ItemConfigurator({
     }));
   }
 
+  /**
+   * Set a single-choice group to exactly this option.
+   *
+   * `choose` toggles, which is right for a button you press twice to clear.
+   * A slider has no such gesture: dragging back onto the stop you are already
+   * on would clear the selection and leave the thumb sitting on a level the
+   * order no longer carries. So this one only ever sets.
+   */
+  function setOnly(group: MenuOptionGroup, optionSlug: string) {
+    setSelection((current) => ({
+      ...current,
+      optionSlugs: { ...current.optionSlugs, [group.slug]: [optionSlug] },
+    }));
+  }
+
   function setQuantity(next: number) {
     setSelection((current) => ({
       ...current,
@@ -286,7 +303,30 @@ export function ItemConfigurator({
             </span>
           </legend>
 
-          {isVisualGroup(group) ? (
+          {isHeatGroup(group) ? (
+            /* The scale is the control, not a decoration inside a list of
+               buttons. Six stops including "No heat", because this is where
+               somebody is actually deciding and "flavour only" is a real
+               answer here in a way it is not on the landing page.
+
+               `value` is null until the first interaction, which is what keeps
+               an untouched slider from writing a level nobody chose. See
+               lib/menu/heat-slider.ts and AGENTS.md rule 6. */
+            <HeatSlider
+              stops={heatStops(group.options)}
+              prices={Object.fromEntries(
+                group.options.map((option) => [
+                  option.slug,
+                  upcharge(option, selection.variationSlug),
+                ]),
+              )}
+              value={chosen(group)[0] ?? null}
+              onChange={(slug) => setOnly(group, slug)}
+              variant="inline"
+              label={group.name}
+              className="mt-4"
+            />
+          ) : isVisualGroup(group) ? (
             <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {group.options.map((option) => {
                 const active = chosen(group).includes(option.slug);
@@ -363,9 +403,11 @@ export function ItemConfigurator({
                         <span className="font-display block text-base leading-none">
                           {option.name}
                         </span>
-                        {isHeatGroup(group) && typeof option.heatPercent === "number" ? (
-                          <HeatMeter percent={option.heatPercent} size="sm" className="mt-2" />
-                        ) : option.description ? (
+                        {/* A heat group never reaches this branch any more:
+                            it is drawn as the slider above. What is left here
+                            is every other list group, which has descriptions
+                            and no scale. */}
+                        {option.description ? (
                           <span className="text-nybb-bone/60 mt-1 block text-xs">
                             {option.description}
                           </span>

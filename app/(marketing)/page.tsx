@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { HeatScale, type HeatLevel } from "@/components/site/HeatScale";
+import { HeatSlider } from "@/components/menu/HeatSlider";
+import { heatStops } from "@/lib/menu/heat-slider";
 import { HeroVideo } from "@/components/site/HeroVideo";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
@@ -52,9 +53,17 @@ import { telHref } from "@/lib/phone";
  * orange on amber is now ink. See components/ui/Button.tsx, which is where
  * that rule is enforced rather than remembered.
  *
- * MOTION. One authored moment, in one place: the five heat stops drawing
- * themselves in sequence as that section arrives. Nothing else on the page
- * animates except hover colour.
+ * MOTION. One authored moment, in one place: the heat bar catching fire under
+ * whoever is dragging it. Nothing else on the page animates except hover
+ * colour.
+ *
+ * It used to be the five stops drawing themselves in as the section arrived.
+ * That was an entrance, and an entrance plays once, to nobody in particular,
+ * saying what the bars already said standing still. The band's job is to make
+ * a visitor understand that heat is a thing you choose an amount of, and the
+ * way to say that is to let them choose one. So the motion moved from the
+ * section's arrival to the customer's own hand, and it only runs while a hand
+ * is on it. See components/menu/HeatSlider.tsx.
  *
  * WHAT THE FIRST SCREEN IS FOR, AND WHY IT NO LONGER PREVIEWS THE THIRD
  * SECTION. The hero carried a compressed heat ramp beside the copy for a while,
@@ -157,20 +166,26 @@ export default async function Home() {
   const half = wings?.variations.find((variation) => variation.slug === "half");
   const full = wings?.variations.find((variation) => variation.slug === "full");
 
-  // Both the scale and its two prices come from the menu the page rendered
-  // from, so the landing page cannot advertise a heat price the menu no longer
+  // Both the scale and its prices come from the menu the page rendered from,
+  // so the landing page cannot advertise a heat price the menu no longer
   // charges.
-  const heatLevels: HeatLevel[] = (
-    findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? []
-  )
-    .filter((option) => (option.heatPercent ?? 0) > 0)
-    .map((option) => ({
-      slug: option.slug,
-      name: option.name,
-      percent: option.heatPercent ?? 0,
-      half: formatPesoCompact(optionPriceCents(option, "half")),
-      full: formatPesoCompact(optionPriceCents(option, "full")),
-    }));
+  const heatOptions = (findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? []).filter(
+    (option) => (option.heatPercent ?? 0) > 0,
+  );
+
+  // "No heat" is left off the showcase. It is a real stop in the configurator,
+  // where somebody is deciding, but a landing page selling heat has no reason
+  // to open on the absence of it.
+  const heatSteps = heatStops(heatOptions);
+
+  // Keyed by slug and formatted here, because pricing lives on the server and a
+  // function cannot cross into the client component that draws the bar.
+  const heatPrices: Record<string, string> = Object.fromEntries(
+    heatOptions.map((option) => [
+      option.slug,
+      `+${formatPesoCompact(optionPriceCents(option, "half"))}`,
+    ]),
+  );
 
   return (
     <>
@@ -466,15 +481,23 @@ export default async function Home() {
               Heat is on the menu
             </h2>
             <p className="text-nybb-bone/65 mt-5 leading-relaxed">
-              Five stops, from a warm edge to something you will remember. Pick
-              a level and pay for the level, not for a different dish.
+              Five stops, from a warm edge to something you will remember. Drag
+              the bar and watch it catch. Pick a level and pay for the level,
+              not for a different dish.
             </p>
           </header>
 
-          <HeatScale levels={heatLevels} className="mt-14 sm:mt-16" />
+          <HeatSlider
+            stops={heatSteps}
+            prices={heatPrices}
+            variant="band"
+            label="Try the Level of Hotness scale"
+            className="mt-14 sm:mt-16"
+          />
 
           <p className="text-nybb-bone/55 mt-10 text-xs">
-            Prices are the upcharge on top of any flavour, per order.
+            The upcharge on top of any flavour, per order. Choose for real on
+            the wings page.
           </p>
         </div>
       </section>

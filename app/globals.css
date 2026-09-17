@@ -199,6 +199,20 @@
   --ring: #ef6212;
 }
 
+/* Registered so it can be transitioned.
+   ================================================================
+   An unregistered custom property is just a string to CSS: it flips
+   from one value to the next with no interpolation, so the bar would
+   jump between stops. Typed as a percentage it animates, and because
+   both the shroud's width and the fire's mask are computed from it,
+   one transition on this single value moves every part of the bar
+   together. */
+@property --heat-fill {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 0%;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -1097,44 +1111,424 @@
     );
   }
 
-  /* The heat scale bars, and the page's only authored motion.
+  /* The sliding heat bar, and the site's only authored motion.
      ================================================================
-     One moment, in one place: the five stops of the Level of Hotness
-     drawing themselves in sequence as the section arrives. That is the
-     product's own mechanism animating, not a fade applied to every
-     section in turn.
+     This replaces the five ascending bars that used to draw themselves
+     in as the landing band arrived. The reveal was an entrance: it
+     played once, to nobody in particular, and said the same thing the
+     static bars already said. The bar below is the product's own
+     mechanism under a hand, which is what the motion was always meant
+     to be spent on.
 
-     The reveal follows whichever axis the layout is using. The scale is
-     five stacked rows on a phone and five ascending columns from sm up,
-     so the bars grow rightward at the small size and upward at the
-     large one. It is the only place on the site this happens.
+     The flame does not idle. It burns while somebody is dragging,
+     hovering or tabbed onto the control and settles to a still
+     silhouette the moment they let go, so the page is never animating
+     at a visitor who is not touching it.
 
-     Transform only, so nothing reflows: the bar's real length is set
-     from the --fill custom property and stays fixed, and the reveal
-     scales it along whichever axis the layout is using at that
-     breakpoint. Exponential ease out, 640ms, staggered 70ms per stop.
+     Two shapes, one control. `band` is the landing page's full bleed
+     moment: a wide burning line with tall tongues coming off it.
+     `inline` is the compact one that sits in a menu row or a
+     configurator fieldset. Same swatches, same mechanism, different
+     scale. */
 
-     The default is the drawn state. HeatScale only rewinds this on the
-     client, so no JavaScript and reduced motion both keep the bars. */
-  .heat-bar {
-    transform: scaleX(0);
-    transform-origin: left center;
-    transition: transform 640ms cubic-bezier(0.16, 1, 0.3, 1);
+  .heat-slider {
+    --track-height: 0.75rem;
+    --flame-height: 2.9rem;
+    --thumb-size: 1.25rem;
+    /* One transition drives the lot. --heat-fill is registered above as a
+       real percentage, so the shroud's width and the fire's mask both
+       interpolate from the same animated value and can never drift out
+       of step with each other the way two separate transitions would. */
+    transition: --heat-fill 280ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .heat-bar[data-shown="true"] {
-    transform: scaleX(1);
+  .heat-slider[data-variant="band"] {
+    --track-height: 1.25rem;
+    --flame-height: 5.25rem;
+    --thumb-size: 1.75rem;
   }
 
   @media (min-width: 640px) {
-    .heat-bar {
-      transform: scaleY(0);
-      transform-origin: bottom center;
+    .heat-slider[data-variant="band"] {
+      --track-height: 1.75rem;
+      --flame-height: 7rem;
+      --thumb-size: 2rem;
     }
+  }
 
-    .heat-bar[data-shown="true"] {
-      transform: scaleY(1);
+  /* Room above the bar for the flames to rise into, so lighting one
+     never reflows the copy underneath. */
+  .heat-slider__stage {
+    position: relative;
+    padding-top: var(--flame-height);
+  }
+
+  /* Square, like the heat rule it quotes. The track carried a 2px radius
+     inherited from the bars this replaced, which is off the documented
+     radius scale and was answering to nothing: the rule bracketing the
+     page in the same five swatches has no radius at all, and at these
+     sizes two pixels of corner were invisible anyway. */
+  .heat-slider__track {
+    position: relative;
+    height: var(--track-height);
+    overflow: hidden;
+  }
+
+  /* One hard band per stop, painted from the component. */
+  .heat-slider__bands {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Firelight falling back onto the bar: brightest along the top edge,
+     where the flames actually sit, and gone by halfway down. The bar is
+     a hard graphic object and the fire is a soft lit one, and without
+     this they read as two drawings stacked rather than one thing on
+     fire. Screened, so it adds light to each swatch rather than washing
+     a pale film over all five. */
+  .heat-slider__lit {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      #fff3c8 0%,
+      var(--color-nybb-heat-1) 22%,
+      transparent 58%
+    );
+    opacity: calc(0.16 + 0.4 * var(--heat-flame));
+    mix-blend-mode: screen;
+  }
+
+  .heat-slider[data-cold="true"] .heat-slider__lit,
+  .heat-slider[data-chosen="false"] .heat-slider__lit {
+    display: none;
+  }
+
+  /* The unlit run is shrouded rather than recoloured, so the swatch
+     under it is still the swatch that level will be when it lights. */
+  .heat-slider__shroud {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    inline-size: calc(100% - var(--heat-fill));
+    background: var(--color-nybb-ink);
+    opacity: 0.82;
+  }
+
+  .heat-slider[data-cold="true"] .heat-slider__shroud {
+    inline-size: 100%;
+  }
+
+  /* The thumb rides the burning edge. Transform only, so moving it
+     never reflows the row. */
+  .heat-slider__thumb {
+    position: absolute;
+    inset-block-end: calc(var(--track-height) / 2);
+    inset-inline-start: var(--heat-fill);
+    inline-size: var(--thumb-size);
+    block-size: var(--thumb-size);
+    margin-inline-start: calc(var(--thumb-size) / -2);
+    margin-block-end: calc(var(--thumb-size) / -2);
+    border-radius: 9999px;
+    background: var(--color-nybb-bone);
+    border: 3px solid var(--heat-colour);
+    /* Two rings: a tight one that reads as a control, and a wide soft one
+       that is the fire's light on the thumb sitting in it. */
+    box-shadow:
+      0 0 0 4px color-mix(in oklch, var(--heat-colour) 35%, transparent),
+      0 0 calc(var(--thumb-size) * 0.9) calc(var(--thumb-size) * 0.16)
+        color-mix(in oklch, var(--heat-colour) calc(var(--heat-flame) * 55%), transparent);
+    transition:
+      inset-inline-start 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 160ms ease-out;
+  }
+
+  .heat-slider[data-live="true"] .heat-slider__thumb {
+    transform: scale(1.12);
+  }
+
+  /* Nothing chosen yet. The thumb has to sit somewhere to be drawn, and
+     this is what stops that resting place from looking like an answer.
+     See lib/menu/heat-slider.ts. */
+  .heat-slider[data-chosen="false"] .heat-slider__thumb {
+    background: transparent;
+    border-color: var(--color-nybb-bone);
+    border-style: dashed;
+    box-shadow: none;
+  }
+
+  .heat-slider[data-chosen="false"] .heat-slider__shroud {
+    inline-size: 100%;
+  }
+
+  .heat-slider[data-chosen="false"] .heat-slider__fire {
+    display: none;
+  }
+
+  /* The real control, invisible over the artwork. Full size so the whole
+     bar is the hit area, and a tall minimum so a thumb on a phone has
+     something to land on. */
+  .heat-slider__input {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    inline-size: 100%;
+    block-size: max(2.75rem, calc(var(--track-height) * 2));
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  .heat-slider__input:focus-visible + .heat-slider__ticks,
+  .heat-slider__input:focus-visible ~ .heat-slider__thumb {
+    outline: none;
+  }
+
+  /* The focus ring goes on the painted thumb, because the input it
+     belongs to is invisible. */
+  .heat-slider:has(.heat-slider__input:focus-visible) .heat-slider__thumb {
+    outline: 3px solid var(--color-nybb-orange);
+    outline-offset: 3px;
+  }
+
+  /* Fire.
+     ----------------------------------------------------------------
+     Drawn full width and masked back to the lit run, rather than sized
+     to it. Sized to the run, the SVG squashed horizontally as the bar
+     cooled and the tongues compressed into slivers at Lite.
+
+     The mask also ramps: dim at the cold end, full at the burning edge.
+     A uniform band of fire along the whole bar reads as a rectangle of
+     texture laid on top. Ramped, it reads as a fire that has advanced
+     to where the thumb is, which is both what a slider means and what
+     fire does.
+
+     Every stop is a fraction of --heat-fill, and none of them is a fixed
+     percentage. A fixed one shipped here and drew the fire past the end
+     of the lit run: the ramp's middle stop sat at 38%, which is beyond
+     the fill at Lite (20%) and Moderate (40%), and CSS clamps a gradient
+     stop that falls before the one in front of it. Both later stops
+     collapsed onto 38% and the fire ended in a hard vertical edge a
+     third of the way along a bar that was only a fifth alight. */
+  .heat-slider__fire {
+    position: absolute;
+    /* Only the bottom sliver tucks behind the bar. Any deeper and the
+       track covers the flame bases, which are the brightest part of a
+       flame, and the fire reads as a dim haze. */
+    inset-block-end: calc(var(--track-height) * 0.82);
+    inset-inline: 0;
+    block-size: var(--flame-height);
+    pointer-events: none;
+    /* Visible, not hidden: the displacement pushes tips past where the
+       paths end and the blur softens them past that again, so a box
+       ending exactly where the paths do cuts that soft edge off square.
+       The mask is the only clipping this needs. */
+    overflow: visible;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.85) calc(var(--heat-fill) * 0.5),
+      #000 calc(var(--heat-fill) * 0.88),
+      transparent var(--heat-fill)
+    );
+    mask-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.85) calc(var(--heat-fill) * 0.5),
+      #000 calc(var(--heat-fill) * 0.88),
+      transparent var(--heat-fill)
+    );
+  }
+
+  .heat-slider[data-cold="true"] .heat-slider__fire,
+  .heat-slider[data-chosen="false"] .heat-slider__fire {
+    display: none;
+  }
+
+  /* The bed. A tight white hot line where the fire meets the bar, not a
+     tall wash of the level's colour: the old bed was a blurred slab of
+     signage red over sixty percent of the height, which is a maroon
+     stain rather than a source of light. Every flame is brightest where
+     it touches its fuel, whatever colour the rest of it is. */
+  .heat-slider__bed {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    block-size: 34%;
+    background: linear-gradient(
+      to top,
+      #fff2c4 0%,
+      var(--color-nybb-heat-1) 26%,
+      var(--heat-colour) 62%,
+      transparent 100%
+    );
+    opacity: calc(0.22 + 0.5 * var(--heat-flame));
+    filter: blur(calc(var(--flame-height) * 0.07));
+  }
+
+  .heat-slider__flames {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    overflow: visible;
+  }
+
+  /* Intensity lives on the layer, so one transform takes the whole fire
+     from Lite to Insane and each tongue is free to carry its own travel.
+
+     Floored, not raw: --heat-flame is 0.2 at Lite, and a fire drawn at a
+     fifth of its height is shorter than the blur that softens it, so it
+     smears into a stain instead of reading as a small flame. "No heat"
+     still shows nothing: the fire is hidden outright at zero. */
+  .heat-slider__layer {
+    transform: scaleY(calc(0.36 + 0.64 * var(--heat-flame)));
+    transform-box: view-box;
+    transform-origin: 50% 100%;
+    transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .heat-slider__tongue {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+  }
+
+  /* Brighter where the licks cross each other and the body behind them,
+     the way overlapping flame actually adds light. */
+  .heat-slider__tongue--lick,
+  .heat-slider__tongue--body {
+    /* Screened, both layers. Overlapping flame adds light; overlapping
+       translucent shapes on normal compositing just accumulate toward
+       opaque, which is exactly how the body turned into a slab. */
+    mix-blend-mode: screen;
+  }
+
+  .heat-slider__tongue--body {
+    opacity: 0.72;
+  }
+
+  /* Motion.
+     ----------------------------------------------------------------
+     Only while somebody is working the control. The still fire above is
+     the default, so no JavaScript and reduced motion both keep a drawn
+     flame rather than an empty bar.
+
+     The body sways and the licks travel. That split is the point: the
+     first fire scaled every tongue in place on an alternating ease,
+     which is a row of shapes breathing in unison, not fire. Flame is
+     born at the fuel, rises, narrows and goes out. */
+  .heat-slider[data-live="true"] .heat-slider__tongue--body {
+    animation: heat-sway var(--dur, 2s) ease-in-out infinite alternate;
+    animation-delay: calc(var(--delay, 0s) * -1);
+  }
+
+  .heat-slider[data-live="true"] .heat-slider__tongue--lick {
+    animation: heat-rise var(--dur, 1s) ease-out infinite;
+    animation-delay: calc(var(--delay, 0s) * -1);
+  }
+
+  @keyframes heat-sway {
+    from {
+      transform: scaleY(0.93) scaleX(1.05) translateX(-1%);
     }
+    to {
+      transform: scaleY(1.07) scaleX(0.95) translateX(1%);
+    }
+  }
+
+  /* Born, risen, gone. Not alternating: a lick that ran backwards would
+     descend into the bar, which nothing on fire has ever done. */
+  @keyframes heat-rise {
+    0% {
+      transform: translateY(12%) scaleY(0.5) scaleX(1.25);
+      opacity: 0;
+    }
+    22% {
+      opacity: 1;
+    }
+    58% {
+      transform: translateY(-4%) scaleY(1.06) scaleX(0.88);
+      opacity: 0.82;
+    }
+    100% {
+      transform: translateY(-24%) scaleY(0.78) scaleX(0.42);
+      opacity: 0;
+    }
+  }
+
+  /* Stop names, one under each band. */
+  .heat-slider__ticks {
+    margin-block-start: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(var(--heat-stops), minmax(0, 1fr));
+    /* These are micro-labels, which is exactly what .type-caps is for. */
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+
+  @media (min-width: 640px) {
+    .heat-slider[data-variant="band"] .heat-slider__ticks {
+      font-size: 0.875rem;
+    }
+  }
+
+  .heat-slider__ticks li {
+    color: color-mix(in oklch, var(--color-nybb-bone) 45%, transparent);
+    transition: color 160ms ease-out;
+  }
+
+  .heat-slider__ticks li[data-on="true"] {
+    color: var(--color-nybb-bone);
+  }
+
+  /* The readout. Name in Anton, percentage and price in tabular mono,
+     because mono is load-bearing here and not decorative. */
+  .heat-slider__readout {
+    margin-block-start: 1rem;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .heat-slider__name {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    line-height: 1;
+    /* The panel heading step. This name sits at the same weight as the
+       "Size" and "Quantity" legends it shares a column with. */
+    font-size: 0.875rem;
+    color: var(--color-nybb-bone);
+  }
+
+  /* The band's readout is the section's real headline: the level you are
+     on, set at the major step so it carries the full bleed dark. */
+  .heat-slider[data-variant="band"] .heat-slider__name {
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    line-height: 0.9;
+    letter-spacing: -0.008em;
+  }
+
+  .heat-slider__percent,
+  .heat-slider__price {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.875rem;
+  }
+
+  .heat-slider__percent {
+    color: color-mix(in oklch, var(--color-nybb-bone) 60%, transparent);
+  }
+
+  .heat-slider__price {
+    color: var(--color-nybb-orange);
   }
 
   /* The product tile ground.

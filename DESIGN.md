@@ -920,18 +920,18 @@ perfectly legible as a graphic. Every nav target is at least `2.75rem` tall.
 ### The heat meter (signature)
 
 Five segments at `0.625rem` by `1rem`, filled from the fixed heat ramp and unfilled in graphite,
-followed by the percentage in tabular mono and the level name in Anton. The same component appears
-in the wings configurator, on the order confirmation, on the staff ticket and on the printed pickup
-slip, with the same five swatches every time. It is the one thing in this interface that could not
-be lifted from a template, and it is treated accordingly.
+followed by the percentage in tabular mono and the level name in Anton. It reports a level that has
+already been decided: the order confirmation, the staff ticket, the printed pickup slip and the
+Workspace heat mix. Where somebody is still deciding, the scale is the slider below instead. Same
+five swatches either way, which is the whole point of the fixed ramp.
 
 The landing page carries **one** more surface built from the same five swatches, and the number
-matters enough to be the rule below. The **heat band** is the ramp itself: five bars ascending left
-to right from sm up, each carrying its name, its percentage and the two upcharges, rotating to five
-stacked rows with full width bars on a phone. It is the only place on that page where the ramp is
-drawn, and it owns the site's one authored animation because it is where somebody is choosing.
+matters enough to be the rule below. The **heat band** is the ramp itself, drawn as one bar you
+drag: hard bands in the five fixed swatches, lit up to whichever stop the thumb is on, with the
+level name and its percentage below. It is the only place on that page where the ramp is drawn, and
+it owns the site's one authored animation because it is where somebody is choosing.
 
-It got there in three corrections, and the third returned it to where the first left it, which is
+It got there in four corrections, and the third returned it to where the first left it, which is
 worth recording rather than hiding. The hero and the band were once the same object, both ascending
 ramps within two screens of each other, which is a repeat rather than a statement, so they were
 split by job: a **hero strip** that stated the scale, and a band flattened into a price list of
@@ -949,6 +949,83 @@ were a shape adopted to avoid a collision that no longer exists. The ramp is the
 the product on its own merits: ascending columns say "a scale you move along" in one look, where
 rows say "a table you read". So the band is the ramp again, and the reveal ascends with it.
 
+**And then the fourth correction, which is the one that stuck.** "A scale you move along" was the
+right sentence and the band still would not let anybody move along it. Five bars side by side are
+a picture of a scale: they state all five answers at once, which is a price list of the product
+rather than the product. So the band is now one bar you drag, and the bar burns up to wherever you
+put it. Same five swatches, same hard bands, same percentages; the difference is that the customer
+supplies the position instead of reading five of them.
+
+The heat scale is drawn by `components/menu/HeatSlider.tsx` in two shapes. The **band** is the
+landing page's full bleed moment: a wide burning line with tall tongues coming off it and the
+chosen level set at the major heading step. The **inline** shape is the compact instrument panel
+used on the wings category page and in the configurator, where it is the actual control and not a
+picture beside one.
+
+The inline shape always sits on an ink plate, never directly on the amber page. The ramp runs
+signage yellow to red and is built for an ink ground; on amber the cold half of it washes into the
+background. This is not a preference, it is the same measurement that governs orange as type here:
+bone on the amber ground is 1.8:1, which is what made the heat meter's percentage unreadable on the
+menu page for as long as it was drawn there.
+
+The control itself is a real `<input type="range">` lying invisible over the artwork, with the
+painted bar `aria-hidden` beneath it. Drag, tap, arrow keys, Home, End and a screen reader
+announcing "Wild, 80 percent" all come from the platform rather than from a hand-rolled
+`role="slider"`.
+
+### How the fire is drawn, and the version that did not work
+
+The first fire was a row of flame-shaped elements: one path, repeated, filled in two flat colours
+with a red body and a yellow core, evenly spaced along the bar. It read as clip art. The failure is
+worth recording because every part of it looks reasonable written down.
+
+Four things were wrong, and they compound. **Flat fills give a flame an outline**, and a flame has
+no edge at the top, it stops being bright; so both fills now run as gradients to fully transparent
+at the tip. **One repeated path is a picket fence**: the eye finds the repeat immediately, so the
+tongues are now generated from an integer hash, each with its own height, width, lean and flicker
+speed, no two alike. **Separate shapes read as candles, not fire**, so the tongues overlap and a
+single `feTurbulence` displacement warps all of them together, the way one flame front moves.
+And **a fire with no bed looks stuck on**: a blurred wash of the level's colour along the burning
+edge is what makes the bar itself look alight rather than decorated.
+
+**The fire is two layers, and that is what stopped it looking flat.** A **body** of low, broad,
+soft-focus tongues that never goes out, and a set of taller, tighter **licks** in front of it. The
+two run on different seeds, different turbulence and different blurs, because one blur over
+everything reads as fog and a single layer has no depth to read. Both composite with `screen`:
+overlapping flame adds light, whereas overlapping translucent shapes on normal compositing just
+accumulate toward opaque, which is how an earlier body layer turned into a solid red slab with a
+flat top.
+
+**The motion is travel, not pulse.** The first version scaled every tongue in place on an
+alternating ease, which is a row of shapes breathing in unison. Flame is born at the fuel, rises,
+narrows and goes out, so the licks run a one-way cycle from invisible at the bar to invisible above
+it, each on its own duration and offset. The body only sways. The licks can vanish mid-cycle
+precisely because the body behind them never does.
+
+**The bar is lit by its own fire.** A white hot bed where the flames meet the track, and a screened
+highlight down the top of the lit run itself. Without them the bar stays a flat graphic object
+while the fire above it is a soft lit one, and the two read as separate drawings stacked rather
+than one thing burning. This was the single clearest failure of the first two attempts.
+
+Two constraints on the turbulence. It is static, and the movement is CSS on the tongues beneath it:
+animating the turbulence would need SMIL, which cannot be switched off from CSS and would idle
+forever, which is the thing the rule above forbids. And the tongues are drawn to 78% of their box,
+because the displacement pushes tips past wherever the path put them, and at full height the
+tallest came out with flat tops.
+
+The raggedness is hashed rather than random, with integer operations rather than the usual
+`Math.sin(i) * 43758.5453`. The bar renders on the server and hydrates in the browser, and
+ECMAScript lets an engine pick its own precision for the transcendental functions: a sine that
+differs in its last bits, magnified and cut to a fraction, is a different flame and therefore a
+hydration mismatch.
+
+**Every stop in the fire's mask is a fraction of `--heat-fill`, never a fixed percentage.** A fixed
+one shipped here: the ramp's middle stop sat at `38%`, which is past the fill at Lite (20%) and
+Moderate (40%), and CSS clamps a gradient stop that falls before the one in front of it. Both later
+stops collapsed onto 38%, and the fire ran a third of the way along a bar that was only a fifth
+alight, ending in a hard vertical edge. It looked like a rectangular smudge and it was a stop
+ordering bug.
+
 ### Named Rules
 
 **The One Heat Surface Per Page Rule.** A level is the same swatch everywhere, and that is the point
@@ -957,10 +1034,23 @@ level. This replaces an earlier rule that permitted two surfaces provided they d
 changing the shape of a restatement does not stop it being one, and the second surface is always the
 one further from the decision, which is the one to cut.
 
-**The Moment Belongs To The Band Rule.** The five bars extending in sequence is the site's only
-authored animation and it lives where somebody is choosing. Nothing else on the landing page draws
-the ramp at all now, so the band's entrance is the first time a visitor sees the object move, which
-is what the rule was protecting all along.
+**The Moment Belongs To The Hand Rule.** The bar catching fire under whoever is dragging it is the
+site's only authored animation, and it runs only while somebody is working the control. Nothing
+else on the landing page draws the ramp at all, so this is the first and single time a visitor sees
+the object move.
+
+This replaces The Moment Belongs To The Band Rule, which gave the moment to the five bars extending
+in sequence as the section arrived. The rule was right that the motion belongs where somebody is
+choosing, and wrong about what choosing looks like. An entrance plays once, to nobody in particular,
+and says exactly what the bars already said standing still; a visitor who scrolled past during it
+never saw it at all. The band's job is to make somebody understand that heat is a thing you pick an
+amount of, and the way to say that is to let them pick one. So the moment moved from the section's
+arrival to the customer's own hand.
+
+The clause the old rule was really protecting survives and is now load bearing: **the flame never
+idles.** It burns on drag, hover and focus, and settles to a still silhouette the moment the hand
+leaves. A looping flame would be a second authored animation, running at a visitor whether or not
+anybody is there, which is the thing the one-animation rule exists to prevent.
 
 ### The heat rule (signature)
 
