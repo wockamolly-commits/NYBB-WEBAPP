@@ -5,6 +5,7 @@ import { notifyCustomersOfPromo } from "@/lib/push/dispatch";
 import { revalidatePath } from "next/cache";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
+import { voucherFormInput, voucherRpcPayload } from "@/lib/vouchers/form";
 import { voucherFormSchema, type VoucherActionState } from "@/lib/vouchers/schema";
 
 /**
@@ -66,47 +67,18 @@ function refresh(id?: string | null) {
   if (id) revalidatePath(`/workspace/vouchers/${id}`);
 }
 
-/**
- * Split the phone textarea into numbers.
- *
- * One per line is what the field asks for, but people paste comma-separated
- * lists, so both are accepted. Normalising to digits happens in SQL, where the
- * redemption count reads the same function, rather than here where a second
- * implementation could drift from it.
- */
-function phoneLines(raw: FormDataEntryValue | null): string[] {
-  return String(raw ?? "")
-    .split(/[\n,;]+/)
-    .map((value) => value.trim())
-    .filter((value) => value !== "");
-}
-
 export async function saveVoucher(
   _previous: VoucherActionState,
   formData: FormData,
 ): Promise<VoucherActionState> {
   if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
 
-  const parsed = voucherFormSchema.safeParse({
-    id: formData.get("id") ?? "",
-    code: formData.get("code") ?? "",
-    description: formData.get("description") ?? "",
-    note: formData.get("note") ?? "",
-    discountKind: formData.get("discountKind") ?? "fixed",
-    amountPesos: formData.get("amountPesos") ?? "",
-    percentOff: formData.get("percentOff") ?? "",
-    maxDiscountPesos: formData.get("maxDiscountPesos") ?? "",
-    minOrderPesos: formData.get("minOrderPesos") ?? "",
-    maxUses: formData.get("maxUses") ?? "",
-    maxUsesPerCustomer: formData.get("maxUsesPerCustomer") ?? "1",
-    startsAt: formData.get("startsAt") ?? "",
-    expiresAt: formData.get("expiresAt") ?? "",
-    isActive: formData.get("isActive") === "true",
-    branchIds: formData.getAll("branchIds").map(String),
-    itemIds: formData.getAll("itemIds").map(String),
-    categoryIds: formData.getAll("categoryIds").map(String),
-    customerPhones: phoneLines(formData.get("customerPhones")),
-  });
+  // Both mappings live in lib/vouchers/form.ts and are unit tested there.
+  // They used to be written out here, which is how `publicise` shipped as a
+  // toggle that could never save: a field added to the schema and missed in
+  // an inline object literal is invisible to tsc, because a field with a
+  // default is optional in the schema's input type.
+  const parsed = voucherFormSchema.safeParse(voucherFormInput(formData));
 
   if (!parsed.success) {
     // Field messages written into the schema are staff copy and are shown
@@ -128,26 +100,7 @@ export async function saveVoucher(
 
   const supabase = await createStaffClient();
   const { data, error } = await supabase.rpc("admin_upsert_voucher", {
-    p_voucher: {
-      id: parsed.data.id,
-      code: parsed.data.code,
-      description: parsed.data.description,
-      note: parsed.data.note,
-      amountCents: parsed.data.amountCents,
-      percentOff: parsed.data.percentOff,
-      maxDiscountCents: parsed.data.maxDiscountCents,
-      minOrderCents: parsed.data.minOrderCents,
-      maxUses: parsed.data.maxUses,
-      maxUsesPerCustomer: parsed.data.maxUsesPerCustomer,
-      startsAt: parsed.data.startsAt,
-      expiresAt: parsed.data.expiresAt,
-      isActive: parsed.data.isActive,
-      branchIds: parsed.data.branchIds,
-      itemIds: parsed.data.itemIds,
-      categoryIds: parsed.data.categoryIds,
-      customerPhones: parsed.data.customerPhones,
-      customerUserIds: [],
-    },
+    p_voucher: voucherRpcPayload(parsed.data),
   });
 
   if (error) return refuse(errorFor(error.message));
