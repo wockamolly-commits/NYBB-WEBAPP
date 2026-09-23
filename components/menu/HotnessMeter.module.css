@@ -1,0 +1,910 @@
+/* The hotness meter.
+   ================================================================
+   Top to bottom: a fire standing on the lit run, a glass tube holding
+   the five fixed swatches, and the level names under their segments.
+
+   Every length is a size token, so the three sizes are one drawing at
+   three scales. Every tier is a block of colour and intensity tokens
+   near the bottom, so the five levels are five fires rather than one
+   fire at five brightnesses.
+
+   Performance rules this file keeps: flames and particles animate
+   transform and opacity only, light is gradients and never a blur
+   filter or a stack of wide shadows, and every loop pauses when the
+   meter is off screen (`data-running`) or motion is reduced. */
+
+.meter {
+  --track-h: 0.875rem;
+  --flame-h: 3.5rem;
+  --gutter: 0.75rem;
+  --needle-w: 0.625rem;
+  --needle-h: 1.875rem;
+  --label-size: 0.6875rem;
+  --label-gap: 0.625rem;
+
+  /* Tier tokens. No heat by default: nothing burns. */
+  --fire-h: 0;
+  --fire-a: 0;
+  --glow: var(--color-nybb-heat-1);
+  --glow-a: 0;
+  --core-a: 0;
+  --f-base: #fffbe8;
+  --f-core: #fff4b0;
+  --f-mid: var(--color-nybb-heat-1);
+  --f-edge: var(--color-nybb-heat-2);
+  --sway: 1;
+
+  /* Energy tokens: how hard the fire is being worked. */
+  --energy-h: 0.94;
+  --energy-a: 0.86;
+  --surge-a: 0;
+
+  position: relative;
+  /* The gutter is room for the pointer's light at either end of the
+     bar. It is taken out of the surroundings rather than out of the
+     bar, so the tube's ends line up with the text above and below it. */
+  margin-inline: calc(var(--gutter) * -1);
+  container-type: inline-size;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.meter[data-size="small"] {
+  --track-h: 0.5rem;
+  --flame-h: 2rem;
+  --gutter: 0.5rem;
+  --needle-w: 0.4375rem;
+  --needle-h: 1.25rem;
+  --label-size: 0.625rem;
+  --label-gap: 0.5rem;
+}
+
+.meter[data-size="large"] {
+  --track-h: 1.125rem;
+  --flame-h: 5.5rem;
+  --gutter: 1rem;
+  --needle-w: 0.75rem;
+  --needle-h: 2.5rem;
+  --label-size: 0.75rem;
+  --label-gap: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .meter[data-size="large"] {
+    --track-h: 1.5rem;
+    --flame-h: 7.5rem;
+    --needle-w: 0.875rem;
+    --needle-h: 3.125rem;
+    --label-size: 0.875rem;
+    --label-gap: 1rem;
+  }
+}
+
+.meter[data-energy="hover"] {
+  --energy-h: 1;
+  --energy-a: 1;
+}
+
+.meter[data-energy="drag"] {
+  --energy-h: 1.14;
+  --energy-a: 1;
+  --surge-a: 1;
+}
+
+/* The stage reserves the fire's height, so lighting a level never
+   reflows what is under the meter. Clipped sideways only: the pointer
+   rail is translated past the right edge by design, and `clip` (unlike
+   `hidden`) makes no scroll container and leaves the flames free to
+   rise above the box. */
+.stage {
+  position: relative;
+  padding-top: var(--flame-h);
+  padding-inline: var(--gutter);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* The width everything along the bar is measured against. */
+.rail {
+  position: relative;
+}
+
+/* Tube.
+   ---------------------------------------------------------------- */
+
+/* The housing. A recessed dark channel: inset shadow along the top
+   lip, a hairline of light along the bottom, the site radius. */
+.tube {
+  position: relative;
+  z-index: 2;
+  height: calc(var(--track-h) + 4px);
+  padding: 2px;
+  border-radius: 0.4rem;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--color-nybb-ink) 55%, black),
+    var(--color-nybb-charcoal)
+  );
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.9),
+    inset 0 -1px 0 color-mix(in oklch, var(--color-nybb-bone) 7%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--color-nybb-bone) 6%, transparent);
+}
+
+/* The channel inside the housing. Its radius is the site radius less
+   the housing's padding, so the two curves stay concentric. */
+.channel {
+  position: relative;
+  height: 100%;
+  border-radius: calc(0.4rem - 2px);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.segments {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--stops), minmax(0, 1fr));
+  gap: 2px;
+}
+
+.segments span {
+  background: var(--swatch);
+}
+
+/* Unpowered: each swatch still legible as the colour it will light,
+   at a fraction of its strength. */
+.segments[data-state="dim"] span {
+  background: color-mix(in oklch, var(--swatch) 13%, var(--color-nybb-ink));
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--color-nybb-bone) 4%, transparent);
+}
+
+/* Powered. The swatch is the fixed brand colour; the light inside it
+   is an overlay, brighter along the top where the glass curves toward
+   you and falling off at the bottom, so the segment reads as a lit
+   volume rather than a flat fill. */
+.segments[data-state="lit"] {
+  clip-path: inset(0 calc(100% - var(--fill)) 0 0);
+}
+
+.segments[data-state="lit"] span {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--color-nybb-bone) 38%, transparent) 0%,
+    color-mix(in oklch, var(--color-nybb-bone) 8%, transparent) 38%,
+    rgb(0 0 0 / 0) 55%,
+    rgb(0 0 0 / 0.28) 100%
+  );
+  background-color: var(--swatch);
+}
+
+.meter[data-unset="true"] .segments[data-state="lit"] {
+  visibility: hidden;
+}
+
+/* The hot filament running through the lit run: faint at the cold
+   end, white hot at the pointer, where the heat actually is. */
+.core {
+  position: absolute;
+  inset-inline: 0;
+  top: 34%;
+  height: 22%;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgb(255 250 225 / 0) 0%,
+    rgb(255 250 225 / 0.55) calc(var(--fill) * 0.7),
+    rgb(255 255 245 / 0.95) calc(var(--fill) - 1%),
+    rgb(255 255 245 / 0) var(--fill)
+  );
+  opacity: var(--core-a);
+  mix-blend-mode: soft-light;
+  transition: opacity 400ms ease-out;
+}
+
+/* Glass: a specular band across the top third and a thin return of
+   light along the bottom edge. Static, so it costs one paint. */
+.glass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--color-nybb-bone) 20%, transparent) 0%,
+      color-mix(in oklch, var(--color-nybb-bone) 7%, transparent) 30%,
+      color-mix(in oklch, var(--color-nybb-bone) 0%, transparent) 46%
+    ),
+    linear-gradient(to top, color-mix(in oklch, var(--color-nybb-bone) 8%, transparent) 0%, color-mix(in oklch, var(--color-nybb-bone) 0%, transparent) 14%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--color-nybb-bone) 14%, transparent),
+    inset 0 -2px 3px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+
+/* Pointer.
+   ---------------------------------------------------------------- */
+
+/* A full width rail translated by --fill. A percentage in a translate
+   is a share of the element's own width, and this element is exactly
+   as wide as the bar, so the pointer lands on the fill with a
+   transform and never touches layout. */
+.pointerRail {
+  position: absolute;
+  z-index: 3;
+  inset-inline: 0;
+  top: calc(var(--track-h) / 2 + 2px);
+  height: 0;
+  transform: translateX(var(--fill));
+  pointer-events: none;
+}
+
+.pointer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The light the pointer sits in. A radial gradient, not a blur. */
+.bloom {
+  position: absolute;
+  left: calc(var(--needle-h) * -1.4);
+  top: calc(var(--needle-h) * -1.4);
+  width: calc(var(--needle-h) * 2.8);
+  height: calc(var(--needle-h) * 2.8);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--glow) 70%, white) 0%,
+    color-mix(in oklch, var(--glow) 45%, transparent) 26%,
+    color-mix(in oklch, var(--glow) 12%, transparent) 58%,
+    transparent 100%
+  );
+  opacity: calc(var(--glow-a) * 1.5);
+  transition: opacity 400ms ease-out;
+}
+
+/* The needle: a glass capsule standing through the tube, lit on the
+   side facing the fire. */
+.needle {
+  position: absolute;
+  left: calc(var(--needle-w) / -2);
+  top: calc(var(--needle-h) / -2);
+  width: var(--needle-w);
+  height: var(--needle-h);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in oklch, var(--color-nybb-bone) 0%, transparent) 0%,
+      color-mix(in oklch, var(--color-nybb-bone) 90%, transparent) 30%,
+      color-mix(in oklch, var(--color-nybb-bone) 0%, transparent) 55%
+    ),
+    linear-gradient(
+      to bottom,
+      var(--color-nybb-bone) 0%,
+      color-mix(in oklch, var(--color-nybb-bone) 88%, var(--color-nybb-ink)) 55%,
+      color-mix(in oklch, var(--color-nybb-bone) 70%, var(--color-nybb-ink)) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.55),
+    0 0 0 3px color-mix(in oklch, var(--glow) calc(var(--glow-a) * 120%), transparent),
+    0 2px 6px rgb(0 0 0 / 0.6);
+  transition:
+    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 300ms ease-out;
+}
+
+.meter[data-energy="hover"] .needle {
+  transform: scale(1.06);
+}
+
+.meter[data-energy="drag"] .needle {
+  transform: scaleX(1.18) scaleY(1.1);
+}
+
+.meter[data-unset="true"] .needle {
+  background: rgb(0 0 0 / 0.4);
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--color-nybb-bone) 60%, transparent);
+}
+
+/* Whatever the caller lays over the tube: the slider's input. */
+.overlay {
+  position: absolute;
+  z-index: 4;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(var(--track-h) + 4px);
+}
+
+/* Fire.
+   ---------------------------------------------------------------- */
+
+/* Drawn full width and masked back to the lit run, so the tongues
+   keep their proportions at every level instead of squashing into
+   the fill. The mask ramps up toward the pointer: a fire advancing to
+   where the heat is, not a strip of texture laid along the bar. Every
+   stop is a fraction of --fill, never a fixed percent (DESIGN.md
+   records the bug a fixed one caused). */
+.fire,
+.particles {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  bottom: calc(var(--track-h) * 0.5 + 2px);
+  height: var(--flame-h);
+  pointer-events: none;
+}
+
+.fire {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.55) 0%,
+    rgb(0 0 0 / 0.9) calc(var(--fill) * 0.55),
+    #000 calc(var(--fill) * 0.9),
+    rgb(0 0 0 / 0.6) calc(var(--fill) * 0.98),
+    transparent calc(var(--fill) + var(--gutter))
+  );
+  mask-image: linear-gradient(
+    90deg,
+    rgb(0 0 0 / 0.55) 0%,
+    rgb(0 0 0 / 0.9) calc(var(--fill) * 0.55),
+    #000 calc(var(--fill) * 0.9),
+    rgb(0 0 0 / 0.6) calc(var(--fill) * 0.98),
+    transparent calc(var(--fill) + var(--gutter))
+  );
+  opacity: var(--fire-a);
+  transition: opacity 450ms ease-out;
+}
+
+/* The light the fire throws into the air above the tube. One ellipse,
+   hugging the bar, in the tier's glow colour. */
+.pool {
+  position: absolute;
+  inset-inline: -4%;
+  bottom: calc(var(--track-h) * -0.6);
+  height: 92%;
+  background: radial-gradient(
+    ellipse 60% 100% at 50% 100%,
+    color-mix(in oklch, var(--glow) calc(var(--glow-a) * 100%), transparent) 0%,
+    color-mix(in oklch, var(--glow) calc(var(--glow-a) * 35%), transparent) 45%,
+    transparent 75%
+  );
+  transition: background 450ms ease-out;
+}
+
+/* The bed: a continuous band of flame where the fire meets the tube.
+   Without it the tongues stand on the bar as separate candles; with it
+   they rise out of one burning line. */
+.bed {
+  mix-blend-mode: screen;
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: calc(18% + var(--fire-h) * 16%);
+  background: linear-gradient(
+    to top,
+    var(--f-core) 0%,
+    color-mix(in oklch, var(--f-mid) 80%, transparent) 30%,
+    color-mix(in oklch, var(--f-edge) 60%, transparent) 62%,
+    transparent 100%
+  );
+  opacity: calc(0.35 + var(--fire-h) * 0.45);
+  transition: opacity 450ms ease-out;
+}
+
+/* Energy lifts the whole fire a little. The tier does not: see the
+   tongue's own scale below. */
+.flames {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  transform-origin: 50% 100%;
+  transform: scaleY(var(--energy-h));
+  transition: transform 520ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.layer[data-layer="body"] {
+  opacity: 0.9;
+}
+
+.layer[data-layer="lick"] {
+  opacity: var(--energy-a);
+  transition: opacity 350ms ease-out;
+}
+
+.layer[data-layer="surge"] {
+  opacity: var(--surge-a);
+  transition: opacity 300ms ease-out;
+}
+
+/* A tongue's box: placed, sized and lit or not by tier. The lit test
+   is arithmetic, since CSS cannot compare: tier minus the tongue's
+   minimum plus one is at least 1 when it is lit and at most 0 when it
+   is not, and opacity clamps both. */
+.tongue {
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--x) * 100%);
+  width: calc(var(--w) * 100%);
+  height: calc(var(--h) * 100%);
+  opacity: calc(var(--tier) - var(--min) + 1);
+  /* The tier sizes each tongue about its own base, narrower as well as
+     shorter. Squashing the whole fire vertically instead turned the low
+     tiers' flames into flat triangles, because a flame that loses
+     height and keeps its width is not a small flame, it is a hump.
+     `scale` is its own property, so it composes with the flicker
+     animation on the flame inside rather than fighting it. */
+  transform-origin: 50% 100%;
+  scale: calc(0.45 + 0.55 * var(--fire-h)) var(--fire-h);
+  rotate: calc(var(--lean) * 7deg);
+  transition:
+    opacity 500ms ease-out,
+    scale 560ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+/* A tongue's width is a share of the bar, which is 70rem on a desktop
+   band and 20rem on a phone, so unchecked it goes fat on the wide one.
+   Capped against the flame height, and centred with a transform rather
+   than a margin so the cap cannot pull it off its position: a tongue
+   is always clearly taller than it is broad. A wide low flame is not
+   a small flame, it is a hump, and that is exactly what an uncapped
+   body layer drew. */
+.tongue {
+  translate: -50% 0;
+  max-width: calc(var(--flame-h) * 0.34);
+}
+
+.layer[data-layer="body"] .tongue {
+  width: calc(var(--w) * 200%);
+  max-width: calc(var(--flame-h) * 0.3);
+  height: calc((0.42 + var(--h) * 0.36) * 100%);
+}
+
+.layer[data-layer="lick"] .tongue {
+  width: calc(var(--w) * 175%);
+}
+
+.layer[data-layer="surge"] .tongue {
+  height: calc((0.5 + var(--h) * 0.5) * 100%);
+}
+
+/* The flame itself: a soft silhouette (the mask is pre-blurred, so
+   the edges cost nothing per frame) filled bottom to top from the
+   tier's base colour through its core, body and edge to nothing. */
+.flame {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  scale: var(--flip) 1;
+  /* Screened: where two tongues cross, the light adds, the way
+     overlapping flame does. On normal compositing translucent orange
+     over black accumulates toward brown, which is what the first
+     version of this fire looked like. The fire group is isolated, so
+     the blend is tongue on tongue and never reaches the page. */
+  mix-blend-mode: screen;
+  /* Two gradients on one box. The ellipse is the inner light, white hot
+     where the flame touches its fuel; the linear run is the body. It
+     used to be a second masked element with its own flicker, which
+     doubled the animated layers and halved the frame rate on a
+     throttled CPU for a difference nobody could see at speed. */
+  background:
+    radial-gradient(
+      ellipse 26% 48% at 50% 100%,
+      var(--f-base) 0%,
+      color-mix(in oklch, var(--f-core) 80%, transparent) 45%,
+      transparent 100%
+    ),
+    linear-gradient(
+      to top,
+      var(--f-core) 0%,
+      var(--f-mid) 30%,
+      var(--f-edge) 62%,
+      transparent 94%
+    );
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Silhouettes, drawn once in SVG with the blur baked in. */
+.tongue[data-shape="tall"] .flame {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M31 5C34 30 51 50 50 80 49 103 40 116 30 116 18 116 9 104 9 84 9 60 27 44 31 5Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M31 5C34 30 51 50 50 80 49 103 40 116 30 116 18 116 9 104 9 84 9 60 27 44 31 5Z'/%3E%3C/svg%3E");
+}
+
+.tongue[data-shape="fork"] .flame {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M36 4C31 24 51 42 51 74 51 101 41 116 29 116 16 116 8 104 8 86 8 70 15 62 19 49 21 60 25 63 28 58 31 44 27 25 36 4Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='3'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M36 4C31 24 51 42 51 74 51 101 41 116 29 116 16 116 8 104 8 86 8 70 15 62 19 49 21 60 25 63 28 58 31 44 27 25 36 4Z'/%3E%3C/svg%3E");
+}
+
+.tongue[data-shape="round"] .flame {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M30 22C36 44 55 60 55 86 55 106 44 117 30 117 16 117 5 106 5 86 5 60 24 44 30 22Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 120'%3E%3Cfilter id='b' x='-30%25' y='-10%25' width='160%25' height='120%25'%3E%3CfeGaussianBlur stdDeviation='4'/%3E%3C/filter%3E%3Cpath filter='url(%23b)' fill='white' d='M30 22C36 44 55 60 55 86 55 106 44 117 30 117 16 117 5 106 5 86 5 60 24 44 30 22Z'/%3E%3C/svg%3E");
+}
+
+/* Heat haze, Insane only. Two things, both transform only: the fire's
+   layers waver sideways on their own clocks (see .layer at tier 5),
+   and a faint column of warm air above the crowns rises and bends. No
+   striped texture: lines read as a screen effect, not as heat. */
+.haze {
+  position: absolute;
+  inset: -35% 0 40%;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse 55% 60% at 50% 100%,
+    color-mix(in oklch, var(--glow) 16%, transparent) 0%,
+    transparent 70%
+  );
+  transition: opacity 600ms ease-out;
+}
+
+/* Particles.
+   ---------------------------------------------------------------- */
+
+.particles {
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  bottom: 12%;
+  left: calc(var(--px) * var(--fill));
+  width: 4px;
+  height: calc(var(--rise) * var(--flame-h));
+  margin-left: -2px;
+  transform-origin: 50% 100%;
+  rotate: calc(var(--drift) * 16deg);
+  scale: var(--s);
+  opacity: 0;
+}
+
+.particle::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #fff8dc 0%,
+    color-mix(in oklch, var(--glow) 85%, white) 40%,
+    transparent 72%
+  );
+}
+
+.particle[data-kind="spark"]::before {
+  left: 1px;
+  width: 2px;
+  height: 9px;
+  border-radius: 1px;
+  background: linear-gradient(to top, transparent, #fffbe8 60%, white);
+}
+
+/* Motion.
+   ----------------------------------------------------------------
+   Four clocks, none shared: body sway (which carries the flicker),
+   lick travel, haze and particle flight, each with per element
+   durations and offsets from the hash. The combined cycle is long
+   enough that nothing visibly loops. With no animation the drawn frame is a complete still fire,
+   which is what reduced motion gets. */
+
+.meter .layer[data-layer="body"] .flame {
+  animation: sway var(--dur) ease-in-out var(--delay) infinite;
+}
+
+.meter .layer[data-layer="lick"] .flame,
+.meter .layer[data-layer="surge"] .flame {
+  animation: lick var(--dur) cubic-bezier(0.3, 0.1, 0.5, 1) var(--delay) infinite;
+}
+
+.meter .particle[data-kind="ember"] {
+  animation: ember var(--dur) cubic-bezier(0.2, 0.6, 0.4, 1) var(--delay) infinite;
+}
+
+.meter .particle[data-kind="spark"] {
+  animation: spark var(--dur) cubic-bezier(0.1, 0.7, 0.3, 1) var(--delay) infinite;
+}
+
+.meter[data-tier="5"] .haze {
+  opacity: 1;
+  animation: haze 2.9s ease-in-out infinite;
+}
+
+/* Insane: the body and the licks waver on clocks of their own, a
+   fraction of a degree, which the eye reads as air bending over heat
+   rather than as the fire moving. */
+.meter[data-tier="5"] .layer[data-layer="body"] {
+  animation: waver 1.7s ease-in-out infinite;
+}
+
+.meter[data-tier="5"] .layer[data-layer="lick"] {
+  animation: waver 1.13s ease-in-out -0.4s infinite reverse;
+}
+
+/* The surge only runs while it is showing. Pausing keeps its phase,
+   so it resumes mid flicker rather than restarting in unison. */
+.meter:not([data-energy="drag"]) .layer[data-layer="surge"] .flame {
+  animation-play-state: paused;
+}
+
+.meter[data-running="false"] :is(.flame, .particle, .haze, .layer) {
+  animation-play-state: paused;
+}
+
+/* Every keyframe below is literal. A keyframe that reads a custom
+   property cannot run on the compositor, so it runs on the main thread
+   instead, and with sixty tongues that was the difference between 27
+   and 48 frames a second on a throttled CPU. The variation between
+   tongues lives in static properties on the tongue (its lean as
+   `rotate`, its mirror as `scale`, its size as its box) and the
+   animation only ever moves it. */
+@keyframes sway {
+  0%,
+  100% {
+    transform: skewX(2deg) scale(1, 1);
+    opacity: 0.9;
+  }
+  27% {
+    transform: skewX(-2deg) scale(1.05, 0.93);
+    opacity: 0.72;
+  }
+  52% {
+    transform: skewX(4deg) scale(0.95, 1.08);
+    opacity: 1;
+  }
+  79% {
+    transform: skewX(0.5deg) scale(1.02, 0.97);
+    opacity: 0.8;
+  }
+}
+
+/* Born at the fuel, rises, narrows, goes out. Never alternating: a
+   lick running backwards would sink into the bar. */
+@keyframes lick {
+  0% {
+    transform: translateY(14%) scale(1.15, 0.4);
+    opacity: 0;
+  }
+  16% {
+    transform: translateY(4%) scale(1.04, 0.82);
+    opacity: 1;
+  }
+  48% {
+    transform: translateY(-5%) skewX(4deg) scale(0.86, 1.06);
+    opacity: 0.9;
+  }
+  76% {
+    transform: translateY(-16%) skewX(-3deg) scale(0.62, 0.92);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateY(-30%) scale(0.32, 0.7);
+    opacity: 0;
+  }
+}
+
+/* A particle's box is as tall as its flight, so moving it by its own
+   height carries the ember exactly as far as the hash said, and its
+   static `rotate` sets the drift. */
+@keyframes ember {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(3px, -52%);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(-2px, -100%);
+    opacity: 0;
+  }
+}
+
+@keyframes spark {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-125%);
+    opacity: 0;
+  }
+}
+
+@keyframes haze {
+  0%,
+  100% {
+    transform: translateY(0) skewX(0deg) scaleY(1);
+  }
+  38% {
+    transform: translateY(-6%) skewX(2deg) scaleY(1.06);
+  }
+  71% {
+    transform: translateY(-2%) skewX(-1.4deg) scaleY(0.97);
+  }
+}
+
+@keyframes waver {
+  0%,
+  100% {
+    transform: skewX(0deg) translateX(0);
+  }
+  33% {
+    transform: skewX(0.7deg) translateX(0.15%);
+  }
+  66% {
+    transform: skewX(-0.5deg) translateX(-0.1%);
+  }
+}
+
+/* Labels.
+   ---------------------------------------------------------------- */
+
+.labels {
+  margin: var(--label-gap) 0 0;
+  padding: 0 var(--gutter);
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(var(--stops), minmax(0, 1fr));
+  font-family: var(--font-display);
+  font-size: var(--label-size);
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.labels li {
+  position: relative;
+  padding-top: 0.5rem;
+  /* bone/55 is the floor for text on ink here; anything fainter fails
+     AA. */
+  color: color-mix(in oklch, var(--color-nybb-bone) 55%, transparent);
+  white-space: nowrap;
+  transition: color 250ms ease-out;
+}
+
+/* A short bar in the level's own swatch, the lit label's tick. */
+.labels li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1.25rem;
+  height: 2px;
+  margin-left: -0.625rem;
+  border-radius: 1px;
+  background: var(--swatch);
+  opacity: 0;
+  transform: scaleX(0.3);
+  transition:
+    opacity 250ms ease-out,
+    transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.labels li[data-on="true"] {
+  color: var(--color-nybb-bone);
+}
+
+.labels li[data-on="true"]::before {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Six labels in a card is more than the width holds in caps. Below
+   that, tighten, and in a very narrow box drop them: the level is
+   still said by the colour, the readout and the accessible name. */
+@container (max-width: 26rem) {
+  .labels {
+    letter-spacing: 0.04em;
+    font-size: calc(var(--label-size) * 0.9);
+  }
+}
+
+@container (max-width: 15rem) {
+  .labels {
+    display: none;
+  }
+}
+
+/* Tiers.
+   ----------------------------------------------------------------
+   Each is its own fire. Colour temperature, height, how much of the
+   fire has licks, how hard the core burns and how far the light
+   carries all change together, which is what gives each level a face
+   rather than a brightness. */
+
+/* Lite: a pilot light. A low yellow bed, no licks, a soft glow. */
+.meter[data-tier="1"] {
+  --fire-h: 0.56;
+  --fire-a: 1;
+  --glow: var(--color-nybb-heat-1);
+  --glow-a: 0.3;
+  --core-a: 0.6;
+  --f-base: #fffbe0;
+  --f-core: color-mix(in oklch, var(--color-nybb-heat-1) 85%, white);
+  --f-mid: color-mix(in oklch, var(--color-nybb-heat-1) 70%, transparent);
+  --f-edge: color-mix(in oklch, var(--color-nybb-heat-2) 30%, transparent);
+}
+
+/* Moderate: warm amber, the first few licks lifting off. */
+.meter[data-tier="2"] {
+  --fire-h: 0.58;
+  --fire-a: 0.92;
+  --glow: var(--color-nybb-heat-2);
+  --glow-a: 0.24;
+  --core-a: 0.6;
+  --f-base: #fff6cf;
+  --f-core: color-mix(in oklch, var(--color-nybb-heat-1) 60%, var(--color-nybb-heat-2));
+  --f-mid: var(--color-nybb-heat-2);
+  --f-edge: color-mix(in oklch, var(--color-nybb-heat-3) 50%, transparent);
+}
+
+/* Hot: an orange fire with a body and licks, and the first embers. */
+.meter[data-tier="3"] {
+  --fire-h: 0.74;
+  --fire-a: 1;
+  --glow: var(--color-nybb-heat-3);
+  --glow-a: 0.32;
+  --core-a: 0.7;
+  --f-base: #fff2c4;
+  --f-core: var(--color-nybb-heat-2);
+  --f-mid: var(--color-nybb-heat-3);
+  --f-edge: color-mix(in oklch, var(--color-nybb-heat-4) 55%, transparent);
+}
+
+/* Wild: red running into the edges, taller, the filament pulsing. */
+.meter[data-tier="4"] {
+  --fire-h: 0.88;
+  --fire-a: 1;
+  --glow: var(--color-nybb-heat-4);
+  --glow-a: 0.4;
+  --core-a: 0.8;
+  --f-base: #ffeec0;
+  --f-core: color-mix(in oklch, var(--color-nybb-heat-2) 70%, var(--color-nybb-heat-3));
+  --f-mid: var(--color-nybb-heat-4);
+  --f-edge: color-mix(in oklch, var(--color-nybb-heat-5) 60%, transparent);
+}
+
+/* Insane: the tallest fire, a white base with a trace of blue where it
+   is hottest, red crowns, sparks, haze. */
+.meter[data-tier="5"] {
+  --fire-h: 1;
+  --fire-a: 1;
+  --glow: var(--color-nybb-heat-5);
+  --glow-a: 0.5;
+  --core-a: 0.95;
+  --f-base: #f4f6ff;
+  --f-core: color-mix(in oklch, var(--color-nybb-heat-1) 70%, white);
+  --f-mid: color-mix(in oklch, var(--color-nybb-heat-3) 55%, var(--color-nybb-heat-5));
+  --f-edge: color-mix(in oklch, var(--color-nybb-heat-5) 70%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter :is(.flame, .particle, .haze, .layer) {
+    animation-name: none;
+  }
+
+  .particles,
+  .haze {
+    display: none;
+  }
+}

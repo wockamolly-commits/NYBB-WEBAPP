@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  flameIntensity,
-  flamePath,
+  SWEEP_LEAD_MS,
+  SWEEP_TRAVEL_MS,
   flameTongues,
   heatSliderState,
   heatStops,
   heatSwatch,
+  heatSweepSteps,
+  restingIndex,
   stopAt,
 } from "@/lib/menu/heat-slider";
 import type { MenuOption } from "@/lib/menu/types";
@@ -239,57 +241,101 @@ describe("flameTongues", () => {
   });
 });
 
-describe("flamePath", () => {
-  const tongue = flameTongues(9)[4];
-
-  it("draws a closed shape", () => {
-    const d = flamePath(tongue, 1000, 200);
-    expect(d.startsWith("M")).toBe(true);
-    expect(d.trimEnd().endsWith("Z")).toBe(true);
+/**
+ * The showcase playing itself once.
+ *
+ * Two things have to hold whatever the ramp looks like. The travel is capped,
+ * so adding stops makes the sweep faster rather than longer and it can never
+ * drift toward the five seconds that would oblige us to ship a pause control.
+ * And the schedule is empty whenever there is nothing to demonstrate, because
+ * a scheduled step that lands on the stop the bar is already sitting on is a
+ * timer that exists to do nothing.
+ */
+describe("heatSweepSteps", () => {
+  it("names every stop between the opening one and the rest", () => {
+    // Five stops rest on Hot, so the bar opens on Lite and is seen passing
+    // Moderate. The readout reads all three in turn.
+    expect(heatSweepSteps(2).map((step) => step.index)).toEqual([1, 2]);
   });
 
-  it("never emits a NaN", () => {
-    // A single NaN anywhere in a path makes the whole thing render nothing,
-    // silently. No error, no warning, just no flame.
-    for (const t of flameTongues(22)) {
-      expect(flamePath(t, 1000, 200)).not.toMatch(/NaN|Infinity|undefined/);
+  it("starts at once, with no gap in front of the first move", () => {
+    // The gap belongs between moves. In front of the first one it is a wait,
+    // and a wait in front of an introduction is the introduction not starting.
+    // This was 940ms for a day and read as lag.
+    expect(heatSweepSteps(2)[0].at).toBe(SWEEP_LEAD_MS);
+    expect(SWEEP_LEAD_MS).toBeLessThan(120);
+  });
+
+  it("finishes the travel inside the cap, however long the ramp is", () => {
+    for (const resting of [1, 2, 4, 5, 11, 40]) {
+      const steps = heatSweepSteps(resting);
+      const travel = steps[steps.length - 1].at - SWEEP_LEAD_MS;
+
+      expect(steps).toHaveLength(resting);
+      expect(travel).toBeLessThanOrEqual(SWEEP_TRAVEL_MS);
     }
   });
 
-  it("puts the tip at the tongue's own height above the base", () => {
-    const d = flamePath({ ...tongue, height: 0.5, lean: 0, x: 0.5 }, 1000, 200);
-    // Base line is the bottom of the box, so a half height tongue tips at 100.
-    expect(d).toContain("100");
+  it("puts a single move at the lead and stops, with nothing to space", () => {
+    expect(heatSweepSteps(1)).toEqual([{ index: 1, at: SWEEP_LEAD_MS }]);
   });
 
-  it("stands every tongue on the base line", () => {
-    // Both ends of the outline sit on the bottom edge. A tongue that starts
-    // above it floats off the bar.
-    const d = flamePath(tongue, 1000, 200);
-    const first = d.match(/^M\s*(-?[\d.]+)\s+(-?[\d.]+)/);
-    expect(Number(first?.[2])).toBe(200);
+  it("is over well before the old schedule used to begin", () => {
+    // The whole thing, lead and travel, inside the 940ms the first move alone
+    // used to wait for.
+    const steps = heatSweepSteps(2);
+
+    expect(steps[steps.length - 1].at).toBeLessThan(940);
+  });
+
+  it("stays far short of the five seconds WCAG 2.2.2 asks a pause control for", () => {
+    const steps = heatSweepSteps(40);
+
+    expect(steps[steps.length - 1].at).toBeLessThan(2000);
+  });
+
+  it("only ever moves forward, one stop at a time", () => {
+    const steps = heatSweepSteps(4);
+
+    expect(steps.map((step) => step.index)).toEqual([1, 2, 3, 4]);
+    for (let at = 1; at < steps.length; at++) {
+      expect(steps[at].at).toBeGreaterThan(steps[at - 1].at);
+    }
+  });
+
+  it("has nothing to do when the bar already rests where it opens", () => {
+    // A one stop ramp, and the degenerate readings that would otherwise
+    // schedule a timer to move the thumb somewhere that does not exist.
+    for (const resting of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(heatSweepSteps(resting)).toEqual([]);
+    }
   });
 });
 
-describe("flameIntensity", () => {
-  it("gives No heat no flame", () => {
-    expect(flameIntensity(0)).toBe(0);
+describe("restingIndex", () => {
+  /** A ramp of `count` stops, evenly spaced, which is all this cares about. */
+  const ramp = (count: number) =>
+    heatStops(
+      Array.from({ length: count }, (_, at) =>
+        option(`s${at}`, `S${at}`, Math.round(((at + 1) / count) * 100)),
+      ),
+    );
+
+  it("opens partway up rather than at either end", () => {
+    // The landing page's own ramp: Lite, Moderate, Hot, Wild, Insane.
+    expect(restingIndex(ramp(5))).toBe(2);
   });
 
-  it("gives the top of the scale a full flame", () => {
-    expect(flameIntensity(100)).toBe(1);
+  it("never indexes past the end, including when there is nothing", () => {
+    expect(restingIndex([])).toBe(0);
+    expect(restingIndex(ramp(1))).toBe(0);
+    expect(restingIndex(ramp(2))).toBe(0);
   });
 
-  it("climbs with the heat", () => {
-    expect(flameIntensity(20)).toBeLessThan(flameIntensity(60));
-    expect(flameIntensity(60)).toBeLessThan(flameIntensity(100));
-  });
+  it("agrees with the sweep about where the bar is going", () => {
+    const resting = restingIndex(ramp(5));
+    const steps = heatSweepSteps(resting);
 
-  it("refuses to draw a flame taller than the scale allows", () => {
-    // Nothing should be able to feed this a percent off the scale, but the
-    // CSS reads the result as a multiplier and a stray 400 would throw a
-    // flame across the section.
-    expect(flameIntensity(140)).toBe(1);
-    expect(flameIntensity(-40)).toBe(0);
+    expect(steps[steps.length - 1].index).toBe(resting);
   });
 });

@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { HeatSlider } from "@/components/menu/HeatSlider";
 import { heatStops } from "@/lib/menu/heat-slider";
-import { HeroVideo } from "@/components/site/HeroVideo";
+import { HeroSlideshow } from "@/components/site/HeroSlideshow";
+import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
 import { ButtonLink } from "@/components/ui/Button";
@@ -76,8 +77,14 @@ import { telHref } from "@/lib/phone";
  * The hero's job is to say what kind of place this is, which is the one thing
  * no band further down does: the flavours, the heat and the counters each have
  * a section that carries them in full. So the claim went back into the subhead,
- * and the first screen is the film, the tagline and the type: one moving picture
- * of the food rather than a second drawing of a fact stated below.
+ * and the first screen is the pictures, the tagline and the type: the store's
+ * own food rather than a second drawing of a fact stated below.
+ *
+ * Those pictures are now three rather than one. The seven second film still
+ * opens the page and still plays to its end, and the two delivered wall murals
+ * follow it on a six second hold before it comes round again. See
+ * components/site/HeroSlideshow.tsx, which is also where the scrim that keeps
+ * this copy readable over all three of them is measured.
  *
  * VOICE. This page sells a restaurant, and the ordering platform is how you
  * reach it rather than the thing on offer. The hero used to open on "Pickup
@@ -103,6 +110,23 @@ import { telHref } from "@/lib/phone";
  * capability is missing is only honest if the remedy is reachable from where
  * the sentence is read.
  */
+
+/**
+ * The plate under the hero's outlined CTA.
+ *
+ * The dark secondary tier is a bone hairline and bone label over nothing,
+ * which is correct on a surface the system chose and wrong on a photograph.
+ * It used to be sitting on a ramp solid enough to be that surface; it is not
+ * any more (see components/site/HeroSlideshow.tsx), and a 40 percent hairline
+ * over a near white mural is a hairline nobody can find.
+ *
+ * So this one placement brings a ground. Ink at 45 percent rather than a solid
+ * fill, because a second solid button beside the orange one reads as a second
+ * primary action, and the point of the tier is that it is quieter. The hover
+ * and active states are the tier's own bone tints layering on top of it, which
+ * is why this only sets the rest state.
+ */
+const HERO_GHOST_PLATE = "bg-nybb-ink/45 border-nybb-bone/55 hover:border-nybb-bone/85";
 
 const steps = [
   {
@@ -155,6 +179,16 @@ export default async function Home() {
   // through, and at least one counter that can cook the order.
   const orderable = selection.stores.filter((store) => store.orderable);
   const canOrder = orderingOpen && orderable.length > 0;
+  // WHICH FOUR, RATHER THAN HOW MANY.
+  //
+  // The branches copy has always said online ordering is open at some number
+  // of the counters and never said which ones, so the one operational fact in
+  // the paragraph was the one thing the list under it could not answer. The
+  // rows carry it now. Slugs match because `Store` is the catalog row merged
+  // with the RPC's answer, so both sides are naming the same shop.
+  const takesOnlineOrders = new Set(
+    canOrder ? orderable.map((store) => store.slug) : [],
+  );
   // A returning customer with a counter already chosen goes straight to the
   // food. Somebody new is asked where they are collecting first, because on a
   // pickup-only platform that question changes the four screens after it.
@@ -189,6 +223,8 @@ export default async function Home() {
 
   return (
     <>
+      <ScrollReveal />
+
       {/* ============================================================
           Hero. Dark band, hard bottom edge onto the amber ground.
           ============================================================ */}
@@ -200,10 +236,25 @@ export default async function Home() {
           the viewport to the flavour grid, which is the section the page most
           wants you to reach.
 
-          max-[500px]:min-h-0 is for the landscape phone. With items-end, a
-          minimum height only matters while the container is taller than its
-          content; at 844x390 the content forces 604px and the minimum does
-          nothing but guarantee the CTAs start below the fold. */}
+          THE MINIMUM IS GIVEN BACK ON A SHORT VIEWPORT, NOT A NARROW ONE.
+          ================================================================
+          This rule was `max-[500px]:min-h-0`, which is a width query, and its
+          own comment said it was there for the landscape phone. It cannot have
+          been: a landscape phone at 844x390 is 844 wide and never matched it.
+          What it actually matched was a portrait phone, where the effect was to
+          shrink the hero to exactly its content. That was harmless while the
+          background was a film nobody was asked to look at. It is not harmless
+          now that the background is the store's wall artwork panning across
+          itself, because a hero that is exactly as tall as the copy has no part
+          of the picture that no type stands on, and every pixel of the mural is
+          then behind a scrim. At 390x844 the difference is 147px of artwork
+          that nothing covers: the top third of the frame, which is where both
+          murals put the drink and the face.
+
+          So the give-back keys on height, which is the case it was always
+          describing. Under 500px of viewport height the minimum goes, which is
+          the landscape phone and the short laptop, and is the same query the
+          padding and the headline size already use. */}
       <section
         aria-labelledby="hero-title"
         // text-nybb-bone on the container, not on each leaf. Without it the
@@ -213,9 +264,9 @@ export default async function Home() {
         // carried a note about this and the heat scale's level names walked
         // straight into it anyway: they were invisible while their percentages,
         // which do name a colour, rendered fine.
-        className="bg-nybb-ink text-nybb-bone relative flex min-h-[78svh] items-end overflow-hidden max-[500px]:min-h-0"
+        className="bg-nybb-ink text-nybb-bone relative flex min-h-[78svh] items-end overflow-hidden [@media(max-height:500px)]:min-h-0"
       >
-        <HeroVideo />
+        <HeroSlideshow />
 
         {/* pt-16 on a phone, not pt-32. With items-end the top padding is a
             no-op on any viewport tall enough for bottom alignment to matter,
@@ -239,7 +290,7 @@ export default async function Home() {
             the fold. The status line goes under it, and that is the right thing
             to lose: it is a disclosure, and the button it used to send people
             looking for is now the thing sitting above it. */}
-        <div className="relative mx-auto w-full max-w-6xl px-5 pt-16 pb-16 sm:px-8 sm:pt-32 sm:pb-24 [@media(max-height:500px)]:pt-8 [@media(max-height:500px)]:pb-8">
+        <div className="hero-drift relative mx-auto w-full max-w-6xl px-5 pt-16 pb-16 sm:px-8 sm:pt-32 sm:pb-24 [@media(max-height:500px)]:pt-8 [@media(max-height:500px)]:pb-8">
           {/* NO WIDTH CAP HERE, AND THAT IS DELIBERATE RATHER THAN AN OMISSION.
               ================================================================
               This column carried a `max-w-[58%]` gated on the viewport's shape,
@@ -296,8 +347,8 @@ export default async function Home() {
               lightest value in the palette and clears the ramp everywhere the
               old bone did, and the keyline underneath it is doing a second job
               this ground actually needs, which is holding the letterform
-              against whatever frame of the film is behind it. */}
-              <p className="font-script tagline-inked text-2xl sm:text-[1.75rem] [@media(max-height:500px)]:text-xl">
+              against whichever mural is behind it. */}
+              <p className="font-script tagline-inked hero-type text-2xl sm:text-[1.75rem] [@media(max-height:500px)]:text-xl">
                 #Your All Time Favorite Chicken Wings
               </p>
 
@@ -311,10 +362,16 @@ export default async function Home() {
               visual work; the space only exists in the string. */}
               <h1
                 id="hero-title"
-                className="font-display heading-hero text-nybb-bone mt-5 [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-[2.5rem]"
+                className="font-display heading-hero hero-type text-nybb-bone mt-5 [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-[2.5rem]"
               >
                 Wings worth <br />
-                <span className="text-nybb-orange">the burn.</span>
+                {/* The keyline is what keeps this line orange now that the
+                    scrim under it is light enough to see the mural through.
+                    Buffalo Orange measures about 1.0:1 on the spread mural's
+                    near white wall, and no halo reaches far enough to fix a
+                    ratio that low; an ink outline does, and it is the outline
+                    the store's own wordmark is drawn with. See .hero-keyline. */}
+                <span className="text-nybb-orange hero-keyline">the burn.</span>
               </h1>
 
               {/* "Five levels of heat" is back in this sentence, and the round
@@ -328,7 +385,17 @@ export default async function Home() {
               "Fried to order" is last on purpose. It is the only one of the
               three that no band on this page carries, so it is the line the
               hero is actually adding rather than previewing. */}
-              <p className="text-nybb-bone/75 mt-6 max-w-[44ch] text-base leading-relaxed sm:text-lg [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-base">
+              {/* Full bone, where this was bone at 75 percent. The alpha was
+                  ranking this line under the headline and over the status line,
+                  which is the right way to rank paragraphs on a surface whose
+                  ground the page owns. This one's ground is a photograph of a
+                  near white wall, and there lighter type is simply worse type:
+                  the 25 points of alpha were costing about 11 points of ink in
+                  the scrim underneath, which is ink spent covering the mural.
+                  The ranking is carried by size instead, which was already
+                  doing it at 18 against the headline's 64 and the status
+                  line's 14. */}
+              <p className="text-nybb-bone hero-type mt-6 max-w-[44ch] text-base leading-relaxed sm:text-lg [@media(max-height:500px)]:mt-3 [@media(max-height:500px)]:text-base">
                 Ten flavours, five levels of heat, fried to order.
               </p>
             </div>
@@ -373,6 +440,7 @@ export default async function Home() {
                       tone="dark"
                       variant="secondary"
                       size="lg"
+                      className={HERO_GHOST_PLATE}
                     >
                       See the menu
                     </ButtonLink>
@@ -387,6 +455,7 @@ export default async function Home() {
                       tone="dark"
                       variant="secondary"
                       size="lg"
+                      className={HERO_GHOST_PLATE}
                     >
                       Call a branch
                     </ButtonLink>
@@ -406,7 +475,12 @@ export default async function Home() {
               store's tagline. This paragraph is already the one place on the
               first screen that states what is and is not true today, so the
               fulfilment mode joins it instead of getting a slot of its own. */}
-              <p className="text-nybb-bone/60 mt-7 max-w-[46ch] text-sm leading-relaxed">
+              {/* Bone at 85, up from 60, for the reason the lede gives: on a
+                  pale photograph the quiet is bought from the scrim rather than
+                  from the alpha, and the scrim pays for it by covering the
+                  picture. It is still visibly the quietest line in the block,
+                  because it is 14px against 18 and 64. */}
+              <p className="text-nybb-bone/85 hero-type mt-7 max-w-[46ch] text-sm leading-relaxed">
                 {canOrder
                   ? orderable.length === 1
                     ? `Pickup only, paid online, collected at ${orderable[0].shortName}. The other counters take orders on the phone.`
@@ -430,7 +504,7 @@ export default async function Home() {
         aria-labelledby="flavours-title"
         className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28"
       >
-        <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
+        <header className="reveal flex flex-wrap items-end justify-between gap-x-10 gap-y-5">
           <div>
             <h2 id="flavours-title" className="font-display heading-major">
               Ten flavours
@@ -461,7 +535,7 @@ export default async function Home() {
           hrefFor={(flavour) =>
             `/menu/${WINGS_ITEM_SLUG}/${WINGS_ITEM_SLUG}?flavour=${flavour.slug}`
           }
-          className="mt-10 sm:mt-12 lg:gap-5"
+          className="reveal-stagger mt-10 sm:mt-12 lg:gap-5"
           withDescriptions={false}
           imageSizes="(min-width: 1024px) 19vw, 45vw"
         />
@@ -473,26 +547,40 @@ export default async function Home() {
           ============================================================ */}
       <section
         aria-labelledby="heat-title"
-        className="bg-nybb-ink text-nybb-bone"
+        className="band-ink text-nybb-bone"
       >
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
-          <header className="max-w-[50ch]">
-            <h2 id="heat-title" className="font-display heading-major">
-              Heat is on the menu
-            </h2>
-            <p className="text-nybb-bone/65 mt-5 leading-relaxed">
-              Five stops, from a warm edge to something you will remember. Drag
-              the bar and watch it catch. Pick a level and pay for the level,
-              not for a different dish.
-            </p>
-          </header>
+        {/* The fire on the bar lights the band it is burning on. See
+            The Lit Thing Lights Its Ground Rule in globals.css: this is
+            weather rather than a halo, it quotes no level, and at its
+            core the caption below still measures 5.7:1. */}
+        <div aria-hidden="true" className="band-lit band-lit-scale" />
+        <div aria-hidden="true" className="band-screen band-screen-scale" />
 
+        <div className="relative z-10 mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+          {/* The heading goes into the scale rather than above it, because
+              the level somebody is holding can only be drawn by the component
+              that owns the value, and that readout belongs on the headline's
+              line. See the `heading` prop in components/menu/HeatSlider.tsx
+              and .heat-slider__head in globals.css. */}
           <HeatSlider
             stops={heatSteps}
             prices={heatPrices}
             variant="band"
             label="Try the Level of Hotness scale"
-            className="mt-14 sm:mt-16"
+            sweepOnView
+            className="reveal reveal-band"
+            heading={
+              <header className="max-w-[50ch]">
+                <h2 id="heat-title" className="font-display heading-major">
+                  Heat is on the menu
+                </h2>
+                <p className="text-nybb-bone/65 mt-5 leading-relaxed">
+                  Five stops, from a warm edge to something you will remember.
+                  Drag the bar and watch it catch. Pick a level and pay for the
+                  level, not for a different dish.
+                </p>
+              </header>
+            }
           />
 
           <p className="text-nybb-bone/55 mt-10 text-xs">
@@ -534,7 +622,7 @@ export default async function Home() {
         aria-labelledby="more-title"
         className="mx-auto max-w-6xl px-5 pb-20 sm:px-8 sm:pb-28"
       >
-        <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
+        <header className="reveal flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
           <div>
             <h2 id="more-title" className="font-display heading-minor">
               Not just wings
@@ -549,7 +637,7 @@ export default async function Home() {
           </TextLink>
         </header>
 
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
+        <div className="reveal-stagger mt-8 grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
           {featured.map((item) => (
             <ProductTile key={item.slug} item={item} />
           ))}
@@ -565,11 +653,17 @@ export default async function Home() {
       <section
         id="branches"
         aria-labelledby="branches-title"
-        className="bg-nybb-ink text-nybb-bone scroll-mt-18 sm:scroll-mt-22"
+        className="band-ink text-nybb-bone scroll-mt-18 sm:scroll-mt-22"
       >
-        <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
+        {/* Buffalo Orange here rather than the heat ramp, because what
+            is alight in this band is a shopfront under the store's own
+            signage and not a level of heat. */}
+        <div aria-hidden="true" className="band-lit band-lit-counter" />
+        <div aria-hidden="true" className="band-screen band-screen-counter" />
+
+        <div className="relative z-10 mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:items-start lg:gap-16">
-            <div>
+            <div className="reveal reveal-band">
               <h2 id="branches-title" className="font-display heading-major">
                 {branches.length} counters <br />
                 across Cebu
@@ -609,37 +703,79 @@ export default async function Home() {
                   sizes="(min-width: 1024px) 45vw, 92vw"
                   placeholder="blur"
                   blurDataURL={counter.blurDataURL}
-                  className="mt-9 aspect-[3/2] w-full rounded-md object-cover"
+                  className="mt-9 aspect-[4/3] w-full rounded-md object-cover"
                 />
               ) : null}
             </div>
 
             <div>
-              <ul className="grid gap-x-10 sm:grid-cols-2">
-                {branches.map((branch) => (
+              <ul className="reveal-stagger reveal-band grid gap-x-10 sm:grid-cols-2">
+                {branches.map((branch, index) => (
                   <li
                     key={branch.slug}
                     className="border-nybb-bone/15 border-t py-4"
                   >
-                    <p className="font-display text-base leading-none">
-                      {branch.shortName}
-                    </p>
+                    {/* The heading claims a number and this is where a
+                        reader can check it. Mono, because every number
+                        on this site is, and the same two digit form the
+                        pickup steps use eighty lines up: the page is
+                        quoting its own device rather than bringing a
+                        new one. Hidden from assistive technology, which
+                        is told "list, 9 items" by the list itself and
+                        does not need the count read out nine times. */}
+                    <div className="flex items-baseline gap-2.5">
+                      <p
+                        aria-hidden="true"
+                        className="font-mono-tabular text-nybb-bone/55 text-xs leading-none"
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </p>
+                      <p className="font-display text-base leading-none">
+                        {branch.shortName}
+                      </p>
+                    </div>
                     <p className="text-nybb-bone/50 mt-2 text-xs leading-snug">
                       {branch.addressLine}, {branch.city}
                     </p>
-                    <a
-                      href={telHref(branch.phones[0])}
-                      className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center text-sm transition-colors"
-                    >
-                      {branch.phones[0]}
-                    </a>
+                    <div className="flex items-center justify-between gap-3">
+                      <a
+                        href={telHref(branch.phones[0])}
+                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center text-sm transition-colors"
+                      >
+                        {branch.phones[0]}
+                      </a>
+                      {/* Only the counters that take online orders are
+                          marked. The other five carry nothing, because the
+                          paragraph beside this list already says the rest
+                          take orders on the phone and a second tag saying so
+                          nine times is the States Differ Structurally Rule
+                          being broken with words instead of colour.
+
+                          Short on screen and long to a screen reader: "Mango
+                          Avenue, Online" is a riddle, and the row is already
+                          two lines of small type without spelling it out in
+                          the middle of them. */}
+                      {takesOnlineOrders.has(branch.slug) ? (
+                        <p className="type-caps text-nybb-orange shrink-0">
+                          <span aria-hidden="true">Online</span>
+                          <span className="sr-only">Takes online orders</span>
+                        </p>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
 
-              <TextLink href="/contact" tone="dark" className="mt-6">
-                All addresses and numbers
-              </TextLink>
+              {/* The list's own rules run across the top of every row, so it
+                  closes on one too. Nine counters in two columns leaves the
+                  bottom right cell empty whatever is done with it, and a rule
+                  under both columns reads as the end of the table rather than
+                  as a gap somebody forgot. */}
+              <div className="border-nybb-bone/15 mt-1 border-t pt-5">
+                <TextLink href="/contact" tone="dark">
+                  All addresses and numbers
+                </TextLink>
+              </div>
             </div>
           </div>
         </div>

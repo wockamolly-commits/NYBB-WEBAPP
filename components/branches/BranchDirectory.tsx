@@ -32,7 +32,13 @@ export function BranchDirectory({ branches }: { branches: BranchEntry[] }) {
 
   return (
     <>
-      <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* The wave keys on the grid rather than on each card, so the nine
+          arrive as one list. See components/site/ScrollReveal.tsx: the
+          stagger caps at seven steps, so the ninth card starts 280ms after
+          the first rather than 320. This component is only ever rendered on
+          the Branches page, which is why the marker can live on the grid
+          instead of being passed in. */}
+      <ul className="reveal-stagger mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((branch) => (
           <BranchCard key={branch.slug} branch={branch} onOpen={() => show(branch)} />
         ))}

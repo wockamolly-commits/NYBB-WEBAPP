@@ -1,16 +1,28 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { HotnessMeter, type HotnessMeterEnergy } from "@/components/menu/HotnessMeter";
 import {
-  flameIntensity,
-  flamePath,
-  flameTongues,
   heatSliderState,
+  heatSweepSteps,
   heatSwatch,
+  restingIndex,
   stopAt,
   type HeatStop,
 } from "@/lib/menu/heat-slider";
+import { isAlreadySeen } from "@/lib/site/reveal";
 import { cn } from "@/lib/utils";
+
+// Same swap, and for the same reason, as components/site/ScrollReveal.tsx:
+// React renders every client component on the server once, and the effect
+// below needs a DOM it will not find there.
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Where the sweep's observer puts its trigger line, matching the page's other
+ * reveals so the scale's block lands and the scale then starts.
+ */
+const SWEEP_ROOT_MARGIN = "0px 0px -10% 0px";
 
 /**
  * The Level of Hotness, as one bar you slide.
@@ -33,32 +45,6 @@ import { cn } from "@/lib/utils";
 
 export type HeatSliderVariant = "band" | "inline";
 
-/**
- * The fire's own coordinate box.
- *
- * One viewBox for both variants, stretched to whatever width the bar is
- * (`preserveAspectRatio="none"`). Roughly ten to one, which is the shape a wide
- * burning line actually is, so the horizontal stretch the two variants apply on
- * top of it stays small enough not to fatten the tongues.
- *
- * Tongues are drawn to at most 78% of the height. The rest is headroom for the
- * displacement filter, which pushes tips past wherever the path put them; drawn
- * to the full height, the tallest tongues hit the ceiling and came out with
- * flat tops, which is the one thing a flame never has.
- */
-const FIRE_W = 1000;
-const FIRE_H = 100;
-const TIP_HEADROOM = 0.78;
-
-/**
- * Tongue counts per layer. The band is wider and carries the page's one big
- * moment, so it gets a denser fire than the compact one in a menu panel.
- */
-const TONGUES = {
-  band: { body: 14, licks: 24 },
-  inline: { body: 9, licks: 15 },
-} as const;
-
 export function HeatSlider({
   stops,
   variant = "inline",
@@ -66,7 +52,9 @@ export function HeatSlider({
   value,
   onChange,
   prices,
+  heading,
   className,
+  sweepOnView = false,
 }: {
   stops: HeatStop[];
   /** `band` is the landing page's full bleed moment. `inline` is everywhere else. */
@@ -83,6 +71,17 @@ export function HeatSlider({
   value?: string | null;
   onChange?: (slug: string) => void;
   /**
+   * Play the scale once when it scrolls into view, stepping from the coldest
+   * stop up to where an untouched showcase rests.
+   *
+   * Off everywhere but the landing page band. A controlled slider ignores it:
+   * that one belongs to somebody's order, and moving a real choice on their
+   * behalf is a different thing entirely from demonstrating a control that
+   * commits nothing. See heatSweepSteps in lib/menu/heat-slider.ts for what
+   * this does and does not take back from the rule it revives.
+   */
+  sweepOnView?: boolean;
+  /**
    * Formatted upcharges keyed by stop slug, for the surfaces that show them.
    *
    * A map rather than a `(stop) => string` callback because the landing page
@@ -90,30 +89,43 @@ export function HeatSlider({
    * that boundary. Pricing is formatted on the server either way.
    */
   prices?: Record<string, string | null>;
+  /**
+   * What the band sets opposite its readout, usually the section's own
+   * heading and standfirst.
+   *
+   * A slot rather than a sibling, and the reason is the readout. The level
+   * somebody is on is live, so it can only be drawn by the component holding
+   * the value, and setting it beside the heading means the heading has to come
+   * in here. Server rendered nodes cross into a client component as a prop
+   * without becoming client code, so the heading stays a server component and
+   * this file still owns nothing but the control.
+   *
+   * Left undefined everywhere but the landing band, where it turns the
+   * showcase from a bar with a caption into a composed block: what heat is on
+   * the left, what you are holding right now on the right, and the instrument
+   * under both of them.
+   */
+  heading?: ReactNode;
   className?: string;
 }) {
   const inputId = useId();
-  // Filter and gradient ids have to be unique per instance: two bars on one
-  // page sharing an id would both render through whichever defs won.
-  const gid = useId().replace(/[^a-zA-Z0-9]/g, "");
 
   /**
    * The showcase starts partway up the scale rather than at either end, so the
    * bar arrives already lit and the flame has something to do. A control that
    * opens empty reads as broken rather than as cold.
    */
-  const [ownIndex, setOwnIndex] = useState(() => Math.floor((stops.length - 1) / 2));
+  const resting = restingIndex(stops);
+  const [ownIndex, setOwnIndex] = useState(resting);
 
   /**
-   * Whether the flame is moving. It burns while somebody is working the
-   * control and settles to a still silhouette the moment they let go.
-   *
-   * DESIGN.md gives the landing page exactly one authored animation, on the
-   * grounds that motion belongs to the product's own mechanism where somebody
-   * is choosing. An idle loop would be a second one, running whether or not
-   * anybody is there. This one only exists in response to a hand.
+   * How hard the fire burns under the hand: at rest, hovered or focused, and
+   * being dragged. The meter idles on its own; this only turns it up.
    */
-  const [live, setLive] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const energy: HotnessMeterEnergy = dragging ? "drag" : hovered || focused ? "hover" : "idle";
 
   const controlled = value !== undefined;
   const state = heatSliderState(stops, value);
@@ -125,56 +137,108 @@ export function HeatSlider({
   // leaves it on the first real interaction. See lib/menu/heat-slider.ts.
   const chosen = controlled ? state.chosen : true;
 
+  /**
+   * THE SHOWCASE PLAYS ITSELF ONCE, THEN GETS OUT OF THE WAY.
+   * ================================================================
+   * Everything about this is arranged so that the demonstration can never
+   * outrank the hand. It only runs on the uncontrolled showcase, never on a
+   * slider that belongs to somebody's order. It never runs for a reader who
+   * asked for less motion, and it never runs for a reader who is already
+   * looking at the scale, because a control that rearranges itself in front of
+   * you is not a demonstration, it is a glitch. It cannot repeat: the observer
+   * disconnects on the first crossing and there is no second schedule.
+   *
+   * And the first sign of a hand ends it. A pointer or a key stops it where it
+   * stands, because a change event carrying the reader's own value is already
+   * on its way. Focus stops it and lands on the resting stop instead, because
+   * tabbing here brings no value with it, and the alternative is a reader who
+   * pressed Tab being left holding the coldest stop the sweep happened to be
+   * passing through.
+   *
+   * The opening state is never rendered on the server. `ownIndex` starts where
+   * it has always started, so a reader with no JavaScript, a crawler and a
+   * reduced motion reader all get the scale resting on Hot exactly as before.
+   * Winding it back to the coldest stop happens in a layout effect, before
+   * paint, on a block that is below the fold by the time we have agreed to do
+   * it at all.
+   */
+  const root = useRef<HTMLDivElement>(null);
+  /**
+   * The scale itself, which is what the sweep's observer watches.
+   *
+   * Not the root. The root grew a heading slot above the bar, and an observer
+   * on it would start the sweep when the section's headline crossed the line
+   * rather than when the bar did: the scale would be performing to somebody
+   * still reading the standfirst, several hundred pixels before it is on
+   * screen. This element's top edge is where the root's top edge used to be,
+   * so the trigger geometry the owner tuned is unchanged.
+   */
+  const scale = useRef<HTMLDivElement>(null);
+  const sweepTimers = useRef<number[]>([]);
+  const sweepRunning = useRef(false);
+
+  function stopSweep() {
+    for (const timer of sweepTimers.current) window.clearTimeout(timer);
+    sweepTimers.current = [];
+    sweepRunning.current = false;
+  }
+
+  /** A pointer or a key: stop, and let the change event say where to go. */
+  function stopSweepForInput() {
+    if (sweepRunning.current) stopSweep();
+  }
+
+  /** Focus: stop, and land on the stop the sweep was on its way to. */
+  function stopSweepForFocus() {
+    if (!sweepRunning.current) return;
+    stopSweep();
+    setOwnIndex(resting);
+  }
+
+  useIsomorphicLayoutEffect(() => {
+    if (!sweepOnView || controlled) return;
+    const node = scale.current;
+    if (!node) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    if (isAlreadySeen(node.getBoundingClientRect().top, window.innerHeight)) return;
+
+    const steps = heatSweepSteps(resting);
+    if (steps.length === 0) return;
+
+    setOwnIndex(0);
+    sweepRunning.current = true;
+
+    const observer = new IntersectionObserver(
+      (entries, self) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        self.disconnect();
+
+        for (const step of steps) {
+          sweepTimers.current.push(
+            window.setTimeout(() => {
+              if (!sweepRunning.current) return;
+              setOwnIndex(step.index);
+              if (step.index === resting) sweepRunning.current = false;
+            }, step.at),
+          );
+        }
+      },
+      { rootMargin: SWEEP_ROOT_MARGIN },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      stopSweep();
+    };
+  }, [sweepOnView, controlled, resting]);
+
   if (!stop || stops.length === 0) return null;
 
   const percent = stop.percent;
   const price = prices?.[stop.slug] ?? null;
-
-  /**
-   * The track, as one hard band per stop in that stop's own fixed swatch.
-   *
-   * Built here rather than in CSS because the number of stops is data: the
-   * configurator carries "No heat" and the showcase surfaces do not, and the
-   * owner can add a sixth level in the Workspace without anybody editing a
-   * stylesheet. Hard stops, never a blend, keeping faith with the ramp being
-   * five quoted swatches rather than a decoration derived from them.
-   */
-  const bands = `linear-gradient(90deg, ${stops
-    .map((band, at) => {
-      const from = (at / stops.length) * 100;
-      const to = ((at + 1) / stops.length) * 100;
-      return `${heatSwatch(band.percent)} ${from}% ${to}%`;
-    })
-    .join(", ")})`;
-
-  /**
-   * The fire, in two layers on two different seeds, each capped so the
-   * displacement filter has somewhere to push the tips into.
-   *
-   * The body is shorter and broader and never goes out. The licks are taller
-   * and narrower and spend part of every cycle invisible, which is what lets
-   * them travel without the bar ever going dark behind them.
-   */
-  const shape = TONGUES[variant];
-  const body = flameTongues(shape.body, 0).map((tongue) => ({
-    ...tongue,
-    // Low and broad. The body was half the bar's height and 1.5x as wide,
-    // and fourteen of those overlapping composite to a solid slab with a
-    // flat top: a red rectangle, not a fire. It is an undulating base now,
-    // and every tall shape in the fire belongs to the licks.
-    height: tongue.height * TIP_HEADROOM * 0.5,
-    width: tongue.width * 1.3,
-  }));
-  const licks = flameTongues(shape.licks, 1).map((tongue) => ({
-    ...tongue,
-    // Lifted off the floor rather than scaled from it. The hash runs from
-    // 0.38 up, which averages out around half the reserved height, and a
-    // fire using half the room set aside for it reads as a glow hugging the
-    // bar with a lot of empty dark above. Compressing the bottom of the
-    // range keeps the variance that matters and spends the whole box.
-    height: (0.42 + 0.58 * tongue.height) * TIP_HEADROOM,
-    width: tongue.width * 0.76,
-  }));
 
   function commit(next: number) {
     const target = stopAt(stops, next);
@@ -200,201 +264,113 @@ export function HeatSlider({
     if (!chosen) commit(index);
   }
 
-  return (
-    <div
-      className={cn("heat-slider", className)}
-      data-variant={variant}
-      data-live={live}
-      data-chosen={chosen}
-      // Zero heat draws no flame and no fill at all, which is the honest
-      // picture of "flavour only" and the reason the CSS branches on it.
-      data-cold={percent === 0}
+  /**
+   * The level, the percent and the upcharge, drawn once and placed in one of
+   * two spots: beside the heading when the band passes one, and under the bar
+   * otherwise.
+   *
+   * THE NAME TAKES ITS OWN SWATCH. DESIGN.md asks for the ramp's five fixed
+   * colours wherever a heat level appears, and this is the largest place one
+   * appears on the site. Bone said nothing; the swatch means the word changes
+   * colour as the thumb climbs, so the band's second largest object is part of
+   * the mechanism rather than a caption of it.
+   *
+   * The darkest of the five is Heat 5, at 4.60:1 on bare Char and 4.20:1 read
+   * back off the lit ground the band's readout actually sits on. The name is
+   * set between 48px and 88px, which is large text several times over, so the
+   * bar it has to clear is 3:1 and the coldest stop clears 14.77:1. Heat 4 is
+   * 4.84:1 and Heat 3, where the showcase rests, is 6.38:1. "Pick a level" is
+   * not a level, so it stays bone.
+   */
+  const readout = (
+    <p
+      className="heat-slider__readout"
+      aria-hidden
       style={
         {
-          // The lit run covers whole segments, so the coldest stop still shows
-          // a band rather than a hairline.
-          "--heat-fill": `${((index + 1) / stops.length) * 100}%`,
-          "--heat-flame": flameIntensity(percent),
-          "--heat-colour": heatSwatch(percent),
-          "--heat-stops": stops.length,
+          "--readout-swatch": chosen ? heatSwatch(percent) : "var(--color-nybb-bone)",
         } as React.CSSProperties
       }
     >
-      <div className="heat-slider__stage">
-        {/* Flames. Clipped to the lit run, so they only ever rise off the
-            part of the bar that is burning. */}
-        <div className="heat-slider__fire" aria-hidden>
-          {/* The bed: the white hot line where the fire meets the bar. Every
-              flame is brightest where it touches its fuel, whatever colour the
-              rest of it is, and this is what ties the fire to the bar instead
-              of leaving it hovering above one. */}
-          <div className="heat-slider__bed" />
+      <span className="heat-slider__name">{chosen ? stop.name : "Pick a level"}</span>
+      {chosen ? <span className="heat-slider__percent">{percent}%</span> : null}
+      {chosen && price ? <span className="heat-slider__price">{price}</span> : null}
+    </p>
+  );
 
-          <svg
-            className="heat-slider__flames"
-            viewBox={`0 0 ${FIRE_W} ${FIRE_H}`}
-            preserveAspectRatio="none"
-          >
-            <defs>
-              {/* Two colours only: the hot yellow every flame has at its base,
-                  and the level's own swatch through the body. The tail falls
-                  off fast, because twenty overlapping slow tails is what
-                  turned the old fire into a maroon smear. */}
-              <linearGradient id={`${gid}-body`} x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0" stopColor="var(--color-nybb-heat-1)" stopOpacity="0.82" />
-                <stop offset="0.46" stopColor="var(--heat-colour)" stopOpacity="0.26" />
-                <stop offset="1" stopColor="var(--heat-colour)" stopOpacity="0" />
-              </linearGradient>
-              <linearGradient id={`${gid}-lick`} x1="0" y1="1" x2="0" y2="0">
-                <stop offset="0" stopColor="#fff4cc" stopOpacity="0.95" />
-                <stop offset="0.28" stopColor="var(--color-nybb-heat-1)" stopOpacity="0.8" />
-                <stop offset="0.68" stopColor="var(--heat-colour)" stopOpacity="0.3" />
-                <stop offset="1" stopColor="var(--heat-colour)" stopOpacity="0" />
-              </linearGradient>
-
-              {/* Two roughnesses, because one blur over everything is what made
-                  the old fire read as fog. The body is soft and out of focus
-                  behind; the licks are tighter and legible in front. That
-                  difference is the depth. */}
-              {(
-                [
-                  ["soft", 13, 2.5, "0.016 0.024"],
-                  ["sharp", 8, 1.2, "0.028 0.04"],
-                ] as const
-              ).map(([name, displace, blur, frequency]) => (
-                <filter
-                  key={name}
-                  id={`${gid}-${name}`}
-                  x="-30%"
-                  y="-30%"
-                  width="160%"
-                  height="170%"
-                  colorInterpolationFilters="sRGB"
-                >
-                  <feTurbulence
-                    type="fractalNoise"
-                    baseFrequency={frequency}
-                    numOctaves={3}
-                    seed={name === "soft" ? 17 : 41}
-                    result="noise"
-                  />
-                  <feDisplacementMap
-                    in="SourceGraphic"
-                    in2="noise"
-                    scale={displace}
-                    xChannelSelector="R"
-                    yChannelSelector="G"
-                    result="rough"
-                  />
-                  <feGaussianBlur in="rough" stdDeviation={blur} />
-                </filter>
-              ))}
-            </defs>
-
-            {/* The body. Always lit, swaying slowly. This is the mass of the
-                fire, and the reason the licks above can fade to nothing on
-                their cycle without the bar ever going dark. */}
-            <g filter={`url(#${gid}-soft)`}>
-              <g className="heat-slider__layer">
-                {body.map((tongue, at) => (
-                  <path
-                    key={at}
-                    className="heat-slider__tongue heat-slider__tongue--body"
-                    d={flamePath(tongue, FIRE_W, FIRE_H)}
-                    fill={`url(#${gid}-body)`}
-                    style={
-                      {
-                        "--dur": `${tongue.duration * 2.4}s`,
-                        "--delay": `${tongue.delay}s`,
-                      } as React.CSSProperties
-                    }
-                  />
-                ))}
-              </g>
-            </g>
-
-            {/* The licks. Each one is born at the bar, rises, narrows and goes
-                out, then starts again. This is the whole difference between
-                fire and a row of shapes being scaled: flame travels. */}
-            <g filter={`url(#${gid}-sharp)`}>
-              <g className="heat-slider__layer">
-                {licks.map((tongue, at) => (
-                  <path
-                    key={at}
-                    className="heat-slider__tongue heat-slider__tongue--lick"
-                    d={flamePath(tongue, FIRE_W, FIRE_H)}
-                    fill={`url(#${gid}-lick)`}
-                    style={
-                      {
-                        "--dur": `${tongue.duration * 1.5}s`,
-                        "--delay": `${tongue.delay}s`,
-                      } as React.CSSProperties
-                    }
-                  />
-                ))}
-              </g>
-            </g>
-          </svg>
+  return (
+    <div
+      ref={root}
+      className={cn("heat-slider", className)}
+      data-variant={variant}
+      data-chosen={chosen}
+    >
+      {heading ? (
+        <div className="heat-slider__head">
+          {heading}
+          {readout}
         </div>
+      ) : null}
 
-        {/* The track: one hard band per stop, in the fixed ramp, with the
-            unlit run shrouded rather than recoloured. */}
-        <div className="heat-slider__track" aria-hidden>
-          <div className="heat-slider__bands" style={{ backgroundImage: bands }} />
-          {/* The light the fire throws back down onto its fuel. Without it
-              the bar stays flat and graphic while the fire above it is lit,
-              and the two read as separate drawings stacked. */}
-          <div className="heat-slider__lit" />
-          <div className="heat-slider__shroud" />
-        </div>
-
-        <div className="heat-slider__thumb" aria-hidden />
-
-        <label className="sr-only" htmlFor={inputId}>
-          {label}
-        </label>
-        <input
-          id={inputId}
-          className="heat-slider__input"
-          type="range"
-          min={0}
-          max={stops.length - 1}
-          step={1}
-          value={index}
-          // The percentage is the brand's own number and the name is what a
-          // customer orders by, so the reader gets both rather than "3".
-          aria-valuetext={`${stop.name}, ${percent} percent heat`}
-          onChange={(event) => commit(Number(event.target.value))}
-          onKeyDown={commitIfUntouched}
-          onPointerDown={() => {
-            setLive(true);
-            commitIfUntouched();
-          }}
-          onPointerUp={() => setLive(false)}
-          onPointerCancel={() => setLive(false)}
-          onFocus={() => setLive(true)}
-          onBlur={() => setLive(false)}
-          onMouseEnter={() => setLive(true)}
-          onMouseLeave={() => setLive(false)}
-        />
+      {/* The picture. The lit run covers whole segments, so the coldest stop
+          still shows its own band rather than a hairline, and an untouched
+          control draws a cold tube with a hollow pointer rather than claiming
+          the first stop. */}
+      <div ref={scale} className="heat-slider__scale">
+        <HotnessMeter
+          score={chosen ? percent : 0}
+          fill={chosen ? (index + 1) / stops.length : 0}
+          stops={stops}
+          activeStop={chosen ? index : null}
+          unset={!chosen}
+          energy={energy}
+          size={variant === "band" ? "large" : "medium"}
+          decorative
+        >
+          <label className="sr-only" htmlFor={inputId}>
+            {label}
+          </label>
+          <input
+            id={inputId}
+            className="heat-slider__input"
+            type="range"
+            min={0}
+            max={stops.length - 1}
+            step={1}
+            value={index}
+            // The percentage is the brand's own number and the name is what a
+            // customer orders by, so the reader gets both rather than "3".
+            aria-valuetext={`${stop.name}, ${percent} percent heat`}
+            onChange={(event) => commit(Number(event.target.value))}
+            onKeyDown={() => {
+              stopSweepForInput();
+              commitIfUntouched();
+            }}
+            onPointerDown={() => {
+              stopSweepForInput();
+              setDragging(true);
+              commitIfUntouched();
+            }}
+            onPointerUp={() => setDragging(false)}
+            onPointerCancel={() => setDragging(false)}
+            onFocus={() => {
+              stopSweepForFocus();
+              setFocused(true);
+            }}
+            onBlur={() => {
+              setFocused(false);
+              setDragging(false);
+            }}
+            onPointerEnter={() => setHovered(true)}
+            onPointerLeave={() => {
+              setHovered(false);
+              setDragging(false);
+            }}
+          />
+        </HotnessMeter>
       </div>
 
-      {/* The stop names, sitting under their own bands. Nothing is
-          highlighted until something is chosen, because an untouched thumb
-          rests on the first stop without having picked it. */}
-      <ol className="heat-slider__ticks" aria-hidden>
-        {stops.map((tick, at) => (
-          <li key={tick.slug} data-on={chosen && at === index}>
-            {tick.name}
-          </li>
-        ))}
-      </ol>
-
-      <p className="heat-slider__readout" aria-hidden>
-        <span className="heat-slider__name">{chosen ? stop.name : "Pick a level"}</span>
-        {chosen ? <span className="heat-slider__percent">{percent}%</span> : null}
-        {chosen && price ? <span className="heat-slider__price">{price}</span> : null}
-      </p>
+      {heading ? null : readout}
     </div>
   );
 }

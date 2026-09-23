@@ -109,7 +109,7 @@ export type FlameTongue = {
  * merely almost identical is a hydration mismatch. `Math.imul` and the shifts
  * below are exact everywhere.
  */
-function noise(seed: number): number {
+export function noise(seed: number): number {
   let x = (seed + 1) | 0;
   x = Math.imul(x ^ (x >>> 15), 2246822519);
   x = Math.imul(x ^ (x >>> 13), 3266489917);
@@ -161,39 +161,6 @@ export function flameTongues(count: number, seed = 0): FlameTongue[] {
 }
 
 /**
- * One tongue as an SVG path, in the coordinates of a `width` by `height` box.
- *
- * A leaf rather than a symmetric teardrop: both sides run from the base up to
- * a single point, and the point is offset by the tongue's lean, so no two
- * tongues in the fire are the same shape and none of them is a mirror of
- * itself. The turbulence filter in the component roughens the outline from
- * there; this only has to supply a believable silhouette underneath it.
- */
-export function flamePath(tongue: FlameTongue, width: number, height: number): string {
-  const round = (n: number) => Math.round(n * 100) / 100;
-
-  const centre = tongue.x * width;
-  const half = (tongue.width * width) / 2;
-  const rise = tongue.height * height;
-  const base = height;
-  const tipY = base - rise;
-  const tipX = centre + tongue.lean * rise;
-
-  // Control points pull the sides in gradually, then hard toward the tip, so
-  // the tongue is fat at the bottom and tapers rather than coming to a spike.
-  return [
-    `M ${round(centre - half)} ${round(base)}`,
-    `C ${round(centre - half)} ${round(base - rise * 0.42)}`,
-    `${round(tipX - half * 0.6)} ${round(base - rise * 0.72)}`,
-    `${round(tipX)} ${round(tipY)}`,
-    `C ${round(tipX + half * 0.6)} ${round(base - rise * 0.72)}`,
-    `${round(centre + half)} ${round(base - rise * 0.42)}`,
-    `${round(centre + half)} ${round(base)}`,
-    "Z",
-  ].join(" ");
-}
-
-/**
  * The fixed swatch a heat level is painted in, as a CSS custom property.
  *
  * The ramp is five quoted colours and not a gradient function, so that a level
@@ -211,14 +178,92 @@ export function heatSwatch(percent: number): string {
   return `var(--color-nybb-heat-${step})`;
 }
 
+
 /**
- * How hard the flame draws, 0 to 1.
+ * Where an untouched showcase parks its thumb.
  *
- * The CSS multiplies lengths by this, so an out of range percent would throw a
- * flame clear across the section rather than fail visibly. Clamped here so the
- * stylesheet can trust it.
+ * Partway up rather than at either end, so the bar arrives already lit and the
+ * flame has something to do. A control that opens empty reads as broken rather
+ * than as cold.
  */
-export function flameIntensity(percent: number): number {
-  if (!Number.isFinite(percent)) return 0;
-  return Math.min(Math.max(percent, 0), 100) / 100;
+export function restingIndex(stops: readonly HeatStop[]): number {
+  if (stops.length === 0) return 0;
+  return Math.floor((stops.length - 1) / 2);
+}
+
+/**
+ * How long the scale waits before it starts moving.
+ *
+ * Almost nothing, and the small amount it is exists for one reason. The block
+ * is fading up as this runs, and its ease is exponential, so it clears half
+ * opacity inside about 130ms. Eighty puts the first move just inside that, so
+ * the reader sees the bar start rather than finding it already underway.
+ *
+ * It was 700 for one day, to let the block land before the scale spoke. That
+ * read as a wait: the reader had already looked at the scale and was waiting
+ * for it to do the thing the copy beside it promised. Arriving in motion is
+ * better than arriving and then performing.
+ */
+export const SWEEP_LEAD_MS = 80;
+
+/** The longest the travel itself may take, however many stops there are. */
+export const SWEEP_TRAVEL_MS = 600;
+
+/** The gap between one stop and the next, before the cap above applies. */
+export const SWEEP_STEP_MS = 240;
+
+export type HeatSweepStep = {
+  /** The stop to move to. */
+  index: number;
+  /** Milliseconds after the scale enters view. The first step is the lead. */
+  at: number;
+};
+
+/**
+ * The showcase playing itself once, as a schedule.
+ *
+ * THIS IS THE RULE THE SYSTEM RETIRED, PUT BACK ON PURPOSE.
+ * ================================================================
+ * The Moment Belongs To The Band Rule gave the section's arrival to the five
+ * bars extending in sequence, and it was retired because an entrance plays to
+ * nobody in particular and says what the bars already said standing still. The
+ * owner asked for it back on 2026-09-21. What is kept from the retirement is
+ * the part that was actually true: the moment belongs to the customer's hand.
+ * So this is a demonstration that hands over, not a performance that owns the
+ * section. It runs once, it never repeats, and the first sign of a hand on the
+ * control cancels whatever is left of it.
+ *
+ * IT STEPS RATHER THAN SLIDING, AND THAT IS THE WHOLE POINT.
+ * ================================================================
+ * The scale's job is to say that heat is a thing you pick an amount of, so
+ * what it has to show is the picking. Each step is a real stop: the readout
+ * reads Lite, then Moderate, then Hot, exactly as it would under somebody's
+ * thumb, and the meter's own spring carries the bar smoothly between them. A
+ * single jump to the end would move the bar and never name what it passed.
+ *
+ * The travel is capped rather than fixed, so a longer ramp goes faster instead
+ * of running longer. Five stops today is one gap of 240ms between two moves; a
+ * forty stop ramp would put the same forty moves inside the same 600ms.
+ * Nothing here plus the lead comes near the five seconds that WCAG 2.2.2 would
+ * require a pause control for, and it cannot loop, because there is nothing to
+ * loop.
+ *
+ * The first step is the lead itself rather than the lead plus a gap. The gap
+ * belongs between moves; putting one in front of the first move is a wait, and
+ * a wait in front of an introduction is the introduction not starting.
+ */
+export function heatSweepSteps(resting: number): HeatSweepStep[] {
+  if (!Number.isFinite(resting)) return [];
+  const last = Math.trunc(resting);
+  if (last <= 0) return [];
+
+  // Gaps, not moves: two moves have one gap between them. A single move has
+  // none, which is also why this cannot divide by zero.
+  const gaps = last - 1;
+  const step = gaps > 0 ? Math.min(SWEEP_STEP_MS, SWEEP_TRAVEL_MS / gaps) : 0;
+
+  return Array.from({ length: last }, (_, at) => ({
+    index: at + 1,
+    at: Math.round(SWEEP_LEAD_MS + at * step),
+  }));
 }

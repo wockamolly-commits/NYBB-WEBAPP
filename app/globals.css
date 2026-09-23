@@ -199,20 +199,6 @@
   --ring: #ef6212;
 }
 
-/* Registered so it can be transitioned.
-   ================================================================
-   An unregistered custom property is just a string to CSS: it flips
-   from one value to the next with no interpolation, so the bar would
-   jump between stops. Typed as a percentage it animates, and because
-   both the shroud's width and the fire's mask are computed from it,
-   one transition on this single value moves every part of the bar
-   together. */
-@property --heat-fill {
-  syntax: "<percentage>";
-  inherits: true;
-  initial-value: 0%;
-}
-
 @layer base {
   * {
     @apply border-border;
@@ -377,8 +363,13 @@
      without anyone remembering to ask for one. :where() keeps the
      specificity at zero, so a control can still override it, which is
      what components/ui/Button.tsx does when its tone says the ground
-     is dark regardless of what it is sitting in. */
-  :where(.bg-nybb-ink, .bg-nybb-ink\/90, .bg-nybb-charcoal) {
+     is dark regardless of what it is sitting in.
+
+     `.band-ink` is on this list for the same reason, and it is not a
+     background utility: it paints Char through a class of its own, so
+     keying only off the utilities would have left every band on the
+     landing page and the sign in page with an ink ring on ink. */
+  :where(.bg-nybb-ink, .bg-nybb-ink\/90, .bg-nybb-charcoal, .band-ink) {
     --focus-ring: var(--color-nybb-orange);
 
     /* Light type on a near-black ground blooms: the letterforms spread
@@ -1007,6 +998,433 @@
     text-shadow: 0.05em 0.065em 0 var(--color-nybb-ink);
   }
 
+  /* THE PICTURE IS THE POINT, SO THE INK IS ON THE LETTERS AND ALMOST NOWHERE
+     ELSE.
+     ================================================================
+     Both murals are shot pale, and the brightest patch under the copy column
+     reads 249 of 255. The first answer to that was a ramp heavy enough to hold
+     bone at 60 percent on its own: ink to 220px, 76 percent at 500px, solid
+     across the left 42 percent of the width. It measured well and it cost the
+     hero its subject. On the eating mural that block sits exactly over the
+     woman the photograph is of; on a phone, where the ramp had to run the full
+     width because the copy does, it covered the artwork outright.
+
+     So the ink moved to the letters. `.hero-type` below puts a halo on the
+     glyphs themselves, sized in ems of the text it is protecting: it is total
+     where contrast is actually read, which is the pixel beside a letterform,
+     and it is nothing two words over. That is the whole readability budget now.
+
+     The halo is not the whole budget, because it cannot be. It is ink measured
+     in ems of a letterform, so what it can darken is a few pixels either side
+     of a stroke; a 14px line asks for a 1.4px halo and the ground four pixels
+     out is still the photograph. Measured against the spread mural, whose wall
+     reads 249 of 255, bone at 60 percent needs its ground held at about 76
+     percent ink before it clears 4.5:1 and the halo alone gets it to 1.4.
+
+     So there is still a ramp, and the work of this pass was making it as light
+     as the copy allows rather than as heavy as the copy was written to need.
+     Three things bought the difference, and none of them is a wash:
+
+     The copy stopped spending contrast on hierarchy. The lede was bone at 75
+     percent and the status line at 60, which is the right way to rank two
+     paragraphs on a surface whose ground you own. On a photograph it is not
+     available: lighter type on a pale wall is worse type, and the 16 points of
+     alpha the hierarchy was buying cost 19 points of ink underneath it. They
+     are bone and bone at 85 now, and the ranking is carried by size, which was
+     already doing it at 64 against 18 against 14.
+
+     The headline stopped asking the ramp to make it a dark surface. Buffalo
+     Orange is 1.0:1 on this wall and no halo reaches far enough to fix that, so
+     the old ramp had to hold 73 percent ink at 380px up, which is most of a
+     phone hero, purely so one line could stay orange. `.hero-keyline` gives it
+     the ink outline the store's own wordmark is drawn with, which is what this
+     system already permits orange to be on a light ground: a graphic rather
+     than type.
+
+     And the halo took a floor in pixels, so the small copy gets a halo the
+     screen can actually draw.
+
+     What is left tops out at 66 percent against the 90 it used to carry, and it
+     is spent by 580px rather than still at 72 percent there. On a phone that
+     leaves the top of the picture untouched, which is where both murals put the
+     drink and the face; on a laptop it never crosses into the right half at
+     all, which is where both of them put the display panel.
+
+     ITS STOPS ARE LENGTHS, NOT PERCENTAGES. The hero's copy is a block of a
+     fixed height sitting on the floor of the section, so how far up it reaches
+     depends on how tall the section is: about 500px of type is 79 percent of
+     the way up a 702px hero at 1440x900 and 56 percent of the way up an 842px
+     one at 1920x1080. A ramp in percentages is therefore measured for one
+     window and wrong in the other, which is how a headline that cleared 6:1 on
+     a large laptop measured 1.9:1 on a small one.
+
+     IT IS STILL MASKED OFF TOWARD THE RIGHT FROM `xl`, and pulled in further
+     than it was. On a phone the ramp runs the full width because the copy does.
+     From `xl` the copy is a column down the left and the right of the frame
+     carries the mural's own display panel, and even a light wash laid across
+     that is a wash across the one part of the artwork composed to be read. Solid
+     to 40 percent of the width and gone by 72, which at 1440 is a 460px fade
+     and still nowhere near an edge somebody can see.
+
+     A browser without mask support keeps the full width ramp, which is the
+     readable version. */
+  .hero-ramp {
+    background-image: linear-gradient(
+      to top,
+      color-mix(in oklab, var(--color-nybb-ink) 66%, transparent) 0,
+      color-mix(in oklab, var(--color-nybb-ink) 62%, transparent) 160px,
+      color-mix(in oklab, var(--color-nybb-ink) 58%, transparent) 300px,
+      color-mix(in oklab, var(--color-nybb-ink) 55%, transparent) 400px,
+      color-mix(in oklab, var(--color-nybb-ink) 30%, transparent) 470px,
+      color-mix(in oklab, var(--color-nybb-ink) 10%, transparent) 530px,
+      transparent 580px
+    );
+  }
+
+  @media (min-width: 80rem) {
+    .hero-ramp {
+      background-image: linear-gradient(
+        to top,
+        color-mix(in oklab, var(--color-nybb-ink) 70%, transparent) 0,
+        color-mix(in oklab, var(--color-nybb-ink) 62%, transparent) 190px,
+        color-mix(in oklab, var(--color-nybb-ink) 46%, transparent) 330px,
+        color-mix(in oklab, var(--color-nybb-ink) 30%, transparent) 470px,
+        color-mix(in oklab, var(--color-nybb-ink) 14%, transparent) 570px,
+        transparent 650px
+      );
+      -webkit-mask-image: linear-gradient(
+        to right,
+        #000 0%,
+        #000 40%,
+        rgba(0, 0, 0, 0) 72%
+      );
+      mask-image: linear-gradient(
+        to right,
+        #000 0%,
+        #000 40%,
+        rgba(0, 0, 0, 0) 72%
+      );
+    }
+  }
+
+  /* THE JOIN AT THE BOTTOM, WHICH USED TO BE BAKED INTO THE PICTURE.
+     ================================================================
+     The hero is a dark band with a hard bottom edge onto the amber ground, and
+     a pale grey wall meeting signage yellow on a one pixel line does not read
+     as that edge. It reads as a photograph that ran out.
+
+     scripts/build-hero-slides.ts used to solve this by fading the bottom sixth
+     of each file into ink. Two things were wrong with that and neither was the
+     idea. A sixth of the artwork is a lot to spend before anybody has measured
+     how much is needed, and because the hero crops the picture's height by a
+     different amount at every width, the baked fade was 194px deep in the file
+     and about 56px of it survived at 1920x1080. The depth nobody could predict
+     was the depth that mattered.
+
+     Here it is measured from the section's own floor, so it is the same 72px on
+     every screen, it is unmasked and full width because a join has to be, and
+     it is a rebuild-free number. It sits under the ramp rather than inside it
+     because the two are answering different questions: the ramp is about the
+     copy and stops where the copy does, and this is about the edge and is only
+     ever as tall as an edge. */
+  .hero-foot {
+    background-image: linear-gradient(
+      to top,
+      var(--color-nybb-ink) 0,
+      color-mix(in oklab, var(--color-nybb-ink) 55%, transparent) 28px,
+      transparent 72px
+    );
+  }
+
+  /* THE HERO'S TYPE CARRIES ITS OWN GROUND, IN EMS OF ITSELF.
+     ================================================================
+     A halo rather than a wash, for the reason above: a wash has to darken
+     everything the copy block covers in order to darken the two pixels beside
+     a letter that decide whether it is readable, and on this hero the thing it
+     covers is the subject of the photograph.
+
+     Four shadows, not one. The first two are the contrast: an offset pixel and
+     a tight blur, both near solid, so the ground immediately around a glyph is
+     ink whatever the mural is doing there. The last two are the sit: wider,
+     weaker pools that stop the block reading as type pasted onto a picture.
+     Read them as one object, because that is what they make.
+
+     Every radius is in em, so the halo is proportional to whatever it is
+     protecting. A fixed pixel halo tuned for the headline is a smudge behind
+     the status line, and one tuned for the status line is invisible behind the
+     headline.
+
+     WITH A FLOOR IN PIXELS, BECAUSE PROPORTION RUNS OUT AT THE SMALL END. The
+     em is right about how much halo a letterform wants relative to itself and
+     wrong about how much a screen can draw. At 14px the first two stops came
+     out at 0.3px and 1.4px, which is inside the antialiasing: the halo was
+     being spent on the same pixels the glyph was already softening, and two
+     pixels out from the letter the ground was still the photograph. The
+     headline never had that problem because 0.1em of 64px is 6px. So each
+     radius takes a `max()` against the smallest ink that renders as ink, which
+     changes nothing above about 32px and roughly doubles the halo under 16px,
+     which is where the status line and the lede live.
+
+     Two things in the hero take this and then replace it, because they are
+     keylined and a keyline changes where the handover to the halo happens: the
+     tagline in `.tagline-inked.hero-type`, and the headline's orange half in
+     `.hero-type .hero-keyline`. Both are below, and both compound tight passes
+     rather than widening a stroke. */
+  .hero-type {
+    text-shadow:
+      0 0.02em max(0.02em, 1px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.1em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 94%, transparent),
+      0 0 max(0.3em, 9px)
+        color-mix(in oklab, var(--color-nybb-ink) 84%, transparent),
+      0 0 max(0.7em, 18px)
+        color-mix(in oklab, var(--color-nybb-ink) 62%, transparent);
+  }
+
+  /* ORANGE STAYS ORANGE BY BECOMING A GRAPHIC, WHICH IS HOW THIS BRAND DRAWS IT.
+     ================================================================
+     The Orange Is For Dark Rule is not softened here, it is applied. Buffalo
+     Orange measures 1.8:1 on the amber ground and about 1.0:1 on the near white
+     wall the spread mural is shot against, so it is not type on either. What the
+     rule already allows on a light ground is orange as a graphic, and the second
+     half of the hero's headline is the one line on the site with a claim to be
+     one: it is the loudest word on the first screen and it is set in the display
+     face at 44 to 64px.
+
+     The treatment is not invented for it. The store's own wordmark is orange
+     letters inside a heavy black keyline, on packaging, on the cups and on the
+     wall the mural photographs; `.tagline-inked` already does the same thing to
+     the tagline's signage yellow, for the same reason and against the same
+     picture. This is that treatment at display weight.
+
+     What it buys is the ramp. Without it the scrim has to hold 73 percent ink
+     at 380px up, which on a phone is most of the hero, so that one line can
+     stay readable; with it the line carries its own edge and the ramp is free
+     to be light enough to see the mural through.
+
+     `paint-order: stroke fill` for the reason the tagline gives: a centred
+     stroke eats half its width out of the inside of the letterform, and Anton's
+     counters at 44px do not have it to give. The stroke is in em so it holds at
+     every step of the clamp, and on the film slide, where the ground is already
+     ink, it paints ink on ink and costs nothing. */
+  .hero-keyline {
+    -webkit-text-stroke: 0.07em var(--color-nybb-ink);
+    paint-order: stroke fill;
+  }
+
+  /* The keyline's own compound, for the same reason the tagline has one.
+     ================================================================
+     A stroke is 3px of ink at the headline's size and the ring the eye reads
+     is wider than that, so the stroke hands off to the halo and the handover is
+     where the ratio was being lost: `.hero-type`'s tightest stop is a 4px blur
+     at 94 percent, which two pixels out from a letterform is about half ink and
+     half photograph. Two compounded 2px passes close that, because a shadow is
+     painted once per entry and two passes of the same small blur are near solid
+     where they overlap while still falling off inside three pixels. It is a
+     thicker keyline drawn in light rather than in stroke width, which is what
+     the tagline's own note says and is true for the same reason: past about
+     0.08em the outline stops being an outline and starts being the letter. */
+  .hero-type .hero-keyline {
+    text-shadow:
+      0 0 max(0.03em, 2px)
+        color-mix(in oklab, var(--color-nybb-ink) 96%, transparent),
+      0 0 max(0.03em, 2px)
+        color-mix(in oklab, var(--color-nybb-ink) 96%, transparent),
+      0 0 max(0.1em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 94%, transparent),
+      0 0 max(0.3em, 9px)
+        color-mix(in oklab, var(--color-nybb-ink) 84%, transparent),
+      0 0 max(0.7em, 18px)
+        color-mix(in oklab, var(--color-nybb-ink) 62%, transparent);
+  }
+
+  /* The tagline takes both, and the compound is not an accident.
+     ================================================================
+     `.tagline-inked` is the artwork's own treatment and it is shared with the
+     footer, so the halo cannot go into it: on the footer's ink ground it would
+     be ink on ink, which is nothing, and the class would be carrying a rule
+     for a placement it is not in.
+
+     The tagline needs the halo here because it is the one line of hero copy
+     the ramp no longer reaches. It sits about 500px up, the ramp is spent by
+     530, and on the spread mural the wall behind it at that height is very
+     close to white. Its keyline holds the letterform against that, which is
+     what the keyline is for, but a 0.05em stroke is 1.4px at this size and
+     there is nothing beyond it.
+
+     The offset drop shadow stays first in the list, because it is the artwork
+     and it has to paint over the halo rather than under it.
+
+     The tight stop is written three times on purpose. A shadow is painted once
+     per entry, so three passes of the same small blur compound to near solid
+     where they overlap and still fall off inside two pixels, which is a
+     thicker keyline drawn in light rather than in stroke width. Raising
+     `-webkit-text-stroke` instead would have been the obvious move and is
+     worse: `paint-order: stroke fill` hides the inner half of the stroke under
+     the fill, so a keyline thick enough to read as ground would have to be
+     0.2em, and at that weight the script stops being a script. */
+  .tagline-inked.hero-type {
+    /* A heavier keyline than the shared treatment carries, and only here. The
+       artwork's stroke is 0.05em, which at the hero's 24px is 1.2px, and 1.2px
+       is what the mark needs against the amber ground and against the footer's
+       ink. It is not what it needs against a photograph of a near white wall at
+       the one height the ramp no longer reaches. The footer and the About page
+       keep the artwork's own weight, because their grounds are the ones it was
+       drawn for. */
+    -webkit-text-stroke-width: 0.1em;
+    text-shadow:
+      0.05em 0.065em 0 var(--color-nybb-ink),
+      0 0 max(0.075em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.075em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.075em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.075em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.075em, 4px)
+        color-mix(in oklab, var(--color-nybb-ink) 95%, transparent),
+      0 0 max(0.12em, 6px)
+        color-mix(in oklab, var(--color-nybb-ink) 92%, transparent),
+      0 0 max(0.22em, 8px)
+        color-mix(in oklab, var(--color-nybb-ink) 88%, transparent),
+      0 0 max(0.55em, 18px)
+        color-mix(in oklab, var(--color-nybb-ink) 66%, transparent);
+  }
+
+  /* THE HERO'S SLIDES CARRY TWO FRAMINGS, AND THE SCREEN PICKS ONE.
+     ================================================================
+     From `xl` up the mural is wider in proportion than the hero, so the whole
+     width of the picture is on screen and the only thing left to decide is
+     where the height is trimmed. `object-position` decides it, and what it
+     decides is that the trim comes off the floor under the food rather than
+     off the display panel over it. Nothing on that side of the breakpoint has
+     changed.
+
+     Below `xl` the shape is the other way round and `object-position` is the
+     wrong tool for it, because whichever single value it is given is a part of
+     the artwork the visitor never sees. `.hero-pan-track` replaces it there.
+
+     Two custom properties rather than two utilities because the values belong
+     to the slide (lib/hero/slideshow.ts), not to the stylesheet, and an inline
+     style cannot carry a media query. */
+  .hero-slide {
+    object-position: var(--slide-wide, 50% 50%);
+  }
+
+  /* THE PHONE STOPS CHOOSING A THIRD OF THE MURAL AND PANS ACROSS ALL OF IT.
+     ================================================================
+     A phone hero is about 390 by 658 and a mural scaled to fill its height is
+     1170 wide, so a third of the artwork fits and the rest was permanently off
+     screen. No framing fixes that. Both murals put the food on the left and
+     a panel of display type on the right, and a slice from the middle is a
+     column of half-letters.
+
+     So the track is the picture at its natural width and the hero is a window
+     onto it, and the window travels: left edge to right edge, once, over the
+     whole time the slide is on screen. About 520px in twelve seconds, which is
+     43 a second, or eleven percent of the viewport. Slow enough to read as a
+     camera and not as a transition, and it ends having shown everything.
+
+     HOW IT KNOWS HOW FAR TO GO, WITHOUT BEING TOLD.
+     ================================================================
+     The track takes the hero's height and the mural's own ratio, so its width
+     is whatever covering the height costs. The travel is that width less the
+     hero's, and both of those are available to CSS: `100%` in a translation is
+     the element's own width and `100cqw` is its container's. So
+
+         calc(-100% + 100cqw)
+
+     is exactly the overhang, at every viewport, with no number written down and
+     nothing measured in JavaScript. It also collapses to zero on its own the
+     moment the picture is no longer wider than the hero, because `min-width`
+     has stopped the track shrinking past it, which is why the rule is safe at
+     widths where it is pointless.
+
+     `--slide-rest` is where it stands when it is not travelling, as a fraction
+     of that same overhang: a quarter in, which is the crop the phone had
+     before the pan and is what reduced motion still gets. A browser without
+     container query units drops the whole declaration and lands on zero, which
+     is the mural's left edge, which is the food. That is a fair worst case.
+
+     PARKED AT THE FAR EDGE, NOT BACK AT THE START. The animation is attached
+     only while the slide is the one being shown, and removing it would
+     otherwise snap the picture back. So the resting place for a slide that is
+     not current is the end of the travel, which is where the animation has just
+     left it: the common path has nothing to snap. Pressing next early is the
+     case that does, and it happens under a fade that is already running.
+
+     Pause freezes the travel where it stands rather than ending it, which is
+     what the word promises and what WCAG 2.2.2 is asking for. */
+  .hero-pan {
+    container-type: inline-size;
+  }
+
+  .hero-pan-track {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100%;
+    width: auto;
+    min-width: 100%;
+    aspect-ratio: var(--slide-ratio, 16 / 9);
+    translate: calc(-100% + 100cqw) 0;
+  }
+
+  .hero-pan-track[data-panning="true"] {
+    animation: hero-pan var(--pan-ms, 12200ms) linear forwards;
+  }
+
+  .hero-pan-track[data-paused="true"] {
+    animation-play-state: paused;
+  }
+
+  @keyframes hero-pan {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: calc(-100% + 100cqw) 0;
+    }
+  }
+
+  /* From `xl` the track is the hero's own box and gets out of the way. The
+     overhang is zero at these widths anyway, so this is not what stops the
+     picture moving; what it stops is a tall desktop window (1280x1024 and the
+     like) quietly changing its framing from centred to right aligned, which is
+     the one case where the ratio still leaves something over. Above this line
+     the hero is exactly what it was. */
+  @media (min-width: 80rem) {
+    /* The panning selector is repeated rather than left to the media query,
+       because a media query carries no specificity. `[data-panning]` is an
+       attribute selector and outranks a bare class wherever both apply, so a
+       block that only named the class handed back the width and kept the
+       animation: the traverse computed to zero at these widths and ran anyway,
+       which is a compositor doing arithmetic on every frame of a picture that
+       is not moving. */
+    .hero-pan-track,
+    .hero-pan-track[data-panning="true"],
+    .hero-pan-track[data-paused="true"] {
+      width: 100%;
+      aspect-ratio: auto;
+      translate: none;
+      animation: none;
+    }
+  }
+
+  /* Reduced motion keeps the picture and drops the travel. It stands at
+     `--slide-rest`, which is the framing this hero had before there was a pan
+     at all, so what is lost is the movement and not the composition. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-pan-track,
+    .hero-pan-track[data-panning="true"] {
+      animation: none;
+      translate: calc((-100% + 100cqw) * var(--slide-rest, 0.25)) 0;
+    }
+  }
+
   /* Every number the user has to read, compare or read aloud. */
   .font-mono-tabular {
     font-family: var(--font-mono);
@@ -1111,380 +1529,375 @@
     );
   }
 
-  /* The sliding heat bar, and the site's only authored motion.
+  /* The dark band surface, shared by the two full bleed bands on the
+     landing page.
      ================================================================
-     This replaces the five ascending bars that used to draw themselves
-     in as the landing band arrived. The reveal was an entrance: it
-     played once, to nobody in particular, and said the same thing the
-     static bars already said. The bar below is the product's own
-     mechanism under a hand, which is what the motion was always meant
-     to be spent on.
+     The chrome above has been a material since the day it was drawn:
+     cream falling to parchment, sized to the element. The dark bands
+     never were. They were `bg-nybb-ink`, which is a flat `#0b0b0c`
+     rectangle, and they are the two largest surfaces on the page. On a
+     page whose whole thesis is ink printed on a warm ground, the two
+     places the ink is thickest were the only ones with no material at
+     all, and at a metre back they read as holes cut in the page rather
+     than as panels laid on it.
 
-     The flame does not idle. It burns while somebody is dragging,
-     hovering or tabbed onto the control and settles to a still
-     silhouette the moment they let go, so the page is never animating
-     at a visitor who is not touching it.
+     So a band gets a material. Not the chrome's, though: the chrome
+     falls from light at the top because the light in a room comes from
+     above it, and a band's light does not. It comes from whatever is
+     burning or lit inside the band, which in both of these is low and
+     off to one side. A linear wash down the full width was tried first
+     and thrown out for saying the opposite: it lifted the top left
+     corner, which is the one part of the heat band where nothing is
+     alight, and a warm haze behind a headline with no source is
+     exactly the decoration this system does not ship. The base stays
+     Char, and every warm thing in a band is thrown by something in it.
 
-     Two shapes, one control. `band` is the landing page's full bleed
-     moment: a wide burning line with tall tongues coming off it.
-     `inline` is the compact one that sits in a menu row or a
-     configurator fieldset. Same swatches, same mechanism, different
-     scale. */
+     WHY A BAND NEEDS ITS OWN DITHER, WHEN THE GROUND ALREADY HAS ONE.
+     ================================================================
+     `body::after` covers exactly what the body gradient covers, and it
+     sits at `z-index: -1`. A band is opaque and painted over both, so
+     the page's dither stops at the band's top edge. That was fine
+     while the band was one flat value with nothing to band. It is not
+     fine with the fields below in it: a field crosses about twenty
+     levels over six hundred pixels, which is a step every thirty, and
+     a ramp that shallow in near black is the worst case an 8-bit panel
+     has. Undithered it arrives as concentric rings.
 
-  .heat-slider {
-    --track-height: 0.75rem;
-    --flame-height: 2.9rem;
-    --thumb-size: 1.25rem;
-    /* One transition drives the lot. --heat-fill is registered above as a
-       real percentage, so the shroud's width and the fire's mask both
-       interpolate from the same animated value and can never drift out
-       of step with each other the way two separate transitions would. */
-    transition: --heat-fill 280ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .heat-slider[data-variant="band"] {
-    --track-height: 1.25rem;
-    --flame-height: 5.25rem;
-    --thumb-size: 1.75rem;
-  }
-
-  @media (min-width: 640px) {
-    .heat-slider[data-variant="band"] {
-      --track-height: 1.75rem;
-      --flame-height: 7rem;
-      --thumb-size: 2rem;
-    }
-  }
-
-  /* Room above the bar for the flames to rise into, so lighting one
-     never reflows the copy underneath. */
-  .heat-slider__stage {
+     This grain is the same fractal turbulence as the ground's, with
+     one change. The ground's is drawn through `overlay`, which on a
+     near black backdrop resolves to roughly `2 x backdrop x noise` and
+     is therefore almost exactly nothing: measured over Char it moves
+     the channel by under half a level, which dithers nothing. Near
+     black the noise has to add rather than blend, so it is composited
+     normally, and the colour it adds is warm (the turbulence drives
+     the alpha channel and the fill is fixed) so that a dither meant to
+     protect a warm panel cannot be the thing that greys it. */
+  .band-ink {
     position: relative;
-    padding-top: var(--flame-height);
+    /* The bands hold the heat meter, whose fire screens tongue on
+       tongue. That group isolates itself, but a band that did not
+       would still be inviting anything added later to blend against
+       the page. */
+    isolation: isolate;
+    background-color: var(--color-nybb-ink);
   }
 
-  /* Square, like the heat rule it quotes. The track carried a 2px radius
-     inherited from the bars this replaced, which is off the documented
-     radius scale and was answering to nothing: the rule bracketing the
-     page in the same five swatches has no radius at all, and at these
-     sizes two pixels of corner were invisible anyway. */
-  .heat-slider__track {
-    position: relative;
-    height: var(--track-height);
-    overflow: hidden;
-  }
+  /* Over the field it dithers and under the band's content, which is
+     why the two sections that use this put their own contents on
+     `relative z-10`. Generated content is the last child in the box
+     tree, so at an equal z-index the grain would otherwise paint on
+     top of the type: a veil over the reading copy rather than a tooth
+     under it. */
+  /* THE PRINTED TOOTH: THE WALL'S OWN HATCHING, WITHOUT THE WALL.
+     ================================================================
+     The store draws in black brush marker on white: heavy outlines on the
+     foreground, ruled lines on the buildings, and fine dense hatching for the
+     facade texture. The Ink Layer section says every other motif in this
+     system is that same material at a different size and never a second one,
+     and this is the smallest size it comes in. Strokes, not a scene: the
+     landing page already carries the store's wall in the hero, and The One
+     Drawn Scene Per Page Rule is why nothing here is a second one. The empty
+     cart's traffic signal was withdrawn for exactly this, and it was withdrawn
+     from a page whose background already held signals.
 
-  /* One hard band per stop, painted from the component. */
-  .heat-slider__bands {
+     WHY THE INK IS ORANGE AND NOT BONE. On the amber ground the drawing is
+     char, and on a charcoal card it is bone. Neither works here. Bone at a
+     low alpha over Char is the grey trap The Drawing Darkens the Ground Rule
+     names: 8 percent of it composites to `rgb(30 29 30)`, a neutral this
+     system does not have, arrived at by the back door. Buffalo Orange at the
+     same alpha composites to `rgb(29 18 12)`, which is warm brown, and
+     DESIGN.md already admits orange as a graphic on dark. A texture is a
+     graphic.
+
+     THE PITCH IS SET BY The Hatching Stays Strokes Rule. Facade hatching is
+     discrete strokes and never a tone, and the failure mode is a stroke
+     falling under one device pixel and becoming a wash. So these are drawn at
+     2px on an 11px pitch rather than scaled down from anything: two device
+     pixels at 1dppx and four at 2, which cannot thin into a grey however the
+     page is zoomed. Cross hatched, because one direction alone reads as a
+     stripe and the facade it comes from is crossed.
+
+     IT IS STRONGEST WHERE THE BAND IS EMPTY, AND THE MASK MEASURES THAT IN
+     THE CONTAINER'S OWN UNITS.
+     ================================================================
+     Full weight at the viewport's outer edges, fading to an eighth of it by
+     the time it reaches the content column, which is the bare margin a centred
+     `max-w-6xl` leaves either side: about 350px at 1920 and 110px at 1440.
+     The stops are `calc(50% ± 38rem)` rather than a percentage, and that is
+     the whole trick. 38rem is half the container plus its gutter, so the
+     protected zone is the column itself at every width and there is always a
+     64px buffer between the last strong pixel and the first glyph.
+
+     A percentage was there first and it was wrong on a phone. Thirty three
+     percent of 390px is 129px, the copy runs from 20px to 370px, and the
+     outer thirds of the mask were therefore squarely behind the branch
+     addresses: bone at 50 on a full strength stroke measures 4.47:1, which is
+     under AA and the only place on either band that was. Below about 1216px
+     the calc stops fall outside the box, CSS clamps a decreasing stop to the
+     one before it, and the whole band flattens to the low weight on its own.
+     A narrow viewport has no bare margin to decorate anyway, so that is the
+     right answer rather than a degraded one.
+
+     A browser without mask support gets the even field at full weight. That
+     is the readable version and it costs the copy about a fifth of a ratio. */
+  .band-ink::before {
+    content: "";
     position: absolute;
     inset: 0;
-  }
-
-  /* Firelight falling back onto the bar: brightest along the top edge,
-     where the flames actually sit, and gone by halfway down. The bar is
-     a hard graphic object and the fire is a soft lit one, and without
-     this they read as two drawings stacked rather than one thing on
-     fire. Screened, so it adds light to each swatch rather than washing
-     a pale film over all five. */
-  .heat-slider__lit {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      #fff3c8 0%,
-      var(--color-nybb-heat-1) 22%,
-      transparent 58%
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      repeating-linear-gradient(
+        -58deg,
+        color-mix(in oklab, var(--color-nybb-orange) 9%, transparent) 0 2px,
+        transparent 2px 11px
+      ),
+      repeating-linear-gradient(
+        32deg,
+        color-mix(in oklab, var(--color-nybb-orange) 6%, transparent) 0 2px,
+        transparent 2px 17px
+      ),
+      /* A third pass at forty times the pitch, so the hatching gathers into
+         broad soft swathes instead of lying down as an even weave. Marker
+         hatching is laid in passes and a hand does not space them evenly; an
+         unmodulated field of it is a fabric, which is the one thing a drawn
+         texture must not look like. No hard stop anywhere in it, so the
+         swathes have no edge to find. */
+      repeating-linear-gradient(
+        -58deg,
+        transparent 0,
+        color-mix(in oklab, var(--color-nybb-orange) 4%, transparent) 70px,
+        transparent 140px,
+        transparent 330px
+      );
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 0,
+      rgb(0 0 0 / 0.12) calc(50% - 38rem),
+      rgb(0 0 0 / 0.12) calc(50% + 38rem),
+      #000 100%
     );
-    opacity: calc(0.16 + 0.4 * var(--heat-flame));
-    mix-blend-mode: screen;
+    mask-image: linear-gradient(
+      90deg,
+      #000 0,
+      rgb(0 0 0 / 0.12) calc(50% - 38rem),
+      rgb(0 0 0 / 0.12) calc(50% + 38rem),
+      #000 100%
+    );
   }
 
-  .heat-slider[data-cold="true"] .heat-slider__lit,
-  .heat-slider[data-chosen="false"] .heat-slider__lit {
-    display: none;
-  }
-
-  /* The unlit run is shrouded rather than recoloured, so the swatch
-     under it is still the swatch that level will be when it lights. */
-  .heat-slider__shroud {
+  .band-ink::after {
+    content: "";
     position: absolute;
-    inset-block: 0;
-    inset-inline-end: 0;
-    inline-size: calc(100% - var(--heat-fill));
-    background: var(--color-nybb-ink);
-    opacity: 0.82;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 0.55 0 0 0 0 0.2 1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .heat-slider[data-cold="true"] .heat-slider__shroud {
-    inline-size: 100%;
-  }
+  /* THE LIT THING LIGHTS ITS GROUND.
+     ================================================================
+     A decorative layer, `aria-hidden`, behind a band's content. Both
+     bands hold something that is burning or lit, and on the flat fill
+     neither of them threw any light: the meter's fire stopped dead at
+     the edge of its own box, and a photograph of a counter under lit
+     orange signage sat in the dark as a rectangle with a hard edge.
+     Fire that lights nothing is a sticker.
 
-  /* The thumb rides the burning edge. Transform only, so moving it
-     never reflows the row. */
-  .heat-slider__thumb {
+     So each band carries a wide warm field anchored on whatever in it
+     is hot, bleeding off the edges rather than closing into a halo. A
+     halo has a boundary and a boundary makes it an object; this has to
+     stay weather.
+
+     The colour is not decoration's choice. The heat band takes the
+     ramp's own swatches, because the thing alight in it is the scale.
+     The branches band takes Buffalo Orange, because the thing alight
+     in it is a shopfront under the store's own signage. The two never
+     get swapped, and neither field ever quotes a level: a field is
+     spill light, not a sixth stop, so The One Heat Surface Per Page
+     Rule is untouched.
+
+     THE BUDGET, READ BACK OFF THE RENDERED PAGE RATHER THAN INTENDED.
+     No field is written above 9 percent, and where the heat band's two
+     overlap, its ground measures `rgb(35 27 24)`: warm brown, and not
+     the neutral grey this system does not have. The branches band's
+     one field peaks at `rgb(28 20 15)`. The tightest pair on either is
+     the heat band's caption, bone at 55, which is 5.68:1 on the band's
+     own Char and 5.41:1 on the core of the field. Every band paragraph
+     is bone at 65 and none of them drops under 7. So the whole
+     material costs about a quarter of a contrast ratio, and 9 percent
+     is where the caption's floor put the ceiling rather than a taste.
+
+     The grain is measured the same way: the darkest ground on either
+     band reads `rgb(11 11 12)` to `rgb(12 12 12)`, so the dither moves
+     Char by at most a level and the brand's near black is still the
+     brand's near black. */
+  .band-lit {
     position: absolute;
-    inset-block-end: calc(var(--track-height) / 2);
-    inset-inline-start: var(--heat-fill);
-    inline-size: var(--thumb-size);
-    block-size: var(--thumb-size);
-    margin-inline-start: calc(var(--thumb-size) / -2);
-    margin-block-end: calc(var(--thumb-size) / -2);
-    border-radius: 9999px;
-    background: var(--color-nybb-bone);
-    border: 3px solid var(--heat-colour);
-    /* Two rings: a tight one that reads as a control, and a wide soft one
-       that is the fire's light on the thumb sitting in it. */
-    box-shadow:
-      0 0 0 4px color-mix(in oklch, var(--heat-colour) 35%, transparent),
-      0 0 calc(var(--thumb-size) * 0.9) calc(var(--thumb-size) * 0.16)
-        color-mix(in oklch, var(--heat-colour) calc(var(--heat-flame) * 55%), transparent);
-    transition:
-      inset-inline-start 260ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 160ms ease-out;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
   }
 
-  .heat-slider[data-live="true"] .heat-slider__thumb {
-    transform: scale(1.12);
+  /* THE GLOW IS SCREENED, BECAUSE A PRINTED SHEET CANNOT PRINT A TONE.
+     ================================================================
+     The fields above are smooth CSS radials, and a smooth radial is the one
+     thing the object this whole system is modelled on cannot do. A press
+     lays down solid ink or no ink; everything between is a screen of dots,
+     and the dots get smaller as the tone falls away. So the light in these
+     bands breaks into a dot screen where it runs out.
+
+     That is the whole justification and it also decides the geometry. The
+     screen is a ring, not a disc: nothing in the core, where the tone is
+     solid enough to print flat, and nothing outside the falloff, where there
+     is no ink to screen. What is left is a band of dots around each light,
+     which is a second register against the line work of the hatching and sits
+     in the part of the band that was emptiest.
+
+     A staggered grid rather than a square one, two passes offset by half a
+     cell, because a square screen moires against the cross hatching under it
+     and a 45 degree screen is what a press would use anyway. The dots are
+     drawn at 1.4px on a 9px cell, which is the same stroke floor The Hatching
+     Stays Strokes Rule sets for the lines: below a device pixel a screen
+     stops being dots and becomes the grey this system does not have. */
+  .band-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(
+        circle,
+        color-mix(in oklab, var(--color-nybb-orange) 11%, transparent) 0 1.4px,
+        transparent 1.9px
+      ),
+      radial-gradient(
+        circle,
+        color-mix(in oklab, var(--color-nybb-orange) 11%, transparent) 0 1.4px,
+        transparent 1.9px
+      );
+    background-size: 9px 9px;
+    background-position:
+      0 0,
+      4.5px 4.5px;
   }
 
-  /* Nothing chosen yet. The thumb has to sit somewhere to be drawn, and
-     this is what stops that resting place from looking like an answer.
-     See lib/menu/heat-slider.ts. */
-  .heat-slider[data-chosen="false"] .heat-slider__thumb {
-    background: transparent;
-    border-color: var(--color-nybb-bone);
-    border-style: dashed;
-    box-shadow: none;
+  /* Two rings on the heat band, one for each light. Mask layers composite as
+     a union by default, so the two are written as one declaration. */
+  .band-screen-scale {
+    -webkit-mask-image:
+      radial-gradient(74% 48% at 64% 74%, transparent 0 38%, #000 66%, transparent 92%),
+      radial-gradient(54% 52% at 80% 20%, transparent 0 32%, #000 62%, transparent 90%);
+    mask-image:
+      radial-gradient(74% 48% at 64% 74%, transparent 0 38%, #000 66%, transparent 92%),
+      radial-gradient(54% 52% at 80% 20%, transparent 0 32%, #000 62%, transparent 90%);
   }
 
-  .heat-slider[data-chosen="false"] .heat-slider__shroud {
-    inline-size: 100%;
+  .band-screen-counter {
+    -webkit-mask-image: radial-gradient(
+      72% 60% at 31% 68%,
+      transparent 0 40%,
+      #000 68%,
+      transparent 94%
+    );
+    mask-image: radial-gradient(
+      72% 60% at 31% 68%,
+      transparent 0 40%,
+      #000 68%,
+      transparent 94%
+    );
   }
 
-  .heat-slider[data-chosen="false"] .heat-slider__fire {
-    display: none;
+  /* The sign in page's screen, and it is the one that is not a ring.
+     ----------------------------------------------------------------
+     A ring on the other two is the shape of a light running out: solid
+     in the core, dots through the falloff, nothing past it. This page
+     has no light, so there is no falloff to break up and a ring here
+     would be a halo drawn around nothing.
+
+     What it is instead is the other thing a press does with a screen: a
+     flat tint laid into the empty part of the sheet. Two fields anchored
+     off the top and bottom edges rather than floated in the middle, so
+     they stay on the edges at any section height, and the clear span
+     between them is proportional and always holds the centred column
+     that carries the heading, the paragraph and the card. The dots are
+     the same 1.4px on a 9px cell as the bands, because the screen is one
+     material and this is not a second one. */
+  .band-screen-signin {
+    -webkit-mask-image:
+      radial-gradient(120% 40% at 50% -4%, #000 0 28%, transparent 78%),
+      radial-gradient(120% 44% at 38% 104%, #000 0 28%, transparent 80%);
+    mask-image:
+      radial-gradient(120% 40% at 50% -4%, #000 0 28%, transparent 78%),
+      radial-gradient(120% 44% at 38% 104%, #000 0 28%, transparent 80%);
   }
 
-  /* The real control, invisible over the artwork. Full size so the whole
-     bar is the hit area, and a tall minimum so a thumb on a phone has
+  /* The scale's own spill: a low wide pool under the bar, hottest
+     toward the right where Wild and Insane are, and a second thinner
+     rise above it. Heat rises, so the field is tallest over the hot
+     end, which is also the half of the band the copy leaves empty. */
+  .band-lit-scale {
+    background-image:
+      radial-gradient(
+        72% 46% at 62% 74%,
+        color-mix(in oklab, var(--color-nybb-heat-3) 9%, transparent) 0%,
+        color-mix(in oklab, var(--color-nybb-heat-5) 4%, transparent) 46%,
+        transparent 74%
+      ),
+      radial-gradient(
+        56% 52% at 78% 20%,
+        color-mix(in oklab, var(--color-nybb-heat-4) 7%, transparent) 0%,
+        transparent 74%
+      );
+  }
+
+  /* The counter's own spill: one field, anchored on the photograph in
+     the left column and reaching up and across rather than ringing it.
+
+     One, and not two. A second field was tried in the empty bottom
+     right, where the odd branch count leaves the list ragged, and it
+     was the linear wash's mistake wearing a different shape: there is
+     nothing alight in that corner, so a glow there is a light with no
+     lamp. The corner stays dark, which is the honest answer, because
+     the only lit thing in this band is on the left. */
+  .band-lit-counter {
+    background-image: radial-gradient(
+      72% 58% at 30% 68%,
+      color-mix(in oklab, var(--color-nybb-orange) 8%, transparent) 0%,
+      transparent 76%
+    );
+  }
+
+  /* The sliding heat bar.
+     ================================================================
+     The picture is components/menu/HotnessMeter.tsx and its CSS module.
+     What is left here is the slider's own: the invisible input laid
+     over the meter's tube, and the readout under it. The input is full width so the whole
+     bar is the hit area, and at
+     least 2.75rem tall, centred on the tube, so a thumb on a phone has
      something to land on. */
   .heat-slider__input {
     position: absolute;
-    inset-block-end: 0;
     inset-inline: 0;
+    top: 50%;
     inline-size: 100%;
-    block-size: max(2.75rem, calc(var(--track-height) * 2));
+    block-size: 2.75rem;
     margin: 0;
+    transform: translateY(-50%);
     opacity: 0;
     cursor: pointer;
+    touch-action: pan-y;
     -webkit-appearance: none;
     appearance: none;
     background: transparent;
   }
 
-  .heat-slider__input:focus-visible + .heat-slider__ticks,
-  .heat-slider__input:focus-visible ~ .heat-slider__thumb {
-    outline: none;
-  }
-
-  /* The focus ring goes on the painted thumb, because the input it
+  /* The focus ring goes on the painted pointer, because the input it
      belongs to is invisible. */
-  .heat-slider:has(.heat-slider__input:focus-visible) .heat-slider__thumb {
+  .heat-slider:has(.heat-slider__input:focus-visible) [data-meter-needle] {
     outline: 3px solid var(--color-nybb-orange);
     outline-offset: 3px;
-  }
-
-  /* Fire.
-     ----------------------------------------------------------------
-     Drawn full width and masked back to the lit run, rather than sized
-     to it. Sized to the run, the SVG squashed horizontally as the bar
-     cooled and the tongues compressed into slivers at Lite.
-
-     The mask also ramps: dim at the cold end, full at the burning edge.
-     A uniform band of fire along the whole bar reads as a rectangle of
-     texture laid on top. Ramped, it reads as a fire that has advanced
-     to where the thumb is, which is both what a slider means and what
-     fire does.
-
-     Every stop is a fraction of --heat-fill, and none of them is a fixed
-     percentage. A fixed one shipped here and drew the fire past the end
-     of the lit run: the ramp's middle stop sat at 38%, which is beyond
-     the fill at Lite (20%) and Moderate (40%), and CSS clamps a gradient
-     stop that falls before the one in front of it. Both later stops
-     collapsed onto 38% and the fire ended in a hard vertical edge a
-     third of the way along a bar that was only a fifth alight. */
-  .heat-slider__fire {
-    position: absolute;
-    /* Only the bottom sliver tucks behind the bar. Any deeper and the
-       track covers the flame bases, which are the brightest part of a
-       flame, and the fire reads as a dim haze. */
-    inset-block-end: calc(var(--track-height) * 0.82);
-    inset-inline: 0;
-    block-size: var(--flame-height);
-    pointer-events: none;
-    /* Visible, not hidden: the displacement pushes tips past where the
-       paths end and the blur softens them past that again, so a box
-       ending exactly where the paths do cuts that soft edge off square.
-       The mask is the only clipping this needs. */
-    overflow: visible;
-    -webkit-mask-image: linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.85) calc(var(--heat-fill) * 0.5),
-      #000 calc(var(--heat-fill) * 0.88),
-      transparent var(--heat-fill)
-    );
-    mask-image: linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.85) calc(var(--heat-fill) * 0.5),
-      #000 calc(var(--heat-fill) * 0.88),
-      transparent var(--heat-fill)
-    );
-  }
-
-  .heat-slider[data-cold="true"] .heat-slider__fire,
-  .heat-slider[data-chosen="false"] .heat-slider__fire {
-    display: none;
-  }
-
-  /* The bed. A tight white hot line where the fire meets the bar, not a
-     tall wash of the level's colour: the old bed was a blurred slab of
-     signage red over sixty percent of the height, which is a maroon
-     stain rather than a source of light. Every flame is brightest where
-     it touches its fuel, whatever colour the rest of it is. */
-  .heat-slider__bed {
-    position: absolute;
-    inset-inline: 0;
-    inset-block-end: 0;
-    block-size: 34%;
-    background: linear-gradient(
-      to top,
-      #fff2c4 0%,
-      var(--color-nybb-heat-1) 26%,
-      var(--heat-colour) 62%,
-      transparent 100%
-    );
-    opacity: calc(0.22 + 0.5 * var(--heat-flame));
-    filter: blur(calc(var(--flame-height) * 0.07));
-  }
-
-  .heat-slider__flames {
-    position: absolute;
-    inset: 0;
-    inline-size: 100%;
-    block-size: 100%;
-    overflow: visible;
-  }
-
-  /* Intensity lives on the layer, so one transform takes the whole fire
-     from Lite to Insane and each tongue is free to carry its own travel.
-
-     Floored, not raw: --heat-flame is 0.2 at Lite, and a fire drawn at a
-     fifth of its height is shorter than the blur that softens it, so it
-     smears into a stain instead of reading as a small flame. "No heat"
-     still shows nothing: the fire is hidden outright at zero. */
-  .heat-slider__layer {
-    transform: scaleY(calc(0.36 + 0.64 * var(--heat-flame)));
-    transform-box: view-box;
-    transform-origin: 50% 100%;
-    transition: transform 280ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .heat-slider__tongue {
-    transform-box: fill-box;
-    transform-origin: 50% 100%;
-  }
-
-  /* Brighter where the licks cross each other and the body behind them,
-     the way overlapping flame actually adds light. */
-  .heat-slider__tongue--lick,
-  .heat-slider__tongue--body {
-    /* Screened, both layers. Overlapping flame adds light; overlapping
-       translucent shapes on normal compositing just accumulate toward
-       opaque, which is exactly how the body turned into a slab. */
-    mix-blend-mode: screen;
-  }
-
-  .heat-slider__tongue--body {
-    opacity: 0.72;
-  }
-
-  /* Motion.
-     ----------------------------------------------------------------
-     Only while somebody is working the control. The still fire above is
-     the default, so no JavaScript and reduced motion both keep a drawn
-     flame rather than an empty bar.
-
-     The body sways and the licks travel. That split is the point: the
-     first fire scaled every tongue in place on an alternating ease,
-     which is a row of shapes breathing in unison, not fire. Flame is
-     born at the fuel, rises, narrows and goes out. */
-  .heat-slider[data-live="true"] .heat-slider__tongue--body {
-    animation: heat-sway var(--dur, 2s) ease-in-out infinite alternate;
-    animation-delay: calc(var(--delay, 0s) * -1);
-  }
-
-  .heat-slider[data-live="true"] .heat-slider__tongue--lick {
-    animation: heat-rise var(--dur, 1s) ease-out infinite;
-    animation-delay: calc(var(--delay, 0s) * -1);
-  }
-
-  @keyframes heat-sway {
-    from {
-      transform: scaleY(0.93) scaleX(1.05) translateX(-1%);
-    }
-    to {
-      transform: scaleY(1.07) scaleX(0.95) translateX(1%);
-    }
-  }
-
-  /* Born, risen, gone. Not alternating: a lick that ran backwards would
-     descend into the bar, which nothing on fire has ever done. */
-  @keyframes heat-rise {
-    0% {
-      transform: translateY(12%) scaleY(0.5) scaleX(1.25);
-      opacity: 0;
-    }
-    22% {
-      opacity: 1;
-    }
-    58% {
-      transform: translateY(-4%) scaleY(1.06) scaleX(0.88);
-      opacity: 0.82;
-    }
-    100% {
-      transform: translateY(-24%) scaleY(0.78) scaleX(0.42);
-      opacity: 0;
-    }
-  }
-
-  /* Stop names, one under each band. */
-  .heat-slider__ticks {
-    margin-block-start: 0.75rem;
-    display: grid;
-    grid-template-columns: repeat(var(--heat-stops), minmax(0, 1fr));
-    /* These are micro-labels, which is exactly what .type-caps is for. */
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.14em;
-    text-align: center;
-  }
-
-  @media (min-width: 640px) {
-    .heat-slider[data-variant="band"] .heat-slider__ticks {
-      font-size: 0.875rem;
-    }
-  }
-
-  .heat-slider__ticks li {
-    color: color-mix(in oklch, var(--color-nybb-bone) 45%, transparent);
-    transition: color 160ms ease-out;
-  }
-
-  .heat-slider__ticks li[data-on="true"] {
-    color: var(--color-nybb-bone);
   }
 
   /* The readout. Name in Anton, percentage and price in tabular mono,
@@ -1514,6 +1927,100 @@
     font-size: clamp(2.25rem, 5vw, 3.5rem);
     line-height: 0.9;
     letter-spacing: -0.008em;
+    /* The level wears its own swatch, set on the readout by the component.
+       Transitioned on the meter's own 450ms, so the word changes colour on
+       the same clock the bar changes on rather than snapping ahead of it. */
+    color: var(--readout-swatch, var(--color-nybb-bone));
+    transition: color 450ms ease-out;
+  }
+
+  /* THE BAND'S HEAD: WHAT HEAT IS, AND WHAT YOU ARE HOLDING.
+     ================================================================
+     The band used to be a heading over a half width paragraph, a great deal
+     of nothing, and then the bar. The readout sat under the bar at the major
+     heading step, which is the right size for the section's real headline and
+     the wrong place for it: bottom left, below the thing it describes, in the
+     corner a reader has already left.
+
+     So the head is a two column row. The section's own heading on the left,
+     the live readout on the right, the bar full width underneath. The right
+     hand column is the only part of this page that answers back, and putting
+     it on the headline's line is what makes the empty half of the band into
+     the half that moves.
+
+     Baseline aligned to the bottom of both columns rather than the top,
+     because the two are different lengths and the thing they have in common
+     is the bar they both sit on. */
+  .heat-slider__head {
+    display: grid;
+    gap: 2.5rem;
+    align-items: end;
+  }
+
+  @media (min-width: 64rem) {
+    .heat-slider__head {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 3rem 4rem;
+    }
+  }
+
+  /* The name takes a line of its own and the two numbers share the next, which
+     is what `flex-basis` buys without a wrapper element the inline variant
+     would also have to carry. */
+  .heat-slider__head .heat-slider__readout {
+    margin-block-start: 0;
+    gap: 0.75rem 1.25rem;
+  }
+
+  .heat-slider__head .heat-slider__name {
+    flex-basis: 100%;
+  }
+
+  /* Bigger than the heading opposite it, and deliberately. The headline is
+     a fixed sentence and this is the live one: it is the only thing in the
+     band that answers, so it outranks the thing that asks. Held under the
+     hero's own step, because the first screen keeps the largest type on the
+     site. */
+  .heat-slider__head .heat-slider__name {
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 0.85;
+    letter-spacing: -0.015em;
+  }
+
+  .heat-slider__head .heat-slider__percent,
+  .heat-slider__head .heat-slider__price {
+    font-size: 1.25rem;
+  }
+
+  @media (min-width: 64rem) {
+    .heat-slider__head .heat-slider__readout {
+      justify-content: flex-end;
+      text-align: right;
+    }
+  }
+
+  /* The bar keeps its own distance from the head, and the head is what sets
+     it: a row of type wants more air under it than a caption did. */
+  .heat-slider__head + .heat-slider__scale {
+    margin-block-start: 3.5rem;
+    /* A rule across the band under the head, the same bone hairline the
+       pickup steps and the branch list are ruled with. Without it the
+       headline and the readout are two objects a long way apart in a lot of
+       black; with it they are the two ends of one printed row, and the bar
+       hangs off the bottom of it. Padding rather than margin so the rule sits
+       against the head and the air belongs to the bar. */
+    border-block-start: 1px solid color-mix(in oklab, var(--color-nybb-bone) 15%, transparent);
+    /* Short, because the meter brings its own headroom: the tongues are drawn
+       above the tube in the meter's own padding, so anything generous here is
+       added to air that is already there. */
+    padding-block-start: 1.5rem;
+  }
+
+  @media (min-width: 40rem) {
+    .heat-slider__head + .heat-slider__scale {
+      margin-block-start: 4rem;
+      padding-block-start: 2rem;
+    }
   }
 
   .heat-slider__percent,
@@ -1545,6 +2052,177 @@
      a compromise, which is the point. */
   .tile-orange {
     background-color: var(--color-nybb-orange);
+  }
+
+  /* THE SCROLL REVEALS, AND THE RULE THEY ARE ALLOWED UNDER.
+     ================================================================
+     DESIGN.md's Don'ts carried a flat ban: no blanket entrance animation on
+     sections as they scroll, because one fade applied to seven sections in
+     turn says nothing about any of them. The owner narrowed that rule on
+     2026-09-21 rather than lifting it. What stays banned is the
+     undifferentiated version. What is now allowed is a list arriving as a
+     list, and this page has three real ones: ten flavours, the featured
+     tiles, and nine counters. How pickup works and the franchise line carry
+     no marker at all and are never touched, because neither of them is a
+     sequence and a fade would be the only thing saying otherwise.
+
+     THE STYLESHEET NEVER HIDES ANYTHING BY ITSELF.
+     ================================================================
+     `.reveal` and `.reveal-stagger` are markers with no declarations against
+     them. Every rule below keys on `[data-reveal]`, and the only thing that
+     writes that attribute is components/site/ScrollReveal.tsx, which returns
+     early under reduced motion or a missing IntersectionObserver. So the page
+     ships drawn and stays drawn for a reader with no JavaScript, for a
+     crawler, and for anybody whose script fails. This is the same rule the
+     heat meter follows when it draws a complete still fire rather than an
+     empty box.
+
+     `translate` rather than a `transform`, because the flavour tiles and the
+     product tiles already spend `transform` on the shared 2% press and on the
+     photograph's hover scale, and the independent property composes with them
+     instead of overwriting whichever one happens to run second. */
+  [data-reveal] {
+    opacity: 0;
+    translate: 0 var(--reveal-rise, 1.5rem);
+    transition:
+      opacity var(--reveal-ms, 640ms) cubic-bezier(0.16, 1, 0.3, 1)
+        var(--reveal-delay, 0ms),
+      translate var(--reveal-ms, 640ms) cubic-bezier(0.16, 1, 0.3, 1)
+        var(--reveal-delay, 0ms);
+  }
+
+  [data-reveal="in"] {
+    opacity: 1;
+    translate: none;
+  }
+
+  /* Shown rather than arrived, which is what focus asks for.
+     ================================================================
+     Flipping a hidden element to `in` starts a transition, and a transition's
+     first painted frame is still the start value: measured here, a focused
+     control stayed at zero opacity for about three frames before it began to
+     rise. That is fine for an arrival nobody is waiting on and wrong for a
+     keyboard reader who has just pressed Tab and is looking for the focus
+     ring. So focus takes the finished state directly, with no transition to
+     sit through. See the `focusin` handler in ScrollReveal.tsx. */
+  [data-reveal="shown"] {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+
+  /* The dark full bleed bands arrive heavier than the light sections do.
+     DESIGN.md says alternating bare ground with full bleed dark bands is how
+     this page gets its structure, so the two kinds of passage are different
+     material and it would be odd for them to move identically. A band's
+     contents rise further and settle slower: 36px over 760ms against 24px
+     over 640ms. Both custom properties inherit, so this class goes on the
+     band's own `.reveal` element or on its `.reveal-stagger` container and
+     the children take it from there. */
+  .reveal-band {
+    --reveal-rise: 2.25rem;
+    --reveal-ms: 760ms;
+  }
+
+  /* Belt and braces against the script and the stylesheet disagreeing. The
+     component reads `prefers-reduced-motion` once at mount and does not
+     subscribe, so somebody who turns the setting on partway down the page has
+     hidden elements already in the document. This flattens them where they
+     stand instead of leaving them to a transition that the global reduced
+     motion block has just cut to 0.01ms, which would be a jump rather than a
+     state. */
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal],
+    [data-reveal="in"] {
+      opacity: 1;
+      translate: none;
+      transition: none;
+    }
+  }
+
+  /* Print takes the finished page. A reader printing a menu while the tiles
+     below the fold are still waiting for an intersection that a print context
+     never produces would otherwise get blank paper where the flavours are.
+     `!important` because the unlayered reduced motion block at the end of this
+     file outranks anything inside `@layer components`. */
+  @media print {
+    [data-reveal] {
+      opacity: 1 !important;
+      translate: none !important;
+    }
+  }
+
+  /* THE HERO HANDS THE PAGE OVER RATHER THAN BEING CUT AWAY FROM.
+     ================================================================
+     Two scroll linked moves, both on the hero and both finished before the
+     flavour grid starts. The copy lags the scroll by about 40px and dims, so
+     the type reads as sitting a little behind the window rather than taped to
+     it, and the picture takes ink as it goes, so the join into the amber
+     ground below is a dissolve instead of a cut.
+
+     `scroll(root block)` RATHER THAN `view()`, AND THAT IS NOT A PREFERENCE.
+     ================================================================
+     `view()` resolves against the nearest scroll container, and the hero
+     section is `overflow-hidden`, which makes it one. Every element here is
+     inside it, so a view timeline would measure progress against a box that
+     never scrolls and sit at 0 forever. The root scroller is reachable by
+     name from anywhere, and the range is then written in viewport heights,
+     which is the unit the hero's own `min-h-[78svh]` is written in.
+
+     Nothing moves at rest. Both ranges start at a scroll offset, and before a
+     range begins a scroll linked animation clamps to its first keyframe, so
+     the hero at the top of the page is pixel for pixel what it was. That
+     matters more here than usual: the hero's contrast is held by a measured
+     scrim and a compound halo, and the ink this adds only ever deepens, so
+     every ratio on the surface goes up as it runs and none goes down.
+
+     The short viewport opts out, keying on height the way the rest of the
+     hero does. Under 500px the section gives back its padding, the headline
+     drops to 2.5rem and the whole thing is about 300px tall, so a 40px lag is
+     a seventh of the composition rather than a hint, and there is no room for
+     the copy to drift into. */
+  @keyframes hero-drift {
+    from {
+      translate: 0 0;
+      opacity: 1;
+    }
+    to {
+      translate: 0 2.5rem;
+      opacity: 0.3;
+    }
+  }
+
+  @keyframes hero-dim {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 0.55;
+    }
+  }
+
+  .hero-dim {
+    position: absolute;
+    inset: 0;
+    background-color: var(--color-nybb-ink);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  @supports (animation-timeline: scroll(root block)) {
+    @media (prefers-reduced-motion: no-preference) and (min-height: 501px) {
+      .hero-drift {
+        animation: hero-drift linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 30vh 92vh;
+      }
+
+      .hero-dim {
+        animation: hero-dim linear both;
+        animation-timeline: scroll(root block);
+        animation-range: 0 92vh;
+      }
+    }
   }
 }
 

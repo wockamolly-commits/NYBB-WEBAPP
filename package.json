@@ -17,7 +17,8 @@
     "build:static-images": "tsx scripts/build-static-images.ts",
     "build:seed": "tsx scripts/build-seed.ts",
     "build:mural": "tsx scripts/trace-mural.ts",
-    "build:prices-to-confirm": "tsx scripts/build-prices-to-confirm.ts"
+    "build:prices-to-confirm": "tsx scripts/build-prices-to-confirm.ts",
+    "build:hero-slides": "tsx scripts/build-hero-slides.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -26,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.18.0",
+    "motion": "^13.4.0",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",

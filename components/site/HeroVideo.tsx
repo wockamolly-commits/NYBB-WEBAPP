@@ -4,9 +4,22 @@ import { Pause, Play } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { currentConnection, isMetered } from "@/lib/site/connection";
 
 /**
- * The landing hero loop.
+ * The landing hero loop, as a component on its own. Nothing renders it.
+ *
+ * The film itself is still the first thing the hero plays. What changed is who
+ * plays it: components/site/HeroSlideshow.tsx now owns the hero and runs the
+ * film as its first slide, once through rather than on a loop, followed by the
+ * two delivered wall murals.
+ *
+ * This file is what that was lifted from, kept because it is the film's
+ * original wiring and because the slideshow inherited every judgement in it
+ * (the poster underneath rather than a `poster` attribute, `preload` metadata,
+ * the connection gate, the control on its own ground). It is a duplicate now,
+ * and deleting it costs nothing but the note below, which is the only place
+ * some of this is written down.
  *
  * Source is the brand's own food film, 27 seconds of 1080p60 HEVC at 37 MB.
  * HEVC plays in Safari and in almost nothing else, and 37 MB is not a hero, so
@@ -63,29 +76,6 @@ import { Button } from "@/components/ui/Button";
  * cropped out at the encoder there is nothing left for it to do.
  */
 
-type NetworkInformation = {
-  saveData?: boolean;
-  effectiveType?: string;
-  downlink?: number;
-  addEventListener?: (type: "change", listener: () => void) => void;
-  removeEventListener?: (type: "change", listener: () => void) => void;
-};
-
-/**
- * Is this a link that should not be spending 540 KB on decoration?
- *
- * Deliberately generous about what counts as slow, and deliberately silent when
- * the browser will not say. An unknown connection is treated as fine, because
- * the alternative is denying the video to every Safari visitor on fibre.
- */
-function isMetered(connection: NetworkInformation | undefined) {
-  if (!connection) return false;
-  if (connection.saveData) return true;
-  if (/(^|-)2g$/.test(connection.effectiveType ?? "")) return true;
-  if (connection.effectiveType === "3g") return true;
-  return typeof connection.downlink === "number" && connection.downlink < 1.5;
-}
-
 export function HeroVideo() {
   const [playable, setPlayable] = useState(false);
   const [playing, setPlaying] = useState(true);
@@ -93,7 +83,7 @@ export function HeroVideo() {
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const connection = (navigator as Navigator & { connection?: NetworkInformation }).connection;
+    const connection = currentConnection();
 
     const apply = () => setPlayable(!query.matches && !isMetered(connection));
 
