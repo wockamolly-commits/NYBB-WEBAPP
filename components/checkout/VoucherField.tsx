@@ -1,7 +1,10 @@
 "use client";
 
+import { Check, TicketPercent } from "lucide-react";
+import { PromoStub } from "@/components/promos/PromoStub";
 import { Button } from "@/components/ui/Button";
 import { formatPeso } from "@/lib/format";
+import { promoHeadline, type Promo } from "@/lib/promos/schema";
 import { cn } from "@/lib/utils";
 import type { AppliedVoucher } from "@/lib/vouchers/preview";
 
@@ -26,6 +29,10 @@ import type { AppliedVoucher } from "@/lib/vouchers/preview";
  * Like CustomerDetails beside it, this validates nothing. It says which code
  * was refused and why, in words, because a rule written here as well would be a
  * second opinion that drifts from the one that decides.
+ *
+ * THE CODE IS DRAWN AS A TICKET STUB, the same shape the bar and the promos
+ * page use, so the customer recognises the code they came in with before they
+ * read it.
  */
 export function VoucherField({
   code,
@@ -36,6 +43,8 @@ export function VoucherField({
   disabled,
   onApply,
   onRemove,
+  suggestions = [],
+  onUse,
 }: {
   code: string;
   onCodeChange: (code: string) => void;
@@ -46,38 +55,54 @@ export function VoucherField({
   disabled: boolean;
   onApply: () => void;
   onRemove: () => void;
+  /**
+   * Promos running at this counter that this customer has not spent. A tap
+   * sends the CODE through the same Apply path as typing it, so a suggestion
+   * is never a discount the browser decided on: the server still says whether
+   * this cart qualifies.
+   */
+  suggestions?: readonly Promo[];
+  onUse?: (code: string) => void;
 }) {
   const trimmed = code.trim();
 
   if (applied) {
     return (
       <div className="border-nybb-bone/15 mt-4 border-t pt-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <div className="min-w-0">
-            <p className="type-caps text-nybb-bone/55">Promo code</p>
-            {/* The code in the display face, because it is the thing the
-                customer recognises and the thing they would read back over the
-                phone if the counter asked. */}
-            <p className="font-display text-nybb-bone mt-1 truncate">{applied.code}</p>
-            {applied.description ? (
-              <p className="text-nybb-bone/55 mt-1 text-xs leading-relaxed">
-                {applied.description}
+        <p className="type-caps text-nybb-bone/55">Promo code</p>
+        <div className="bg-nybb-graphite mt-2 flex items-stretch rounded-md">
+          <PromoStub code={applied.code} />
+          <div className="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1 pl-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-nybb-bone flex items-center gap-1.5 text-sm">
+                <Check aria-hidden className="text-nybb-orange h-4 w-4 shrink-0" />
+                Applied
               </p>
-            ) : null}
+              {/* Bone rather than orange. The total below is the one orange
+                  figure on this card, and a second would be The One Loud
+                  Thing Rule failing by repetition. */}
+              <p className="font-mono-tabular text-nybb-bone/70 mt-0.5 text-xs whitespace-nowrap">
+                {formatPeso(applied.discountCents)} off
+              </p>
+            </div>
+            {/* Quiet, and not a destructive tone. Removing a code is a normal
+                thing to do mid-checkout, not a warning. */}
+            <Button
+              type="button"
+              tone="dark"
+              variant="ghost"
+              onClick={onRemove}
+              disabled={disabled || busy}
+              className="shrink-0"
+              aria-label={`Remove ${applied.code}`}
+            >
+              Remove
+            </Button>
           </div>
-          {/* Quiet, and not a destructive tone. Removing a code is a normal
-              thing to do mid-checkout, not a warning. */}
-          <Button
-            type="button"
-            tone="dark"
-            variant="secondary"
-            onClick={onRemove}
-            disabled={disabled || busy}
-            className="shrink-0"
-          >
-            Remove
-          </Button>
         </div>
+        {applied.description ? (
+          <p className="text-nybb-bone/55 mt-2 text-xs leading-relaxed">{applied.description}</p>
+        ) : null}
       </div>
     );
   }
@@ -88,37 +113,43 @@ export function VoucherField({
         Promo code
       </label>
       <div className="mt-2 flex gap-2">
-        <input
-          id="voucher-code"
-          name="voucherCode"
-          value={code}
-          onChange={(event) => onCodeChange(event.target.value)}
-          // Enter inside a form submits it, and submitting the checkout form is
-          // not what somebody pressing Enter in this field means.
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              if (trimmed !== "") onApply();
-            }
-          }}
-          disabled={disabled}
-          autoComplete="off"
-          autoCapitalize="characters"
-          spellCheck={false}
-          placeholder="Enter a code"
-          aria-describedby={error ? "voucher-error" : "voucher-hint"}
-          aria-invalid={error ? true : undefined}
-          className={cn(
-            // 16px, for the same reason CustomerDetails gives: anything smaller
-            // and iOS Safari zooms the page in mid-checkout.
-            "min-w-0 flex-1 rounded-md border bg-transparent px-3 py-2.5 text-base leading-normal",
-            "text-nybb-bone placeholder:text-nybb-bone/35 uppercase",
-            "transition-[border-color] duration-200 ease-out",
-            error
-              ? "border-nybb-red"
-              : "border-nybb-bone/25 hover:border-nybb-bone/45 focus:border-nybb-bone/60",
-          )}
-        />
+        <div className="relative min-w-0 flex-1">
+          <TicketPercent
+            aria-hidden
+            className="text-nybb-bone/55 pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+          />
+          <input
+            id="voucher-code"
+            name="voucherCode"
+            value={code}
+            onChange={(event) => onCodeChange(event.target.value)}
+            // Enter inside a form submits it, and submitting the checkout form
+            // is not what somebody pressing Enter in this field means.
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                if (trimmed !== "") onApply();
+              }
+            }}
+            disabled={disabled}
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            placeholder="Enter a code"
+            aria-describedby={error ? "voucher-error" : "voucher-hint"}
+            aria-invalid={error ? true : undefined}
+            className={cn(
+              // 16px, for the same reason CustomerDetails gives: anything
+              // smaller and iOS Safari zooms the page in mid-checkout.
+              "w-full rounded-md border bg-transparent py-2.5 pr-3 pl-9 text-base leading-normal",
+              "text-nybb-bone placeholder:text-nybb-bone/35 uppercase",
+              "transition-[border-color] duration-200 ease-out",
+              error
+                ? "border-nybb-red"
+                : "border-nybb-bone/25 hover:border-nybb-bone/45 focus:border-nybb-bone/60",
+            )}
+          />
+        </div>
         <Button
           type="button"
           tone="dark"
@@ -147,6 +178,47 @@ export function VoucherField({
           One code per order. Codes cannot be combined.
         </p>
       )}
+
+      {/* THE CODES THE CUSTOMER DID NOT HAVE TO BE TOLD.
+          The field above assumes somebody was handed a code. These are the
+          ones the owner has published, so a customer who came straight here
+          from the cart can take one in a tap instead of leaving checkout to
+          find the promos page. Two at most: more than that is a list, and the
+          list lives on /promos. */}
+      {suggestions.length > 0 && onUse ? (
+        <div className="mt-4">
+          <p className="text-nybb-bone/70 text-sm">Running at this counter</p>
+          <ul className="mt-2 space-y-2">
+            {suggestions.slice(0, 2).map((promo) => {
+              const { value, scope } = promoHeadline(promo);
+              return (
+                <li key={promo.code}>
+                  <button
+                    type="button"
+                    onClick={() => onUse(promo.code)}
+                    disabled={disabled || busy}
+                    aria-label={`Apply ${promo.code}${value ? `, ${value}` : ""}`}
+                    className="group border-nybb-bone/40 hover:border-nybb-bone/65 hover:bg-nybb-bone/5 flex min-h-11 w-full items-stretch rounded-md border border-dashed text-left transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <PromoStub code={promo.code} size="sm" className="-my-px -ml-px" />
+                    <span className="min-w-0 flex-1 px-3 py-2">
+                      {value ? (
+                        <span className="text-nybb-bone block text-sm leading-tight">{value}</span>
+                      ) : null}
+                      <span className="text-nybb-bone/55 block truncate text-xs leading-snug">
+                        {scope}
+                      </span>
+                    </span>
+                    <span className="font-display text-nybb-orange group-hover:text-nybb-orange-lit flex shrink-0 items-center pr-3 text-sm tracking-[0.06em] uppercase transition-colors duration-200">
+                      Use
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

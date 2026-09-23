@@ -10,6 +10,7 @@ import { PendingPayment } from "@/components/checkout/PendingPayment";
 import { payOrder } from "@/app/actions/payment";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
 import { OrderTotals, VoucherField } from "@/components/checkout/VoucherField";
+import { PromoStub } from "@/components/promos/PromoStub";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
 import { clearCart } from "@/lib/cart/store";
@@ -17,6 +18,8 @@ import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
 import { formatSlotRange } from "@/lib/slots/format";
+import { readPendingPromo, rememberPendingPromo } from "@/lib/promos/pending";
+import { promoHeadline, type Promo } from "@/lib/promos/schema";
 import { storefrontAccessToken } from "@/lib/supabase/browser";
 import type { CheckoutDetails, CheckoutField, PlacedOrder } from "@/lib/checkout/types";
 import type { PickupSlots } from "@/lib/slots/types";
@@ -61,6 +64,7 @@ export function CheckoutView({
   storeChosen = false,
   storeCount = 0,
   initialPromoCode = null,
+  promos = [],
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
@@ -90,6 +94,12 @@ export function CheckoutView({
    * server decides what it is worth.
    */
   initialPromoCode?: string | null;
+  /**
+   * Promos running at this counter that this customer has not spent, for the
+   * one-tap suggestions under the code field. Read by the page from the same
+   * memoised listing the promo bar uses, so the two never disagree.
+   */
+  promos?: readonly Promo[];
 }) {
   const router = useRouter();
   const { cart, loaded } = useCart();
@@ -125,8 +135,17 @@ export function CheckoutView({
   // below fires on mount and asks the server about the real cart. Done in the
   // initialiser rather than in an effect so there is no render where the field
   // is empty, and so Remove genuinely removes: the seed cannot run twice.
-  const [voucherCode, setVoucherCode] = useState(initialPromoCode ?? "");
-  const [appliedCode, setAppliedCode] = useState<string | null>(initialPromoCode);
+  //
+  // Failing a `?promo=`, a code this tab asked for earlier is picked up from
+  // session storage (see lib/promos/pending.ts). Reading it in the initialiser
+  // is safe on hydration because this component renders the same skeleton on
+  // both passes until the cart store reports it has loaded.
+  const [voucherCode, setVoucherCode] = useState(
+    () => initialPromoCode ?? readPendingPromo() ?? "",
+  );
+  const [appliedCode, setAppliedCode] = useState<string | null>(
+    () => initialPromoCode ?? readPendingPromo(),
+  );
   const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [checkingVoucher, startCheckingVoucher] = useTransition();
@@ -232,8 +251,15 @@ export function CheckoutView({
     };
   }, [appliedCode, cartSignature, previewBranchSlug]);
 
-  function applyVoucher() {
-    const code = voucherCode.trim().toUpperCase();
+  // Kept for the tab, so a code asked for with an empty cart survives the trip
+  // to the menu and is waiting when the customer comes back. Removing it
+  // forgets it the same way. Only a request is stored, never a discount.
+  useEffect(() => {
+    rememberPendingPromo(appliedCode);
+  }, [appliedCode]);
+
+  function applyVoucher(chosen?: string) {
+    const code = (chosen ?? voucherCode).trim().toUpperCase();
     if (code === "") return;
     startCheckingVoucher(() => {
       // Applying replaces whatever was applied before. One code per order, so
@@ -279,16 +305,20 @@ export function CheckoutView({
   }
 
   if (resolved.lines.length === 0) {
+    if (appliedCode) {
+      return (
+        <HeldPromo
+          code={appliedCode}
+          promo={promos.find((promo) => promo.code === appliedCode) ?? null}
+          onRemove={removeVoucher}
+        />
+      );
+    }
     return (
       <div className="mt-8">
         <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
-          {/* Somebody who tapped Apply on the promos page with an empty cart
-              needs to be told what happened to the code, not just that the
-              cart is empty. Naming it also means they do not have to go and
-              find it again. */}
-          {appliedCode
-            ? `${appliedCode} is not applied yet, because there is nothing to apply it to. Add something and enter the code here, or tap Apply on the promos page again.`
-            : "There is nothing to check out. Build an order first and the pickup times will be waiting here."}
+          There is nothing to check out. Build an order first and the pickup times will be
+          waiting here.
         </p>
         <div className="mt-6">
           <ButtonLink href="/menu" tone="light">
@@ -359,6 +389,9 @@ export function CheckoutView({
         // a customer who navigates back finds a cart that was already sold.
         attempt.current = null;
         clearCart();
+        // The code has been used on this order, so it is no longer a request
+        // waiting for a cart. The state keeps it; the tab forgets it.
+        rememberPendingPromo(null);
         if (onlineMethod) {
           const payment = await payOrder({
             shortCode: result.order.shortCode,
@@ -466,8 +499,12 @@ export function CheckoutView({
             error={voucherError}
             busy={checkingVoucher}
             disabled={submitting}
-            onApply={applyVoucher}
+            onApply={() => applyVoucher()}
             onRemove={removeVoucher}
+            // Not the code the customer already asked for: if it was refused
+            // for this cart, offering it again under the error is a loop.
+            suggestions={promos.filter((promo) => promo.code !== appliedCode)}
+            onUse={applyVoucher}
           />
 
           <OrderTotals subtotalCents={resolved.subtotalCents} applied={voucher} />
@@ -583,5 +620,66 @@ export function CheckoutView({
         </div>
       </div>
     </form>
+  );
+}
+
+/**
+ * A code the customer asked for before there was anything to apply it to.
+ *
+ * This is where somebody lands after tapping Apply on /promos with an empty
+ * cart. It used to be one grey sentence telling them the code was not applied
+ * and asking them to come back and tap Apply again. The code is now kept for
+ * the tab (lib/promos/pending.ts), so the honest thing to say is that it is
+ * saved, and the screen's job is to send them to the menu with the code in
+ * hand rather than to explain a failure.
+ *
+ * The value line only appears when the code is one of the promos published at
+ * this counter. A code handed out privately has no public description, and
+ * the server is the only thing allowed to say what it is worth.
+ */
+function HeldPromo({
+  code,
+  promo,
+  onRemove,
+}: {
+  code: string;
+  promo: Promo | null;
+  onRemove: () => void;
+}) {
+  const headline = promo ? promoHeadline(promo) : null;
+  return (
+    <section
+      aria-labelledby="held-promo-heading"
+      className="bg-nybb-charcoal text-nybb-bone mt-8 max-w-2xl rounded-md p-5 sm:p-7"
+    >
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <PromoStub code={code} size="lg" />
+        {headline?.value ? (
+          <div className="min-w-0">
+            <p className="font-display text-2xl leading-tight tracking-wide uppercase">
+              {headline.value}
+            </p>
+            <p className="text-nybb-bone/70 mt-1 text-sm">{headline.scope}</p>
+          </div>
+        ) : null}
+      </div>
+
+      <h2 id="held-promo-heading" className="font-display heading-panel mt-6">
+        Saved for your order
+      </h2>
+      <p className="text-nybb-bone/70 mt-2 max-w-prose leading-relaxed">
+        Your cart is empty, so there is nothing to take it off yet. Add something from the menu
+        and the code will be in the promo field when you come back to check out.
+      </p>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <ButtonLink href="/menu" tone="dark">
+          Browse the menu
+        </ButtonLink>
+        <Button type="button" tone="dark" variant="ghost" onClick={onRemove}>
+          Remove the code
+        </Button>
+      </div>
+    </section>
   );
 }

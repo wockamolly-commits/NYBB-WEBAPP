@@ -1729,6 +1729,24 @@ advert without refusing the code for the customers mid-checkout with it.
 scope, and the per-customer cap. Those are checked when the code is applied. A listed code is live
 and is never promised to fit the order.
 
+**How often the bar appears, revised 2026-09-23.** It first shipped with a
+dismissal remembered in a cookie for a year. The owner replaced that the same
+day: closing the bar now lasts only for the page it was closed on, and a refresh
+or a navigation brings it back. What is permanent instead is redemption. A promo
+the customer has no uses left on is filtered out of the listing, by
+`list_customer_promos` (0076) counting their redemptions for a signed-in
+customer and by the `nybb_promos_used` cookie for a browser that placed the
+order. Both only ever remove, and because 0065 deletes the redemption row when
+an order is cancelled, the server-side half gives the promo back when an order
+falls over.
+
+The test is "can this person still redeem it" rather than "have they used it".
+`max_uses_per_customer` is `not null default 1`, so the two readings are the
+same sentence for every code that exists; they come apart only on a promo worth
+more than one visit, where hiding it after the first would take away uses the
+customer still holds. The bar also does not draw on `/checkout` or `/promos`,
+where it would be repeating itself.
+
 **Promo push is a separate consent from order push.** `push_promo_optins` (0075) is its own table,
 not a column on `push_subscriptions`, so revoking marketing never silences an order. Announcing is
 a deliberate staff action, not a trigger on `publicise`, and `claim_promo_announcement` makes it

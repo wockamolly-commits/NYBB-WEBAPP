@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { PromoCard } from "@/components/site/PromoCard";
 import { PromoPushOptIn } from "@/components/site/PromoPushOptIn";
 import { StoreBar } from "@/components/store/StoreBar";
 import { ButtonLink } from "@/components/ui/Button";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { listPromos } from "@/lib/promos/read";
+import { PROMO_USED_COOKIE, parseUsed, withoutUsed } from "@/lib/promos/used";
 
 export const metadata: Metadata = {
   title: "Promos",
@@ -30,8 +32,15 @@ export const metadata: Metadata = {
  * that lets them change counters belongs on the page that depends on it.
  */
 export default async function PromosPage() {
-  const selection = await getStoreSelection();
-  const promos = await listPromos(selection.selected?.slug ?? null);
+  const [selection, jar] = await Promise.all([getStoreSelection(), cookies()]);
+
+  // The same two filters the bar is given, so a promo cannot be absent from
+  // one and present on the other. A customer who followed the bar here and
+  // found something it had not mentioned would trust neither again.
+  const promos = withoutUsed(
+    await listPromos(selection.selected?.slug ?? null),
+    parseUsed(jar.get(PROMO_USED_COOKIE)?.value),
+  );
 
   const mine = promos.filter((promo) => promo.personal);
   const open = promos.filter((promo) => !promo.personal);

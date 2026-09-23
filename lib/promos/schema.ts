@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { voucherSummary } from "@/lib/vouchers/status";
+import { formatPeso } from "@/lib/format";
+import { joinNames, voucherSummary } from "@/lib/vouchers/status";
 
 /**
  * A promo as the storefront reads it, parsed rather than trusted.
@@ -74,6 +75,41 @@ export function promoSentence(promo: Promo): string {
     categoryNames: promo.categoryNames,
     customerCount: 0,
   });
+}
+
+/**
+ * The promo as a headline and one supporting line, for the places too small
+ * for the full sentence: the band under the header, the floating reminder and
+ * the suggestions at checkout.
+ *
+ * The counter list is left out on purpose. The storefront asks
+ * `list_customer_promos` for the counter the customer has chosen, so every
+ * promo that reaches these surfaces already works where they are collecting,
+ * and reciting four branch names in a strip is what made the old bar truncate
+ * in the middle of a name. `/promos` still says the whole thing.
+ *
+ * Null branches exactly as `voucherSummary` does, because rule 6 applies here
+ * too: a null amount is a percentage promo, never PHP 0.00 off. A row with
+ * neither is refused by the database, and says nothing rather than inventing a
+ * value if one ever arrived.
+ */
+export function promoHeadline(promo: Promo): { value: string; scope: string } {
+  let value = "";
+  if (promo.percentOff !== null) {
+    value = `${promo.percentOff}% off`;
+  } else if (promo.amountCents !== null) {
+    value = `${formatPeso(promo.amountCents)} off`;
+  }
+
+  const what = [...promo.itemNames, ...promo.categoryNames];
+  const parts = [what.length > 0 ? `On ${joinNames(what)}` : "On the whole order"];
+  if (promo.percentOff !== null && promo.maxDiscountCents !== null) {
+    parts.push(`up to ${formatPeso(promo.maxDiscountCents)}`);
+  }
+  if (promo.minOrderCents > 0) {
+    parts.push(`from ${formatPeso(promo.minOrderCents)}`);
+  }
+  return { value, scope: parts.join(", ") };
 }
 
 /**

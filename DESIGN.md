@@ -1060,28 +1060,60 @@ perfectly legible as a graphic. Every nav target is at least `2.75rem` tall.
 
 ### The promo bar
 
-An ink band directly under the navbar, carrying the running promo's code in the display face and
-its sentence in bone at 70%. It is the one place on the storefront where a dark surface sits
-against the chrome rather than against the amber ground, and that is what makes it read as a
-notice rather than as another section.
+**The counter ticket is the shared shape.** Every promo surface draws the code as a tear-off stub:
+signage yellow, the code in Anton in ink (16:1), two semicircle bites masked out of its right
+corners and a dashed perforation between them (`.promo-stub`, `components/promos/PromoStub.tsx`).
+Yellow is allowed this loudness because a badge is the job the palette gives it. A mask rather
+than a painted circle, because the stub sits on ink, charcoal and graphite, and a bite has to show
+whatever is behind it. The same stub appears in the band, the floating reminder, the checkout
+field, the checkout suggestions and the held code panel, so a customer recognises their code
+before they read it.
 
-The only orange is a `3px` rule at the left end, as a graphic and never as type, because orange
-measures 1.8:1 on amber and 2.6:1 on parchment. The message is one link and the dismiss is a
-separate `2.75rem` square button beside it: two targets, not a button nested inside a link, and at
-320px the sentence truncates while the code never does, because the code is the payload.
+**The band.** An ink strip directly under the navbar: the stub, then the value in the display face
+(`promoHeadline`, "₱50.00 off"), then what it covers in bone at 70% ("On the whole order"). The
+counter list is left out, because the listing is already scoped to the counter the customer chose,
+and reciting four branch names is what made the old bar truncate mid name. From `sm` an orange
+"See the promo" pill sits at the right end. It is styled as the dark primary but it is part of the
+same link, so it adds a place to aim without adding a tab stop.
 
-**It is not a live region**, and that is the ReorderNotice rule applied rather than broken. That
-rule is about content arriving after first paint, which has to be announced. This is server
-rendered from a cookie and present at first paint, so a `role="status"` on it would read an advert
-aloud on every page of the site. It is an `aside` with a label, which is a landmark somebody can
-skip.
+**The floating reminder.** Owner's request, 2026-09-23: the promo stays in view while somebody
+scrolls. Pinning the band into the sticky header would take a strip of every screen for the whole
+session, so instead a compact charcoal ticket (stub, value, close) appears in the bottom left
+corner only while the band is off screen, watched with an IntersectionObserver offset by the
+header's height. It sits above the cart bar when that bar is showing, rises in with a 280ms
+transform and leaves the same way, is `inert` while hidden, and only fades under reduced motion.
+It carries the warm drop shadow because it floats over content, the one other place in the system
+that earns one.
 
-**It does not animate in.** An arrival has to be about the thing arriving, and a bar sliding down
-says nothing about the promo. It is simply there, and then it is scrolled past.
+**Neither form is a live region.** The band is present at first paint and the reminder repeats
+it, so announcing either would read an advert aloud on every page. Both are labelled `aside`
+landmarks.
 
-**It sits below the sticky header rather than inside it**, so it is seen on arrival and then
-leaves. A bar inside `sticky top-0` would be pinned to the viewport for the whole session, which
-is the difference between noticeable and obtrusive.
+**Closing it lasts as long as the page.** One X hides both forms where they stand, and a refresh or
+a step to another page brings the promo back. Owner's call on 2026-09-23. The label says "Hide on
+this page" rather than "Dismiss", because a control that promised otherwise would be a small lie.
+What is permanent is having spent the code: a redeemed promo is filtered out before the bar sees
+it.
+
+**It does not draw on `/checkout` or `/promos`.** Checkout has the code field and its suggestions,
+and a floating ticket there would sit over the order summary on a phone. `/promos` is the page the
+bar points at.
+
+### The promo code at checkout
+
+**Applied**, the code is a stub on a graphite row with a check, "Applied", the saving in mono and a
+ghost Remove. The saving is bone, not orange: the total is the card's one orange figure.
+
+**Not applied**, the field carries a ticket icon, and under it up to two published promos running
+at this counter are offered as dashed ticket rows with an orange "Use". A tap sends the code
+through the same Apply path as typing it, so the server still decides whether the cart qualifies.
+A code the customer already asked for is never re-offered under its own error.
+
+**Held.** Tapping Apply on `/promos` with an empty cart lands on a charcoal panel: the stub at
+large size, the value when the code is a published one, "Saved for your order", and Browse the
+menu beside a ghost Remove the code. The code is kept for the tab in session storage
+(`lib/promos/pending.ts`), so it is waiting in the field when the customer comes back with a cart.
+Only a code is stored, never a discount.
 
 ### The heat meter (signature)
 

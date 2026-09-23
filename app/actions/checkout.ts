@@ -1,10 +1,18 @@
 "use server";
 
 import { after } from "next/server";
+import { cookies } from "next/headers";
 import { cookieCaller } from "@/lib/customer/cookie-caller";
 import { submitOrder } from "@/lib/customer/orders";
 import type { PlaceOrderInput, PlaceOrderResult } from "@/lib/checkout/types";
 import { notifyStaffOfNewOrder } from "@/lib/push/dispatch";
+import {
+  PROMO_USED_COOKIE,
+  parseUsed,
+  promoUsedKey,
+  promoUsedCookieOptions,
+  serializeUsed,
+} from "@/lib/promos/used";
 
 /**
  * Placing an order, from the browser's side.
@@ -61,6 +69,49 @@ export async function placeOrder(
   // to the first one's. See `claim_staff_new_order_notice` (0048).
   if (result.ok && result.order.paymentMethod === "counter") {
     after(notifyStaffOfNewOrder(result.order.orderId));
+  }
+
+  // REMEMBER THAT THIS BROWSER SPENT THE CODE, so the bar stops advertising a
+  // promo the customer has already had and checkout stops refusing them over a
+  // cap they could not see.
+  //
+  // Recorded here rather than read back from anywhere, because this is the one
+  // moment the browser and the outcome are in the same place. `place_order`
+  // raises on a code it will not take, so a successful order carrying a code is
+  // an order that got the discount.
+  //
+  // It is deliberately the cruder of the two mechanisms. For a signed-in
+  // customer `list_customer_promos` (0076) counts redemptions instead, which
+  // works on their other devices and, because 0065 deletes the redemption row
+  // when an order is cancelled, gives the promo back when an order falls over.
+  // This cookie cannot do that: an online order is placed unpaid, so a guest
+  // who abandons the payment page has this code hidden from them although the
+  // expiry sweep handed it back. Hiding one promo from one browser is the
+  // smaller fault, and the code still works if they type it.
+  //
+  // The code is read defensively because `input` here is whatever the browser
+  // sent: `submitOrder` is what validates it, and its schema is the thing that
+  // gives `voucherCode` a default. Reaching into it as though it were already
+  // a string is how this first shipped, and six existing tests that build a
+  // payload without the field said so immediately.
+  //
+  // The discount is the server's own answer and is what actually proves the
+  // code was taken. `resolve_voucher` refuses a code worth nothing with
+  // VOUCHER_NO_DISCOUNT, so the two conditions agree, and gating on both means
+  // nothing is recorded for an order that somehow carried a code without
+  // getting anything off.
+  const usedCode = typeof input.voucherCode === "string" ? input.voucherCode.trim() : "";
+
+  if (result.ok && usedCode !== "" && result.order.discountCents > 0) {
+    const jar = await cookies();
+    jar.set(
+      PROMO_USED_COOKIE,
+      serializeUsed([
+        promoUsedKey(usedCode),
+        ...parseUsed(jar.get(PROMO_USED_COOKIE)?.value),
+      ]),
+      promoUsedCookieOptions,
+    );
   }
 
   return result;
