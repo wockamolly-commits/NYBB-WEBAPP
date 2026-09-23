@@ -6,6 +6,7 @@ import { getPickupSlots } from "@/lib/slots/reader";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { getCurrentCustomer, getCustomerProfile } from "@/lib/auth/session";
 import { getCheckoutPaymentMethods } from "@/lib/checkout/payment-settings";
+import { promoCodeFromParams } from "@/lib/promos/schema";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -41,16 +42,29 @@ export const metadata: Metadata = {
  * a cached window is worse than a stale price: it offers a minute of a
  * kitchen's time that somebody else has already taken.
  */
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  // A promise in Next 16, the shape every other page here already uses.
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const selection = await getStoreSelection();
 
-  const [{ categories }, slots, customer, profile, paymentMethods] = await Promise.all([
-    getStorefrontMenu(selection.selected?.slug),
-    getPickupSlots(selection.selected?.slug),
-    getCurrentCustomer(),
-    getCustomerProfile(),
-    getCheckoutPaymentMethods(),
-  ]);
+  const [{ categories }, slots, customer, profile, paymentMethods, params] =
+    await Promise.all([
+      getStorefrontMenu(selection.selected?.slug),
+      getPickupSlots(selection.selected?.slug),
+      getCurrentCustomer(),
+      getCustomerProfile(),
+      getCheckoutPaymentMethods(),
+      searchParams,
+    ]);
+
+  // Normalised here rather than in the client component, so the only thing
+  // that crosses the boundary is a code that could plausibly exist. Junk
+  // becomes null and the field simply opens empty, which is the right
+  // response on a screen somebody came to in order to pay.
+  const promoCode = promoCodeFromParams(params);
 
   const orderable = selection.stores.filter((store) => store.orderable);
   // Both halves, the same test every other screen in the flow applies. A band
@@ -86,6 +100,7 @@ export default async function CheckoutPage() {
         branchSlug={selection.selected?.slug ?? null}
         storeChosen={Boolean(selection.selected)}
         storeCount={orderable.length}
+        initialPromoCode={promoCode}
         initialDetails={{
           name: profile?.displayName ?? "",
           phone: profile?.phone ?? "",

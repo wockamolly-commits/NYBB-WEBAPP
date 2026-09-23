@@ -1058,6 +1058,31 @@ going to full ink on hover. The hover indicator is an orange rule that draws in 
 transform, never a colour change on the text, because orange is unreadable as type on parchment but
 perfectly legible as a graphic. Every nav target is at least `2.75rem` tall.
 
+### The promo bar
+
+An ink band directly under the navbar, carrying the running promo's code in the display face and
+its sentence in bone at 70%. It is the one place on the storefront where a dark surface sits
+against the chrome rather than against the amber ground, and that is what makes it read as a
+notice rather than as another section.
+
+The only orange is a `3px` rule at the left end, as a graphic and never as type, because orange
+measures 1.8:1 on amber and 2.6:1 on parchment. The message is one link and the dismiss is a
+separate `2.75rem` square button beside it: two targets, not a button nested inside a link, and at
+320px the sentence truncates while the code never does, because the code is the payload.
+
+**It is not a live region**, and that is the ReorderNotice rule applied rather than broken. That
+rule is about content arriving after first paint, which has to be announced. This is server
+rendered from a cookie and present at first paint, so a `role="status"` on it would read an advert
+aloud on every page of the site. It is an `aside` with a label, which is a landmark somebody can
+skip.
+
+**It does not animate in.** An arrival has to be about the thing arriving, and a bar sliding down
+says nothing about the promo. It is simply there, and then it is scrolled past.
+
+**It sits below the sticky header rather than inside it**, so it is seen on arrival and then
+leaves. A bar inside `sticky top-0` would be pinned to the viewport for the whole session, which
+is the difference between noticeable and obtrusive.
+
 ### The heat meter (signature)
 
 Five segments at `0.625rem` by `1rem`, filled from the fixed heat ramp and unfilled in graphite,

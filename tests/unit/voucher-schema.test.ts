@@ -173,6 +173,11 @@ describe("reading a row back", () => {
     starts_at: null,
     expires_at: null,
     is_active: true,
+    // 0073 and 0075. publicise is `not null`, so a row always carries it;
+    // announced_at is nullable and null is its normal state, because
+    // publicising a code and announcing it are two separate acts.
+    publicise: false,
+    announced_at: null,
     owner_user_id: null,
     created_at: "2026-09-04T00:00:00Z",
   };

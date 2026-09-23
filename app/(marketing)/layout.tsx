@@ -1,8 +1,13 @@
+import { cookies } from "next/headers";
 import { CartBar } from "@/components/cart/CartBar";
 import { CartSync } from "@/components/cart/CartSync";
 import { MuralArt } from "@/components/mural/MuralArt";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
+import { PromoBar } from "@/components/site/PromoBar";
+import { getStoreSelection } from "@/lib/branches/selection";
+import { PROMO_DISMISS_COOKIE, parseDismissed } from "@/lib/promos/dismissal";
+import { listPromos } from "@/lib/promos/read";
 
 /**
  * The public storefront chrome.
@@ -18,9 +23,16 @@ import { Header } from "@/components/site/Header";
  * the staff board will not either. Opting in here makes both of those the
  * default rather than something each surface has to switch off.
  */
-export default function StorefrontLayout({
+export default async function StorefrontLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Both reads are memoised for the length of one request, so a page below
+  // that asks the same questions pays nothing twice. listPromos answers with
+  // an empty list for every failure including the flag being off, which is
+  // what makes the bar absent rather than broken on a dark engine.
+  const [selection, jar] = await Promise.all([getStoreSelection(), cookies()]);
+  const promos = await listPromos(selection.selected?.slug ?? null);
+
   return (
     <>
       <a
@@ -73,6 +85,14 @@ export default function StorefrontLayout({
         className="pointer-events-none fixed inset-0 z-[-1] h-full w-full text-nybb-ink opacity-[0.10]"
       />
       <Header />
+      {/* Below the sticky header rather than inside it, so it is seen on
+          arrival and then scrolls away. PromoBar renders nothing when there
+          is no promo or when this browser has already dismissed the leading
+          one, so there is no empty element in the flow either way. */}
+      <PromoBar
+        promos={promos}
+        dismissed={parseDismissed(jar.get(PROMO_DISMISS_COOKIE)?.value)}
+      />
       <main id="main">{children}</main>
       <Footer />
       <CartSync />

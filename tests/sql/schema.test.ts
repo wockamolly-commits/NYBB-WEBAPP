@@ -91,6 +91,9 @@ describe("migrations", () => {
       "0070",
       "0071",
       "0072",
+      "0073",
+      "0074",
+      "0075",
     ]);
   });
 
@@ -415,20 +418,47 @@ describe("migrations", () => {
     // the branches page. A slug, a weekday and a window: the hours painted on
     // the shop door. No branch ids, no audit columns, and nothing for a branch
     // that is switched off.
+    //
+    // list_customer_promos (0074) is the one read in this schema that
+    // volunteers a code nobody typed, so it is the one that needed the most
+    // argument to get here. 0009 kept the code space unscrapeable by giving
+    // customers no select on vouchers at all, and this does not repeal that:
+    // it returns a voucher only when an admin ticked `publicise` on that one
+    // row, or when the row belongs to the caller's own account. It takes no
+    // code, so there is no input an attacker can vary to learn anything, which
+    // is what makes a listing safer than an oracle. It never returns an id,
+    // the owner's note, the use counters, or any voucher that names a customer
+    // by phone. It answers with an empty array while vouchers_enabled is off,
+    // so a caller cannot even learn the feature exists.
+    //
+    // register_promo_push_subscription and forget_promo_push_subscription
+    // (0075) are here because a promo subscriber may never have ordered, so
+    // unlike register_customer_push_subscription above there is no short code
+    // to present. What bounds the first is that a push endpoint is an
+    // unguessable URL minted by the browser's own push service, so holding one
+    // already means holding the device; it also refuses an endpoint belonging
+    // to the staff audience, which is what keeps a counter tablet from being
+    // converted out of staff_push_targets, and refuses outright while the
+    // engine is off. The second is granted to anon deliberately and is not
+    // rate limited: somebody must always be able to stop hearing from us, and
+    // a limit on the way out is a limit on consent being withdrawn.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
       "customer_mark_order_arrived",
+      "forget_promo_push_subscription",
       "get_order_by_tracking",
       "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
       "get_store_hours",
       "get_storefront_menu",
+      "list_customer_promos",
       "place_order",
       "preview_voucher",
       "register_customer_push_device",
       "register_customer_push_subscription",
+      "register_promo_push_subscription",
       "submit_franchise_inquiry",
     ]);
   });

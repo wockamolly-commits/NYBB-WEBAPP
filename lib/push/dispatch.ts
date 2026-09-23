@@ -3,10 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   customerPayload,
+  promoPayload,
   staffPayload,
   type CustomerPayloadOrder,
   type StaffPayloadOrder,
 } from "./payload";
+import { promoSentence } from "@/lib/promos/schema";
 import { sendWeb, type WebTarget } from "./web";
 import {
   adminConfigured,
@@ -29,6 +31,23 @@ import {
  * counter tablet alike; there is no separate delivery mechanism per audience
  * anymore.
  */
+
+/**
+ * The columns a promo notification needs, parsed rather than trusted.
+ *
+ * The three nullable ones are nullable here too, for the reason AGENTS.md
+ * rule 6 gives: `promoSentence` branches on them, and a coalesce anywhere
+ * upstream would turn a percentage promo into "PHP 0.00 off" on a lock
+ * screen, which is a correction that cannot be issued.
+ */
+const promoVoucherRowSchema = z.object({
+  code: z.string().min(1),
+  description: z.string().nullable(),
+  amount_cents: z.union([z.null(), z.coerce.number().int()]),
+  percent_off: z.number().int().nullable(),
+  max_discount_cents: z.union([z.null(), z.coerce.number().int()]),
+  min_order_cents: z.coerce.number().int(),
+});
 
 /** A relationship embed comes back as an object or an array depending on the
  * shape of the foreign key, so every embed here is normalized the same way
@@ -426,6 +445,109 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
   } catch (error) {
     console.error(
       "[push] notifyStaffOfNewOrder failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+/**
+ * Telling the people who asked that a promo is running.
+ *
+ * THE CLAIM IS THE GUARD, and it is not advisory. `claim_promo_announcement`
+ * refuses a second caller the same way `claim_staff_new_order_notice` does,
+ * and it also re-tests publicise, is_active and the expiry inside the same
+ * statement, so a promo unpublicised a moment ago cannot be announced by a
+ * request already in flight.
+ *
+ * WHERE THIS DIFFERS FROM THE STAFF PATH, AND WHY. `notifyStaffOfNewOrder`
+ * continues when the claim errors, because a database hiccup there would
+ * silently cost the counter an order and a duplicate alert is the cheaper
+ * mistake. That trade runs the other way here. Nobody is waiting on this, a
+ * duplicate lands on strangers' lock screens, and the cost of not sending is
+ * that an advert goes out later when somebody presses the button again. So a
+ * claim that cannot be confirmed sends nothing.
+ *
+ * It never throws, like everything else in this file: it is called from a
+ * staff action through `after()`, and a notification failure must not fail
+ * the save it was attached to.
+ */
+export async function notifyCustomersOfPromo(voucherId: string): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    const admin = createAdminClient();
+
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_promo_announcement",
+      { p_voucher_id: voucherId },
+    );
+
+    if (claimError) {
+      console.error("[push] claim_promo_announcement failed", claimError.message);
+      return;
+    }
+    if (claimed !== true) return;
+
+    const { data, error } = await admin
+      .from("vouchers")
+      .select(
+        "code, description, amount_cents, percent_off, max_discount_cents, min_order_cents",
+      )
+      .eq("id", voucherId)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error(
+        "[push] promo lookup failed",
+        error?.message ?? "voucher not found",
+      );
+      return;
+    }
+
+    const parsed = promoVoucherRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error("[push] unreadable promo row", parsed.error.issues);
+      return;
+    }
+    const row = parsed.data;
+
+    // The scope names are deliberately not read. A notification body is one
+    // line on a lock screen, and "10% off Wings and Sides at IT Park and two
+    // other counters, once that reaches PHP 500" is not a line. The promos
+    // page the notification opens carries the full sentence, so the terms are
+    // one tap away rather than truncated by the operating system.
+    const payload = promoPayload({
+      code: row.code,
+      description: row.description,
+      sentence: promoSentence({
+        code: row.code,
+        description: row.description,
+        amountCents: row.amount_cents,
+        percentOff: row.percent_off,
+        maxDiscountCents: row.max_discount_cents,
+        minOrderCents: row.min_order_cents,
+        expiresAt: null,
+        personal: false,
+        itemNames: [],
+        categoryNames: [],
+        branchNames: [],
+      }),
+    });
+
+    const { data: targets, error: targetsError } = await admin.rpc("promo_push_targets");
+
+    if (targetsError || !targets) {
+      console.error(
+        "[push] promo_push_targets failed",
+        targetsError?.message ?? "no data",
+      );
+      return;
+    }
+
+    const dead = await sendWeb(targets as WebTarget[], payload);
+    await deleteDeadEndpoints(admin, dead);
+  } catch (error) {
+    console.error(
+      "[push] notifyCustomersOfPromo failed",
       error instanceof Error ? error.message : "unknown",
     );
   }

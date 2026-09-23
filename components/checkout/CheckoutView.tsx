@@ -60,6 +60,7 @@ export function CheckoutView({
   branchSlug = null,
   storeChosen = false,
   storeCount = 0,
+  initialPromoCode = null,
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
@@ -79,6 +80,16 @@ export function CheckoutView({
   storeChosen?: boolean;
   /** How many counters can take an order. Decides whether the choice is real. */
   storeCount?: number;
+  /**
+   * A code carried in from `/promos`, already normalised on the server.
+   *
+   * It seeds the same two pieces of state the Apply button sets and nothing
+   * else, so a code arriving in a URL goes through exactly the same server
+   * check as one typed into the field. There is no second validation path
+   * here, and there must never be one: the browser sends a code and the
+   * server decides what it is worth.
+   */
+  initialPromoCode?: string | null;
 }) {
   const router = useRouter();
   const { cart, loaded } = useCart();
@@ -108,8 +119,14 @@ export function CheckoutView({
    * cart changes back, without the customer having to notice and retype
    * anything. One code, because the stacking rule is one code.
    */
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  //
+  // Seeded from `?promo=` when the customer came from the promos page. Setting
+  // `appliedCode` is precisely what `applyVoucher` does, so the re-check effect
+  // below fires on mount and asks the server about the real cart. Done in the
+  // initialiser rather than in an effect so there is no render where the field
+  // is empty, and so Remove genuinely removes: the seed cannot run twice.
+  const [voucherCode, setVoucherCode] = useState(initialPromoCode ?? "");
+  const [appliedCode, setAppliedCode] = useState<string | null>(initialPromoCode);
   const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [checkingVoucher, startCheckingVoucher] = useTransition();
@@ -183,6 +200,16 @@ export function CheckoutView({
     // drop a code (Remove, and applying a different one) clear the verdict in
     // the same handler, so this never has to catch up by setting state.
     if (appliedCode === null) return;
+    // NOTHING TO CHECK A CODE AGAINST YET.
+    //
+    // Until `?promo=` existed this was unreachable: appliedCode could only be
+    // set by the Apply button, and that button lives below a cart that has
+    // lines in it. A seeded code breaks that invariant, and without this the
+    // effect would call previewVoucher with an empty array, fail its `min(1)`
+    // on lines, and render "We could not read that request" on a screen whose
+    // real problem is that the cart is empty. It also covers the render before
+    // the cart has been read out of localStorage at all.
+    if (cartSignature === "[]") return;
     let cancelled = false;
     void (async () => {
       const result = await checkVoucher({
@@ -255,8 +282,13 @@ export function CheckoutView({
     return (
       <div className="mt-8">
         <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
-          There is nothing to check out. Build an order first and the pickup
-          times will be waiting here.
+          {/* Somebody who tapped Apply on the promos page with an empty cart
+              needs to be told what happened to the code, not just that the
+              cart is empty. Naming it also means they do not have to go and
+              find it again. */}
+          {appliedCode
+            ? `${appliedCode} is not applied yet, because there is nothing to apply it to. Add something and enter the code here, or tap Apply on the promos page again.`
+            : "There is nothing to check out. Build an order first and the pickup times will be waiting here."}
         </p>
         <div className="mt-6">
           <ButtonLink href="/menu" tone="light">

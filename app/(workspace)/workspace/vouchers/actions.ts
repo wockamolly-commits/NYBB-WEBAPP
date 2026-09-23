@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+import { notifyCustomersOfPromo } from "@/lib/push/dispatch";
 import { revalidatePath } from "next/cache";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -172,6 +174,74 @@ export async function setVoucherActive(
   });
 
   if (error) return refuse(errorFor(error.message));
+  refresh(id);
+  return { ok: true };
+}
+
+/**
+ * Putting a code on the storefront, or taking it back off.
+ *
+ * Its own action for the same two reasons admin_set_voucher_active is its own
+ * function. Pulling an advert that has gone wrong should not require the form
+ * to round-trip every other field correctly first, and once a code has met an
+ * order the upsert refuses outright, so a publicise control that only lived
+ * inside the form would become unreachable at exactly the moment it matters:
+ * a live campaign the owner wants to stop advertising without stopping it
+ * working for the people already holding the code.
+ */
+export async function setVoucherPublicise(
+  _previous: VoucherActionState,
+  formData: FormData,
+): Promise<VoucherActionState> {
+  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
+
+  const id = String(formData.get("id") ?? "");
+  const publicise = formData.get("publicise") === "true";
+  if (id === "") return refuse("We could not tell which code that was.");
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("admin_set_voucher_publicise", {
+    p_voucher_id: id,
+    p_publicise: publicise,
+  });
+
+  if (error) return refuse(errorFor(error.message));
+  refresh(id);
+  return { ok: true };
+}
+
+/**
+ * Sending the promo to everybody who asked to hear about promos.
+ *
+ * DELIBERATELY NOT AUTOMATIC. Publicising a code and announcing it are two
+ * separate acts, because they happen at different times: a campaign is
+ * usually built and put on the storefront hours or days before anybody wants
+ * a notification about it. An announcement that fired on save would also fire
+ * on every later save, and `admin_upsert_voucher` runs on all of them.
+ *
+ * ONE SHOT FOR THE LIFE OF THE CODE. `claim_promo_announcement` writes
+ * `announced_at` and refuses every caller after the first, so a staff member
+ * pressing the button twice sends once. A second blast means a second code,
+ * which is also what the bar's per-promo dismissal already assumes.
+ *
+ * Handed to `after()` rather than awaited, so a fan-out across every
+ * subscriber does not hold the workspace response open. The dispatch never
+ * throws, so nothing it does can fail this action.
+ */
+export async function announceVoucher(
+  _previous: VoucherActionState,
+  formData: FormData,
+): Promise<VoucherActionState> {
+  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
+
+  const id = String(formData.get("id") ?? "");
+  if (id === "") return refuse("We could not tell which code that was.");
+
+  // after(), not a detached promise, for the reason app/actions/checkout.ts
+  // records: on Vercel a promise the response does not wait for can be killed
+  // when the function suspends.
+  after(notifyCustomersOfPromo(id));
+
   refresh(id);
   return { ok: true };
 }

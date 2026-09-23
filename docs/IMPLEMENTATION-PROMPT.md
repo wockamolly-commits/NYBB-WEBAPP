@@ -1696,6 +1696,44 @@ form field coerced to 0 and turned "no heat level" into "0% heat" on every save.
 go-to-market slide): a first-order pickup code, a slow-hours discount targeting the 2pm to 5pm
 trough, and a "skip the queue" framing rather than a discount, since pickup ordering sells time.
 
+### 18.1 Promo discovery, added 2026-09-23
+
+**This section said to port the voucher engine unchanged, and that was done. What it did not
+account for is that a ported engine can only take a code the customer already knows.** Every
+promo the owner created was invisible: there was a field at checkout and nothing anywhere that
+said a code existed. The engine could accept, and the shop could not offer.
+
+So there is now a customer-facing half: a dismissible bar under the storefront header, a `/promos`
+page that lists each running promo with `voucherSummary`'s sentence and an Apply button, and an
+opt-in Web Push notification for a new promo. Apply is a link to `/checkout?promo=CODE` which
+seeds the field and lets the existing `preview_voucher` path do the checking. There is no second
+validation path, and the client still sends a code and never a price.
+
+**The deliberate divergence, and its bound.** Migration 0009 records that "a customer never
+selects from vouchers ... the code space cannot be scraped". Listing promos breaks that, so it is
+broken one row at a time: `vouchers.publicise` (0073) is `not null default false`, and
+`list_customer_promos` (0074) returns a voucher only when an admin ticked it, or when the voucher
+belongs to the caller's own account. Every code nobody ticks keeps 0009's property exactly. A
+voucher naming a customer by `phone_digits` is never listed to anybody, including its holder,
+because resolving one would mean answering "does this phone number have a discount" for any number
+a caller cared to try, and a phone number is a far denser guessing space than a promo code.
+
+**`publicise` is not a frozen term.** 0067 freezes terms once a voucher has met an order, and
+deliberately left `admin_set_voucher_active` outside that freeze because switching a code off is
+the brake. Advertising is the gentler brake, so `admin_set_voucher_publicise` (0073) sits outside
+the freeze for the same reason: an owner whose campaign has gone wrong must be able to pull the
+advert without refusing the code for the customers mid-checkout with it.
+
+**The listing is an announcement, not a verdict.** It applies every eligibility rule
+`resolve_voucher` applies except the ones needing a cart: the minimum, the item and category
+scope, and the per-customer cap. Those are checked when the code is applied. A listed code is live
+and is never promised to fit the order.
+
+**Promo push is a separate consent from order push.** `push_promo_optins` (0075) is its own table,
+not a column on `push_subscriptions`, so revoking marketing never silences an order. Announcing is
+a deliberate staff action, not a trigger on `publicise`, and `claim_promo_announcement` makes it
+exactly once for the life of the code.
+
 ---
 
 ## 19. Loyalty: recommendation
