@@ -98,8 +98,14 @@ customer email OTP and account profiles; isolated staff email OTP; cashier, kitc
 permission resolution; and a role-gated workspace shell with live order counts.
 
 **Planned in the remaining phases.** Web push for customer-ready and staff-new-order; the manual
-POS re-key workflow; menu, hours and availability management; analytics; vouchers; and the
-optional payment and loyalty work. The realtime staff board and pickup-code claim are built.
+POS re-key workflow; menu, hours and availability management; analytics; and the optional payment
+and loyalty work. The realtime staff board and pickup-code claim are built. ~~vouchers~~
+**Superseded 2026-09-23: the voucher engine shipped 2026-09-04 and customers can now find a code
+without being told it.** A promo is announced on a dismissible bar under the header and explained
+on `/promos`, where one tap carries the code into checkout. Only codes an owner deliberately ticks
+are listed, so the reference's rule that the code space cannot be scraped still holds for every
+code that was handed out rather than published. `vouchers_enabled` is still false, so the whole
+surface is dark until the owner switches it on. See spec section 18.1.
 
 **Hard constraints.**
 

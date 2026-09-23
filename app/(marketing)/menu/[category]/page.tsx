@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
-import { HeatMeter } from "@/components/menu/HeatMeter";
+import { HeatSlider } from "@/components/menu/HeatSlider";
 import { ProductTile } from "@/components/menu/ProductTile";
 import { selectedBranchSlug } from "@/lib/branches/selection";
 import { optionPriceCents } from "@/lib/catalog/pricing";
@@ -13,6 +13,7 @@ import {
   WING_FLAVOUR_GROUP_SLUG,
   WING_HEAT_GROUP_SLUG,
 } from "@/lib/menu";
+import { heatStops } from "@/lib/menu/heat-slider";
 import { formatPeso, formatPesoCompact } from "@/lib/format";
 
 type Params = { category: string };
@@ -66,7 +67,7 @@ export default async function CategoryPage({
   const category = findCategory(categories, slug);
   if (!category) notFound();
 
-  // The heat table is driven by the wings item's own option group rather than
+  // The heat scale is driven by the wings item's own option group rather than
   // by a module-level constant, so an owner editing the scale in Phase 4 moves
   // this page with it.
   const wings = category.items[0];
@@ -74,6 +75,16 @@ export default async function CategoryPage({
     (option) => (option.heatPercent ?? 0) > 0,
   );
   const isWings = heatLevels.length > 0;
+  const heatSteps = heatStops(heatLevels);
+
+  // Formatted here because pricing lives on the server and the bar that draws
+  // it is a client component.
+  const heatPrices: Record<string, string> = Object.fromEntries(
+    heatLevels.map((option) => [
+      option.slug,
+      `+${formatPesoCompact(optionPriceCents(option, "half"))}`,
+    ]),
+  );
   const priced = category.items.filter((item) => item.variations.length > 1);
 
   return (
@@ -114,54 +125,39 @@ export default async function CategoryPage({
 
             <h2 className="font-display heading-minor mt-16">Then pick a level</h2>
             <p className="text-nybb-ink/60 mt-2 max-w-lg text-sm">
-              The level is an add-on, and it is priced against the size you
-              chose. A full order carries more sauce, so it costs more to bring
-              the heat.
+              The level is an add-on on top of any flavour. Slide along the
+              scale to see where each one sits.
             </p>
 
-            {/* Wide content scrolls inside its own container. The page body
-                never scrolls sideways. */}
-            <div className="mt-6 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-sm">
-                <thead>
-                  <tr className="text-nybb-ink/50 text-left">
-                    <th scope="col" className="border-border border-b py-2.5 pr-4 font-normal">
-                      Level
-                    </th>
-                    <th scope="col" className="border-border border-b py-2.5 pr-4 font-normal">
-                      Heat
-                    </th>
-                    <th scope="col" className="border-border border-b py-2.5 pr-4 text-right font-normal">
-                      Half, 6 pcs
-                    </th>
-                    <th scope="col" className="border-border border-b py-2.5 text-right font-normal">
-                      Full, 10 pcs
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {heatLevels.map((level) => (
-                    <tr key={level.slug}>
-                      <th
-                        scope="row"
-                        className="border-border font-display border-b py-3 pr-4 text-left text-base font-normal"
-                      >
-                        {level.name}
-                      </th>
-                      <td className="border-border border-b py-3 pr-4">
-                        <HeatMeter percent={level.heatPercent ?? 0} size="sm" />
-                      </td>
-                      <td className="border-border font-mono-tabular text-nybb-orange border-b py-3 pr-4 text-right">
-                        +{formatPesoCompact(optionPriceCents(level, "half"))}
-                      </td>
-                      <td className="border-border font-mono-tabular text-nybb-orange border-b py-3 text-right">
-                        +{formatPesoCompact(optionPriceCents(level, "full"))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* This replaced a four column table of Level, Heat, Half and Full.
+                Heat is a flat PHP 29 at every level and on both sizes, so two
+                of those columns were five identical numbers each, and the
+                HeatMeter in the third set its percentage in bone: 1.8:1 on the
+                amber ground, which is to say invisible. One bar states the
+                scale and one readout states the price. */}
+            {/* On its own dark plate, and not directly on the page.
+                The ramp runs signage yellow to red, which is built for an
+                ink ground: on the amber page the cold half of the scale
+                washes out into the background it is drawn on. Every other
+                dark surface here works the same way, so the scale gets a
+                card and the card sets the reading colour for its contents.
+
+                It also keeps this obviously a different object from the
+                landing page's full bleed band: an instrument panel you
+                lean into rather than a headline you scroll past. */}
+            <div className="bg-nybb-ink text-nybb-bone mt-8 max-w-xl rounded-lg px-5 py-6 sm:px-7 sm:py-7">
+              <HeatSlider
+                stops={heatSteps}
+                prices={heatPrices}
+                variant="inline"
+                label="Try the Level of Hotness scale"
+              />
             </div>
+
+            <p className="text-nybb-ink/55 mt-6 text-xs">
+              Same upcharge on a half and on a full. Choose your level on the
+              wings page.
+            </p>
           </>
         ) : null}
 

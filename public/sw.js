@@ -25,20 +25,38 @@
  */
 
 /**
- * What to show when a payload cannot be read, per audience.
+ * What to show when a payload cannot be read, per audience and kind.
  *
  * A push that arrives and shows nothing is worse than a vague one: Chrome
  * shows its own "This site has been updated in the background" notice in
  * that case, which tells nobody anything and looks like a fault. So a
  * payload this worker cannot read still becomes a notification.
  *
- * There are two of these because one worker serves scope "/" and therefore
+ * There were two of these because one worker serves scope "/" and therefore
  * both audiences. Before customers had Web Push there was a single fallback
  * pointing at the orders board, which is what a customer would have been
  * shown.
+ *
+ * THE THIRD ONE IS WHY THIS IS KEYED ON A PAIR NOW. A promo is addressed to a
+ * customer, so on the audience alone it would inherit "Your order has an
+ * update" and send somebody looking for an order they never placed. That is a
+ * worse failure than a vague notification: it is a confident wrong one. A
+ * payload with no kind at all is read as an order, which is what every
+ * payload written before this field meant.
  */
 const FALLBACKS = {
-  staff: {
+  "customer:promo": {
+    title: "New promo at NYBB",
+    body: "Open the promos page to see it.",
+    url: "/promos",
+    tag: "promo-fallback",
+    requireInteraction: false,
+    renotify: false,
+    vibrate: null,
+    audience: "customer",
+    kind: "promo",
+  },
+  "staff:order": {
     title: "New order",
     body: "Open the orders board to see it.",
     url: "/workspace/orders",
@@ -48,7 +66,7 @@ const FALLBACKS = {
     vibrate: null,
     audience: "staff",
   },
-  customer: {
+  "customer:order": {
     title: "Your order has an update",
     body: "Open your order to see what changed.",
     url: "/",
@@ -57,6 +75,7 @@ const FALLBACKS = {
     renotify: false,
     vibrate: null,
     audience: "customer",
+    kind: "order",
   },
 };
 
@@ -78,15 +97,21 @@ self.addEventListener("push", (event) => {
 /**
  * The payload, or something safe when it is not one.
  *
- * The audience check happens before the shape check: even a payload that
- * fails the shape check still tells us who it was for, and that is enough
- * to pick the right fallback below.
+ * The audience and kind checks happen before the shape check: even a payload
+ * that fails the shape check still tells us who it was for and what it was
+ * about, and that is enough to pick the right fallback below.
+ *
+ * Staff never take a kind. There is no such thing as a promo sent to a
+ * counter, and defaulting the staff side to "order" means a malformed staff
+ * payload can never land on the promo wording.
  */
 function read(data) {
   let audience = "staff";
+  let kind = "order";
   try {
     const payload = data ? data.json() : null;
     if (payload && payload.audience === "customer") audience = "customer";
+    if (payload && payload.kind === "promo" && audience === "customer") kind = "promo";
     if (payload && typeof payload.title === "string" && typeof payload.body === "string") {
       return payload;
     }
@@ -94,7 +119,7 @@ function read(data) {
     // Falls through to the fallback below.
   }
 
-  return FALLBACKS[audience];
+  return FALLBACKS[`${audience}:${kind}`];
 }
 
 function show(payload) {

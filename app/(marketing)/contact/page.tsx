@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { BranchDirectory } from "@/components/branches/BranchDirectory";
 import { BranchesLiveRefresh } from "@/components/branches/BranchesLiveRefresh";
+import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { ButtonLink } from "@/components/ui/Button";
 import { branchEntries } from "@/lib/branches/entries";
 import type { StoreHoursRow } from "@/lib/branches/hours";
@@ -55,6 +56,8 @@ export default async function ContactPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <ScrollReveal />
+
       <h1 className="font-display heading-page">Branches</h1>
       <p className="text-nybb-ink/75 mt-4 max-w-lg text-base leading-relaxed">
         {branches.length} counters across Cebu, from street fronts to food halls
@@ -119,7 +122,7 @@ export default async function ContactPage() {
           this page already uses, it separates from amber by value rather than
           by a hairline, and orange on charcoal measures 5.4:1, so the email
           and the landline become legible without changing colour. */}
-      <section className="bg-nybb-charcoal text-nybb-bone mt-12 rounded-md p-6 sm:p-8">
+      <section className="reveal bg-nybb-charcoal text-nybb-bone mt-12 rounded-md p-6 sm:p-8">
         <h2 className="font-display heading-minor">Franchise enquiries</h2>
         <p className="text-nybb-bone/65 mt-3 max-w-lg text-sm leading-relaxed">
           Five Brad Dragons Food Franchise Corporation, Unit D, 20th Floor,

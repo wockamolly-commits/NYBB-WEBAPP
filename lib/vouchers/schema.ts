@@ -114,6 +114,18 @@ export const voucherFormSchema = z
 
     isActive: z.boolean().default(true),
 
+    /**
+     * Whether this code may be listed to customers who were never told it.
+     *
+     * Defaults false, the opposite direction to isActive above, and the
+     * asymmetry is the point. A voucher that exists is meant to be
+     * redeemable, so "on" is the right default for the switch that decides
+     * that. A voucher is NOT automatically meant to be advertised, and
+     * migration 0009's promise that the code space cannot be scraped holds
+     * for every code nobody deliberately ticked.
+     */
+    publicise: z.boolean().default(false),
+
     branchIds: z.array(z.uuid()).default([]),
     itemIds: z.array(z.uuid()).default([]),
     categoryIds: z.array(z.uuid()).default([]),
@@ -187,6 +199,7 @@ export const voucherFormSchema = z
       expiresAt: value.expiresAt === "" ? null : manilaWallClockIso(value.expiresAt),
 
       isActive: value.isActive,
+      publicise: value.publicise,
       branchIds: value.branchIds,
       itemIds: value.itemIds,
       categoryIds: value.categoryIds,
@@ -238,6 +251,10 @@ export const voucherRowSchema = z.object({
   starts_at: z.string().nullable(),
   expires_at: z.string().nullable(),
   is_active: z.boolean(),
+  publicise: z.boolean(),
+  // Null means it has never been announced, which is the normal state: a code
+  // is publicised and announced by two separate deliberate acts.
+  announced_at: z.string().nullable(),
   owner_user_id: z.uuid().nullable(),
   created_at: z.string(),
 });
@@ -261,6 +278,8 @@ export function toVoucher(row: VoucherRow) {
     startsAt: row.starts_at,
     expiresAt: row.expires_at,
     isActive: row.is_active,
+    publicise: row.publicise,
+    announcedAt: row.announced_at,
     ownerUserId: row.owner_user_id,
     createdAt: row.created_at,
   };

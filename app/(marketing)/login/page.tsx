@@ -30,8 +30,23 @@ export default async function LoginPage({
   }
 
   return (
-    <section className="bg-nybb-charcoal text-nybb-bone">
-      <div className="mx-auto grid min-h-[calc(100svh-75px)] max-w-6xl items-center gap-10 px-4 py-12 sm:min-h-[calc(100svh-91px)] sm:px-6 lg:grid-cols-[1fr_28rem] lg:py-20">
+    /* The same dark band material the landing page's heat scale and
+       counters sit on. See .band-ink in globals.css: Char, the printed
+       tooth in the bare margins, and the grain that dithers it. The
+       hatching's mask is written in the container's own units, so the
+       `max-w-6xl` column below is the protected zone here exactly as it
+       is there, and nothing at full weight can reach the form.
+
+       The dot screen comes with it, in the flat tint shape rather than
+       the ring shape. No `band-lit`: a warm field is spill light, The
+       Lit Thing Lights Its Ground Rule anchors one on whatever in the
+       band is burning, and nothing on this page is. See
+       .band-screen-signin in globals.css for why the screen can travel
+       here without it. */
+    <section className="band-ink text-nybb-bone">
+      <div aria-hidden="true" className="band-screen band-screen-signin" />
+
+      <div className="relative z-10 mx-auto grid min-h-[calc(100svh-75px)] max-w-6xl items-center gap-10 px-4 py-12 sm:min-h-[calc(100svh-91px)] sm:px-6 lg:grid-cols-[1fr_28rem] lg:py-20">
         <div className="max-w-2xl">
           <h1 className="font-display heading-page text-balance">Your order stays with you</h1>
           <p className="text-nybb-bone/65 mt-5 max-w-xl text-base leading-relaxed sm:text-lg">

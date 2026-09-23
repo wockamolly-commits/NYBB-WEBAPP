@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { CheckoutView } from "@/components/checkout/CheckoutView";
 import { StoreBar } from "@/components/store/StoreBar";
 import { getStorefrontMenu } from "@/lib/menu";
@@ -6,6 +7,9 @@ import { getPickupSlots } from "@/lib/slots/reader";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { getCurrentCustomer, getCustomerProfile } from "@/lib/auth/session";
 import { getCheckoutPaymentMethods } from "@/lib/checkout/payment-settings";
+import { promoCodeFromParams } from "@/lib/promos/schema";
+import { listPromos } from "@/lib/promos/read";
+import { PROMO_USED_COOKIE, parseUsed, withoutUsed } from "@/lib/promos/used";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -41,16 +45,36 @@ export const metadata: Metadata = {
  * a cached window is worse than a stale price: it offers a minute of a
  * kitchen's time that somebody else has already taken.
  */
-export default async function CheckoutPage() {
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  // A promise in Next 16, the shape every other page here already uses.
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const selection = await getStoreSelection();
 
-  const [{ categories }, slots, customer, profile, paymentMethods] = await Promise.all([
-    getStorefrontMenu(selection.selected?.slug),
-    getPickupSlots(selection.selected?.slug),
-    getCurrentCustomer(),
-    getCustomerProfile(),
-    getCheckoutPaymentMethods(),
-  ]);
+  const [{ categories }, slots, customer, profile, paymentMethods, params, running, jar] =
+    await Promise.all([
+      getStorefrontMenu(selection.selected?.slug),
+      getPickupSlots(selection.selected?.slug),
+      getCurrentCustomer(),
+      getCustomerProfile(),
+      getCheckoutPaymentMethods(),
+      searchParams,
+      // Memoised for the request, so this is the answer the layout already
+      // asked for rather than a second read. Filtered the same way the
+      // layout filters it, so checkout never suggests a code the bar has
+      // stopped advertising because this browser already spent it.
+      listPromos(selection.selected?.slug ?? null),
+      cookies(),
+    ]);
+  const promos = withoutUsed(running, parseUsed(jar.get(PROMO_USED_COOKIE)?.value));
+
+  // Normalised here rather than in the client component, so the only thing
+  // that crosses the boundary is a code that could plausibly exist. Junk
+  // becomes null and the field simply opens empty, which is the right
+  // response on a screen somebody came to in order to pay.
+  const promoCode = promoCodeFromParams(params);
 
   const orderable = selection.stores.filter((store) => store.orderable);
   // Both halves, the same test every other screen in the flow applies. A band
@@ -86,6 +110,8 @@ export default async function CheckoutPage() {
         branchSlug={selection.selected?.slug ?? null}
         storeChosen={Boolean(selection.selected)}
         storeCount={orderable.length}
+        initialPromoCode={promoCode}
+        promos={promos}
         initialDetails={{
           name: profile?.displayName ?? "",
           phone: profile?.phone ?? "",

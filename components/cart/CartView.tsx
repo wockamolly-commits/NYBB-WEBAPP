@@ -83,10 +83,10 @@ export type EmptyCartHeatLevel = { slug: string; name: string; percent: number }
 /**
  * The five heat stops as ascending bars, the empty cart's one picture.
  *
- * A quotation of the landing page's HeatScale rather than a second copy of it:
- * no prices, no reveal, and small. The prices belong to the menu the button
- * leads to, and the grow-in animation is kept to the landing page, where it
- * is the section's whole point. This one is drawn from the first frame.
+ * A quotation of the heat scale rather than a second copy of it: no prices, no
+ * control, and small. The prices belong to the menu the button leads to, and
+ * the scale is only draggable where somebody is choosing a level, which an
+ * empty cart is not. This one is a still picture of the product.
  *
  * Decoration, so it is hidden from screen readers. The sentence beside it
  * already says "five levels of heat", and reading out five names and five

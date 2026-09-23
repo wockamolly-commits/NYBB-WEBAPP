@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { StoreList } from "@/components/store/StoreList";
 import { ButtonLink } from "@/components/ui/Button";
 import { branchEntries } from "@/lib/branches/entries";
@@ -73,6 +74,8 @@ export default async function StoresPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <ScrollReveal />
+
       <h1 className="font-display heading-page">Where are you collecting?</h1>
 
       <p className="text-nybb-ink/75 mt-4 max-w-xl text-base leading-relaxed">

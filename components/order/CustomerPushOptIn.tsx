@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Shared with components/site/PromoPushOptIn.tsx. Two copies of the iOS rule
+// would be two chances to offer an iPhone a button that cannot work.
+import { needsHomeScreenInstall, pushSupported, vapidKeyBytes } from "@/lib/push/browser";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -39,45 +42,6 @@ type State =
   | { kind: "on" }
   | { kind: "failed"; message: string };
 
-/**
- * `applicationServerKey` takes bytes, and a VAPID key is distributed as
- * base64url text. The browser rejects the string form with a DOMException that
- * names neither the key nor the encoding.
- */
-function vapidKeyBytes(key: string): Uint8Array<ArrayBuffer> {
-  const padded = key.padEnd(key.length + ((4 - (key.length % 4)) % 4), "=");
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
-
-function supported(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
-}
-
-/**
- * An iOS browser that is not running as an installed app.
- *
- * The display-mode query is the reliable half: iOS only exposes PushManager at
- * all in standalone mode, so a browser that has the API is already installed.
- * The platform check keeps this from mislabelling a desktop browser, which
- * needs no install and would be told to do something impossible.
- */
-function needsHomeScreenInstall(): boolean {
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // Safari's own, older, non-standard flag.
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-  const isApple = /iPad|iPhone|iPod/.test(window.navigator.userAgent);
-  return isApple && !isStandalone;
-}
-
 export function CustomerPushOptIn({
   shortCode,
   trackingToken,
@@ -93,7 +57,7 @@ export function CustomerPushOptIn({
     async function look() {
       if (typeof window === "undefined") return { kind: "checking" } as const;
       if (needsHomeScreenInstall()) return { kind: "needs-install" } as const;
-      if (!supported()) return { kind: "unsupported" } as const;
+      if (!pushSupported()) return { kind: "unsupported" } as const;
       if (!VAPID_PUBLIC_KEY) return { kind: "unconfigured" } as const;
 
       // getRegistration rather than register: this runs for every customer who

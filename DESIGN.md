@@ -177,8 +177,8 @@ destructive red is two steps down its own hue because signage red cannot carry a
 Nothing in this system is decorative by accident. The grain exists because a gradient this smooth
 bands on an 8-bit panel. The wall drawing sits at 10% rather than the 9% the filled silhouette
 before it used, because a line drawing puts far less ink on the page per square inch and reads
-fainter at the same alpha. The one authored animation on the site is the heat scale drawing itself,
-which is the product's own mechanism moving, not a fade applied to seven sections in turn.
+fainter at the same alpha. The one authored animation on the site is the heat scale's fire, which
+is the product's own mechanism burning, not a fade applied to seven sections in turn.
 
 **Key Characteristics:**
 
@@ -363,6 +363,23 @@ and apply it across sizes.
 percentage, it is JetBrains Mono with tabular figures. No exceptions, because these appear beside
 each other in columns and in receipts.
 
+**The Counted Thing Is Numbered Rule.** Where a heading claims a count, the list under it is
+numbered, so a reader can check the claim instead of taking it. The landing page's branch list runs
+`01` to `09` under "9 counters across Cebu", in the same two digit mono form the pickup steps use
+eighty lines above it: the page quotes its own device rather than bringing a second one. The index
+is `aria-hidden`, because the list element already tells a screen reader how many items it holds
+and does not need the count read out nine times. It also gives a plain two column list of small
+type a rhythm it had no other way of getting, which is the second reason it is there and not the
+first.
+
+The same paragraph makes a second countable claim, that online ordering is open at some number of
+the counters, and until recently the list under it could not say which. The rows that take online
+orders now carry a short orange caps marker beside their phone number, on the same ground and at
+the same ratio as the number itself. The other five carry nothing: the paragraph has already said
+the rest take orders on the phone, and a second tag repeating that nine times is The States Differ
+Structurally Rule being broken with words rather than with colour. The marker reads "Online" on
+screen and "Takes online orders" to a screen reader, because "Mango Avenue, Online" is a riddle.
+
 **The Bloom Correction Rule.** Light type on a near-black ground blooms: counters close and
 letterforms spread. Dark surfaces therefore add `0.006em` of tracking to untracked reading copy,
 applied at the surface at zero specificity so a new dark card inherits it and anything stating its
@@ -443,7 +460,7 @@ stays on `body`, because it is dithering the page gradient and that gradient is 
 ### Shadow Vocabulary
 
 - **Chrome float** (`box-shadow: 0 12px 28px -14px rgba(84, 46, 8, 0.32)`): The single shadow in the
-  system. It exists because the sticky bar overlaps the hero video and needs to sit above it rather
+  system. It exists because the sticky bar overlaps the hero and needs to sit above it rather
   than butt against it with a hard seam.
 
 ### Named Rules
@@ -910,6 +927,130 @@ mono beneath it, and the button at the right end. It respects `env(safe-area-ins
 carries an upward warm shadow. It hides itself on the cart and on checkout, where its only action
 would point back the way the customer just came.
 
+### The landing hero
+
+A full bleed picture under a light scrim, with the type bottom aligned on it and carrying its own
+ink. The picture is a three slide dissolve (`components/site/HeroSlideshow.tsx`): the store's seven
+second food film, then its two delivered wall murals, then round again.
+
+**What moves between slides is opacity and nothing else.** No push, no slow zoom. The film moves
+because it is a film; the dissolve into and out of it takes 1.2 seconds.
+
+**What moves within a slide is the phone's window onto the mural, and only there.** The murals are
+16:9 and a phone hero is about 390 by 658, so a mural scaled to cover it is 1170 wide and a third of
+the artwork fits. No framing solves that: both murals put the food on the left and a panel of
+display type on the right, and a slice from the middle is a column of half letters. So below `xl`
+the picture sits at its natural width and the hero is a window travelling across it, left edge to
+right edge, once, over the whole time the slide is up. About 780px in 12.2 seconds, which is 64 a
+second, or a sixth of the viewport: a camera move rather than a transition, and it ends having shown
+everything.
+
+This is not the Ken Burns drift the first rule is written against. That is motion added to a picture
+that already fitted; this is the only way a picture that does not fit is ever seen whole. Nothing
+moves from `xl` up, because from `xl` up there is nothing that does not fit.
+
+The mechanism is `.hero-pan-track` and it computes its own travel: the track takes the hero's height
+and the mural's ratio, so `calc(-100% + 100cqw)` is exactly the overhang at any viewport, with
+nothing measured in JavaScript and nothing written down. It collapses to zero on its own when the
+picture is no longer wider than the hero. `prefers-reduced-motion` parks it at `panRest`, a quarter
+in, which is the fixed framing the phone had before there was a pan. Pause freezes it where it
+stands rather than ending it.
+
+**A panning still sets its own length too.** A stationary still holds six seconds. A panning one
+holds eleven, because it has a beginning and an end and cutting away halfway is the same edit the
+film's twelve second backstop exists to avoid. The film holds until it has finished playing: the
+hero advances on the video's `ended` rather than on a clock, and is rewound to its first frame
+coming back round. Three answers, one function, `slideHoldMs`.
+
+**The murals are re-laid out, not cropped, and the wordmark is out of them at source.** The print
+files are 3:1 and 2.7:1 at up to 29370px wide, which is a wall, and no crop of a wall is a hero. A
+build that grew each print mural onto a 2.05:1 canvas by washing its own edges outward shipped in
+between and worked, but it was a machine rebuilding a composition. The murals are supplied at 16:9
+with the composition arranged for that shape, and with the Hot Wings lockup removed by the designer,
+which retires the crop that used to take it off: the header draws that lockup eighty pixels above
+the hero, and two of them on one screen is the duplicate The One Drawn Scene Per Page Rule is
+written against. `scripts/build-hero-slides.ts` now only resizes and encodes. 16:9 is still not the
+section's shape, so from `xl` the browser takes 13 to 22 percent off the height; `objectPositionWide`
+holds the picture above centre so what goes is the floor rather than the display panel.
+
+**The ink is on the letters, and the scrim is what is left over.** Both murals are shot on a pale
+ground, one grey and one near white, and the brightest patch under the copy column measures 249 of
+255. Bone at 60% over that needs its ground held at about 77% ink to clear 4.5:1, and a scrim that
+heavy is a scrim that covers the artwork: on the eating mural it landed squarely on the woman the
+photograph is of, and on a phone, where the copy spans the width, it covered the picture outright.
+
+So the budget moved onto the type, and four moves between them took the scrim from 90% ink at the
+foot to 66, and from 72% five hundred pixels up to 10 at 530 and nothing by 580:
+
+- **`.hero-type` is a halo, not a wash.** Four ink stops sized in ems of whatever they are set on, so
+  the ground a glyph is measured against is ink at the one place the measurement happens, which is
+  the pixel beside the letterform, and the picture two words over is untouched. Each radius takes a
+  `max()` against a pixel floor, because at 14px a proportional halo lands inside the antialiasing.
+- **The hero's copy does not spend contrast on hierarchy.** The lede was bone at 75% and the status
+  line at 60, which is right on a surface whose ground the page owns and wrong on a photograph:
+  lighter type on a pale wall is worse type, and those alphas were costing 19 points of ink
+  underneath. They are bone and bone at 85, and size does the ranking it was already doing.
+- **`.hero-keyline` makes the orange headline a graphic.** Buffalo Orange measures about 1.0:1 on the
+  spread mural's wall and no halo reaches far enough to fix that, so the old scrim held 73% ink at
+  380px up purely to keep one line orange. The keyline is the ink outline the store's own wordmark
+  is drawn with, which is what The Orange Is For Dark Rule already permits orange to be on a light
+  ground. `paint-order: stroke fill`, for the reason `.tagline-inked` gives.
+- **The tagline takes a heavier keyline in the hero only.** It sits at the top of the copy block,
+  which is the one height the ramp no longer reaches. 0.1em here against the artwork's own 0.05em,
+  which the footer and the About page keep, because their grounds are the ones it was drawn for.
+
+What is left is `.hero-ramp`, settling the copy block onto the floor of the section rather than
+holding a ratio on its own:
+
+- **Lengths, not percentages:** 66% at the foot, 58% at 300px, 55% at 400px, gone by 580px, measured
+  up from the section's floor. The copy is a fixed block sitting on that foot, so how far up it
+  reaches depends on how tall the section is: 500px of type is 79% of a 702px hero and 56% of an
+  842px one. A ramp in percentages is measured for one window and wrong in the other, which is how a
+  headline that cleared 6:1 at 1920x1080 measured 1.9:1 at 1280x800.
+- **Longer and very slightly heavier from `xl`, because it is also narrower there:** 70% at the
+  foot, 46% at 330px, 30% at 470px, gone by 650px. The extra reach is what carries the tagline,
+  which sits about 500px up in an 842px hero, where the ramp below `xl` has already run out.
+- **Masked toward the right from `xl`:** solid to 40% of the width, gone by 72%. That hands the
+  mural's display panel back whole, and it is what lets the left of the ramp be longer without the
+  picture paying for it. Both ends are further apart than they need to be, because a mask edge is a
+  straight vertical line drawn across a photograph and the eye finds those.
+
+Under it a flat hold at 6% at every width, which is a grade rather than a cover, and against the
+amber band a 72px `.hero-foot`. The foot used to be a sixth of each picture faded into ink by the
+build script, which meant the artwork paid for the section's bottom edge and the depth that survived
+depended on how much height that viewport happened to crop: 194px in the file, 56 of it left at
+1920x1080. In the stylesheet it is the same depth on every screen and costs the mural nothing.
+
+A diagonal ramp was tried and rejected: `to top right` on a wide box points mostly upward, so the
+corner it hands back is the top left, where the murals put a face and a drink, and the band it drags
+across the middle is where the headline's second half sits.
+
+**The hero keeps its minimum height on a phone**, which is what leaves a part of the picture that no
+type stands on. The give-back keys on viewport height rather than width, like everything else on
+this section: under 500px tall the minimum goes, which is the landscape phone. It used to key on
+width, where the effect was to shrink a portrait phone's hero to exactly its copy, so every pixel of
+the mural was behind the scrim. At 390x844 the difference is 147px of artwork that nothing covers.
+
+Measured on all three slides at 1920x1080, 1440x900, 1280x800, 390x844 and 844x390, and on the
+panning slides at five points across the traverse, against the pixels that border a glyph rather
+than the block the copy sits in. A haloed glyph is only ever ground at its own edge, and a target's
+neighbourhood is grown from its own letterforms: measured from every painted pixel in the crop, the
+orange half of the headline was being read against the ground around the bone half on the line
+above.
+
+**Three controls on one plinth, bottom right.** Previous, pause, next, as icon buttons on an ink
+bar with a bone ring and hairline dividers, because a control that sits on a picture cannot know
+what is behind it and the ghost tier is transparent at rest. Pause is what WCAG 2.2.2 (Level A)
+requires of motion that starts by itself and runs past five seconds, and it is a real focusable
+button reached before the two CTAs. Previous and next are there for everyone, including the visitor
+with `prefers-reduced-motion` set, who is never moved automatically and for whom they are the only
+way to see the other two pictures. Their labels count: "Next picture, 2 of 3".
+
+**A metered link is asked to pay for one picture.** The poster is the LCP element and is
+unconditional. The film is 540 KB and the murals about 170 KB between them, so `isMetered` in
+`lib/site/connection.ts` gates the film, the timer and the prefetch: that visitor gets the poster,
+and a mural only if they press next.
+
 ### Navigation
 
 Anton at `0.75rem` with `0.1em` tracking, growing to `0.875rem` from `sm`, set in ink at 70% and
@@ -917,21 +1058,78 @@ going to full ink on hover. The hover indicator is an orange rule that draws in 
 transform, never a colour change on the text, because orange is unreadable as type on parchment but
 perfectly legible as a graphic. Every nav target is at least `2.75rem` tall.
 
+### The promo bar
+
+**The counter ticket is the shared shape.** Every promo surface draws the code as a tear-off stub:
+signage yellow, the code in Anton in ink (16:1), two semicircle bites masked out of its right
+corners and a dashed perforation between them (`.promo-stub`, `components/promos/PromoStub.tsx`).
+Yellow is allowed this loudness because a badge is the job the palette gives it. A mask rather
+than a painted circle, because the stub sits on ink, charcoal and graphite, and a bite has to show
+whatever is behind it. The same stub appears in the band, the floating reminder, the checkout
+field, the checkout suggestions and the held code panel, so a customer recognises their code
+before they read it.
+
+**The band.** An ink strip directly under the navbar: the stub, then the value in the display face
+(`promoHeadline`, "₱50.00 off"), then what it covers in bone at 70% ("On the whole order"). The
+counter list is left out, because the listing is already scoped to the counter the customer chose,
+and reciting four branch names is what made the old bar truncate mid name. From `sm` an orange
+"See the promo" pill sits at the right end. It is styled as the dark primary but it is part of the
+same link, so it adds a place to aim without adding a tab stop.
+
+**The floating reminder.** Owner's request, 2026-09-23: the promo stays in view while somebody
+scrolls. Pinning the band into the sticky header would take a strip of every screen for the whole
+session, so instead a compact charcoal ticket (stub, value, close) appears in the bottom left
+corner only while the band is off screen, watched with an IntersectionObserver offset by the
+header's height. It sits above the cart bar when that bar is showing, rises in with a 280ms
+transform and leaves the same way, is `inert` while hidden, and only fades under reduced motion.
+It carries the warm drop shadow because it floats over content, the one other place in the system
+that earns one.
+
+**Neither form is a live region.** The band is present at first paint and the reminder repeats
+it, so announcing either would read an advert aloud on every page. Both are labelled `aside`
+landmarks.
+
+**Closing it lasts as long as the page.** One X hides both forms where they stand, and a refresh or
+a step to another page brings the promo back. Owner's call on 2026-09-23. The label says "Hide on
+this page" rather than "Dismiss", because a control that promised otherwise would be a small lie.
+What is permanent is having spent the code: a redeemed promo is filtered out before the bar sees
+it.
+
+**It does not draw on `/checkout` or `/promos`.** Checkout has the code field and its suggestions,
+and a floating ticket there would sit over the order summary on a phone. `/promos` is the page the
+bar points at.
+
+### The promo code at checkout
+
+**Applied**, the code is a stub on a graphite row with a check, "Applied", the saving in mono and a
+ghost Remove. The saving is bone, not orange: the total is the card's one orange figure.
+
+**Not applied**, the field carries a ticket icon, and under it up to two published promos running
+at this counter are offered as dashed ticket rows with an orange "Use". A tap sends the code
+through the same Apply path as typing it, so the server still decides whether the cart qualifies.
+A code the customer already asked for is never re-offered under its own error.
+
+**Held.** Tapping Apply on `/promos` with an empty cart lands on a charcoal panel: the stub at
+large size, the value when the code is a published one, "Saved for your order", and Browse the
+menu beside a ghost Remove the code. The code is kept for the tab in session storage
+(`lib/promos/pending.ts`), so it is waiting in the field when the customer comes back with a cart.
+Only a code is stored, never a discount.
+
 ### The heat meter (signature)
 
 Five segments at `0.625rem` by `1rem`, filled from the fixed heat ramp and unfilled in graphite,
-followed by the percentage in tabular mono and the level name in Anton. The same component appears
-in the wings configurator, on the order confirmation, on the staff ticket and on the printed pickup
-slip, with the same five swatches every time. It is the one thing in this interface that could not
-be lifted from a template, and it is treated accordingly.
+followed by the percentage in tabular mono and the level name in Anton. It reports a level that has
+already been decided: the order confirmation, the staff ticket, the printed pickup slip and the
+Workspace heat mix. Where somebody is still deciding, the scale is the slider below instead. Same
+five swatches either way, which is the whole point of the fixed ramp.
 
 The landing page carries **one** more surface built from the same five swatches, and the number
-matters enough to be the rule below. The **heat band** is the ramp itself: five bars ascending left
-to right from sm up, each carrying its name, its percentage and the two upcharges, rotating to five
-stacked rows with full width bars on a phone. It is the only place on that page where the ramp is
-drawn, and it owns the site's one authored animation because it is where somebody is choosing.
+matters enough to be the rule below. The **heat band** is the ramp itself, drawn as one bar you
+drag: hard bands in the five fixed swatches, lit up to whichever stop the thumb is on, with the
+level name and its percentage below. It is the only place on that page where the ramp is drawn, and
+it owns the site's one authored animation because it is where somebody is choosing.
 
-It got there in three corrections, and the third returned it to where the first left it, which is
+It got there in four corrections, and the third returned it to where the first left it, which is
 worth recording rather than hiding. The hero and the band were once the same object, both ascending
 ramps within two screens of each other, which is a repeat rather than a statement, so they were
 split by job: a **hero strip** that stated the scale, and a band flattened into a price list of
@@ -949,6 +1147,108 @@ were a shape adopted to avoid a collision that no longer exists. The ramp is the
 the product on its own merits: ascending columns say "a scale you move along" in one look, where
 rows say "a table you read". So the band is the ramp again, and the reveal ascends with it.
 
+**And then the fourth correction, which is the one that stuck.** "A scale you move along" was the
+right sentence and the band still would not let anybody move along it. Five bars side by side are
+a picture of a scale: they state all five answers at once, which is a price list of the product
+rather than the product. So the band is now one bar you drag, and the bar burns up to wherever you
+put it. Same five swatches, same hard bands, same percentages; the difference is that the customer
+supplies the position instead of reading five of them.
+
+The heat scale is two components. `components/menu/HotnessMeter.tsx` is the picture: a glass tube
+holding the five fixed swatches, a fire standing on the lit run, and the level names under their
+segments. It takes a `score` (0 to 100), `animated`, `showParticles` and a `size` of `small`
+(cards), `medium` (panels) or `large` (a full width band), and owns no choice.
+`components/menu/HeatSlider.tsx` is the control: it lays the invisible range input over the meter's
+tube and keeps every rule about what a position means. It is not to be confused with
+`components/menu/HeatMeter.tsx`, the five small static segments described above.
+
+The slider comes in two shapes. The **band** (`large`) is the landing page's full bleed moment,
+with the chosen level set at the major heading step. The **inline** shape (`medium`) is the compact
+instrument panel used on the wings category page and in the configurator, where it is the actual
+control and not a picture beside one.
+
+The inline shape always sits on an ink plate, never directly on the amber page. The ramp runs
+signage yellow to red and is built for an ink ground; on amber the cold half of it washes into the
+background. This is not a preference, it is the same measurement that governs orange as type here:
+bone on the amber ground is 1.8:1, which is what made the heat meter's percentage unreadable on the
+menu page for as long as it was drawn there.
+
+The control itself is a real `<input type="range">` lying invisible over the artwork, with the
+painted bar `aria-hidden` beneath it. Drag, tap, arrow keys, Home, End and a screen reader
+announcing "Wild, 80 percent" all come from the platform rather than from a hand-rolled
+`role="slider"`.
+
+### How the meter is drawn
+
+**The tube is an object, not a ramp.** A recessed channel in the site radius (the channel inside it
+takes the radius less the housing's `2px` padding, so the two curves stay concentric), the five
+fixed swatches inside it dimmed to 13% as unpowered filament, the same swatches lit up to the
+pointer, a hot filament line through the lit run that brightens toward the pointer, and a sheet of
+glass over the lot: a specular band across the top third and a thin return of light along the
+bottom. The lit segments carry their own lighting overlay, bright along the top and falling off at
+the bottom, so each reads as a lit volume. The swatches themselves are never recoloured; the light
+is an overlay on the brand colour, which is what keeps a level the same swatch on a receipt.
+
+**The pointer is a glass needle** standing through the tube, bone with a highlight on one side,
+sitting in a radial pool of the level's light. It glides on a spring (`stiffness 210, damping 19`),
+which overshoots the target by a few percent and settles, and it rides a full width rail translated
+by the fill, so it moves by transform and never touches layout. One animated `--fill` value drives
+the pointer, the lit run, the fire's mask and the particles, so they cannot drift out of step.
+
+**Every level is a different fire, not one fire at five brightnesses.** Colour temperature, height,
+the share of the fire that has rising licks, and how far the light carries all change together:
+
+- **Lite** is a pilot light: small yellow tongues, no licks at all, a soft yellow glow.
+- **Moderate** is warm amber, and the first few licks lift off it.
+- **Hot** is an orange fire with a full body, most of its licks, and the first embers.
+- **Wild** runs red into the edges, stands taller, and throws twice the embers.
+- **Insane** is the tallest: a white base with a trace of blue where it is hottest, red crowns,
+  sparks among the embers, and heat haze (the layers waver a fraction of a degree on clocks of
+  their own, and a faint column of warm air rises above the crowns).
+
+Particles are capped at 18 at the largest size and do not exist below Hot.
+
+**The fire is layered tongues, and each tongue is one box.** A low **body** layer that never goes
+out and carries the flicker in its sway, a layer of taller **licks** that are born at the tube,
+rise, narrow and go out, and a **surge** of fast licks that only burns while somebody drags. Every
+tongue is a soft silhouette (an SVG mask with the blur baked in, so the soft edge costs nothing per
+frame) painted with two gradients: an ellipse of white hot light at the base, and the body running
+from the level's core colour to nothing at the tip. Tongues are screened against each other inside
+an isolated group, because overlapping flame adds light; on normal compositing translucent orange
+over black accumulates toward brown. A continuous **bed** of flame along the tube is what makes the
+tongues rise out of one burning line instead of standing on it as separate candles.
+
+Positions, heights, widths, leans and timings are hashed with integer operations, never
+`Math.sin`, because the meter renders on the server and hydrates in the browser. Which tongues are
+lit at each level is ranked by the golden ratio, so a partial fire is spread along the bar rather
+than filling in from one end.
+
+**What went wrong on the way, because every one of these looks reasonable written down.**
+
+- **Squashing the whole fire to shorten it made triangles.** The first version sized each level by
+  scaling the fire group vertically, and a flame that loses height and keeps its width is not a
+  small flame, it is a hump. Each tongue now scales about its own base, narrower as well as shorter.
+- **Uncapped widths made humps anyway.** A tongue's width is a share of the bar, and the bar is
+  70rem on a desktop band. Widths are capped against the flame height, so a tongue is always
+  clearly taller than it is broad.
+- **Striped haze read as a screen effect.** Heat haze drawn as faint horizontal striations looked
+  like scanlines. Haze is movement and a warm column now, never a texture.
+- **A custom property inside a keyframe costs the compositor.** Chrome cannot run a keyframe that
+  reads `var()` off the main thread. With sixty tongues, a lean written as
+  `skewX(calc(var(--lean) * 8deg))` inside the animation was measurable. Every keyframe is literal;
+  the variation between tongues lives in static properties (`rotate` for the lean, `scale` for the
+  mirror and the level, the box for the size), which compose with the animated `transform`.
+- **Every animated layer counts.** A second masked element per tongue for the inner light, with its
+  own flicker, took the meter from 60 to 33 frames a second at Insane on a 4x throttled CPU, for a
+  difference nobody could see at speed. The inner light is a gradient on the tongue now, and the
+  meter holds 60.
+
+**Every stop in the fire's mask is a fraction of `--fill`, never a fixed percentage.** A fixed one
+shipped in the slider before this: the ramp's middle stop sat at `38%`, which is past the fill at
+Lite (20%) and Moderate (40%), and CSS clamps a gradient stop that falls before the one in front of
+it. Both later stops collapsed onto 38%, and the fire ran a third of the way along a bar that was
+only a fifth alight, ending in a hard vertical edge.
+
 ### Named Rules
 
 **The One Heat Surface Per Page Rule.** A level is the same swatch everywhere, and that is the point
@@ -957,17 +1257,40 @@ level. This replaces an earlier rule that permitted two surfaces provided they d
 changing the shape of a restatement does not stop it being one, and the second surface is always the
 one further from the decision, which is the one to cut.
 
-**The Moment Belongs To The Band Rule.** The five bars extending in sequence is the site's only
-authored animation and it lives where somebody is choosing. Nothing else on the landing page draws
-the ramp at all now, so the band's entrance is the first time a visitor sees the object move, which
-is what the rule was protecting all along.
+**The Living Heat Source Rule.** The meter's fire is the site's only authored animation. It burns
+at rest, burns harder under a hover or focus, and surges while somebody drags. Nothing else on the
+landing page draws the ramp at all, so this is the first and single time a visitor sees the object
+move.
+
+This replaces The Moment Belongs To The Band Rule, which gave the moment to the five bars extending
+in sequence as the section arrived. (Part of that rule came back on 2026-09-21, under conditions
+that keep its retirement's reasoning. See The Showcase Hands Over Rule.) The rule was right that the motion belongs where somebody is
+choosing, and wrong about what choosing looks like. An entrance plays once, to nobody in particular,
+and says exactly what the bars already said standing still; a visitor who scrolled past during it
+never saw it at all. The band's job is to make somebody understand that heat is a thing you pick an
+amount of, and the way to say that is to let them pick one. So the moment moved from the section's
+arrival to the customer's own hand.
+
+That rule then said **the flame never idles**, on the grounds that a looping flame is an animation
+running at a visitor whether or not anybody is there. The owner reversed it (September 2026): a
+still silhouette read as a static UI element, and the scale is meant to feel like a living heat
+source. The reversal keeps the restraint the old clause was protecting, as rules rather than as a
+ban:
+
+- **At rest the fire is subtle.** The licks burn at reduced opacity and slightly lower; hover and
+  focus bring them to full, and dragging lifts the whole fire and lights the surge layer.
+- **Nothing loops visibly.** Every tongue and particle runs on its own hashed duration and offset,
+  body, licks, haze and particles on separate clocks, and no group moves as one.
+- **It stops when nobody can see it.** The meter pauses every loop when it is scrolled off screen,
+  and under `prefers-reduced-motion` it draws a complete still fire with no loops and no particles.
+- **Movement is transform and opacity only**, with literal keyframes. See How the meter is drawn.
 
 ### The heat rule (signature)
 
 The same five stops as hard bands across the full width, running along the bottom edge of the navbar
 at `3px` and the top edge of the footer thicker. It brackets the page in the brand's own scale, ties
 the two pieces of chrome together as one material, and gives the navbar a deliberate brand edge
-where it meets the hero video. Hard stops, never a blend, keeping faith with the ramp being five
+where it meets the hero. Hard stops, never a blend, keeping faith with the ramp being five
 quoted swatches rather than a decoration derived from them.
 
 ### The chrome surface
@@ -976,6 +1299,180 @@ A shared gradient from Cream to Parchment, sized to its element, so the same dec
 subtle wash across an 88px bar and a real fall of light down a 400px footer. Solid, never
 translucent: a semi-transparent bar takes a tint from whatever is behind it, so the wordmark's
 ground would shift as the page scrolls.
+
+### The landing band's head
+
+The heat band was a heading over a half width paragraph, a great deal of nothing, and then the bar.
+Two thirds of its width carried nothing at any height, and the readout, which is set at the major
+heading step because it is the section's real headline, sat under the bar in the bottom left corner
+a reader has already left.
+
+It is now a two column row over a full width instrument. The section's heading and standfirst on the
+left, the live readout on the right, a bone hairline across the band under both, and the bar hanging
+off the bottom of that rule. The right hand column is the only thing on this page that answers back,
+so it is the one that gets the empty half.
+
+**The readout outranks the heading**, at `clamp(3rem, 7vw, 5.5rem)` against the heading's
+`clamp(2.25rem, 5vw, 3.5rem)`. The headline is a fixed sentence and the readout is the live one.
+It stays under the hero's own step, because the first screen keeps the largest type on the site.
+
+**The level wears its own swatch**, transitioned on the meter's own 450ms so the word changes colour
+on the same clock the bar does. DESIGN.md asks for the ramp's five fixed colours wherever a heat
+level appears, and this is the largest place one appears anywhere. Measured, Heat 5 is the darkest
+at 4.60:1 on bare Char and 4.20:1 on the lit ground the readout sits on; the name is set between
+48px and 88px, so the bar to clear is 3:1, and the coldest stop clears 14.77:1. "Pick a level" is
+not a level and stays bone.
+
+**The heading crosses as a prop, not as a sibling.** The level somebody is holding can only be drawn
+by the component that owns the value, so putting the readout on the headline's line means the
+heading comes into the control. Server rendered nodes cross into a client component as a prop
+without becoming client code, so the heading is still a server component and `HeatSlider` still owns
+nothing but the control. See its `heading` prop.
+
+**The sweep's observer moved down with it.** It watches the scale rather than the component root,
+because a root that now contains a headline would start the demonstration several hundred pixels
+early, to somebody still reading the standfirst. The element it watches has the top edge the root
+used to have, so the trigger geometry is the one that was tuned. See The Showcase Hands Over Rule.
+
+### The dark band surface
+
+The chrome has been a material since the day it was drawn. The dark bands were not: they were
+`bg-nybb-ink`, a flat `#0b0b0c` rectangle, and they are the two largest surfaces on the landing
+page. On a page whose whole thesis is ink printed on a warm ground, the two places the ink is
+thickest were the only ones with no material in them, and at a metre back they read as holes cut in
+the page rather than as panels laid on it.
+
+A band now carries `.band-ink`: Char, a dither, and whatever light the thing inside it throws. It
+does not carry the chrome's wash, and the reason is worth keeping. The chrome falls from light at
+the top because light in a room comes from above. A band's light does not: it comes from the object
+inside the band that is burning or lit, and in both of these that object is low and off to one
+side. A full width linear wash was built first and thrown out for saying the opposite, because it
+lifted the heat band's top left corner, which is the one part of that band where nothing is alight.
+A warm haze behind a headline with no source is the decoration this system does not ship.
+
+The dither is not the ground's. `body::after` covers exactly what the body gradient covers and sits
+at `z-index: -1`, so the page's grain stops at a band's top edge, and a band has no dither of its
+own until it is given one. It needs one now: a field below crosses about two dozen levels over six
+hundred pixels, and an unbroken ramp that shallow in near black is the worst case an 8-bit panel
+has. Undithered it arrives as concentric rings. The band's grain is the same fractal turbulence as
+the ground's with one change: the ground's is drawn through `overlay`, which over a near black
+backdrop resolves to roughly twice the backdrop times the noise and moves a channel by under half a
+level, so near black the noise has to add rather than blend. It is composited normally, and the
+colour it adds is warm, because a dither brought in to protect a warm panel must not be the thing
+that greys it. Measured on the rendered page, it moves Char by at most one level.
+
+### The printed tooth
+
+The bands' black was still a flat value with a light on it, which at a metre back is a flat value.
+It now carries the wall's own hatching: cross hatched marker strokes, in the band material rather
+than in either band, one declaration the way `.surface-chrome` is one declaration.
+
+**Strokes, and not a scene.** The Ink Layer says every motif in this system is the same material at
+a different size and never a second one, and this is the smallest size that material comes in. It is
+deliberately not a drawing: the landing page already carries the store's wall in the hero, and the
+empty cart's traffic signal was withdrawn for putting a motif on a page whose background already
+held that motif. Hatching is the wall's texture without the wall's subject, so it adds no second
+scene to count.
+
+**The ink is Buffalo Orange, and that is not a free choice.** The drawing is char on the amber and
+bone on a charcoal card, and neither works on Char. Bone at a low alpha over Char is the grey trap
+The Drawing Darkens the Ground Rule names: 8 percent composites to `rgb(30 29 30)`, a neutral
+arrived at by the back door. Orange at the same alpha composites to `rgb(29 18 12)`, warm brown, and
+orange is already admitted as a graphic on dark. A texture is a graphic.
+
+**The pitch is set by The Hatching Stays Strokes Rule.** 2px strokes on an 11px pitch, crossed by a
+second pass at 17px, drawn at that size rather than scaled down from anything, so a stroke is two
+device pixels at 1dppx and four at 2 and can never thin into the wash that rule exists to prevent.
+A third pass at forty times the pitch gathers the weave into broad soft swathes with no hard stop
+anywhere in it, because marker hatching is laid in passes and an even field of it is a fabric.
+
+**The mask measures the empty margin in the container's own units.** Full weight at the viewport's
+outer edges, fading to an eighth of it by the content column: the stops are `calc(50% ± 38rem)`,
+which is half the container plus its gutter, so there is a 64px buffer between the last strong pixel
+and the first glyph at every width. A percentage was there first and was wrong on a phone, where the
+copy runs the full width and the outer thirds landed squarely behind the branch addresses at 4.47:1.
+Below about 1216px those stops fall outside the box, CSS clamps a decreasing stop to the one before
+it, and the band flattens to the low weight on its own. A narrow viewport has no bare margin to
+decorate, so that is the right answer rather than a degraded one.
+
+### The screened glow
+
+The warm fields are smooth CSS radials, and a smooth radial is the one thing the object this system
+is modelled on cannot do. A press lays down solid ink or none; everything between is a screen of
+dots that shrink as the tone falls away. So the light in these bands breaks into a dot screen where
+it runs out.
+
+That is the justification and it also fixes the geometry. The screen is a ring, not a disc: nothing
+in the core, where the tone is solid enough to print flat, and nothing outside the falloff, where
+there is no ink to screen. What is left is a band of dots around each light, which is a second
+register against the line work of the hatching and lands in the part of the band that was emptiest.
+
+A staggered grid rather than a square one, two passes offset by half a cell, because a square screen
+moires against the cross hatching under it and 45 degrees is what a press would use anyway. Dots are
+drawn at 1.4px on a 9px cell, the same stroke floor The Hatching Stays Strokes Rule sets for the
+lines: under a device pixel a screen stops being dots and becomes the grey this system does not
+have.
+
+**The screen is what the whole background costs**, and it is the only layer here that spends any
+contrast at all. The rings were opened at 13 percent and pulled back to 11 with tighter falloffs,
+because at 13 the branch addresses measured 4.57:1 and this system does not ship a number that close
+to its own floor without a reason.
+
+### The band material off the landing page
+
+The sign in page is the third surface built on `.band-ink`, and it takes the ground, the hatching,
+the grain and the dot screen. It was `bg-nybb-charcoal`, the one flat dark rectangle left outside
+the material, and a customer arriving from the heat scale met a different black.
+
+**It gets no `band-lit`.** A warm field is spill light, The Lit Thing Lights Its Ground Rule anchors
+one on whatever in the band is burning, and a sign in page holds a heading, a paragraph and a form.
+A field there is the light with no lamp that same rule already turned down once, in the empty bottom
+right of the counters band.
+
+**The screen travels without it, in the other shape a screen comes in.** On the two landing bands it
+is a ring, and a ring is the shape of a light running out: solid ink in the core, dots through the
+falloff, nothing past it. With no light there is no falloff to break up, and a ring drawn here would
+be a halo around nothing. So `.band-screen-signin` is a flat tint instead, which is the other thing
+a press does with a screen: a dot field laid into the empty part of the sheet. Same 1.4px dot on the
+same 9px staggered cell, because the screen is one material and this must not become a second one.
+
+Its two fields are anchored off the top and bottom edges rather than floated in the middle, so they
+stay on the edges at any section height and the clear span between them is proportional. That span
+always holds the centred column, which is what keeps the heading, the paragraph and the card out of
+the dots whether the page is 620px tall or 1080.
+
+The hatching needs nothing adapting because its mask was never written in percentages. The stops are
+`calc(50% ± 38rem)`, which is half a `max-w-6xl` container plus its gutter, and the sign in page is
+a `max-w-6xl` container: the form sits in the protected zone at the same 64px buffer the landing
+page's copy does, at every width, with no page-specific rule.
+
+Measured on the rendered page with every glyph set to `transparent`, at 1920x1080, 1440x900, 390x844
+and a deliberately short 1440x620. The headline never drops below 15.35:1, the standfirst at bone 65
+below 7.09:1, and the card copy at bone 60 holds 5.81:1 at every size, because the card is opaque
+graphite and the screen behind it is not in the picture at all.
+
+**`.band-ink` is a dark ground for the focus ring too.** The ring colour is keyed off the background
+utility so a dark surface flips it from ink to orange, and `.band-ink` paints Char through a class
+of its own rather than through `bg-nybb-ink`. Left off that list it would have given the sign in
+page's button an ink ring on ink, and it had already done so on both landing bands, where the heat
+slider is a focusable control. It is on the list now.
+
+### What the finished bands measure
+
+Read off the rendered page with every glyph set to `transparent`, so each figure is the real ground
+inside that run's own box rather than its antialiasing. Every decorative layer in, at three widths.
+
+| Run | Set in | 1920 | 1440 | 390 |
+| --- | --- | --- | --- | --- |
+| Heat headline | bone | 14.68:1 | 14.85:1 | 14.99:1 |
+| Heat standfirst | bone 65 | 6.92:1 | 6.95:1 | 6.90:1 |
+| Heat caption | bone 55 | 5.42:1 | 5.32:1 | 5.35:1 |
+| Branches standfirst | bone 65 | 6.93:1 | 6.91:1 | 7.28:1 |
+| Branches addresses | bone 50 | 4.66:1 | 4.66:1 | 4.69:1 |
+
+The binding constraint is the branch addresses, 12px at bone 50, and the whole background is built
+around keeping them above 4.5. The hatching costs them nothing, because the mask puts it outside the
+column. The screen costs them 0.16.
 
 ### Named Rules
 
@@ -989,9 +1486,141 @@ card wears reads as a component from a different product.
 timing, whether it is a button, a chip, a flavour tile or a pickup window. Selection controls are not
 buttons, but they are pressable, and the feel has to agree.
 
+**The Lit Thing Lights Its Ground Rule.** A dark band is ink on paper, not a void, so anything in it
+that is burning or lit throws a wide warm field onto the band behind it. Fire that lights nothing is
+a sticker, and a photograph of a shopfront under lit orange signage sitting in flat black is a
+rectangle with a hard edge rather than a lit room.
+
+Four conditions, and the first two are what keep this from being a glow filter.
+
+- **The field must have a source, and the source decides where it goes.** The heat band's field
+  pools under the bar and is tallest over the hot end, because that is where Wild and Insane are and
+  because heat rises. The branches band gets exactly one field, anchored on the photograph in its
+  left column. A second one was tried in that band's empty bottom right, where an odd branch count
+  leaves the list ragged, and it was the discarded linear wash wearing a different shape: a light
+  with no lamp. That corner stays dark, which is the honest answer.
+- **The source decides the colour, and the two are never swapped.** The heat band takes the ramp's
+  own swatches because the thing alight in it is the scale. The branches band takes Buffalo Orange
+  because the thing alight in it is a shopfront under the store's own signage.
+- **It is weather, not an object.** Wide radials bleeding off the band's edges, sized in percentages
+  of the band so a phone gets the same composition rather than a blob. A halo has a boundary, and a
+  boundary makes it a thing on the page.
+- **It never quotes a level.** Spill light is not a sixth stop, so The One Heat Surface Per Page
+  Rule is untouched.
+
+The budget was read back off the rendered page rather than intended. No field is written above 9
+percent; where the heat band's two overlap its ground measures `rgb(35 27 24)`, warm brown and not
+the neutral grey this system does not have, and the branches band's one field peaks at
+`rgb(28 20 15)`. The tightest pair on either band is the heat band's caption, bone at 55, at 5.68:1
+on the band's own Char and 5.41:1 on the core of the field. Every band paragraph is bone at 65 and
+none drops under 7. The whole material costs about a quarter of a contrast ratio, and 9 percent is
+where the caption's floor put the ceiling rather than a taste. See `.band-ink`, `.band-lit`,
+`.band-lit-scale` and `.band-lit-counter` in globals.css.
+
 **The Full Thing Stays On Screen Rule.** A sold-out flavour, a taken pickup window and an
 out-of-stock item go flat, not away. Removing them makes the interface look broken and hides the
 information that the shop is busy.
+
+**The Arrival Says What The Content Is Rule.** A passage may animate as it comes into view only
+where the movement says something the still version does not. This replaced a flat ban on scroll
+entrances (September 2026), and it keeps the ban's reasoning by turning it into a test rather than
+a prohibition.
+
+The test is whether the arrival could be swapped onto the section next door without anybody
+noticing. If it could, it is decoration and it does not ship.
+
+What passes on the landing page: the ten flavours, the featured tiles and the nine counters. Each
+of those is a list, and a list arriving one item after another is the shape of the content moving,
+so the motion is the page saying "there are ten of these" before the reader has counted. What does
+not pass, and carries no marker in the markup: How pickup works, which is four instructions and not
+a sequence of objects, and the franchise line, which is one sentence.
+
+**A whole section may also arrive as one object, and that is the second passing shape.** Added for
+About, Branches and the counter picker on 2026-09-23 at the owner's request. Those pages carry one
+list each at most, the nine counter cards and the three counted facts, and the rest is prose: under
+the list test alone the About page would have had no motion at all past its own fold.
+
+The permission is narrow and the width of it is the whole point. A section rises once, complete,
+heading and body and photograph together, and says "here is the next part", which is true of it. A
+section whose paragraphs fade in one after another says "this is a list", which is false, and that
+is the sentence the original ban was written against. It is still banned. The test above is
+unchanged: an arrival that could be swapped onto the section next door without anybody noticing is
+decoration, and a passage staggering itself is exactly that swap made visible.
+
+The landing page was left alone in this pass. Its sections are separated by a change of material,
+bare ground against full-bleed dark band, and that change already does the work an arrival would be
+doing. About and Branches are one continuous ground with a hairline rule between sections, so there
+the arrival is the only thing marking the join.
+
+**A board is one object and a grid of cards is many, which is where the counter picker splits from
+the directory.** Both pages list the same nine counters. The Branches directory draws them as
+separate plates with gaps between them, so a wave through them is the list's own shape moving and it
+takes `.reveal-stagger`. The picker draws them as rows welded into one charcoal board by `divide-y`
+and clipped by its own rounded corners, which `StoreList.tsx` argues for at length: same-size boxes
+made the page read as a brochure of shops when it is a choice between kitchens. Staggering those
+rows drifts the hairlines against one another and leaves the bottom row clipped by `overflow-hidden`
+while it still carries its offset, so the board arrives whole. The shape of the arrival has to agree
+with what the markup says the thing is.
+
+The rules the passing cases still answer to:
+
+- **The wave is capped.** 40ms a step to seven steps, so the tenth tile and the ninetieth both
+  finish starting inside 280ms. Past that it stops being one movement and becomes a queue. See
+  `lib/site/reveal.ts`, which is in `lib/` so the cap can be tested.
+- **The finished state is the default.** Nothing in the stylesheet hides anything. The hidden state
+  keys on a `data-reveal` attribute that only `components/site/ScrollReveal.tsx` writes, and that
+  component returns early under `prefers-reduced-motion` or a missing `IntersectionObserver`. No
+  script, no crawler and no reduced-motion reader ever waits for a fade to be given the content.
+- **Nothing arrives twice.** Each group fires once and its observer disconnects. A section that
+  faded back out on the way up would be reporting scroll position, not content.
+- **A group already on screen is never hidden.** An entrance played to somebody looking at the
+  finished thing is the exact failure The Moment Belongs To The Band Rule was retired for.
+- **The dark bands move as heavier material.** A band's contents rise 36px over 760ms against a
+  light section's 24px over 640ms, because alternating bare ground with full-bleed dark bands is
+  how this page is built and two different materials should not move identically.
+- **The heat scale arrives already moving.** Asked for by the owner on 2026-09-21. The block lifts
+  in with the band and the thumb starts climbing 80ms later, while the fade is still running, so
+  the scale is never seen standing still first. It steps from the coldest stop up to where an
+  untouched showcase rests, naming Lite, Moderate and Hot in the readout as it passes each one, and
+  is done inside 340ms. This ran as two separate beats for one day, the block landing and the scale
+  then performing, and the owner read the gap as lag: by the time the scale moved they had already
+  looked at it and were waiting for it to do what the copy beside it promised. See The Showcase
+  Hands Over Rule, which is what keeps any of this from being the thing the system threw out.
+- **Focus reveals a group outright.** Every group here holds something focusable, and a reader
+  tabbing down the page reaches it before the scroll does. Waiting for an observer would put a
+  focus ring on an invisible control. See `components/site/ScrollReveal.tsx`.
+
+**The Showcase Hands Over Rule.** The landing page's heat scale plays itself once as it arrives.
+This is The Moment Belongs To The Band Rule coming back, and the half of that retirement which was
+right is written into the conditions rather than thrown away with it. The retirement said the
+moment belongs to the customer's hand. So this is a demonstration that hands over, and every one of
+these is load bearing:
+
+- **It shows the picking, not the picture.** The thumb steps through real stops and the readout
+  names each one, because what the scale has to say is that heat is an amount you choose. The five
+  bars do not extend in sequence: the tube is drawn whole, as it always was, and what moves through
+  it is the thumb. A single slide to the end would move the bar and never name what it passed.
+- **A hand ends it.** A pointer or a key stops it where it stands, because the reader's own value
+  is already arriving in a change event. Focus stops it and lands on the resting stop, because
+  tabbing here carries no value and the alternative is leaving somebody holding whichever stop the
+  sweep was passing through.
+- **It never plays to somebody already watching.** A scale in view when the page loads is left
+  alone. A control that rearranges itself in front of you is not a demonstration, it is a glitch.
+- **It cannot repeat and it cannot loop.** The observer disconnects on the first crossing and no
+  second schedule exists.
+- **It is off by default.** Only the uncontrolled showcase sweeps. A slider that belongs to
+  somebody's order is never moved on their behalf, which is a different act entirely.
+- **The travel is capped, not fixed.** A longer ramp steps faster rather than running longer, so
+  the whole thing finishes inside 700ms however many stops there are, and can never drift toward
+  the five seconds that WCAG 2.2.2 would make us ship a pause control for.
+- **The gap goes between the moves, never in front of the first one.** A gap in front is a wait,
+  and a wait in front of an introduction is the introduction not starting.
+- **The opening state is never shipped.** The server still renders the scale resting on Hot, so no
+  JavaScript, a crawler and reduced motion all get what they got before. Winding back to the cold
+  stop happens before paint, on a block that is below the fold.
+
+See `heatSweepSteps` in `lib/menu/heat-slider.ts`. Inside the scale, the Living Heat Source Rule
+still owns everything.
 
 ## The ink layer
 
@@ -1035,9 +1664,10 @@ The landing hero is the placement that answers the obvious objection to using th
 twice: it carries the shop's name, and the header draws the wordmark eighty pixels above it. The
 crop stays because lettering is the one subject that reads better the larger it gets, which is what
 a hero-sized bleed does to it, and because a logo doing chrome's job and a street scene with a sign
-in it are not the same object. The real duplicate on that screen is the wordmark burnt into the hero
-film, which `scripts/build-hero-video.sh` exists to crop off and which the files in `public/video/`
-predate.
+in it are not the same object. The duplicate to watch for on that screen is a second wordmark in the
+picture behind the type, which is why both the retired film and the murals that replaced it are
+cropped before they ship: `scripts/build-hero-video.sh` cut the mark that was burnt into the film,
+and `scripts/build-hero-slides.ts` cuts the panel each mural carries it on.
 
 ### Named Rules
 
@@ -1115,6 +1745,12 @@ region beside it for a wall to occupy anyway.
 
 - **Do** put dark surfaces on the amber ground. That contrast is the layout, and alternating bare
   ground with full-bleed dark bands is how a page gets its structure here.
+- **Do** give a dark band a source before you give it any warmth. The field comes from the thing in
+  the band that is burning or lit, it takes that thing's colour, and a corner with nothing in it
+  stays dark. See The Lit Thing Lights Its Ground Rule.
+- **Do** mask a background texture against the container rather than against a percentage of the
+  viewport. `calc(50% ± 38rem)` knows where the column is at every width and a percentage does not,
+  and the widths where they disagree are the phone widths where the copy runs edge to edge.
 - **Do** measure every new colour pair and record the ratio. Every value in this system has one
   behind it.
 - **Do** composite a colour through a 1x1 canvas and read the pixel back when checking contrast
@@ -1127,8 +1763,11 @@ region beside it for a wall to occupy anyway.
   colour on every leaf.
 - **Do** use transform-only hover and press effects, so nothing reflows.
 - **Do** use the heat ramp's five fixed swatches wherever a heat level appears.
-- **Do** spend motion on the product's own mechanisms rather than on arrivals, and make the drawn or
-  finished state the default so no-JS and reduced motion both keep it.
+- **Do** spend motion on the product's own mechanisms first, and make the drawn or finished state
+  the default so no-JS and reduced motion both keep it. An arrival is allowed on top of that only
+  where it passes The Arrival Says What The Content Is Rule.
+- **Do** keep keyframes literal. A `var()` inside a keyframe keeps the animation off the compositor;
+  put per-element variation in static properties beside the animated `transform`.
 - **Do** let states differ structurally before reaching for a colour to distinguish them.
 
 ### Don't:
@@ -1144,10 +1783,14 @@ region beside it for a wall to occupy anyway.
   silently defeats it. Focus is an outline, `3px`, offset `2px`.
 - **Don't** set a form control below `16px` on a phone.
 - **Don't** set the display face below `0.75rem`, or above `6rem`.
-- **Don't** apply a blanket entrance animation to sections as they scroll. Motion is earned by
-  meaning here, and a fade applied to seven sections in turn says nothing about any of them. Motion
-  that animates the product's own mechanism, the way the heat scale draws its five stops, is exactly
-  what this system wants more of.
+- **Don't** apply an undifferentiated entrance animation to sections as they scroll. This clause
+  used to ban section entrances outright. The owner narrowed it on 2026-09-21, and the half that
+  was right is the half that is kept: a fade applied to seven sections in turn says nothing about
+  any of them, because it is the same sentence spoken seven times. What the ban was reaching for is
+  that an arrival has to be about the thing arriving. Narrowed once more on 2026-09-23 to let a
+  whole section arrive as one object on the prose pages; what stays banned either way is staggering
+  a passage's paragraphs as though they were a list. See The Arrival Says What The Content Is
+  Rule.
 - **Don't** introduce a second radius scale or a second accent colour.
 - **Don't** widen the fourth typeface past the tagline. See The Fourth Face Letters, It Does Not Set
   Rule: it is admitted to letter one fixed phrase and it sets nothing.

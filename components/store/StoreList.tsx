@@ -351,8 +351,19 @@ export function StoreList({
         }
       />
 
+      {/* The board arrives as one object, not row by row.
+
+          This is the same distinction the Branches page's nine cards fall on
+          the other side of. Those are separate plates with gaps between them,
+          so a wave through them is the list's own shape moving. These rows are
+          welded into one panel by `divide-y` and clipped by its rounded
+          corners, and this component's own note at the top of the file is that
+          it is a board rather than a grid of cards, on purpose. Staggering the
+          rows drifts the hairlines against each other and leaves the bottom
+          row clipped by `overflow-hidden` while it is still carrying its
+          offset. One panel, one arrival. */}
       {orderable.length > 0 ? (
-        <ul className={BOARD}>
+        <ul className={cn(BOARD, "reveal")}>
           {orderable.map((store) => {
             const selected = store.slug === selectedSlug;
             const busy = choosing === store.slug;
@@ -532,7 +543,7 @@ export function StoreList({
       )}
 
       {closed.length > 0 ? (
-        <section aria-labelledby="other-counters" className="mt-12">
+        <section aria-labelledby="other-counters" className="reveal mt-12">
           <h2 id="other-counters" className="font-display heading-minor">
             {orderingOpen ? "The rest of the counters" : "Every counter"}
           </h2>
