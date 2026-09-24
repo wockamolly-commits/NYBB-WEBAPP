@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { mergeStores } from "@/lib/branches/merge";
 import {
   RECOMMEND_WITHIN_KM,
+  ROAD_FACTOR,
   distanceKm,
   distanceLabel,
   distancesBySlug,
   formatDistance,
   rankByDistance,
+  roadKm,
   suggestNearest,
 } from "@/lib/branches/nearest";
 import type { Branch } from "@/lib/catalog/types";
@@ -70,6 +72,22 @@ describe("how far a counter is", () => {
     const manila = { lat: 14.5995, lng: 120.9842 };
     expect(distanceKm(manila, MANGO)).toBeGreaterThan(550);
     expect(distanceKm(manila, MANGO)).toBeLessThan(590);
+  });
+});
+
+// Google Maps measures the road, and customers compare against it. A bare
+// straight line reads as the page being wrong, so rows show the road estimate.
+describe("how far it is by road", () => {
+  it("stretches the straight line by the road factor", () => {
+    expect(roadKm(MANGO, CENTRAL_BLOC)).toBeCloseTo(distanceKm(MANGO, CENTRAL_BLOC) * ROAD_FACTOR, 10);
+    expect(roadKm(MANGO, CENTRAL_BLOC)).toBeCloseTo(3.5, 1);
+  });
+
+  it("is what every row and the suggestion carry", () => {
+    const stores = storesFrom([catalogEntry("central-bloc", CENTRAL_BLOC)], ["central-bloc"]);
+
+    expect(distancesBySlug(stores, MANGO).get("central-bloc")).toBeCloseTo(roadKm(MANGO, CENTRAL_BLOC), 10);
+    expect(suggestNearest(stores, MANGO)).toMatchObject({ km: roadKm(MANGO, CENTRAL_BLOC) });
   });
 });
 
@@ -237,7 +255,7 @@ describe("how a distance is written", () => {
   });
 
   it("reads as a sentence on a counter row", () => {
-    expect(distanceLabel(2.51)).toBe("About 2.5 km away");
+    expect(distanceLabel(2.51)).toBe("About 2.5 km away by road");
     expect(distanceLabel(0.02)).toBe("Under 100 m away");
   });
 });

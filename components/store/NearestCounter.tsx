@@ -237,8 +237,8 @@ function Suggested({
       onOpen={onOpenDetails}
       body={
         alreadyChosen
-          ? `${distanceLabel(km)} in a straight line. It is already your counter. The list below runs nearest first.`
-          : `${distanceLabel(km)} in a straight line. The list below runs nearest first.`
+          ? `${distanceLabel(km)}. It is already your counter. The list below runs nearest first.`
+          : `${distanceLabel(km)}. The list below runs nearest first.`
       }
       action={
         alreadyChosen ? null : (

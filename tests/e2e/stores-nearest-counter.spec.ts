@@ -116,7 +116,7 @@ test("falls back to the list when location is refused", async ({ page }) => {
   await find.click();
 
   await expect(slot(page)).toContainText("Location is off for this site");
-  await expect(page.getByText(/ away$/)).toHaveCount(0);
+  await expect(page.getByText(/ away( by road)?$/)).toHaveCount(0);
 
   // Every counter is still one press away.
   await row(page, CENTRAL_BLOC.name).click();
@@ -188,7 +188,7 @@ test.describe("the nearest counter's detail sheet", () => {
       /google\.com\/maps/,
     );
     await expect(sheet).toContainText("Central Bloc, Cebu IT Park, Lahug");
-    await expect(sheet).toContainText("Under 100 m away in a straight line");
+    await expect(sheet).toContainText("Under 100 m away.");
     await expect(sheet.getByRole("link", { name: /Get directions/ })).toBeVisible();
 
     // Escape closes it and hands focus back to the card that opened it.

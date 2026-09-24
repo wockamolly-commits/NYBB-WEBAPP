@@ -12,13 +12,16 @@ import type { Store } from "./types";
  * directions. The suggestion is a convenience, and a convenience is not worth
  * a shop keeping a record of where its customers stand.
  *
- * STRAIGHT LINE, AND THE COPY SAYS SO.
+ * AN ESTIMATE OF THE ROAD, AND THE COPY SAYS SO.
  *
- * Road distance for every row would need a routing service, which is a third
- * party this site's Content Security Policy keeps out and a place the location
- * would have to be sent nine times over. Across Cebu City a straight line ranks
- * counters the same way the roads mostly do, and every distance on the page is
- * written as "about".
+ * The true road distance for every row would need a routing service, which is
+ * a third party this site's Content Security Policy keeps out and a place the
+ * location would have to be sent nine times over. A bare straight line is the
+ * other honest answer, but customers hold it up against Google Maps, which
+ * measures the road, and read the gap as the page being wrong. So the straight
+ * line is stretched by a fixed road factor and every distance is written as
+ * "about ... by road". The factor is the same for every counter, so the order
+ * the counters rank in is exactly the straight line order.
  */
 
 export type LatLng = { lat: number; lng: number };
@@ -27,13 +30,24 @@ export type LatLng = { lat: number; lng: number };
  * Past this, nothing is suggested.
  *
  * Every counter is on Cebu, and the furthest apart (North Gateway and Naga)
- * are well under fifty kilometres. Somebody further than this from every
+ * are well under fifty kilometres even by road. Measured, like every distance
+ * here, as the road estimate. Somebody further than this from every
  * counter is browsing from somewhere else, and a button offering to "collect
  * from here" a counter a flight away is the page not listening.
  */
 export const RECOMMEND_WITHIN_KM = 50;
 
 const EARTH_RADIUS_KM = 6371.0088;
+
+/**
+ * How much longer the road is than the straight line, on average.
+ *
+ * Urban road networks typically run 1.3 to 1.5 times the straight line
+ * distance. Cebu City's grid is broken by the hills above Lahug, the rivers
+ * and the reclaimed coast, so it sits toward the upper end. An average, so any
+ * one trip can still come out shorter or longer on Google Maps.
+ */
+export const ROAD_FACTOR = 1.4;
 
 function radians(degrees: number): number {
   return (degrees * Math.PI) / 180;
@@ -49,8 +63,13 @@ export function distanceKm(from: LatLng, to: LatLng): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/** About how far it is by road: the straight line, stretched by the road factor. */
+export function roadKm(from: LatLng, to: LatLng): number {
+  return distanceKm(from, to) * ROAD_FACTOR;
+}
+
 /**
- * The distance to every counter that has a pin, keyed by slug.
+ * The estimated road distance to every counter that has a pin, keyed by slug.
  *
  * Orderable or not: a phone-only counter round the corner is worth knowing
  * about even though it cannot be chosen here. A counter with no pin is absent
@@ -59,7 +78,7 @@ export function distanceKm(from: LatLng, to: LatLng): number {
 export function distancesBySlug(stores: Store[], from: LatLng): Map<string, number> {
   const distances = new Map<string, number>();
   for (const store of stores) {
-    if (store.pin) distances.set(store.slug, distanceKm(from, store.pin));
+    if (store.pin) distances.set(store.slug, roadKm(from, store.pin));
   }
   return distances;
 }
@@ -84,7 +103,7 @@ export function suggestNearest(stores: Store[], from: LatLng): NearestSuggestion
 
   for (const store of stores) {
     if (!store.orderable || !store.pin) continue;
-    const km = distanceKm(from, store.pin);
+    const km = roadKm(from, store.pin);
     if (!best || km < best.km) best = { store, km };
   }
 
@@ -137,8 +156,11 @@ export function formatDistance(km: number): string {
   return `${wholeKilometres.format(km)} km`;
 }
 
-/** The line a counter row carries: "About 2.5 km away", or "Under 100 m away". */
+/**
+ * The line a counter row carries: "About 2.5 km away by road", or "Under 100 m
+ * away", where the road makes no difference worth naming.
+ */
 export function distanceLabel(km: number): string {
   if (km < 0.1) return "Under 100 m away";
-  return `About ${formatDistance(km)} away`;
+  return `About ${formatDistance(km)} away by road`;
 }

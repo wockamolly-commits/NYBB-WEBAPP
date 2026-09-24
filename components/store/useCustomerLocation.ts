@@ -35,12 +35,15 @@ export type CustomerLocation =
   | { status: "failed" };
 
 const POSITION_OPTIONS: PositionOptions = {
-  // A counter-sized answer does not need GPS, and asking for it costs a phone
-  // several seconds and some battery for precision this page throws away.
-  enableHighAccuracy: false,
-  timeout: 10_000,
-  // Somebody who opens the picker twice in five minutes has not moved far.
-  maximumAge: 5 * 60_000,
+  // Without GPS a phone answers from cell towers and Wi-Fi, which in Cebu can
+  // be a kilometre or more out. Counters here are two or three kilometres
+  // apart, so that error is enough to print the wrong distance and rank the
+  // wrong counter first. The few seconds GPS costs are worth a true reading.
+  enableHighAccuracy: true,
+  timeout: 15_000,
+  // Short, so a fix taken across town a few minutes ago is not reused as
+  // though the customer were still standing there.
+  maximumAge: 30_000,
 };
 
 export function useCustomerLocation(): {

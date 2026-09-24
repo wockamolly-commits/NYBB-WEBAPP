@@ -289,7 +289,7 @@ export function StoreList({
         branch={detailEntry}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line.` : null}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm)}.` : null}
         actions={
           // Only a counter this page can choose gets the choice in its sheet.
           // Anything else falls back to the directory's Directions and Call.
