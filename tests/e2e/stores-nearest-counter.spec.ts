@@ -183,10 +183,11 @@ test.describe("the nearest counter's detail sheet", () => {
 
     const sheet = page.getByRole("dialog", { name: "Central Bloc, IT Park" });
     await expect(sheet).toBeVisible();
-    await expect(sheet.locator("iframe[title^='Map showing']")).toHaveAttribute(
-      "src",
-      /google\.com\/maps/,
-    );
+    // The route map where the server has a Mapbox browser token, and the
+    // Google frame where it does not. Either way, a map of this counter.
+    await expect(
+      sheet.locator("canvas.mapboxgl-canvas, iframe[src*='google.com/maps']").first(),
+    ).toBeVisible();
     await expect(sheet).toContainText("Central Bloc, Cebu IT Park, Lahug");
     await expect(sheet).toContainText("Under 100 m away.");
     await expect(sheet.getByRole("link", { name: /Get directions/ })).toBeVisible();

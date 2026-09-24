@@ -2024,7 +2024,8 @@ the owner agreeing to trade away a Tier 1 control.
   NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
   PAYMONGO_SECRET_KEY, NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY, PAYMONGO_WEBHOOK_SECRET
   RESEND_API_KEY, RESEND_FROM
-  MAPBOX_ACCESS_TOKEN                        (optional, road distances on /stores)
+  MAPBOX_ACCESS_TOKEN                        (optional, road distances and routes on /stores)
+  NEXT_PUBLIC_MAPBOX_TOKEN                   (optional, the route map; URL restricted)
   ZENPOS_BASE_URL                            (unset until discovery completes)
   CRON_SECRET
   ```

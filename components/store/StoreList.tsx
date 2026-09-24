@@ -19,7 +19,7 @@ import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
 import { NearestCounter } from "./NearestCounter";
 import { useCustomerLocation } from "./useCustomerLocation";
-import { useRoadDistances } from "./useRoadDistances";
+import { routeKm, useRoadRoutes } from "./useRoadRoutes";
 
 /**
  * Choosing the counter, which on a pickup-only platform is the first real
@@ -215,12 +215,13 @@ export function StoreList({
     });
   }
 
-  // Estimated here the moment the position lands, then replaced by Mapbox's
-  // road distances when they arrive. See lib/branches/nearest.ts. Nine
+  // Estimated here the moment the position lands, then replaced by the length
+  // of each Mapbox driving route when they arrive. See lib/branches/nearest.ts. Nine
   // stores, so there is nothing to memoise.
   const { location, locate } = useCustomerLocation();
   const position = location.status === "located" ? location.position : null;
-  const measured = useRoadDistances(position);
+  const routes = useRoadRoutes(position);
+  const measured = routeKm(routes);
   const distances = position ? distancesBySlug(stores, position, measured) : null;
   const isMeasured = (slug: string) => measured?.[slug] !== undefined;
 
@@ -293,6 +294,8 @@ export function StoreList({
         branch={detailEntry}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
+        routeFrom={position}
+        route={detailSlug ? (routes?.[detailSlug] ?? null) : null}
         detail={detailKm !== undefined ? `${distanceLabel(detailKm, isMeasured(detailSlug!))}.` : null}
         actions={
           // Only a counter this page can choose gets the choice in its sheet.

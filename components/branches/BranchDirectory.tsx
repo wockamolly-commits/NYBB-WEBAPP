@@ -1,17 +1,31 @@
 "use client";
 
-import { ArrowUpRight, MapPin } from "lucide-react";
+import { ArrowUpRight, LoaderCircle, MapPin, Navigation } from "lucide-react";
 import { useState } from "react";
+import { useCustomerLocation } from "@/components/store/useCustomerLocation";
+import { useRoadRoutes } from "@/components/store/useRoadRoutes";
+import { buttonStyles } from "@/components/ui/Button";
 import type { BranchEntry } from "@/lib/branches/entries";
+import { distanceLabel } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
-import { BranchDialog, OpenState } from "./BranchDialog";
+import { BranchDialog, OpenState, ROUTE_MAPS_ENABLED } from "./BranchDialog";
 
 /**
  * The branches page's nine cards, each opening its counter's detail sheet.
  *
  * The sheet, and why it is a dialog, is in `BranchDialog.tsx`. It is shared
  * with the counter picker, which opens it from the nearest-counter suggestion.
+ *
+ * THE DRIVE, THE SAME WAY THE PICKER SHOWS IT.
+ *
+ * Where the page knows where the visitor is, an open counter's map draws the
+ * driving route to it and the sheet says how far it is by road. Somebody who
+ * allowed location on an earlier visit is located on arrival; anyone else gets
+ * a "Show my route" button over the map, because a location prompt nobody
+ * asked for is refused more often than one they did. The routes are only
+ * asked of Mapbox once a sheet is open, so a visitor who just reads the cards
+ * costs nothing.
  */
 
 export type { BranchEntry } from "@/lib/branches/entries";
@@ -24,6 +38,15 @@ export function BranchDirectory({ branches }: { branches: BranchEntry[] }) {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const selected = branches.find((branch) => branch.slug === selectedSlug) ?? null;
+
+  const { location, locate } = useCustomerLocation();
+  const position = location.status === "located" ? location.position : null;
+  const routes = useRoadRoutes(open ? position : null);
+  const route = selected ? (routes?.[selected.slug] ?? null) : null;
+  const canOffer =
+    ROUTE_MAPS_ENABLED &&
+    selected?.pin != null &&
+    (location.status === "idle" || location.status === "locating");
 
   function show(branch: BranchEntry) {
     setSelectedSlug(branch.slug);
@@ -44,7 +67,31 @@ export function BranchDirectory({ branches }: { branches: BranchEntry[] }) {
         ))}
       </ul>
 
-      <BranchDialog branch={selected} open={open} onClose={() => setOpen(false)} />
+      <BranchDialog
+        branch={selected}
+        open={open}
+        onClose={() => setOpen(false)}
+        detail={route ? `${distanceLabel(route.km, true)}.` : null}
+        routeFrom={position}
+        route={route}
+        routeOffer={
+          canOffer ? (
+            <button
+              type="button"
+              onClick={locate}
+              disabled={location.status === "locating"}
+              className={buttonStyles({ tone: "dark", variant: "primary", className: "shadow-lg" })}
+            >
+              {location.status === "locating" ? (
+                <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Navigation aria-hidden className="size-4" />
+              )}
+              {location.status === "locating" ? "Finding you" : "Show my route"}
+            </button>
+          ) : null
+        }
+      />
     </>
   );
 }

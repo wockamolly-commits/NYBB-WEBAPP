@@ -1,12 +1,25 @@
 "use client";
 
 import { LoaderCircle, Navigation, Phone, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
 import { buttonStyles } from "@/components/ui/Button";
 import type { BranchEntry } from "@/lib/branches/entries";
 import type { DayHours } from "@/lib/branches/hours";
+import type { LatLng } from "@/lib/branches/nearest";
+import type { RoadRoute } from "@/lib/branches/road-route";
 import { telHref } from "@/lib/phone";
 import { cn } from "@/lib/utils";
+
+/**
+ * Mapbox GL JS is the heaviest thing on the storefront, so it is its own chunk,
+ * fetched the first time a sheet opens with a route to draw. Never rendered on
+ * the server: it needs a real canvas.
+ */
+const RouteMap = dynamic(() => import("./RouteMap"), { ssr: false });
+
+/** Inlined at build. Without a browser token there is no route map to show. */
+export const ROUTE_MAPS_ENABLED = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim());
 
 /**
  * A counter's detail sheet: its map, address, phones and week.
@@ -58,6 +71,15 @@ import { cn } from "@/lib/utils";
  * The scrollbars themselves are drawn in globals.css: a thin bone thumb with
  * no track and no stepper arrows, instead of the system's white gutter.
  *
+ * A ROUTE WHERE THE PAGE KNOWS WHERE THE CUSTOMER IS.
+ * ================================================================
+ * Given `routeFrom`, a pinned counter's map is a Mapbox map with the driving
+ * route drawn from the customer to the counter (see `RouteMap`), in place of
+ * the Google frame. Both store pages use it: the counter picker and the
+ * Branches directory. Without a position, a pin or a Mapbox browser token it
+ * is the Google frame as before, with `routeOffer` laid over it where the
+ * page can still ask for the position.
+ *
  * THE MAP LOADS ONLY WHEN ASKED FOR.
  * ================================================================
  * The frame mounts when the dialog opens and not before, so a visitor who
@@ -71,6 +93,9 @@ export function BranchDialog({
   onClose,
   detail,
   actions,
+  routeFrom,
+  route,
+  routeOffer,
 }: {
   /**
    * Kept by the caller after closing, so the sheet does not empty itself
@@ -86,6 +111,12 @@ export function BranchDialog({
   detail?: React.ReactNode;
   /** Replaces the directory's Directions and Call at the foot of the sheet. */
   actions?: React.ReactNode;
+  /** Where the customer is. Given, the map draws the drive from here. */
+  routeFrom?: LatLng | null;
+  /** The drive to this counter, when it has arrived. */
+  route?: RoadRoute | null;
+  /** Laid over the map while there is no route map: a way to ask for one. */
+  routeOffer?: React.ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -126,6 +157,9 @@ export function BranchDialog({
           onClose={() => dialogRef.current?.close()}
           detail={detail}
           actions={actions}
+          routeFrom={routeFrom ?? null}
+          route={route ?? null}
+          routeOffer={routeOffer}
         />
       ) : null}
     </dialog>
@@ -157,14 +191,25 @@ function BranchDetail({
   onClose,
   detail,
   actions,
+  routeFrom,
+  route,
+  routeOffer,
 }: {
   branch: BranchEntry;
   showMap: boolean;
   onClose: () => void;
   detail?: React.ReactNode;
   actions?: React.ReactNode;
+  routeFrom: LatLng | null;
+  route: RoadRoute | null;
+  routeOffer?: React.ReactNode;
 }) {
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const routeTo = ROUTE_MAPS_ENABLED && routeFrom ? branch.pin : null;
+  // Which map has painted, rather than whether one has, so the placeholder
+  // comes back while the Google frame gives way to the route map.
+  const mapKind = routeFrom && routeTo ? "route" : "frame";
+  const [loadedKind, setLoadedKind] = useState<"route" | "frame" | null>(null);
+  const mapLoaded = loadedKind === mapKind;
   const hoursId = useId();
 
   return (
@@ -204,17 +249,30 @@ function BranchDetail({
               Loading map
             </div>
           ) : null}
-          {showMap ? (
+          {showMap && routeFrom && routeTo ? (
+            <RouteMap
+              from={routeFrom}
+              to={routeTo}
+              route={route}
+              label={`Map showing the drive from you to NYBB Hot Wings, ${branch.shortName}`}
+              onReady={() => setLoadedKind("route")}
+            />
+          ) : showMap ? (
             <iframe
               src={branch.mapUrl}
               title={`Map showing NYBB Hot Wings, ${branch.shortName}`}
-              onLoad={() => setMapLoaded(true)}
+              onLoad={() => setLoadedKind("frame")}
               referrerPolicy="strict-origin-when-cross-origin"
               className={cn(
                 "absolute inset-0 size-full border-0 transition-opacity duration-300 ease-out",
                 mapLoaded ? "opacity-100" : "opacity-0",
               )}
             />
+          ) : null}
+          {/* Over the Google frame only, and only once it has painted, so the
+              offer never floats over the loading placeholder. */}
+          {showMap && mapLoaded && !(routeFrom && routeTo) && routeOffer ? (
+            <div className="absolute inset-x-3 bottom-8 z-10 flex justify-center">{routeOffer}</div>
           ) : null}
         </div>
 

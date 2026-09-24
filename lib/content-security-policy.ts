@@ -3,6 +3,8 @@ type ContentSecurityPolicyOptions = {
   supabaseUrl?: string;
   /** PayMongo hosts QR images and future hosted payment screens. */
   paymentsEnabled?: boolean;
+  /** Mapbox serves the route map's tiles, styles and fonts. */
+  mapsEnabled?: boolean;
 };
 
 /**
@@ -22,6 +24,13 @@ type ContentSecurityPolicyOptions = {
  *     Google's origin running under Google's policy, so it needs `frame-src`
  *     and no script, XHR or image origin here. The Maps JavaScript API, which
  *     would need all three, stays out. See `lib/branches/map.ts`.
+ *   - Mapbox is gated behind `mapsEnabled`, on when there is a browser token.
+ *     The route map on /stores is Mapbox GL JS, bundled from npm, so its
+ *     script is ours and inherits the nonce's trust. It needs only
+ *     `connect-src` for its tiles, styles, fonts and usage events, and runs
+ *     its workers from `blob:`, which `worker-src` already allows. Its classic
+ *     styles are used rather than Mapbox Standard, which would also need
+ *     `'wasm-unsafe-eval'` in `script-src`.
  *   - PayMongo is gated behind `paymentsEnabled` and stays off until the online
  *     prepay rail ships.
  */
@@ -51,6 +60,10 @@ export function contentSecurityPolicy(
     ? " https://*.paymongo.com"
     : "";
 
+  const mapsConnect = options.mapsEnabled
+    ? " https://api.mapbox.com https://events.mapbox.com"
+    : "";
+
   return [
     `default-src 'self'`,
     // 'unsafe-eval' is development only: the dev server's React refresh
@@ -67,7 +80,7 @@ export function contentSecurityPolicy(
     // and none should: an embed would drag in its own script origin.
     `media-src 'self'`,
     `font-src 'self' data: https://fonts.gstatic.com`,
-    `connect-src 'self'${supabaseConnect}${paymentsConnect}`,
+    `connect-src 'self'${supabaseConnect}${paymentsConnect}${mapsConnect}`,
     `frame-src 'self' https://www.google.com${paymentsFrame}`,
     `worker-src 'self' blob:`,
     `manifest-src 'self'`,

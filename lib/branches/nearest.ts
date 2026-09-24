@@ -12,8 +12,9 @@ import type { Store } from "./types";
  *
  * Customers hold these numbers up against Google Maps, which measures the
  * road, so a straight line reads as the page being wrong. The road distance
- * comes from Mapbox, through `app/actions/road-distances.ts`, which sends the
- * position once for that lookup and keeps it nowhere. Until it answers, or if
+ * is the length of Mapbox's driving route to each counter, through
+ * `app/actions/road-distances.ts`, which sends the position for that lookup
+ * and keeps it nowhere. Until it answers, or if
  * it cannot, each row shows the straight line stretched by a fixed road
  * factor, and says "about" to mark it as the estimate it is.
  */
@@ -62,7 +63,7 @@ export function roadKm(from: LatLng, to: LatLng): number {
   return distanceKm(from, to) * ROAD_FACTOR;
 }
 
-/** Kilometres by road from Mapbox, keyed by slug. A counter it could not route is absent. */
+/** Kilometres by road, the length of each Mapbox route, keyed by slug. A counter it could not route is absent. */
 export type MeasuredKm = Record<string, number>;
 
 /**

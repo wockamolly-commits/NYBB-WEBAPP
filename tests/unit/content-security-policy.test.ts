@@ -73,6 +73,24 @@ describe("contentSecurityPolicy", () => {
     expect(directive(csp, "img-src")).toContain("https://*.paymongo.com");
   });
 
+  it("keeps Mapbox out of the policy until the route map is enabled", () => {
+    const csp = contentSecurityPolicy("n", PROD);
+    expect(csp).not.toContain("mapbox");
+  });
+
+  // Bundled from npm, so its script is ours. It needs to fetch, and its
+  // workers start from blob:, which the policy already allows.
+  it("admits Mapbox to connect-src alone once the route map is enabled", () => {
+    const csp = contentSecurityPolicy("n", { ...PROD, mapsEnabled: true });
+    expect(directive(csp, "connect-src")).toContain("https://api.mapbox.com");
+    expect(directive(csp, "connect-src")).toContain("https://events.mapbox.com");
+    expect(directive(csp, "worker-src")).toContain("blob:");
+    for (const name of ["script-src", "img-src", "frame-src"]) {
+      expect(directive(csp, name)).not.toContain("mapbox");
+    }
+    expect(directive(csp, "script-src")).not.toContain("wasm-unsafe-eval");
+  });
+
   it("admits the Google Maps embed as a frame, and Google nowhere else", () => {
     const csp = contentSecurityPolicy("n", {
       ...PROD,
