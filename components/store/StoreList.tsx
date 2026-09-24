@@ -19,6 +19,7 @@ import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
 import { NearestCounter } from "./NearestCounter";
 import { useCustomerLocation } from "./useCustomerLocation";
+import { useRoadDistances } from "./useRoadDistances";
 
 /**
  * Choosing the counter, which on a pickup-only platform is the first real
@@ -214,18 +215,21 @@ export function StoreList({
     });
   }
 
-  // Worked out here, in the browser. See lib/branches/nearest.ts. Nine
+  // Estimated here the moment the position lands, then replaced by Mapbox's
+  // road distances when they arrive. See lib/branches/nearest.ts. Nine
   // stores, so there is nothing to memoise.
   const { location, locate } = useCustomerLocation();
   const position = location.status === "located" ? location.position : null;
-  const distances = position ? distancesBySlug(stores, position) : null;
+  const measured = useRoadDistances(position);
+  const distances = position ? distancesBySlug(stores, position, measured) : null;
+  const isMeasured = (slug: string) => measured?.[slug] !== undefined;
 
   const publishedOrderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
   const publishedClosed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
   const orderable = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
   const closed = distances ? rankByDistance(publishedClosed, distances) : publishedClosed;
 
-  const suggestion = position ? suggestNearest(orderable, position) : null;
+  const suggestion = distances ? suggestNearest(orderable, distances, measured) : null;
   const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
 
   // Raised for REORDER_GRACE_MS when the order of the choosable rows changes,
@@ -289,7 +293,7 @@ export function StoreList({
         branch={detailEntry}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        detail={detailKm !== undefined ? `${distanceLabel(detailKm)}.` : null}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm, isMeasured(detailSlug!))}.` : null}
         actions={
           // Only a counter this page can choose gets the choice in its sheet.
           // Anything else falls back to the directory's Directions and Call.
@@ -457,6 +461,7 @@ export function StoreList({
                     {km !== undefined ? (
                       <Distance
                         km={km}
+                        measured={isMeasured(store.slug)}
                         className={cn("mb-1", selected ? "text-nybb-ink" : "text-nybb-bone")}
                       />
                     ) : null}
@@ -569,7 +574,11 @@ export function StoreList({
 
                 <div className={cn(ROW_DETAILS, "text-sm leading-relaxed")}>
                   {distances?.has(store.slug) ? (
-                    <Distance km={distances.get(store.slug)!} className="text-nybb-bone mb-1" />
+                    <Distance
+                      km={distances.get(store.slug)!}
+                      measured={isMeasured(store.slug)}
+                      className="text-nybb-bone mb-1"
+                    />
                   ) : null}
                   <p className="text-nybb-bone/65">
                     {store.addressLine}, {store.city}
@@ -622,11 +631,19 @@ export function StoreList({
  * already uses for a number compared down the board, and a pin in front. A
  * span, so it is valid inside a row's button as well as a phone-only row.
  */
-function Distance({ km, className }: { km: number; className?: string }) {
+function Distance({
+  km,
+  measured,
+  className,
+}: {
+  km: number;
+  measured: boolean;
+  className?: string;
+}) {
   return (
     <span className={cn("font-mono-tabular flex items-center gap-1.5", className)}>
       <MapPin aria-hidden className="size-3.5 shrink-0" strokeWidth={2.25} />
-      {distanceLabel(km)}
+      {distanceLabel(km, measured)}
     </span>
   );
 }

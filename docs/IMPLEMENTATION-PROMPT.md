@@ -1163,7 +1163,7 @@ a maintenance liability and a confusing demo.
 | Feature | Class |
 |---|---|
 | Nonce-based CSP via `proxy.ts` | **Keep as-is** |
-| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Keep** `geolocation=(self)`. Originally dropped because pickup has no delivery address to capture; restored 2026-09-14 for the nearest counter suggestion on `/stores`, which reads position in the browser only and never sends it to the server |
+| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Keep** `geolocation=(self)`. Originally dropped because pickup has no delivery address to capture; restored 2026-09-14 for the nearest counter suggestion on `/stores`. Since 2026-09-24 the position is sent once to the server, which passes it to the Mapbox Matrix API for road distances to each counter and stores or logs it nowhere. Flag-gated on `MAPBOX_ACCESS_TOKEN`; unset, the page shows a straight line estimate worked out in the browser, as before |
 | Postgres-backed rate limiting | **Keep as-is** |
 | Constant-time cron authentication | **Keep as-is** |
 | Audit logging of staff actions | **Keep as-is** |
@@ -2024,6 +2024,7 @@ the owner agreeing to trade away a Tier 1 control.
   NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
   PAYMONGO_SECRET_KEY, NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY, PAYMONGO_WEBHOOK_SECRET
   RESEND_API_KEY, RESEND_FROM
+  MAPBOX_ACCESS_TOKEN                        (optional, road distances on /stores)
   ZENPOS_BASE_URL                            (unset until discovery completes)
   CRON_SECRET
   ```

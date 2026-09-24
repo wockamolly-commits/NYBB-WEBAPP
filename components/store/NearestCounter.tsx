@@ -119,7 +119,7 @@ function Body({
         <Layout
           label="Nearest counter"
           title="Find the counter closest to you"
-          body="Your phone works out where you are, and the location stays on this device."
+          body="Your phone works out where you are. We use it once to measure the drive to each counter, and do not keep it."
           action={
             <Button
               tone="light"
@@ -194,7 +194,7 @@ function Body({
           <Layout
             label="Nearest counter"
             title="You look far from every counter"
-            body={`The closest one taking online orders is ${suggestion.store.shortName}, ${distanceLabel(suggestion.km).toLowerCase()}. Pick from the list below if you are ordering ahead.`}
+            body={`The closest one taking online orders is ${suggestion.store.shortName}, ${distanceLabel(suggestion.km, suggestion.measured).toLowerCase()}. Pick from the list below if you are ordering ahead.`}
           />
         );
       }
@@ -203,6 +203,7 @@ function Body({
         <Suggested
           store={suggestion.store}
           km={suggestion.km}
+          measured={suggestion.measured}
           alreadyChosen={suggestion.store.slug === selectedSlug}
           pending={pending}
           busy={busy}
@@ -216,6 +217,7 @@ function Body({
 function Suggested({
   store,
   km,
+  measured,
   alreadyChosen,
   pending,
   busy,
@@ -224,6 +226,7 @@ function Suggested({
 }: {
   store: Store;
   km: number;
+  measured: boolean;
   alreadyChosen: boolean;
   pending: boolean;
   busy: boolean;
@@ -237,8 +240,8 @@ function Suggested({
       onOpen={onOpenDetails}
       body={
         alreadyChosen
-          ? `${distanceLabel(km)}. It is already your counter. The list below runs nearest first.`
-          : `${distanceLabel(km)}. The list below runs nearest first.`
+          ? `${distanceLabel(km, measured)}. It is already your counter. The list below runs nearest first.`
+          : `${distanceLabel(km, measured)}. The list below runs nearest first.`
       }
       action={
         alreadyChosen ? null : (
