@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { HotnessMeter, type HotnessMeterEnergy } from "@/components/menu/HotnessMeter";
+import { stopCentre } from "@/lib/menu/hotness-meter";
 import {
   heatSliderState,
   heatSweepSteps,
@@ -30,7 +31,8 @@ const SWEEP_ROOT_MARGIN = "0px 0px -10% 0px";
  * NYBB sells heat as a priced product and the scale is the brand's best visual
  * hook. It used to be drawn as a static ramp saying all five stops at once,
  * which is a price list of a thing rather than the thing. This is the same
- * five swatches, but you move along them and the bar burns to where you are.
+ * five swatches, but a torch rides along them and settles on the level you
+ * pick.
  *
  * The control is a real `<input type="range">` lying invisible over the
  * artwork. Everything painted below it is `aria-hidden` decoration. That is
@@ -38,9 +40,11 @@ const SWEEP_ROOT_MARGIN = "0px 0px -10% 0px";
  * announcing "Wild, 80 percent" all come from the platform rather than from a
  * hand-rolled `role="slider"` that would get two of those wrong.
  *
- * The ramp stays five fixed swatches and never becomes a gradient, for the
- * reason globals.css gives: a level is the same colour on a product page, a
- * receipt and a kitchen ticket. The track is hard bands, like the heat rule.
+ * The ramp stays five fixed swatches, for the reason DESIGN.md gives: a level
+ * is the same colour on a product page, a receipt and a kitchen ticket. The
+ * track blends between them only in the stretches where no level sits, and
+ * each swatch is pinned exactly where the pointer rests on its stop (see
+ * rampGradient in lib/menu/hotness-meter.ts).
  */
 
 export type HeatSliderVariant = "band" | "inline";
@@ -312,14 +316,14 @@ export function HeatSlider({
         </div>
       ) : null}
 
-      {/* The picture. The lit run covers whole segments, so the coldest stop
-          still shows its own band rather than a hairline, and an untouched
-          control draws a cold tube with a hollow pointer rather than claiming
-          the first stop. */}
+      {/* The picture. The pointer rests over the middle of the chosen stop,
+          on its label and its own swatch, and an untouched control draws a
+          cold track with a hollow pointer rather than claiming the first
+          stop. */}
       <div ref={scale} className="heat-slider__scale">
         <HotnessMeter
           score={chosen ? percent : 0}
-          fill={chosen ? (index + 1) / stops.length : 0}
+          fill={chosen ? stopCentre(index, stops.length) : 0}
           stops={stops}
           activeStop={chosen ? index : null}
           unset={!chosen}

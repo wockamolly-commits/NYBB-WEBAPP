@@ -82,21 +82,6 @@ export function heatSliderState(
   return { index: found, chosen: true, stop: stops[found] };
 }
 
-export type FlameTongue = {
-  /** Centre of the tongue's base along the bar, 0 to 1. */
-  x: number;
-  /** Width of the base, as a share of the bar's width. */
-  width: number;
-  /** Height of the tip above the base, as a share of the reserved height. */
-  height: number;
-  /** How far the tip leans off centre, as a share of its own height. */
-  lean: number;
-  /** Seconds of negative animation delay, so the tongues start out of step. */
-  delay: number;
-  /** Seconds one flicker takes. Varied, so nothing beats in unison. */
-  duration: number;
-};
-
 /**
  * A deterministic 0 to 1 from an integer, for the fire's raggedness.
  *
@@ -115,49 +100,6 @@ export function noise(seed: number): number {
   x = Math.imul(x ^ (x >>> 13), 3266489917);
   x ^= x >>> 16;
   return (x >>> 0) / 4294967296;
-}
-
-/**
- * A fire's worth of tongues: where each one stands, how tall, how wide, which
- * way it leans and how fast it flickers.
- *
- * Every value is drawn from the hash above rather than from a repeating
- * pattern. The fire this replaced cycled eight heights and five widths, which
- * at twenty two tongues meant the eye found the repeat immediately and the
- * bar read as a picket fence rather than as fire.
- *
- * Positions are evenly spaced and then jittered by up to half a slot, so the
- * tongues cover the whole bar without ever landing on a grid.
- *
- * `seed` picks a different fire from the same hash. The bar draws two layers,
- * a slow body and the licks that rise off it, and sharing a seed would stack
- * them on identical tongues.
- */
-export function flameTongues(count: number, seed = 0): FlameTongue[] {
-  if (count <= 0) return [];
-
-  const slot = 1 / count;
-  // Far enough apart that two layers never land on the same tongues, which is
-  // what gives the fire depth rather than one silhouette drawn twice.
-  const salt = seed * 1013;
-
-  return Array.from({ length: count }, (_, at) => {
-    // Jitter within the slot, so tongues stay in order and still look placed
-    // by chance rather than by a ruler.
-    const x = (at + 0.5 + (noise(salt + at * 7 + 1) - 0.5) * 0.85) * slot;
-
-    return {
-      x: Math.min(Math.max(x, 0), 1),
-      // Skewed a little short, so a few tongues stand clearly above the rest,
-      // but not so far that half the fire is stubs and the crown looks like it
-      // is dying out wherever the noise happened to run low.
-      height: 0.38 + 0.62 * Math.pow(noise(salt + at * 13 + 5), 1.2),
-      width: 0.035 + 0.055 * noise(salt + at * 29 + 3),
-      lean: (noise(salt + at * 17 + 11) - 0.5) * 0.5,
-      delay: noise(salt + at * 23 + 7) * 2,
-      duration: 0.62 + noise(salt + at * 31 + 19) * 0.75,
-    };
-  });
 }
 
 /**

@@ -248,6 +248,10 @@ not a gradient function: a given heat level must be the same swatch on a product
 kitchen ticket and a printed pickup slip, and a function sampled at a different position would not
 guarantee that.
 
+The one place the swatches are blended is the hotness meter's track, and only between levels: each
+swatch is pinned at the centre of its own stop, exactly where the pointer rests on that level, so
+the colour under a chosen level is always its swatch (`rampGradient` in `lib/menu/hotness-meter.ts`).
+
 ### Named Rules
 
 **The One Loud Thing Rule.** Orange is the only loud colour. Yellow and red are accents with narrow,
@@ -1154,9 +1158,15 @@ rather than the product. So the band is now one bar you drag, and the bar burns 
 put it. Same five swatches, same hard bands, same percentages; the difference is that the customer
 supplies the position instead of reading five of them.
 
-The heat scale is two components. `components/menu/HotnessMeter.tsx` is the picture: a glass tube
-holding the five fixed swatches, a fire standing on the lit run, and the level names under their
-segments. It takes a `score` (0 to 100), `animated`, `showParticles` and a `size` of `small`
+**The fifth pass (2026-09-23) put the fire on the pointer.** Modelled on a reference clip the owner
+supplied: a rounded rod shading yellow to red with the whole scale always on show, and a white hot
+ember with a flame on it that glides along the rod and trails as it moves. The swatches, labels,
+readout, spring, sizes, tiers and the control itself are unchanged; what changed is where the fire
+stands and what the track looks like.
+
+The heat scale is two components. `components/menu/HotnessMeter.tsx` is the picture: a capsule
+track painted with the ramp, an ember pointer with a torch standing on it, and the level names under
+their stops. It takes a `score` (0 to 100), `animated`, `showParticles` and a `size` of `small`
 (cards), `medium` (panels) or `large` (a full width band), and owns no choice.
 `components/menu/HeatSlider.tsx` is the control: it lays the invisible range input over the meter's
 tube and keeps every rule about what a position means. It is not to be confused with
@@ -1180,50 +1190,90 @@ announcing "Wild, 80 percent" all come from the platform rather than from a hand
 
 ### How the meter is drawn
 
-**The tube is an object, not a ramp.** A recessed channel in the site radius (the channel inside it
-takes the radius less the housing's `2px` padding, so the two curves stay concentric), the five
-fixed swatches inside it dimmed to 13% as unpowered filament, the same swatches lit up to the
-pointer, a hot filament line through the lit run that brightens toward the pointer, and a sheet of
-glass over the lot: a specular band across the top third and a thin return of light along the
-bottom. The lit segments carry their own lighting overlay, bright along the top and falling off at
-the bottom, so each reads as a lit volume. The swatches themselves are never recoloured; the light
-is an overlay on the brand colour, which is what keeps a level the same swatch on a receipt.
+**The track is a rod with the whole scale on it.** A full capsule, painted with the stops' own
+swatches pinned at the centre of each stop and blended between them, under a sheet of glass (a
+specular band along the top, the underside falling into shadow) so it reads as a rounded rod rather
+than a flat stripe. Nothing is "lit up to" the pointer any more: like a printed heat chart, every
+level is always visible and the ember says which one is yours. While nothing is chosen, an ink shade
+cools the whole track to a ghost of itself.
 
-**The pointer is a glass needle** standing through the tube, bone with a highlight on one side,
-sitting in a radial pool of the level's light. It glides on a spring (`stiffness 210, damping 19`),
-which overshoots the target by a few percent and settles, and it rides a full width rail translated
-by the fill, so it moves by transform and never touches layout. One animated `--fill` value drives
-the pointer, the lit run, the fire's mask and the particles, so they cannot drift out of step.
+**The pointer is an ember.** White hot at its heart, cooling through the level's glow colour to its
+rim, sitting in a radial pool of that light which breathes on its own clock while the heart
+flickers on another. It rests over the centre of the chosen stop (`stopCentre`), on its label and
+its pinned swatch. It glides on a spring (`stiffness 210, damping 19`), which overshoots the target
+by a few percent and settles, and it rides a full width rail translated by the fill, so it moves by
+transform and never touches layout. "No heat" chosen is a cold bone bead with no light; nothing
+chosen is a hollow ring. The focus ring (globals.css, `[data-meter-needle]`) lands on the ember.
 
-**Every level is a different fire, not one fire at five brightnesses.** Colour temperature, height,
-the share of the fire that has rising licks, and how far the light carries all change together:
+**The torch trails.** The fire rides on the ember, and the spring's velocity is turned into a lean
+(`--trail`, clamped to 22 degrees) applied as a skew about the flame's base, so a glide leans the
+flame back against the direction of travel and it straightens as the spring settles. A jump (reduced
+motion, or `animated` off) has no velocity and never leans.
 
-- **Lite** is a pilot light: small yellow tongues, no licks at all, a soft yellow glow.
-- **Moderate** is warm amber, and the first few licks lift off it.
-- **Hot** is an orange fire with a full body, most of its licks, and the first embers.
-- **Wild** runs red into the edges, stands taller, and throws twice the embers.
-- **Insane** is the tallest: a white base with a trace of blue where it is hottest, red crowns,
-  sparks among the embers, and heat haze (the layers waver a fraction of a degree on clocks of
-  their own, and a faint column of warm air rises above the crowns).
+**Every level is a different flame, not one flame at five brightnesses.** Every lever moves at
+every step, so two neighbouring levels are never mistaken for each other at a glance (the owner
+asked for this on 2026-09-23, when Lite and Moderate were near twins): the flame's size, its
+colours from root to tip, how fast and how wildly it moves (`FLAME_TEMPER` scales the morph's
+clocks and how far each pose strays), how hard it breathes, how far its light carries around the
+ember (`--bloom-s`), and what the ember itself does.
+
+| Level | Flame | Colour | Motion | Light and ember |
+| --- | --- | --- | --- | --- |
+| **Lite** | a small candle | lemon, all heat 1 | slow and steady, barely stirs | a faint glow close to the ember |
+| **Moderate** | half again as tall | gold into amber | starting to move | a wider glow |
+| **Hot** | full body | orange, amber heart | flickering, first embers | the glow reaches the track |
+| **Wild** | tall | red, orange heart | guttering, twice the embers | glow spills along the track; the ember throbs |
+| **Insane** | taller than its box | crimson with a blue white heart | thrashing at nearly three times Lite's pace, jittering, sparks and heat haze | glow floods the bar; the ember races |
+
+**A change of level is an event, not only a new state.** Every change throws a flare off the ember:
+a ring of the new level's light that expands and fades in 800ms, larger the hotter the level. It
+is mounted fresh on each change (a counter keyed in `HotnessMeter.tsx`, tracked during render so
+nothing flares on first paint) and does not exist under reduced motion.
+
+**Each level name carries a chili count.** Under the name sits one glossy red chili and a count,
+`×1` Lite, `×5` Moderate, `×10` Hot, `×20` Wild and `×35` Insane (`CHILI_COUNT` in
+`lib/menu/hotness-meter.ts`, keyed by the stop's `heatTier`). Those are the owner's numbers, taken
+from their reference art, and they climb steeply so each step up reads as a real jump. A stop with
+no heat draws the chili hollow with `×0`. Unlit counts sit at 60% with their names; the lit one
+comes to full strength, glows in its own swatch, gives one short shake and pops its count as it
+lights (none under reduced motion). The `small` size drops
+the row, since a card has no room for it.
+
+The reduced motion block in the stylesheet selects `.meter[data-tier]`, not `.meter`: the per level
+animation rules are `.meter[data-tier="n"] ...`, and a plainer selector loses to them, which left
+the Insane ember throbbing for a reader who asked for stillness.
 
 Particles are capped at 18 at the largest size and do not exist below Hot.
 
-**The fire is layered tongues, and each tongue is one box.** A low **body** layer that never goes
-out and carries the flicker in its sway, a layer of taller **licks** that are born at the tube,
-rise, narrow and go out, and a **surge** of fast licks that only burns while somebody drags. Every
-tongue is a soft silhouette (an SVG mask with the blur baked in, so the soft edge costs nothing per
-frame) painted with two gradients: an ellipse of white hot light at the base, and the body running
-from the level's core colour to nothing at the tip. Tongues are screened against each other inside
-an isolated group, because overlapping flame adds light; on normal compositing translucent orange
-over black accumulates toward brown. A continuous **bed** of flame along the tube is what makes the
-tongues rise out of one burning line instead of standing on it as separate candles.
+**The fire is one flame.** (It was a row of separate tongues, then a small cluster of them on the
+ember; the owner asked for a single cohesive flame on 2026-09-23.) It is one SVG with three nested
+silhouettes: the **envelope**, the tall outline in the level's edge colour; the **body**, the amber
+mass inside it; and the **core**, the white hot heart sitting down on the ember. All three share a
+base at the ember's centre, and the ember is drawn over them, so the flame pours up out of the
+pointer rather than standing on it. Each silhouette morphs through its own few poses
+(`flameFrames` in `lib/menu/hotness-meter.ts`) on its own clock (2.3s, 1.7s, 1.3s), eased with
+`keySplines`, so the inside of the flame always moves against the outside, which is what makes it
+read as burning rather than as a shape being stretched. A slow CSS breathing of the whole flame,
+on a fourth clock, sits on top.
 
-Positions, heights, widths, leans and timings are hashed with integer operations, never
-`Math.sin`, because the meter renders on the server and hydrates in the browser. Which tongues are
-lit at each level is ranked by the golden ratio, so a partial fire is spread along the bar rather
-than filling in from one end.
+Three rules keep it working:
 
-**What went wrong on the way, because every one of these looks reasonable written down.**
+- **Every pose has the same path structure** (a move, five cubics, a close). SVG only morphs
+  between paths with matching commands; one mismatched pose and the animation snaps. A unit test
+  holds this.
+- **The morph is SMIL (`<animate attributeName="d">`), not CSS `d`,** because Safari does not
+  animate the CSS property. SMIL ignores CSS, so `HotnessMeter.tsx` pauses the SVG's clocks itself
+  (`pauseAnimations`) when the meter is off screen, `animated` is off or motion is reduced, and the
+  first pose is a complete still flame.
+- **Colours are the tier's `--f-*` tokens on the gradient stops,** so changing level recolours the
+  flame with a transition and never re-renders it. The soft edge is a small Gaussian blur inside
+  the SVG; the flame is a few thousand pixels, so that is cheap where a blur over the page is not.
+
+Coordinates are rounded to a tenth, and particles are hashed with integer operations, never
+`Math.sin`, because the meter renders on the server and hydrates in the browser.
+
+**What went wrong on the way, because every one of these looks reasonable written down.** (Most of
+these belong to the tongue fire the single flame replaced, and stand for whatever draws fire next.)
 
 - **Squashing the whole fire to shorten it made triangles.** The first version sized each level by
   scaling the fire group vertically, and a flame that loses height and keeps its width is not a
@@ -1243,7 +1293,9 @@ than filling in from one end.
   difference nobody could see at speed. The inner light is a gradient on the tongue now, and the
   meter holds 60.
 
-**Every stop in the fire's mask is a fraction of `--fill`, never a fixed percentage.** A fixed one
+**Every stop in the fire's mask was a fraction of `--fill`, never a fixed percentage.** (The mask
+went with the fifth pass, since the fire no longer runs along the bar, but the lesson stands for any
+gradient keyed to a moving value.) A fixed one
 shipped in the slider before this: the ramp's middle stop sat at `38%`, which is past the fill at
 Lite (20%) and Moderate (40%), and CSS clamps a gradient stop that falls before the one in front of
 it. Both later stops collapsed onto 38%, and the fire ran a third of the way along a bar that was

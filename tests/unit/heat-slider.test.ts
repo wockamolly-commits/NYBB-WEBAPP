@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   SWEEP_LEAD_MS,
   SWEEP_TRAVEL_MS,
-  flameTongues,
   heatSliderState,
   heatStops,
   heatSwatch,
@@ -159,85 +158,6 @@ describe("heatSwatch", () => {
     expect(heatSwatch(21)).toBe("var(--color-nybb-heat-2)");
     expect(heatSwatch(35)).toBe("var(--color-nybb-heat-2)");
     expect(heatSwatch(1)).toBe("var(--color-nybb-heat-1)");
-  });
-});
-
-describe("flameTongues", () => {
-  it("draws the number of tongues asked for", () => {
-    expect(flameTongues(9)).toHaveLength(9);
-    expect(flameTongues(22)).toHaveLength(22);
-  });
-
-  it("gives the same fire every time it is called", () => {
-    // The bar is server rendered and hydrated, so a fire drawn from
-    // Math.random() would differ between the two passes and React would report
-    // a hydration mismatch.
-    expect(flameTongues(22)).toEqual(flameTongues(22));
-  });
-
-  it("spreads the tongues along the whole bar, in order", () => {
-    const xs = flameTongues(12).map((tongue) => tongue.x);
-    expect(xs).toEqual([...xs].sort((a, b) => a - b));
-    expect(Math.min(...xs)).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...xs)).toBeLessThanOrEqual(1);
-    // Actually reaching both ends, rather than huddling in the middle.
-    expect(Math.min(...xs)).toBeLessThan(0.12);
-    expect(Math.max(...xs)).toBeGreaterThan(0.88);
-  });
-
-  it("keeps every tongue inside the height the bar reserves for it", () => {
-    // Height is a share of --flame-height, which is what sets the padding
-    // above the track. Over 1 and the tip is clipped mid flame.
-    for (const tongue of flameTongues(22)) {
-      expect(tongue.height).toBeGreaterThan(0);
-      expect(tongue.height).toBeLessThanOrEqual(1);
-    }
-  });
-
-  it("makes no two tongues alike", () => {
-    // The old fire repeated a pattern of eight and read as a picket fence.
-    const tongues = flameTongues(22);
-    expect(new Set(tongues.map((t) => t.height)).size).toBeGreaterThan(12);
-    expect(new Set(tongues.map((t) => t.width)).size).toBeGreaterThan(12);
-  });
-
-  it("leans tongues both ways, because fire does not all lean one way", () => {
-    const leans = flameTongues(22).map((tongue) => tongue.lean);
-    expect(leans.some((lean) => lean < 0)).toBe(true);
-    expect(leans.some((lean) => lean > 0)).toBe(true);
-  });
-
-  it("varies the durations, so the tongues never beat in unison", () => {
-    const tongues = flameTongues(22);
-    expect(new Set(tongues.map((t) => t.duration)).size).toBeGreaterThan(8);
-    for (const tongue of tongues) expect(tongue.duration).toBeGreaterThan(0);
-  });
-
-  it("has nothing to draw for a count of none", () => {
-    expect(flameTongues(0)).toEqual([]);
-  });
-
-  it("draws a different fire for a different seed", () => {
-    // The fire is two layers, a slow body and the licks that rise off it.
-    // Drawn from one seed they would sit on exactly the same tongues and the
-    // depth between the layers would collapse.
-    const body = flameTongues(14, 0);
-    const licks = flameTongues(14, 1);
-    expect(licks).not.toEqual(body);
-    expect(licks.map((t) => t.x)).not.toEqual(body.map((t) => t.x));
-  });
-
-  it("keeps a seeded fire deterministic too", () => {
-    expect(flameTongues(14, 3)).toEqual(flameTongues(14, 3));
-  });
-
-  it("keeps every seed inside the reserved height", () => {
-    for (const seed of [0, 1, 2, 3, 9]) {
-      for (const tongue of flameTongues(16, seed)) {
-        expect(tongue.height).toBeGreaterThan(0);
-        expect(tongue.height).toBeLessThanOrEqual(1);
-      }
-    }
   });
 });
 
