@@ -227,6 +227,20 @@ describe("which counter is suggested", () => {
     });
   });
 
+  // A shut counter is shown greyed out on the board and cannot be chosen, so
+  // the suggestion's button would offer a press the server refuses.
+  it("passes over a closer counter that is closed right now", () => {
+    const stores = storesFrom(
+      [catalogEntry("mango", MANGO), catalogEntry("sm-city", SM_CITY)],
+      ["mango", "sm-city"],
+    ).map((store) => (store.slug === "sm-city" ? { ...store, closedNow: true } : store));
+
+    expect(suggestNearest(stores, distancesBySlug(stores, SM_CITY))).toMatchObject({
+      kind: "nearest",
+      store: { slug: "mango" },
+    });
+  });
+
   it("keeps the published order when two counters are equally near", () => {
     const stores = storesFrom(
       [catalogEntry("first", MANGO), catalogEntry("second", MANGO)],

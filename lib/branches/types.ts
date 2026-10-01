@@ -67,7 +67,11 @@ export type Store = {
   orderable: boolean;
   /** Null exactly when `orderable` is true. */
   blockedReason: StoreBlockedReason | null;
-  /** Live but shut at this minute. Still selectable: later windows may exist. */
+  /**
+   * Live but shut at this minute. Still `orderable`, so a counter already
+   * chosen keeps its later windows, but the picker will not let anyone choose
+   * it while it is shut (see `chooseStore`).
+   */
   closedNow: boolean;
 };
 

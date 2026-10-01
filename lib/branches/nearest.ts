@@ -113,7 +113,8 @@ export function suggestNearest(
 
   for (const store of stores) {
     const km = distances.get(store.slug);
-    if (!store.orderable || km === undefined) continue;
+    // A counter shut at this minute cannot be chosen, so it is not suggested.
+    if (!store.orderable || store.closedNow || km === undefined) continue;
     if (!best || km < best.km) best = { store, km };
   }
 

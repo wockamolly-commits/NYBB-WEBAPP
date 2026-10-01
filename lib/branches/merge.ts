@@ -79,8 +79,9 @@ export function mergeStores(
  * ends up telling somebody a shop is shut when it is taking orders for the
  * evening. `branch_accepts_orders` includes `branch_is_open_at`, so a live
  * counter outside its opening hours reports false for both; that combination
- * means "come back later" and the store stays selectable, because its slot
- * grid may still hold windows inside the horizon. False for accepting while
+ * means "come back later". The store stays orderable, because its slot grid
+ * may still hold windows for somebody who already chose it, but `closedNow`
+ * keeps the picker from offering it to anyone new. False for accepting while
  * open means the switch is off, which is a shop not taking anything today.
  */
 function classify(

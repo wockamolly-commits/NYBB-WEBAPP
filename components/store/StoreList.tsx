@@ -227,7 +227,13 @@ export function StoreList({
 
   const publishedOrderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
   const publishedClosed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
-  const orderable = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
+  // Open counters above shut ones, so the rows that can be pressed are the
+  // ones read first. Stable, so each half keeps its distance order.
+  const ranked = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
+  const orderable = [
+    ...ranked.filter((store) => !store.closedNow),
+    ...ranked.filter((store) => store.closedNow),
+  ];
   const closed = distances ? rankByDistance(publishedClosed, distances) : publishedClosed;
 
   const suggestion = distances ? suggestNearest(orderable, distances, measured) : null;
@@ -300,7 +306,7 @@ export function StoreList({
         actions={
           // Only a counter this page can choose gets the choice in its sheet.
           // Anything else falls back to the directory's Directions and Call.
-          detailEntry && detailStore?.orderable && orderingOpen ? (
+          detailEntry && detailStore?.orderable && !detailStore.closedNow && orderingOpen ? (
             <>
               <button
                 type="button"
@@ -372,7 +378,11 @@ export function StoreList({
       {orderable.length > 0 ? (
         <ul className={cn(BOARD, "reveal")}>
           {orderable.map((store) => {
-            const selected = store.slug === selectedSlug;
+            // Shut at this minute: listed so the customer can see it, but not
+            // choosable. Disabled rather than moved to the phone board, because
+            // it is a live counter that will take orders again when it opens.
+            const shut = store.closedNow;
+            const selected = !shut && store.slug === selectedSlug;
             const busy = choosing === store.slug;
             const detailsId = `counter-${store.slug}-details`;
             const km = distances?.get(store.slug);
@@ -383,15 +393,17 @@ export function StoreList({
                   type="button"
                   onClick={() => {
                     // See REORDER_GRACE_MS: this row may have just moved.
-                    if (settling.current) return;
+                    if (settling.current || shut) return;
                     choose(store);
                   }}
-                  disabled={pending}
+                  disabled={pending || shut}
                   aria-busy={busy || undefined}
                   aria-label={
-                    selected
-                      ? `Continue with ${store.name}`
-                      : `Collect from ${store.name}`
+                    shut
+                      ? `${store.name}, closed right now`
+                      : selected
+                        ? `Continue with ${store.name}`
+                        : `Collect from ${store.name}`
                   }
                   aria-describedby={detailsId}
                   className={cn(
@@ -401,7 +413,7 @@ export function StoreList({
                     // that clips them, which reads as the board jumping. The
                     // press is a deeper tint instead, on the same timing.
                     "group w-full text-left transition-colors duration-200 ease-out active:duration-75",
-                    "disabled:cursor-progress",
+                    shut ? "cursor-not-allowed" : "disabled:cursor-progress",
                     // The board clips its corners, so the ring is drawn inside
                     // the row, where the clip cannot eat it.
                     "focus-visible:outline-offset-[-3px]",
@@ -425,6 +437,14 @@ export function StoreList({
                         selected ? "text-nybb-ink/80" : "text-nybb-bone/60",
                       )}
                     >
+                      {shut ? (
+                        <>
+                          <span className="text-nybb-bone">Closed now</span>{" "}
+                          <span aria-hidden className="mx-0.5">
+                            ·
+                          </span>{" "}
+                        </>
+                      ) : null}
                       {selected ? (
                         <>
                           <Check
@@ -448,7 +468,12 @@ export function StoreList({
                       ) : null}
                       {branchFormatLabel[store.format]}
                     </span>
-                    <span className="font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl">
+                    <span
+                      className={cn(
+                        "font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl",
+                        shut && "text-nybb-bone/65",
+                      )}
+                    >
                       {store.shortName}
                     </span>
                   </span>
@@ -488,9 +513,9 @@ export function StoreList({
                       </span>
                     ) : null}
 
-                    {store.closedNow ? (
+                    {shut ? (
                       <span className="mt-1 block">
-                        Closed right now. Checkout shows its next windows.
+                        Closed right now. You can choose it once it opens.
                       </span>
                     ) : null}
                   </span>
@@ -502,10 +527,14 @@ export function StoreList({
                       "font-display flex min-h-11 items-center gap-2 text-sm tracking-[0.06em] uppercase",
                       selected
                         ? "text-nybb-ink"
-                        : "text-nybb-orange group-hover:text-nybb-orange-lit transition-colors",
+                        : shut
+                          ? "text-nybb-bone/60"
+                          : "text-nybb-orange group-hover:text-nybb-orange-lit transition-colors",
                     )}
                   >
-                    {busy ? (
+                    {shut ? (
+                      <span>Closed</span>
+                    ) : busy ? (
                       <>
                         <span className="hidden sm:inline">Choosing</span>
                         <LoaderCircle
