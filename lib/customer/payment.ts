@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { CHECKOUT_ATTEMPT_PATTERN } from "@/lib/checkout/schema";
+import { paymentState, type PaymentState } from "@/lib/orders/payment-state";
 import { readOrderByTracking } from "@/lib/orders/reader";
 import { normalizeShortCode, normalizeTrackingToken } from "@/lib/orders/tracking";
 import { mapAttachResult, type PayOrderResult } from "@/lib/paymongo/attach-result";
@@ -64,6 +65,37 @@ export function paymentReturnUrl(
   const url = new URL(`/order/${encodeURIComponent(shortCode)}`, siteUrl());
   if (trackingToken) url.searchParams.set("t", trackingToken);
   return url.toString();
+}
+
+const paymentStateRequestSchema = z.object({
+  shortCode: z.string(),
+  trackingToken: z.string().nullable().optional(),
+});
+
+/**
+ * Whether an order's online payment has been confirmed, for a screen that is
+ * waiting on it.
+ *
+ * Authorized by the same tracking lookup as the order page, and it answers
+ * with one word rather than the order: the caller already holds the link and
+ * only needs to know whether to move on. Null means "cannot say", which a
+ * waiting screen treats the same as waiting.
+ */
+export async function readPaymentState(
+  input: unknown,
+  caller: CustomerCaller,
+): Promise<PaymentState | null> {
+  const parsed = paymentStateRequestSchema.safeParse(input);
+  if (!parsed.success) return null;
+  const shortCode = normalizeShortCode(parsed.data.shortCode);
+  if (!shortCode) return null;
+
+  const lookup = await readOrderByTracking(
+    caller,
+    shortCode,
+    normalizeTrackingToken(parsed.data.trackingToken),
+  );
+  return lookup.state === "found" ? paymentState(lookup.order) : null;
 }
 
 /** Starts a QR Ph payment after the customer has already placed an order. */

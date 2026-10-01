@@ -4,6 +4,7 @@ import { OrderTracker } from "@/components/order/OrderTracker";
 import { OrderTrackingLiveRefresh } from "@/components/order/OrderTrackingLiveRefresh";
 import { ReorderButton } from "@/components/order/ReorderButton";
 import { ButtonLink } from "@/components/ui/Button";
+import { paymentState } from "@/lib/orders/payment-state";
 import { getOrderByTracking } from "@/lib/orders/reader";
 import { isTerminalStatus } from "@/lib/orders/status";
 import {
@@ -69,6 +70,8 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
           <OrderTrackingLiveRefresh
             shortCode={lookup.order.shortCode}
             trackingToken={typeof token === "string" ? token : null}
+            awaitingPayment={paymentState(lookup.order) === "waiting" &&
+              lookup.order.payment?.status === "pending"}
           />
           <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
             Keep this page. It carries the code the counter asks for, and it is
