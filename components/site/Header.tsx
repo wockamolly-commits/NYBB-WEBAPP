@@ -3,6 +3,7 @@ import { LayoutDashboard, UserRound } from "lucide-react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { CartCount } from "@/components/cart/CartCount";
 import { HeatRule } from "@/components/site/HeatRule";
+import { HomeLink } from "@/components/site/HomeLink";
 import { storefrontIdentityLink } from "@/lib/auth/navigation";
 import { getStorefrontSession } from "@/lib/auth/session";
 import { getStaffProfile } from "@/lib/staff/session";
@@ -66,8 +67,9 @@ export async function Header() {
           allows. CategoryNav's sticky offset and the menu page's scroll-mt
           follow these numbers. */}
       <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-4 sm:h-22 sm:px-6">
-        <Link
-          href="/"
+        {/* Back to the hero: a glide up when already home, a navigation
+            to it from anywhere else. See HomeLink. */}
+        <HomeLink
           className="shrink-0 transition-opacity duration-200 hover:opacity-80"
           aria-label="NYBB Hot Wings, home"
         >
@@ -76,7 +78,7 @@ export async function Header() {
             sizes="(min-width: 640px) 132px, 104px"
             priority
           />
-        </Link>
+        </HomeLink>
 
         {/* The nav and the cart travel together at the right end of the bar.
             The cart is a client island: its count comes from localStorage, so

@@ -2,6 +2,7 @@ import Image from "next/image";
 import { HeatSlider } from "@/components/menu/HeatSlider";
 import { heatStops } from "@/lib/menu/heat-slider";
 import { HeroSlideshow } from "@/components/site/HeroSlideshow";
+import { HomeTopOnReload } from "@/components/site/HomeLink";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
@@ -224,6 +225,9 @@ export default async function Home() {
   return (
     <>
       <ScrollReveal />
+      {/* A refresh of this page starts at the hero rather than wherever the
+          browser last left it. */}
+      <HomeTopOnReload />
 
       {/* ============================================================
           Hero. Dark band, hard bottom edge onto the amber ground.
@@ -256,6 +260,7 @@ export default async function Home() {
           the landscape phone and the short laptop, and is the same query the
           padding and the headline size already use. */}
       <section
+        id="hero"
         aria-labelledby="hero-title"
         // text-nybb-bone on the container, not on each leaf. Without it the
         // hero's contents inherit --foreground, which the move to a light page
