@@ -6,6 +6,8 @@ import { formatPeso } from "@/lib/format";
 import { requireStaffPermission } from "@/lib/staff/session";
 import { getVouchersEnabled, listVouchers, type VoucherListRow } from "@/lib/staff/vouchers";
 import { EngineSwitch } from "./EngineSwitch";
+import { PromoOrder } from "./PromoOrder";
+import { storefrontOrder } from "@/lib/vouchers/order";
 import {
   usageLabel,
   VOUCHER_STATUS_LABELS,
@@ -181,6 +183,21 @@ export default async function WorkspaceVouchersPage({
       </div>
 
       <EngineSwitch enabled={enginesOn} />
+
+      {/* Every advertised code, in the order the storefront lists them,
+          whatever the search below is filtering. Ordering a filtered subset
+          would silently move the codes the filter hid. */}
+      <PromoOrder
+        rows={storefrontOrder(all).map((voucher) => ({
+          id: voucher.id,
+          code: voucher.code,
+          status: voucher.status,
+          displayPriority: voucher.displayPriority,
+          offer: [discountLabel(voucher) + " off", voucher.description]
+            .filter(Boolean)
+            .join(". "),
+        }))}
+      />
 
       <form role="search" className="bg-nybb-charcoal mt-4 grid gap-4 rounded-md p-4 md:grid-cols-3">
         <div>

@@ -1,11 +1,25 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { after } from "next/server";
+import { z } from "zod";
 import { notifyCustomersOfPromo } from "@/lib/push/dispatch";
 import { revalidatePath } from "next/cache";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
+import { processPosterImage } from "@/lib/staff/voucher-poster";
+import {
+  VOUCHER_POSTER_BUCKET,
+  VOUCHER_POSTER_CACHE_CONTROL,
+  VOUCHER_POSTER_CONTENT_TYPE,
+  VOUCHER_POSTER_EXTENSION,
+  VOUCHER_POSTER_MAX_BYTES,
+  VOUCHER_POSTER_SIZE_MESSAGE,
+  VOUCHER_POSTER_TYPE_MESSAGE,
+  isAcceptablePosterFile,
+} from "@/lib/staff/voucher-poster-limits";
 import { createStaffClient } from "@/lib/supabase/server";
 import { voucherFormInput, voucherRpcPayload } from "@/lib/vouchers/form";
+import { parseVoucherOrder } from "@/lib/vouchers/order";
 import { voucherFormSchema, type VoucherActionState } from "@/lib/vouchers/schema";
 
 /**
@@ -47,6 +61,9 @@ function errorFor(message: string | undefined): string {
       "This code has already been used on an order, so its terms are fixed. " +
       "Switch it off instead, or make a new code with the terms you want."
     );
+  }
+  if (message?.includes("NOT_PUBLICISED")) {
+    return "One of those codes is no longer on the storefront. Reload the page and try again.";
   }
   if (message?.includes("VOUCHER_NOT_FOUND")) {
     return "That promo code is no longer there. It may have been deleted in another tab.";
@@ -106,8 +123,160 @@ export async function saveVoucher(
   if (error) return refuse(errorFor(error.message));
 
   const savedId = typeof data === "string" ? data : null;
+
+  // A poster chosen on the create form rides along here, after the code
+  // exists, because the poster is keyed to its id. The code is saved either
+  // way: a poster that fails is reported beside the poster field and can be
+  // tried again from the edit screen, and a failed image must never cost the
+  // person the whole form they just filled in.
+  let posterError: string | undefined;
+  const posterEntry = formData.get("poster");
+  if (savedId && posterEntry instanceof File && posterEntry.size > 0) {
+    const attached = await attachPoster(supabase, savedId, posterEntry);
+    if (!attached.ok) posterError = attached.error;
+  }
+
   refresh(savedId);
-  return { ok: true, savedId: savedId ?? undefined };
+  return { ok: true, savedId: savedId ?? undefined, posterError };
+}
+
+type StaffClient = Awaited<ReturnType<typeof createStaffClient>>;
+
+const voucherIdSchema = z.uuid();
+
+/**
+ * errorFor, plus the one refusal that means something specific here. Only
+ * admin_set_voucher_poster raises INVALID_INPUT for a poster, and errorFor's
+ * generic wording would send the person to retry a save rather than the upload.
+ */
+function posterErrorFor(message: string | undefined): string {
+  if (message?.includes("INVALID_INPUT")) {
+    return "That poster could not be saved. Try uploading it again.";
+  }
+  return errorFor(message);
+}
+
+/** The file checks both poster paths run, before sharp sees a byte. */
+function posterFileProblem(file: File): string | null {
+  // By name as well as declared type, for the Windows reason
+  // isDecodableImageFile records. processPosterImage checks the real bytes.
+  if (!isAcceptablePosterFile(file.name, file.type)) return VOUCHER_POSTER_TYPE_MESSAGE;
+  if (file.size > VOUCHER_POSTER_MAX_BYTES) return VOUCHER_POSTER_SIZE_MESSAGE;
+  return null;
+}
+
+/**
+ * Process one poster, land it at a fresh path and point the voucher at it.
+ *
+ * Module private because a "use server" file may only export async functions
+ * that are meant to be called from a browser, and this one takes a client.
+ *
+ * The path is `${year}/${randomUUID()}.webp` with upsert: false, for the reason
+ * uploadMenuImageObject gives: next.config.ts caches an optimized image for a
+ * year, so a replacement has to be a new URL. Uploaded through the signed-in
+ * staff client, so 0077's storage policy is what lets it through.
+ */
+async function attachPoster(
+  supabase: StaffClient,
+  voucherId: string,
+  file: File,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const problem = posterFileProblem(file);
+  if (problem) return { ok: false, error: problem };
+
+  let processed;
+  try {
+    processed = await processPosterImage(file);
+  } catch (cause) {
+    console.error("[workspace] voucher poster processing failed:", cause);
+    return { ok: false, error: "That file could not be read as an image." };
+  }
+
+  const objectPath = `${new Date().getUTCFullYear()}/${randomUUID()}.${VOUCHER_POSTER_EXTENSION}`;
+  const { error: uploadError } = await supabase.storage
+    .from(VOUCHER_POSTER_BUCKET)
+    .upload(objectPath, processed.data, {
+      contentType: VOUCHER_POSTER_CONTENT_TYPE,
+      cacheControl: VOUCHER_POSTER_CACHE_CONTROL,
+      upsert: false,
+    });
+  if (uploadError) {
+    console.error("[workspace] voucher poster upload failed:", uploadError.message);
+    return { ok: false, error: "The poster could not be uploaded. Try again." };
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from(VOUCHER_POSTER_BUCKET)
+    .getPublicUrl(objectPath);
+
+  const { error } = await supabase.rpc("admin_set_voucher_poster", {
+    p_voucher_id: voucherId,
+    p_url: publicUrl.publicUrl,
+    p_width: processed.width,
+    p_height: processed.height,
+    p_blur: processed.blurDataURL,
+  });
+  if (error) {
+    console.error("[workspace] voucher poster could not be set:", error.message);
+    return { ok: false, error: posterErrorFor(error.message) };
+  }
+  return { ok: true };
+}
+
+/**
+ * Putting a poster on a code, or replacing the one it has.
+ *
+ * Its own action rather than a field of the main form, for the reason
+ * setVoucherPublicise is: a poster is not a term, and once a code has met an
+ * order the upsert refuses every save. The artwork on a running promo is the
+ * thing an owner most wants to change, so it stays changeable on a locked code.
+ */
+export async function uploadVoucherPoster(
+  _previous: VoucherActionState,
+  formData: FormData,
+): Promise<VoucherActionState> {
+  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
+
+  const id = voucherIdSchema.safeParse(formData.get("id"));
+  if (!id.success) return refuse("We could not tell which code that was.");
+
+  const file = formData.get("poster");
+  if (!(file instanceof File) || file.size === 0) return refuse("Choose a poster first.");
+
+  const supabase = await createStaffClient();
+  const attached = await attachPoster(supabase, id.data, file);
+  if (!attached.ok) return refuse(attached.error);
+
+  refresh(id.data);
+  return { ok: true };
+}
+
+/**
+ * Taking the poster off a code. The code itself is untouched and keeps
+ * appearing on /promos as a plain card. The object stays in the bucket, as a
+ * replaced menu photograph does: there is no delete policy, by design.
+ */
+export async function removeVoucherPoster(
+  _previous: VoucherActionState,
+  formData: FormData,
+): Promise<VoucherActionState> {
+  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
+
+  const id = voucherIdSchema.safeParse(formData.get("id"));
+  if (!id.success) return refuse("We could not tell which code that was.");
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("admin_set_voucher_poster", {
+    p_voucher_id: id.data,
+    p_url: null,
+    p_width: null,
+    p_height: null,
+    p_blur: null,
+  });
+  if (error) return refuse(posterErrorFor(error.message));
+
+  refresh(id.data);
+  return { ok: true };
 }
 
 export async function setVoucherActive(
@@ -160,6 +329,37 @@ export async function setVoucherPublicise(
 
   if (error) return refuse(errorFor(error.message));
   refresh(id);
+  return { ok: true };
+}
+
+/**
+ * The storefront order: which promo leads and is featured (migration 0078).
+ *
+ * The panel posts the whole order, first to last, every time, and the
+ * function applies it in one statement. Posting a single "move this up" would
+ * let two people reordering at once each move from a list the other had
+ * already changed. An empty order puts the storefront back to automatic,
+ * soonest ending first.
+ *
+ * Its own action, outside the form, for the reason publicise is: it is not a
+ * term, so it stays changeable on a code that has met an order.
+ */
+export async function setVoucherOrder(
+  _previous: VoucherActionState,
+  formData: FormData,
+): Promise<VoucherActionState> {
+  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
+
+  const order = parseVoucherOrder(formData.get("order"));
+  if (!order.ok) return refuse("We could not read that order. Reload the page and try again.");
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("admin_set_voucher_order", {
+    p_voucher_ids: order.ids,
+  });
+
+  if (error) return refuse(errorFor(error.message));
+  refresh();
   return { ok: true };
 }
 

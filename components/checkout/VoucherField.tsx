@@ -70,10 +70,21 @@ export function VoucherField({
     return (
       <div className="border-nybb-bone/15 mt-4 border-t pt-4">
         <p className="type-caps text-nybb-bone/55">Promo code</p>
-        <div className="bg-nybb-graphite mt-2 flex items-stretch rounded-md">
-          <PromoStub code={applied.code} />
-          <div className="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1 pl-3">
-            <div className="min-w-0 flex-1">
+        {/* ONE PLATE, TWO ARRANGEMENTS, CHOSEN BY THE ROOM IT HAS.
+            The ticket, the state and Remove sit in one row while there is
+            width for all three, which is a phone. The desktop summary is a
+            fixed 20rem sidebar and is the NARROWER of the two: a code like
+            WALAYPOSTER50 plus Remove left about 40px for "Applied" and the
+            amount, which then ran underneath the button. Below 18.5rem of
+            plate the same three parts take two rows instead: ticket and
+            Remove on top, "Applied" and the amount balanced on a line under
+            a hairline. A container query rather than a breakpoint, because
+            the question is this plate's width, not the screen's. See
+            .voucher-applied in globals.css. */}
+        <div className="voucher-applied mt-2">
+          <div className="voucher-applied-plate bg-nybb-graphite rounded-md">
+            <PromoStub code={applied.code} className="voucher-applied-stub max-w-full" />
+            <div className="voucher-applied-status">
               <p className="text-nybb-bone flex items-center gap-1.5 text-sm">
                 <Check aria-hidden className="text-nybb-orange h-4 w-4 shrink-0" />
                 Applied
@@ -81,7 +92,7 @@ export function VoucherField({
               {/* Bone rather than orange. The total below is the one orange
                   figure on this card, and a second would be The One Loud
                   Thing Rule failing by repetition. */}
-              <p className="font-mono-tabular text-nybb-bone/70 mt-0.5 text-xs whitespace-nowrap">
+              <p className="voucher-applied-amount font-mono-tabular text-nybb-bone/70 text-xs whitespace-nowrap">
                 {formatPeso(applied.discountCents)} off
               </p>
             </div>
@@ -93,7 +104,7 @@ export function VoucherField({
               variant="ghost"
               onClick={onRemove}
               disabled={disabled || busy}
-              className="shrink-0"
+              className="voucher-applied-remove shrink-0"
               aria-label={`Remove ${applied.code}`}
             >
               Remove
@@ -259,8 +270,12 @@ export function OrderTotals({
         <span className="text-nybb-bone/55">Subtotal</span>
         <span className="font-mono-tabular text-nybb-bone/55">{formatPeso(subtotalCents)}</span>
       </div>
-      <div className="mt-2 flex items-baseline justify-between gap-4 text-sm">
-        <span className="text-nybb-bone/55 min-w-0 truncate">Promo {applied.code}</span>
+      {/* A grid, not a flex row, so the label's column can shrink to nothing.
+          In a flex row a truncating label still asks for its full width when
+          the page is laid out, and a long code stretched the whole checkout
+          column past the edge of a phone instead of ending in an ellipsis. */}
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-4 text-sm">
+        <span className="text-nybb-bone/55 truncate">Promo {applied.code}</span>
         <span className="font-mono-tabular text-nybb-bone shrink-0">
           {/* A minus sign, not a hyphen, because this is a number being reduced
               and the two render at different heights beside tabular figures. */}

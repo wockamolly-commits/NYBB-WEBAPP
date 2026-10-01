@@ -41,9 +41,65 @@ export const promoRowSchema = z.object({
   itemNames: z.array(z.string()),
   categoryNames: z.array(z.string()),
   branchNames: z.array(z.string()),
+  // 0077. All four null together means this promo has no poster. Nullable and
+  // never coerced: a poster is absent, not zero pixels wide. The default
+  // covers a listing from before 0077 was applied, which has no such keys at
+  // all, so shipping this code ahead of the migration degrades to "no posters"
+  // rather than failing the parse and emptying every promo off the site.
+  posterUrl: z.url().nullable().default(null),
+  posterWidth: z.number().int().positive().nullable().default(null),
+  posterHeight: z.number().int().positive().nullable().default(null),
+  posterBlurDataUrl: z.string().nullable().default(null),
+  // 0078. Whether the owner placed this promo in the storefront order. The
+  // featured promo is derived from it by featuredPromo below. The default
+  // covers a listing from before 0078, which has no such key.
+  placed: z.boolean().default(false),
 });
 
 export type Promo = z.infer<typeof promoRowSchema>;
+
+/**
+ * The promo the owner chose to lead with, or null.
+ *
+ * The first PLACED promo still in the list, so it is decided after every
+ * filter the storefront runs, including the spent-codes cookie that
+ * list_customer_promos cannot see. A placed code this customer has already
+ * used is skipped and the next placed one leads. Nothing is featured while no
+ * order is set, which is how the storefront behaved before 0078. The list
+ * arrives already ordered, placed codes first.
+ *
+ * Personal promos are not featured: they are grouped apart on /promos as the
+ * customer's own, and an owner's campaign order is about public offers.
+ */
+export function featuredPromo(promos: readonly Promo[]): Promo | null {
+  return promos.find((promo) => promo.placed && !promo.personal) ?? null;
+}
+
+export type PromoPoster = {
+  url: string;
+  width: number;
+  height: number;
+  blurDataUrl: string | null;
+};
+
+/**
+ * The promo's poster, or null when it has none.
+ *
+ * One place decides "has a poster", so the popup and the card cannot disagree
+ * about a half-filled row. The database refuses a half-filled row anyway
+ * (vouchers_poster_complete), and this refuses to draw one regardless.
+ */
+export function promoPoster(promo: Promo): PromoPoster | null {
+  if (promo.posterUrl === null || promo.posterWidth === null || promo.posterHeight === null) {
+    return null;
+  }
+  return {
+    url: promo.posterUrl,
+    width: promo.posterWidth,
+    height: promo.posterHeight,
+    blurDataUrl: promo.posterBlurDataUrl,
+  };
+}
 
 export const promoListSchema = z.array(promoRowSchema);
 

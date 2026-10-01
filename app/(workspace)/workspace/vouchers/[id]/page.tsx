@@ -24,12 +24,16 @@ function stamp(iso: string): string {
 
 export default async function VoucherPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ poster?: string | string[] }>;
 }) {
   await requireStaffPermission("vouchers:manage");
 
   const { id } = await params;
+  // Set by the create form when the code saved and its poster did not.
+  const posterFailed = (await searchParams).poster === "failed";
   const voucher = await getVoucher(id);
   if (!voucher) notFound();
 
@@ -51,7 +55,7 @@ export default async function VoucherPage({
         </ButtonLink>
       </div>
 
-      <VoucherEditor voucher={voucher} choices={choices} />
+      <VoucherEditor voucher={voucher} choices={choices} posterFailed={posterFailed} />
 
       {/* Usage sits under the form rather than above it, because the form is
           what somebody opened this page to change and a table of redemptions

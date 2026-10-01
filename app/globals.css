@@ -792,7 +792,9 @@
   .confirm-dialog,
   .confirm-dialog::backdrop,
   .branch-dialog,
-  .branch-dialog::backdrop {
+  .branch-dialog::backdrop,
+  .promo-poster-dialog,
+  .promo-poster-dialog::backdrop {
     opacity: 0;
     transition:
       opacity 140ms ease-out,
@@ -802,19 +804,23 @@
   }
 
   .confirm-dialog,
-  .branch-dialog {
+  .branch-dialog,
+  .promo-poster-dialog {
     transform: translateY(0.5rem);
   }
 
   .confirm-dialog[open],
   .confirm-dialog[open]::backdrop,
   .branch-dialog[open],
-  .branch-dialog[open]::backdrop {
+  .branch-dialog[open]::backdrop,
+  .promo-poster-dialog[open],
+  .promo-poster-dialog[open]::backdrop {
     opacity: 1;
   }
 
   .confirm-dialog[open],
-  .branch-dialog[open] {
+  .branch-dialog[open],
+  .promo-poster-dialog[open] {
     transform: translateY(0);
   }
 
@@ -822,12 +828,15 @@
     .confirm-dialog[open],
     .confirm-dialog[open]::backdrop,
     .branch-dialog[open],
-    .branch-dialog[open]::backdrop {
+    .branch-dialog[open]::backdrop,
+    .promo-poster-dialog[open],
+    .promo-poster-dialog[open]::backdrop {
       opacity: 0;
     }
 
     .confirm-dialog[open],
-    .branch-dialog[open] {
+    .branch-dialog[open],
+    .promo-poster-dialog[open] {
       transform: translateY(0.5rem);
     }
   }
@@ -872,6 +881,100 @@
   .branch-dialog::backdrop {
     background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
   }
+
+  /* The promo poster popup.
+     ================================================================
+     The branch sheet's surface, edge and backdrop, sized to the poster
+     rather than to the screen.
+
+     THE POSTER SETS THE SIZE, WITH A CEILING. --poster-max-h caps the
+     artwork at about half a phone's height, so the page stays
+     visible above and below and this reads as an offer laid over the site
+     rather than a takeover of it. The frame takes the poster's own ratio
+     (set inline from its stored width and height) and is as wide as that
+     ceiling allows, never wider than the sheet. The image fills the frame
+     exactly, so nothing is cropped and nothing can spill past the edge.
+
+     THE SHEET HUGS THE WIDEST POSTER. Its width is that poster's width at
+     the ceiling plus the padding, clamped between 16rem and 22rem, or the
+     viewport less a 1rem margin each side. Below about 17rem the stub and
+     Apply stop fitting side by side and the row wraps, Apply full width. A tall photograph gets a narrow sheet instead of a
+     narrow image floating in a wide charcoal band.
+
+     One spacing unit, --poster-pad (0.75rem), between every edge and every
+     element, so the rhythm is the same on all four sides. */
+  .promo-poster-dialog {
+    --poster-pad: 0.75rem;
+    --poster-max-h: min(52svh, 28rem);
+    --poster-sheet-max: min(22rem, calc(100vw - 2rem));
+    position: fixed;
+    width: clamp(
+      min(16rem, var(--poster-sheet-max)),
+      calc(var(--poster-max-h) * var(--poster-ratio-max, 0.8) + 2 * var(--poster-pad)),
+      var(--poster-sheet-max)
+    );
+    max-height: calc(100svh - 2rem);
+    margin: auto;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: contain;
+    border: 1px solid color-mix(in oklab, var(--color-nybb-bone) 40%, transparent);
+    border-radius: 0.6rem;
+    background: var(--color-nybb-charcoal);
+    color: var(--color-nybb-bone);
+  }
+
+  @media (min-width: 640px) {
+    .promo-poster-dialog {
+      --poster-max-h: min(62svh, 34rem);
+      --poster-sheet-max: min(26rem, calc(100vw - 3rem));
+    }
+  }
+
+  /* Focused on open so Tab starts inside it; the sheet is not a control,
+     so it draws no ring of its own. */
+  .promo-poster-dialog:focus {
+    outline: none;
+  }
+
+  .promo-poster-dialog::backdrop {
+    background: color-mix(in oklab, var(--color-nybb-ink) 82%, transparent);
+  }
+
+  /* Native horizontal scroll with mandatory snap, so a swipe is the
+     browser's own gesture and lands on a whole poster. The bar is hidden
+     because the dots and arrows say where you are; the strip still scrolls
+     by touch, trackpad and the arrow buttons. */
+  .promo-poster-track {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .promo-poster-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .promo-poster-slide {
+    padding: var(--poster-pad);
+  }
+
+  /* Concentric with the sheet: 0.6rem outside, 0.75rem of padding, so the
+     inner corner is the system's small radius rather than a second 0.6rem
+     that would read as a card inside a card. */
+  .promo-poster-frame {
+    position: relative;
+    display: block;
+    width: min(100%, calc(var(--poster-max-h) * var(--poster-ratio)));
+    aspect-ratio: var(--poster-ratio);
+    margin-inline: auto;
+    overflow: hidden;
+    border-radius: 0.3rem;
+    background: var(--color-nybb-ink);
+  }
+
 
   /* The sheet's scrollbars, split by engine for the reason given above the
      workspace scrollbar: setting either standard property hands Chrome's
@@ -2257,6 +2360,101 @@
     mask:
       radial-gradient(circle var(--bite) at 100% 0, #0000 98%, #000) top / 100% 51% no-repeat,
       radial-gradient(circle var(--bite) at 100% 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+  }
+
+  /* The applied promo code at checkout.
+     ================================================================
+     WIDE (the phone, where the card has the room): one row. Ticket, then
+     "Applied" over the amount, then Remove, all centred on one line, which
+     is the layout that has always shipped there.
+
+     NARROW (the 20rem desktop sidebar, and a 320px phone): two rows on the
+     same plate. Ticket left and Remove right on the first, so the code and
+     the way to undo it read together; "Applied" left and the amount right on
+     the second, on a hairline, so the state and what it is worth balance
+     across the plate instead of being squeezed beside a button.
+
+     18.5rem is measured, not chosen: the desktop plate is 17rem (20rem less
+     the card's 1.5rem padding each side) and a 375px phone's is 19.2rem. */
+  .voucher-applied {
+    container-type: inline-size;
+  }
+
+  /* The ticket's column may shrink to nothing: its content is a code that
+     cannot wrap, and as plain `auto` a long one set the minimum width of the
+     whole checkout column and pushed the page past a phone's edge. It ends
+     in an ellipsis instead. The state keeps a floor of exactly "₱50.00 off"
+     plus its padding (5.8rem), so the ticket gives way before the amount
+     does, and on a 375px phone or wider a code like WALAYPOSTER50 still
+     fits whole, as it always has. */
+  .voucher-applied-plate {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(5.8rem, 1fr) auto;
+    grid-template-areas: "stub status remove";
+    align-items: stretch;
+  }
+
+  .voucher-applied-stub {
+    grid-area: stub;
+  }
+
+  .voucher-applied-status {
+    grid-area: status;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.125rem;
+    padding: 0.5rem 0.25rem 0.5rem 0.75rem;
+  }
+
+  .voucher-applied-remove {
+    grid-area: remove;
+    align-self: center;
+    margin-right: 0.25rem;
+  }
+
+  @container (max-width: 18.5rem) {
+    .voucher-applied-plate {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        "stub remove"
+        "status status";
+    }
+
+    /* The ticket keeps its size and sits at the start of its cell; only a
+       code too long for the row shrinks, and then it ends in an ellipsis. */
+    .voucher-applied-stub {
+      justify-self: start;
+      border-bottom-left-radius: 0;
+    }
+
+    .voucher-applied-status {
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.75rem;
+      /* Right inset 1.5rem: Remove's own 1.25rem padding plus its 0.25rem
+         margin, so the amount's last figure ends exactly under Remove's last
+         letter. Left 0.75rem matches the ticket's text inset above it. */
+      padding: 0.625rem 1.5rem 0.625rem 0.75rem;
+      border-top: 1px solid color-mix(in oklab, var(--color-nybb-bone) 10%, transparent);
+    }
+  }
+
+  /* A promo stepping to the next one. The incoming ticket and words fade
+     up 0.25rem, keyed on the code so only a real change replays it. Short,
+     because it answers a tap and the customer is reading the result, not
+     watching it arrive. The global reduced-motion block flattens it. */
+  .promo-swap {
+    animation: promo-swap 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes promo-swap {
+    from {
+      opacity: 0;
+      transform: translateY(0.25rem);
+    }
   }
 
   /* The floating reminder rises from below and settles, and it goes back

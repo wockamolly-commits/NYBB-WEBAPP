@@ -1,5 +1,14 @@
+import Image from "next/image";
+import { Star } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
-import { promoEndsLabel, promoSentence, type Promo } from "@/lib/promos/schema";
+import { cn } from "@/lib/utils";
+import {
+  promoEndsLabel,
+  promoHeadline,
+  promoPoster,
+  promoSentence,
+  type Promo,
+} from "@/lib/promos/schema";
 
 /**
  * One promo, explained and applicable.
@@ -17,13 +26,69 @@ import { promoEndsLabel, promoSentence, type Promo } from "@/lib/promos/schema";
  * is and never says it will work on your order. That asymmetry is deliberate
  * and it is why Apply runs the real preview rather than trusting this screen.
  */
-export function PromoCard({ promo }: { promo: Promo }) {
+export function PromoCard({ promo, featured = false }: { promo: Promo; featured?: boolean }) {
   const ends = promoEndsLabel(promo.expiresAt);
+  const poster = promoPoster(promo);
+  const { value } = promoHeadline(promo);
 
+  // THE FEATURED CARD is the promo the owner put first (0078). It spans both
+  // columns from sm, takes a firm ink edge instead of the hairline, sets the
+  // offer in the display face at a size the eye lands on first, and puts the
+  // poster beside the words rather than above them, so it reads as the lead
+  // offer rather than as the first of equals. "Featured" is said in a word as
+  // well, for the same reason "Yours" is: the emphasis is a fact.
   return (
-    <li className="border-nybb-ink/12 bg-nybb-cream/50 rounded-lg border p-5 sm:p-6">
+    <li
+      className={cn(
+        "bg-nybb-cream/50 rounded-lg p-5 sm:p-6",
+        featured
+          ? "border-nybb-ink border-2 sm:col-span-2"
+          : "border-nybb-ink/12 border",
+      )}
+    >
+      <div
+        className={cn(
+          featured && poster && "sm:grid sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-center sm:gap-7",
+        )}
+      >
+      {/* The owner's artwork, at its own shape and never cropped, above the
+          words. The words stay: a poster is a picture of the offer, and the
+          sentence below is the offer itself, in text a screen reader and a
+          search engine can read. */}
+      {poster ? (
+        <Image
+          src={poster.url}
+          alt={`Poster for ${promo.code}${value ? `, ${value}` : ""}`}
+          width={poster.width}
+          height={poster.height}
+          sizes={featured ? "(min-width: 640px) 24rem, 100vw" : "(min-width: 640px) 50vw, 100vw"}
+          placeholder={poster.blurDataUrl ? "blur" : "empty"}
+          blurDataURL={poster.blurDataUrl ?? undefined}
+          className={cn(
+            "mb-5 h-auto w-full rounded-md",
+            // Beside the words from sm, so its height is capped rather than
+            // letting a portrait poster make the card a column of picture.
+            featured && "sm:mb-0 sm:max-h-[28rem] sm:object-contain",
+          )}
+        />
+      ) : null}
+      <div>
+      {featured ? (
+        <p className="type-caps bg-nybb-ink text-nybb-bone mb-3 inline-flex items-center gap-1.5 rounded px-2 py-1">
+          <Star aria-hidden className="text-nybb-yellow size-3.5 fill-current" />
+          Featured
+        </p>
+      ) : null}
+      {featured && value ? (
+        <p className="font-display heading-minor text-nybb-ink mb-2 uppercase">{value}</p>
+      ) : null}
       <div className="flex items-baseline justify-between gap-3">
-        <p className="font-display text-nybb-ink min-w-0 truncate text-lg tracking-wide">
+        <p
+          className={cn(
+            "font-display text-nybb-ink min-w-0 truncate tracking-wide",
+            featured ? "text-xl" : "text-lg",
+          )}
+        >
           {promo.code}
         </p>
         {promo.personal ? (
@@ -64,10 +129,12 @@ export function PromoCard({ promo }: { promo: Promo }) {
         <ButtonLink
           href={`/checkout?promo=${encodeURIComponent(promo.code)}`}
           tone="light"
-          variant="secondary"
+          variant={featured ? "primary" : "secondary"}
         >
           Apply
         </ButtonLink>
+      </div>
+      </div>
       </div>
     </li>
   );

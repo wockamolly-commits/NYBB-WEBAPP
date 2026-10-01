@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { MENU_IMAGE_BUCKET } from "@/lib/staff/menu-image-limits";
+import { VOUCHER_POSTER_BUCKET } from "@/lib/staff/voucher-poster-limits";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
@@ -95,6 +96,8 @@ describe("migrations", () => {
       "0074",
       "0075",
       "0076",
+      "0077",
+      "0078",
     ]);
   });
 
@@ -109,7 +112,10 @@ describe("migrations", () => {
       public: boolean;
       file_size_limit: number | null;
       allowed_mime_types: string[] | null;
-    }>(`select id, public, file_size_limit, allowed_mime_types from storage.buckets`);
+    }>(
+      `select id, public, file_size_limit, allowed_mime_types from storage.buckets
+       where id = '${MENU_IMAGE_BUCKET}'`,
+    );
     expect(buckets.rows).toHaveLength(1);
     const [bucket] = buckets.rows;
     // Checked against the constant, not a second literal of this test's own:
@@ -129,6 +135,7 @@ describe("migrations", () => {
       select cmd, roles::text as roles, coalesce(with_check, '') as qual
       from pg_policies
       where schemaname = 'storage' and tablename = 'objects'
+        and coalesce(with_check, '') like '%menu-images%'
     `);
     expect(policies.rows).toHaveLength(1);
     const [policy] = policies.rows;
@@ -139,6 +146,48 @@ describe("migrations", () => {
     // next.config.ts caches an optimized menu image for a year on the promise
     // that a replacement always produces a new URL.
     expect(policy.qual).toContain("menu-images");
+  });
+
+  // 0077. The same shape for voucher posters, on its own bucket because a
+  // voucher manager need not hold menu:configure. Checked against the constant
+  // the upload action and next.config.ts read, for the reason given above.
+  it("let a vouchers:manage session upload into the voucher posters bucket", async () => {
+    const buckets = await db.query<{
+      id: string;
+      public: boolean;
+      file_size_limit: number | null;
+      allowed_mime_types: string[] | null;
+    }>(
+      `select id, public, file_size_limit, allowed_mime_types from storage.buckets
+       where id = '${VOUCHER_POSTER_BUCKET}'`,
+    );
+    expect(buckets.rows).toHaveLength(1);
+    const [bucket] = buckets.rows;
+    expect(bucket.public).toBe(true);
+    expect(bucket.file_size_limit).toBe(3 * 1024 * 1024);
+    expect(bucket.allowed_mime_types).toEqual(["image/webp"]);
+
+    const policies = await db.query<{ cmd: string; roles: string; qual: string }>(`
+      select cmd, roles::text as roles, coalesce(with_check, '') as qual
+      from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+        and coalesce(with_check, '') like '%voucher-posters%'
+    `);
+    expect(policies.rows).toHaveLength(1);
+    const [policy] = policies.rows;
+    expect(policy.cmd).toBe("INSERT");
+    expect(policy.roles).toContain("authenticated");
+    expect(policy.qual).toContain("vouchers:manage");
+  });
+
+  it("give storage.objects nothing but insert policies", async () => {
+    // Every upload path is fresh and images are cached for a year, so an
+    // update or delete policy would only ever be a way to break that promise.
+    const rows = await db.query<{ cmd: string }>(`
+      select distinct cmd from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+    `);
+    expect(rows.rows.map((r) => r.cmd)).toEqual(["INSERT"]);
   });
 
   it("enable row level security on every table", async () => {

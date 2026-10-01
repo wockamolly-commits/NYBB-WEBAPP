@@ -7,6 +7,7 @@ import type { NextConfig } from "next";
 // script writing to "menu" and this pattern permitting "menu-images", and
 // nothing could catch it because no code path read both.
 import { MENU_IMAGE_BUCKET } from "./lib/staff/menu-image-limits";
+import { VOUCHER_POSTER_BUCKET } from "./lib/staff/voucher-poster-limits";
 
 const remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,6 +18,13 @@ if (supabaseHost) {
     protocol: "https",
     hostname: supabaseHost,
     pathname: `/storage/v1/object/public/${MENU_IMAGE_BUCKET}/**`,
+  });
+  // Voucher posters (0077). Every upload is a fresh path, so the year-long
+  // optimized cache below is as safe here as it is for the menu.
+  remotePatterns.push({
+    protocol: "https",
+    hostname: supabaseHost,
+    pathname: `/storage/v1/object/public/${VOUCHER_POSTER_BUCKET}/**`,
   });
 }
 

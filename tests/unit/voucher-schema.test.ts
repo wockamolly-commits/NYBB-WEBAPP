@@ -180,6 +180,12 @@ describe("reading a row back", () => {
     announced_at: null,
     owner_user_id: null,
     created_at: "2026-09-04T00:00:00Z",
+    // 0077. No poster is null, never a zero-sized one.
+    poster_url: null,
+    poster_width: null,
+    poster_height: null,
+    // 0078. Not placed in the storefront order.
+    display_priority: null,
   };
 
   it("carries every null through as a null", () => {
@@ -188,6 +194,27 @@ describe("reading a row back", () => {
     expect(value.maxUses).toBeNull();
     expect(value.maxDiscountCents).toBeNull();
     expect(value.expiresAt).toBeNull();
+    expect(value.poster).toBeNull();
+  });
+
+  it("gathers a poster into one value when the row has one", () => {
+    const value = toVoucher(
+      voucherRowSchema.parse({
+        ...row,
+        poster_url: "https://example.supabase.co/storage/v1/object/public/voucher-posters/a.webp",
+        poster_width: 1200,
+        poster_height: 1600,
+      }),
+    );
+    expect(value.poster).toEqual({
+      url: "https://example.supabase.co/storage/v1/object/public/voucher-posters/a.webp",
+      width: 1200,
+      height: 1600,
+    });
+  });
+
+  it("refuses a zero-width poster rather than storing nothing as something", () => {
+    expect(voucherRowSchema.safeParse({ ...row, poster_width: 0 }).success).toBe(false);
   });
 
   it("coerces the bigint that PostgREST sends as a string, because it cannot be null", () => {

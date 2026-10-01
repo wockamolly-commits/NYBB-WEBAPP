@@ -226,6 +226,11 @@ export type VoucherActionState = {
   savedId?: string;
   /** Set when the record is gone, so the screen can leave rather than reload. */
   deleted?: boolean;
+  /**
+   * Set when the code saved but its poster did not, so the screen can say so
+   * without treating the save itself as failed.
+   */
+  posterError?: string;
 };
 
 /**
@@ -257,6 +262,13 @@ export const voucherRowSchema = z.object({
   announced_at: z.string().nullable(),
   owner_user_id: z.uuid().nullable(),
   created_at: z.string(),
+  // All three null together means "no poster" (0077's vouchers_poster_complete),
+  // never a zero-sized one. Nullable, not coerced, per AGENTS.md rule 6.
+  poster_url: z.string().nullable(),
+  poster_width: z.number().int().positive().nullable(),
+  poster_height: z.number().int().positive().nullable(),
+  // 0078. The owner's storefront rank; null is "not placed", never rank 0.
+  display_priority: z.number().int().positive().nullable(),
 });
 
 export type VoucherRow = z.infer<typeof voucherRowSchema>;
@@ -282,6 +294,11 @@ export function toVoucher(row: VoucherRow) {
     announcedAt: row.announced_at,
     ownerUserId: row.owner_user_id,
     createdAt: row.created_at,
+    poster:
+      row.poster_url !== null && row.poster_width !== null && row.poster_height !== null
+        ? { url: row.poster_url, width: row.poster_width, height: row.poster_height }
+        : null,
+    displayPriority: row.display_priority,
   };
 }
 

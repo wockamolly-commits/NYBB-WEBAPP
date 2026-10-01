@@ -6,6 +6,7 @@ import { StoreBar } from "@/components/store/StoreBar";
 import { ButtonLink } from "@/components/ui/Button";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { listPromos } from "@/lib/promos/read";
+import { featuredPromo } from "@/lib/promos/schema";
 import { PROMO_USED_COOKIE, parseUsed, withoutUsed } from "@/lib/promos/used";
 
 export const metadata: Metadata = {
@@ -44,6 +45,10 @@ export default async function PromosPage() {
 
   const mine = promos.filter((promo) => promo.personal);
   const open = promos.filter((promo) => !promo.personal);
+  // The promo the owner put first (0078), after every filter above, so a
+  // placed code this browser already spent hands the lead to the next one.
+  // Null while no order is set: the page then reads as it always has.
+  const featured = featuredPromo(open);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
@@ -98,8 +103,14 @@ export default async function PromosPage() {
                 Running now
               </h2>
               <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                {/* The featured promo is already first in the list's order, so
+                    it leads without being moved; it only changes its card. */}
                 {open.map((promo) => (
-                  <PromoCard key={promo.code} promo={promo} />
+                  <PromoCard
+                    key={promo.code}
+                    promo={promo}
+                    featured={promo.code === featured?.code}
+                  />
                 ))}
               </ul>
             </section>

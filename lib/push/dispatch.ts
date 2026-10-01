@@ -530,6 +530,13 @@ export async function notifyCustomersOfPromo(voucherId: string): Promise<void> {
         itemNames: [],
         categoryNames: [],
         branchNames: [],
+        // A lock-screen line has no room for a picture, and the sentence
+        // never reads the poster anyway.
+        posterUrl: null,
+        posterWidth: null,
+        posterHeight: null,
+        posterBlurDataUrl: null,
+        placed: false,
       }),
     });
 

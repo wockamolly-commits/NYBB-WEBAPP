@@ -5,6 +5,7 @@ import { MuralArt } from "@/components/mural/MuralArt";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { PromoBar } from "@/components/site/PromoBar";
+import { PromoPosterPopup } from "@/components/site/PromoPosterPopup";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { PROMO_USED_COOKIE, parseUsed, withoutUsed } from "@/lib/promos/used";
 import { listPromos } from "@/lib/promos/read";
@@ -100,6 +101,10 @@ export default async function StorefrontLayout({
           reminder that PromoBar draws itself. It renders nothing when there
           is no promo, so there is no empty element in the flow. */}
       <PromoBar promos={promos} />
+      {/* The same filtered list, so the popup can never show a poster for a
+          promo the bar would not. It keeps only the ones with a poster and
+          opens on each arrival at the home page, and on no other page. */}
+      <PromoPosterPopup promos={promos} />
       <main id="main">{children}</main>
       <Footer />
       <CartSync />

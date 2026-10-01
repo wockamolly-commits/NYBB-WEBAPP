@@ -17,6 +17,7 @@ import {
   setVoucherActive,
   setVoucherPublicise,
 } from "./actions";
+import { NewPosterField, SavedPosterField } from "./PosterField";
 
 /**
  * The promo code form.
@@ -284,10 +285,13 @@ function AnnounceNotice({ voucher }: { voucher: VoucherDetail }) {
 export function VoucherEditor({
   voucher,
   choices,
+  posterFailed = false,
 }: {
   /** Null when this is a new code. */
   voucher: VoucherDetail | null;
   choices: ScopeChoices;
+  /** The code was just created and its poster did not go up with it. */
+  posterFailed?: boolean;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveVoucher, INITIAL);
@@ -334,13 +338,26 @@ export function VoucherEditor({
     (voucher?.scope.customerPhones ?? []).join("\n"),
   );
 
+  // The create form's poster, held here rather than in a named file input,
+  // so React resetting the form after a refused save cannot lose it. See
+  // PosterField for the rest of that reasoning.
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+
+  function submit(formData: FormData) {
+    if (voucher === null && posterFile) formData.set("poster", posterFile);
+    formAction(formData);
+  }
+
   // A create returns the new id, and the editor for it lives at another URL.
-  // Pushing rather than replacing, so Back still goes to the list.
+  // Pushing rather than replacing, so Back still goes to the list. A poster
+  // that failed to go up with the code is carried across in the URL, because
+  // this component's state does not survive the navigation.
   useEffect(() => {
     if (state.ok && state.savedId && voucher === null) {
-      router.push(`/workspace/vouchers/${state.savedId}`);
+      const suffix = state.posterError ? "?poster=failed" : "";
+      router.push(`/workspace/vouchers/${state.savedId}${suffix}`);
     }
-  }, [state.ok, state.savedId, voucher, router]);
+  }, [state.ok, state.savedId, state.posterError, voucher, router]);
 
   function toggle(set: Set<string>, apply: (next: Set<string>) => void, id: string) {
     const next = new Set(set);
@@ -373,7 +390,7 @@ export function VoucherEditor({
     <>
       {frozen && voucher ? <LockedNotice voucher={voucher} /> : null}
       {voucher ? <AnnounceNotice voucher={voucher} /> : null}
-      <form action={formAction} className="mt-7">
+      <form action={submit} className="mt-7">
         {/* One attribute freezes the whole form. A disabled fieldset
             disables every control inside it, so no field has to know the
             rule, and the workspace CSS already draws the disabled state for
@@ -621,6 +638,12 @@ export function VoucherEditor({
             </div>
           </WorkspaceSection>
 
+          {voucher === null ? (
+            <WorkspaceSection title="Poster" description={<PosterDescription />}>
+              <NewPosterField onChange={setPosterFile} />
+            </WorkspaceSection>
+          ) : null}
+
           <WorkspaceSection
             title="How often"
             description={
@@ -751,6 +774,37 @@ export function VoucherEditor({
           </WorkspaceSection>
         </fieldset>
       </form>
+
+      {/* Outside the form, and so outside its frozen fieldset, on purpose. A
+          poster is not a term (0077), so it stays changeable once the code is
+          locked, and it posts to its own actions rather than to Save. */}
+      {voucher ? (
+        <div className="mt-4">
+          <WorkspaceSection title="Poster" description={<PosterDescription />}>
+            <SavedPosterField
+              voucherId={voucher.id}
+              poster={voucher.poster}
+              publicise={voucher.publicise}
+              failedOnCreate={posterFailed}
+            />
+          </WorkspaceSection>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function PosterDescription() {
+  return (
+    <>
+      <p>
+        The artwork for this promo. It opens in a popup when a customer arrives
+        on the storefront and sits on the code&rsquo;s card on the promos page.
+      </p>
+      <p>
+        It only shows while the code is live: switched on, inside its dates,
+        not used up. It is never cropped, so a portrait poster stays portrait.
+      </p>
     </>
   );
 }

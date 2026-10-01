@@ -66,7 +66,8 @@ export type VoucherUse = {
 const COLUMNS =
   "id, code, description, note, amount_cents, percent_off, max_discount_cents, " +
   "min_order_cents, max_uses, max_uses_per_customer, uses_count, starts_at, " +
-  "expires_at, is_active, publicise, announced_at, owner_user_id, created_at";
+  "expires_at, is_active, publicise, announced_at, owner_user_id, created_at, " +
+  "poster_url, poster_width, poster_height, display_priority";
 
 /**
  * Every voucher, newest first, with its scope reduced to counts.

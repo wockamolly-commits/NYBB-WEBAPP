@@ -436,11 +436,16 @@ describe("the shape of what comes back", () => {
         "code",
         "description",
         "expiresAt",
+        "placed",
         "itemNames",
         "maxDiscountCents",
         "minOrderCents",
         "percentOff",
         "personal",
+        "posterBlurDataUrl",
+        "posterHeight",
+        "posterUrl",
+        "posterWidth",
       ].sort(),
     );
   });
@@ -462,6 +467,8 @@ describe("the shape of what comes back", () => {
       "maxUses",
       "maxUsesPerCustomer",
       "sortExpires",
+      "sortPriority",
+      "display_priority",
     ]) {
       expect(keys).not.toContain(forbidden);
     }

@@ -27,7 +27,10 @@ export function PromoStub({
         className,
       )}
     >
-      {code}
+      {/* Its own span so a code longer than the room it is given ends in an
+          ellipsis rather than pushing past the ticket. Text sitting directly
+          in a flex box cannot truncate. */}
+      <span className="min-w-0 truncate">{code}</span>
     </span>
   );
 }

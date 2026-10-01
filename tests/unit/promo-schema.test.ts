@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  featuredPromo,
   promoCodeFromParams,
   promoListSchema,
+  promoPoster,
   promoRowSchema,
   promoSentence,
   type Promo,
@@ -66,6 +68,80 @@ describe("a null is not a zero", () => {
     // own honest value and coercion is the correct tool. This is the contrast
     // the rule turns on.
     expect(parse({ minOrderCents: 0 }).minOrderCents).toBe(0);
+  });
+});
+
+describe("the poster (0077)", () => {
+  const POSTER = {
+    posterUrl:
+      "https://example.supabase.co/storage/v1/object/public/voucher-posters/2026/a.webp",
+    posterWidth: 1200,
+    posterHeight: 1600,
+    posterBlurDataUrl: "data:image/webp;base64,AAAA",
+  };
+
+  it("keeps a promo without a poster at null rather than a zero-sized one", () => {
+    const promo = parse({
+      posterUrl: null,
+      posterWidth: null,
+      posterHeight: null,
+      posterBlurDataUrl: null,
+    });
+    expect(promo.posterWidth).toBeNull();
+    expect(promo.posterHeight).toBeNull();
+    expect(promoPoster(promo)).toBeNull();
+  });
+
+  it("reads a listing from before 0077 as having no poster, not as broken", () => {
+    // The keys are absent entirely until the migration is applied. Failing
+    // the parse here would empty every promo off the storefront.
+    const promo = parse();
+    expect(promo.posterUrl).toBeNull();
+    expect(promoPoster(promo)).toBeNull();
+  });
+
+  it("hands back a complete poster when there is one", () => {
+    expect(promoPoster(parse(POSTER))).toEqual({
+      url: POSTER.posterUrl,
+      width: 1200,
+      height: 1600,
+      blurDataUrl: POSTER.posterBlurDataUrl,
+    });
+  });
+
+  it("refuses a zero or negative dimension rather than drawing nothing", () => {
+    expect(promoRowSchema.safeParse(row({ ...POSTER, posterWidth: 0 })).success).toBe(false);
+    expect(promoRowSchema.safeParse(row({ ...POSTER, posterHeight: -1 })).success).toBe(false);
+  });
+
+  it("does not coerce a dimension that came back as a string", () => {
+    expect(promoRowSchema.safeParse(row({ ...POSTER, posterWidth: "" })).success).toBe(false);
+  });
+});
+
+describe("the featured promo (0078)", () => {
+  it("is nothing while no order is set, as before", () => {
+    expect(featuredPromo([parse({ code: "A" }), parse({ code: "B" })])).toBeNull();
+  });
+
+  it("is the first placed promo in the list", () => {
+    const list = [parse({ code: "A", placed: true }), parse({ code: "B", placed: true }), parse({ code: "C" })];
+    expect(featuredPromo(list)?.code).toBe("A");
+  });
+
+  it("passes to the next placed promo when the first was filtered out", () => {
+    // The spent-codes cookie runs after the database chose its order, so the
+    // lead is decided on whatever list is finally shown.
+    const shown = [parse({ code: "B", placed: true }), parse({ code: "C" })];
+    expect(featuredPromo(shown)?.code).toBe("B");
+  });
+
+  it("never features a customer's own reward", () => {
+    expect(featuredPromo([parse({ code: "MINE", placed: true, personal: true })])).toBeNull();
+  });
+
+  it("reads a listing from before 0078 as unplaced", () => {
+    expect(parse().placed).toBe(false);
   });
 });
 
