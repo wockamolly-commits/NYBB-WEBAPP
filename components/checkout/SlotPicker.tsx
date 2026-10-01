@@ -106,6 +106,9 @@ export function SlotPicker({
                       // card, and the fix is to let the row equalise them
                       // rather than to hope the content matches.
                       PRESSABLE,
+                      // A size container, so the time below can be sized to
+                      // the tile rather than to the screen.
+                      "@container",
                       "flex h-full min-h-16 w-full flex-col items-start justify-center rounded-md px-3 py-2.5 text-left",
                       active
                         ? "bg-nybb-orange text-nybb-ink"
@@ -115,7 +118,16 @@ export function SlotPicker({
                             "border-nybb-bone/10 text-nybb-bone/35 cursor-not-allowed border disabled:active:scale-100",
                     )}
                   >
-                    <span className="font-mono-tabular text-sm leading-none">
+                    {/* SIZED TO THE TILE, SO THE LONGEST LABEL STAYS ON ONE
+                        LINE. A window across noon or midnight carries both
+                        periods, "11:45am to 12:00pm", 18 characters. JetBrains
+                        Mono is 0.6em a character, so the line is 10.8em, and on
+                        a phone two tiles across it broke onto a second line
+                        beside neighbours that did not. 9cqi keeps 10.8em inside
+                        the tile with a little to spare, and every tile is the
+                        same width, so every time shrinks together. Capped at
+                        text-sm, which is what wider screens always had. */}
+                    <span className="font-mono-tabular text-[length:min(var(--text-sm),9cqi)] leading-none whitespace-nowrap">
                       {formatSlotRange(slot, slots.branch?.timezone ?? "Asia/Manila")}
                     </span>
                     {note ? (
