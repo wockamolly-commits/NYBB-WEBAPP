@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BellRing, CircleAlert, Share } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { needsHomeScreenInstall, pushSupported, vapidKeyBytes } from "@/lib/push/browser";
+import { needsHomeScreenInstall, pushSupported, subscribeForPush } from "@/lib/push/browser";
 
 /**
  * Asking to be told when a new promo starts.
@@ -15,15 +16,21 @@ import { needsHomeScreenInstall, pushSupported, vapidKeyBytes } from "@/lib/push
  * POSSIBLE. Whether they said yes to promos is a row in `push_promo_optins`
  * that only this control writes.
  *
- * The consequence is deliberate and slightly unusual: reopening this page on a
- * device that already opted in shows the switch as off until it is used again,
- * because the page does not ask the server who this endpoint is. Re-subscribing
- * is idempotent and keeps the original consent date, so the cost of that is one
- * redundant tap and the alternative is a screen that could lie about consent.
+ * Since 0079 the page asks the server for that row on load, keyed by this
+ * browser's endpoint. That is not an inference from the browser: it is the
+ * consent itself, so the switch shows "on" after a reload exactly when the
+ * person turned it on. Before 0079 every reload showed it as off, which read
+ * as a control that had forgotten what it was told.
+ *
+ * WHAT THE CUSTOMER GETS IS SAID IN WORDS, because "alerts" alone does not say
+ * whether that means an email, a text or a badge on this page. It is a browser
+ * notification on this device, sent once per promo when staff announce it
+ * (`announceVoucher`, which waits for the code's start since 0079), and
+ * tapping it opens /promos.
  *
  * iOS delivers Web Push only to a site added to the Home Screen, so an iPhone
- * in Safari is told to install rather than offered a button that cannot work.
- * That check is shared with the order opt-in through `lib/push/browser.ts`.
+ * in Safari is told how to install rather than offered a button that cannot
+ * work. That check is shared with the order opt-in through `lib/push/browser.ts`.
  *
  * Permission is requested on a tap and never on load, the same rule the order
  * opt-in follows. A permission prompt nobody asked for is how a site loses the
@@ -42,36 +49,39 @@ type State =
   | { kind: "on" }
   | { kind: "failed"; message: string };
 
+async function look(): Promise<State> {
+  if (typeof window === "undefined") return { kind: "checking" };
+  if (!VAPID_PUBLIC_KEY) return { kind: "unconfigured" };
+  if (needsHomeScreenInstall()) return { kind: "needs-install" };
+  if (!pushSupported()) return { kind: "unsupported" };
+
+  // getRegistration rather than register: reading the page should not
+  // install a worker for somebody who never taps the button.
+  const registration = await navigator.serviceWorker.getRegistration("/");
+  const subscription = await registration?.pushManager.getSubscription();
+  if (!subscription || Notification.permission !== "granted") return { kind: "off" };
+
+  const response = await fetch("/api/push/promos/status", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ endpoint: subscription.endpoint }),
+  });
+  const body = await response.json().catch(() => null);
+  return body?.optedIn === true ? { kind: "on" } : { kind: "off" };
+}
+
 export function PromoPushOptIn() {
   const [state, setState] = useState<State>({ kind: "checking" });
 
   useEffect(() => {
     let live = true;
-
-    // Resolved through a promise rather than set straight from the effect
-    // body, the shape CustomerPushOptIn uses. A synchronous setState here is a
-    // cascading render, and the lint rule that says so is right even though
-    // every branch below is a cheap capability check.
-    function look(): State {
-      if (typeof window === "undefined") return { kind: "checking" };
-      if (needsHomeScreenInstall()) return { kind: "needs-install" };
-      if (!pushSupported()) return { kind: "unsupported" };
-      if (!VAPID_PUBLIC_KEY) return { kind: "unconfigured" };
-      // Deliberately not inspecting getSubscription(). See the note above: a
-      // subscription proves the device can be written to, never that this
-      // person agreed to hear about promos.
-      return { kind: "off" };
-    }
-
-    Promise.resolve()
-      .then(look)
+    look()
       .then((next) => {
         if (live) setState(next);
       })
       .catch(() => {
         if (live) setState({ kind: "off" });
       });
-
     return () => {
       live = false;
     };
@@ -92,22 +102,19 @@ export function PromoPushOptIn() {
         setState({
           kind: "failed",
           message:
-            "This browser has blocked notifications for the site. Allow them in the browser's settings, then tap again.",
+            "Notifications are blocked for this site. Allow them in your browser's site settings, then tap the button again.",
         });
         return;
       }
       if (permission !== "granted") {
         setState({
           kind: "failed",
-          message: "Notifications were not allowed, so nothing was turned on.",
+          message: "Notifications were not allowed, so promo alerts are still off.",
         });
         return;
       }
 
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
-      });
+      const subscription = await subscribeForPush(registration.pushManager, VAPID_PUBLIC_KEY);
 
       const response = await fetch("/api/push/promos/subscribe", {
         method: "POST",
@@ -129,7 +136,7 @@ export function PromoPushOptIn() {
           kind: "failed",
           message:
             (body && typeof body.error === "string" && body.error) ||
-            "We could not turn on promo alerts.",
+            "We could not turn on promo alerts. Please try again.",
         });
         return;
       }
@@ -151,11 +158,12 @@ export function PromoPushOptIn() {
       const registration = await navigator.serviceWorker.getRegistration("/");
       const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
-        await fetch("/api/push/promos/unsubscribe", {
+        const response = await fetch("/api/push/promos/unsubscribe", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ endpoint: subscription.endpoint }),
         });
+        if (!response.ok) throw new Error("unsubscribe refused");
       }
       // The browser subscription is deliberately left alone. It may still be
       // following an order, and turning off adverts is not asking to stop
@@ -169,30 +177,115 @@ export function PromoPushOptIn() {
     }
   }
 
-  if (state.kind === "checking" || state.kind === "unconfigured") return null;
+  // No key means the deployment cannot send at all, so the whole section is
+  // withheld rather than offering a button that can only fail.
+  if (state.kind === "unconfigured") return null;
 
+  return (
+    <section
+      aria-labelledby="promo-alerts-heading"
+      className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-8"
+    >
+      <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_17rem] md:gap-10">
+        <div>
+          <p className="type-caps text-nybb-yellow flex items-center gap-2">
+            <BellRing aria-hidden className="size-4" />
+            Promo alerts
+          </p>
+          <h2 id="promo-alerts-heading" className="font-display heading-minor mt-3 uppercase">
+            Hear about the next promo first
+          </h2>
+          <p className="text-nybb-bone/75 mt-4 max-w-md text-base leading-relaxed">
+            When we launch a new promo code, your browser shows a notification
+            on this device. It arrives even when this site is closed. No email,
+            no text messages.
+          </p>
+
+          <ul className="mt-6 max-w-md space-y-3 text-sm leading-relaxed">
+            <Fact lead="One alert per new code.">We never send the same promo twice.</Fact>
+            <Fact lead="Tap it to open this page,">
+              with the code ready to carry into checkout.
+            </Fact>
+            <Fact lead="Order alerts are separate.">
+              Turning this on or off never changes them.
+            </Fact>
+          </ul>
+        </div>
+
+        <div className="border-nybb-bone/15 flex flex-col justify-center border-t pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-10">
+          <Action state={state} onTurnOn={turnOn} onTurnOff={turnOff} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Fact({ lead, children }: { lead: string; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span aria-hidden className="bg-nybb-orange mt-[0.55em] size-1.5 shrink-0 rounded-full" />
+      <span className="text-nybb-bone/75">
+        <strong className="text-nybb-bone font-semibold">{lead}</strong> {children}
+      </span>
+    </li>
+  );
+}
+
+function Action({
+  state,
+  onTurnOn,
+  onTurnOff,
+}: {
+  state: State;
+  onTurnOn: () => void;
+  onTurnOff: () => void;
+}) {
   if (state.kind === "needs-install") {
     return (
-      <Note>
-        To get an alert when a new promo starts, add this site to your Home
-        Screen first: tap Share, then Add to Home Screen, then open it from
-        there. iPhones only send alerts from an added site.
-      </Note>
+      <div>
+        <p className="font-display heading-panel uppercase">On iPhone, add the site first</p>
+        <ol className="text-nybb-bone/75 mt-3 list-decimal space-y-1.5 pl-5 text-sm leading-relaxed">
+          <li>
+            Tap Share <Share aria-hidden className="inline size-4 align-[-0.15em]" /> in Safari.
+          </li>
+          <li>Choose Add to Home Screen.</li>
+          <li>Open the site from your Home Screen and come back here.</li>
+        </ol>
+        <p className="text-nybb-bone/60 mt-3 text-xs leading-relaxed">
+          iPhones only show notifications from a site added to the Home Screen.
+        </p>
+      </div>
     );
   }
 
   if (state.kind === "unsupported") {
-    return <Note>This browser cannot send promo alerts. Check this page for new codes.</Note>;
+    return (
+      <p className="text-nybb-bone/75 text-sm leading-relaxed">
+        This browser cannot show notifications. New codes always appear on this
+        page and in the bar at the top of the site.
+      </p>
+    );
   }
 
   if (state.kind === "on") {
     return (
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <p role="status" className="text-nybb-ink/60 max-w-md text-sm leading-relaxed">
-          We will tell you when a new promo starts. Order updates are separate
-          and are not affected by this.
+      <div>
+        <p role="status" className="flex items-center gap-2.5">
+          <span aria-hidden className="bg-nybb-yellow size-2.5 rounded-full" />
+          <span className="font-display heading-panel uppercase">Promo alerts are on</span>
         </p>
-        <Button type="button" tone="light" variant="ghost" onClick={turnOff}>
+        <p className="text-nybb-bone/70 mt-2 text-sm leading-relaxed">
+          For this browser on this device. The next new code will show up as a
+          notification.
+        </p>
+        <Button
+          type="button"
+          tone="dark"
+          variant="secondary"
+          block
+          className="mt-5"
+          onClick={onTurnOff}
+        >
           Turn promo alerts off
         </Button>
       </div>
@@ -200,32 +293,30 @@ export function PromoPushOptIn() {
   }
 
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-3">
+    <div>
       <Button
         type="button"
-        tone="light"
-        variant="secondary"
-        onClick={turnOn}
-        disabled={state.kind === "working"}
+        tone="dark"
+        variant="primary"
+        size="lg"
+        block
+        onClick={onTurnOn}
+        disabled={state.kind === "working" || state.kind === "checking"}
+        aria-busy={state.kind === "working"}
       >
-        {state.kind === "working" ? "Turning on" : "Tell me about new promos"}
+        <BellRing aria-hidden className="size-4" />
+        {state.kind === "working" ? "Turning on" : "Turn on promo alerts"}
       </Button>
-      <p className="text-nybb-ink/55 max-w-md text-sm leading-relaxed">
-        Only when a new code starts. Nothing about your orders changes.
+      <p className="text-nybb-bone/60 mt-3 text-xs leading-relaxed">
+        Your browser will ask to allow notifications. You can turn this off
+        here at any time.
       </p>
       {state.kind === "failed" ? (
-        <p role="alert" className="text-nybb-ink/75 max-w-md text-sm">
-          {state.message}
+        <p role="alert" className="mt-4 flex gap-2 text-sm leading-relaxed">
+          <CircleAlert aria-hidden className="text-nybb-orange mt-0.5 size-4 shrink-0" />
+          <span>{state.message}</span>
         </p>
       ) : null}
     </div>
-  );
-}
-
-function Note({ children }: { children: React.ReactNode }) {
-  return (
-    <p role="status" className="text-nybb-ink/60 mt-6 max-w-md text-sm leading-relaxed">
-      {children}
-    </p>
   );
 }

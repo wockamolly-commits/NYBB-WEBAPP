@@ -98,6 +98,7 @@ describe("migrations", () => {
       "0076",
       "0077",
       "0078",
+      "0079",
     ]);
   });
 
@@ -492,6 +493,10 @@ describe("migrations", () => {
     // engine is off. The second is granted to anon deliberately and is not
     // rate limited: somebody must always be able to stop hearing from us, and
     // a limit on the way out is a limit on consent being withdrawn.
+    //
+    // promo_push_optin_status (0079) lets the promos page show the truth
+    // after a reload. It answers yes or no for one endpoint and nothing else,
+    // and the same unguessable-endpoint argument bounds it.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -506,6 +511,7 @@ describe("migrations", () => {
       "list_customer_promos",
       "place_order",
       "preview_voucher",
+      "promo_push_optin_status",
       "register_customer_push_device",
       "register_customer_push_subscription",
       "register_promo_push_subscription",

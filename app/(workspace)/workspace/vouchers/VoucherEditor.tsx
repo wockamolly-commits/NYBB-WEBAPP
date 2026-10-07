@@ -237,8 +237,37 @@ function LockedNotice({ voucher }: { voucher: VoucherDetail }) {
  */
 function AnnounceNotice({ voucher }: { voucher: VoucherDetail }) {
   const [state, action, pending] = useActionState(announceVoucher, INITIAL);
+  // Read once on mount rather than during render, which keeps render pure.
+  // A screen left open past the start shows the button after a reload.
+  const [now] = useState(() => Date.now());
 
   if (!voucher.publicise || !voucher.isActive) return null;
+
+  // 0079 refuses the claim before the start, so the button would send
+  // nothing. The notification says a promo has started and opens a page that
+  // does not list it yet, so waiting is the only honest option.
+  const startsAt = voucher.startsAt === null ? null : Date.parse(voucher.startsAt);
+  if (voucher.announcedAt === null && startsAt !== null && startsAt > now) {
+    const when = new Intl.DateTimeFormat("en-PH", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Manila",
+    }).format(startsAt);
+    return (
+      <section className="border-nybb-bone/15 mt-7 rounded-md border p-4 sm:p-5">
+        <h2 className="font-display heading-panel text-nybb-bone uppercase">
+          Announce once it starts
+        </h2>
+        <p className="text-nybb-bone/70 mt-2 max-w-2xl text-sm leading-relaxed">
+          This code starts {when}. Customers are told a promo has started, so
+          the announcement button appears here once it is live.
+        </p>
+      </section>
+    );
+  }
 
   if (voucher.announcedAt !== null) {
     return (

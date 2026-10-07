@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { freshDatabase, scalar } from "./harness";
 
 /**
- * Tests over promo push, migrations 0075.
+ * Tests over promo push, migrations 0075 and 0079.
  *
  * The property being defended here is that two consents stay two consents.
  * Agreeing to "tell me when my food is ready" is not agreeing to hear about a
@@ -287,6 +287,19 @@ describe("announcing a promo exactly once", () => {
     expect(await scalar<boolean>(db, `select claim_promo_announcement('${id}')`)).toBe(false);
   });
 
+  it("refuses a promo that has not started yet, without marking it announced (0079)", async () => {
+    const id = await promo({ starts_at: "now() + interval '1 day'" });
+    expect(await scalar<boolean>(db, `select claim_promo_announcement('${id}')`)).toBe(false);
+    expect(
+      await scalar<string | null>(db, `select announced_at::text from vouchers where id = '${id}'`),
+    ).toBeNull();
+  });
+
+  it("announces a promo whose start has passed", async () => {
+    const id = await promo({ starts_at: "now() - interval '1 minute'" });
+    expect(await scalar<boolean>(db, `select claim_promo_announcement('${id}')`)).toBe(true);
+  });
+
   it("answers false rather than raising for a voucher that does not exist", async () => {
     expect(
       await scalar<boolean>(
@@ -294,6 +307,39 @@ describe("announcing a promo exactly once", () => {
         `select claim_promo_announcement('79000000-0000-4000-8000-0000000000ff')`,
       ),
     ).toBe(false);
+  });
+});
+
+describe("asking whether this browser is opted in (0079)", () => {
+  let db: PGlite;
+  beforeEach(async () => {
+    db = await setup();
+  });
+
+  const status = (endpoint: string) =>
+    scalar<boolean>(db, `select promo_push_optin_status('${endpoint}')`);
+
+  it("is false for a browser that never opted in", async () => {
+    expect(await status(ENDPOINT)).toBe(false);
+  });
+
+  it("is true once it has, and false again after opting out", async () => {
+    await optIn(db);
+    expect(await status(ENDPOINT)).toBe(true);
+    await scalar(db, `select forget_promo_push_subscription('${ENDPOINT}')`);
+    expect(await status(ENDPOINT)).toBe(false);
+  });
+
+  it("is false for a blank endpoint rather than raising", async () => {
+    expect(await scalar<boolean>(db, "select promo_push_optin_status(null)")).toBe(false);
+  });
+
+  it("may be asked by a browser, guest or signed in", async () => {
+    const sig = "promo_push_optin_status(text)";
+    const can = (role: string) =>
+      scalar<boolean>(db, `select has_function_privilege('${role}', '${sig}', 'execute')`);
+    expect(await can("anon")).toBe(true);
+    expect(await can("authenticated")).toBe(true);
   });
 });
 

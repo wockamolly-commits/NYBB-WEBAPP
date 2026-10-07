@@ -184,12 +184,9 @@ export function Footer({ flush = false }: { flush?: boolean }) {
           <div>
             <h2 className="font-display type-caps text-nybb-ink">Company</h2>
             <ul className="mt-5 space-y-2.5 text-sm">
-              {/* First in the column, and the footer is where this link has to
-                  live rather than the navbar. Only the first nav item survives
-                  below sm, so a header link would be invisible to exactly the
-                  phone customers this shop is built around. The bar above does
-                  the announcing; this is how somebody finds the page again
-                  after they have put the bar away. */}
+              {/* First in the column. The navbar carries Promos too, at
+                  every width; this is the second way back to it for somebody
+                  who has scrolled to the bottom of a long page. */}
               <li>
                 <Link
                   href="/promos"

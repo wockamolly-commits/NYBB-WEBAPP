@@ -109,3 +109,32 @@ export async function unsubscribeFromPromos(
   // being withdrawn.
   return { ok: true };
 }
+
+/**
+ * Whether this browser has opted in, read from the consent row (0079).
+ *
+ * Not an inference from the browser's own state, which is the line the promos
+ * page holds: a subscription made for an order is not consent to marketing.
+ * The row is the consent, so reading it is reading the truth.
+ *
+ * Every failure is "not opted in". The worst that does is show the switch as
+ * off to somebody who is on, and tapping it again is idempotent.
+ */
+export async function promoPushStatus(
+  input: unknown,
+  caller: CustomerCaller,
+): Promise<{ optedIn: boolean }> {
+  const parsed = promoUnsubscribeSchema.safeParse(input);
+  if (!parsed.success || !supabaseConfigured()) return { optedIn: false };
+
+  const supabase = await callerClient(caller);
+  const { data, error } = await supabase.rpc("promo_push_optin_status", {
+    p_endpoint: parsed.data.endpoint,
+  });
+
+  if (error) {
+    console.error("[promo-push] status failed", error.message);
+    return { optedIn: false };
+  }
+  return { optedIn: data === true };
+}

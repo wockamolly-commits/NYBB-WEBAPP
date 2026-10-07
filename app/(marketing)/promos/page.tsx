@@ -123,8 +123,7 @@ export default async function PromosPage() {
           want to be told about the next one. It is offered whether or not
           anything is running now: an empty page is exactly when a standing
           alert is worth having. */}
-      <div className="border-nybb-ink/12 mt-12 border-t pt-8">
-        <h2 className="font-display heading-panel text-nybb-ink">Hear about new promos</h2>
+      <div className="mt-14 sm:mt-16">
         <PromoPushOptIn />
       </div>
     </div>

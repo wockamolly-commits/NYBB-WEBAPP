@@ -4,6 +4,7 @@ import { Wordmark } from "@/components/brand/Wordmark";
 import { CartCount } from "@/components/cart/CartCount";
 import { HeatRule } from "@/components/site/HeatRule";
 import { HomeLink } from "@/components/site/HomeLink";
+import { NavLink } from "@/components/site/NavLink";
 import { storefrontIdentityLink } from "@/lib/auth/navigation";
 import { getStorefrontSession } from "@/lib/auth/session";
 import { getStaffProfile } from "@/lib/staff/session";
@@ -39,10 +40,19 @@ import { getStaffProfile } from "@/lib/staff/session";
  * allowed as a graphic, which is what the hover underline is.
  */
 
+/**
+ * WHICH LINKS A PHONE GETS. Below `sm` the bar holds the wordmark, the
+ * account icon and the cart, which leaves room for two short words at 320px
+ * and no more. Menu takes one, because ordering is what a phone is here for.
+ * Promos takes the other, always, because the bar under the header can be
+ * dismissed and the promos page also carries the alert sign-up, which is
+ * worth finding even when nothing is running.
+ */
 const links = [
-  { href: "/menu", label: "Menu" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Branches" },
+  { href: "/menu", label: "Menu", onPhone: true },
+  { href: "/promos", label: "Promos", onPhone: true },
+  { href: "/about", label: "About", onPhone: false },
+  { href: "/contact", label: "Branches", onPhone: false },
 ];
 
 export async function Header() {
@@ -86,21 +96,14 @@ export async function Header() {
             around it. */}
         <div className="flex items-center gap-1 sm:gap-5">
           <nav aria-label="Main">
-            <ul className="flex items-center gap-2 sm:gap-7">
-              {links.map((link, index) => (
-              <li key={link.href} className={index === 0 ? undefined : "hidden sm:block"}>
-                {/* The hover is an orange rule drawing in from the left, not a
-                    colour change on the text. Orange is unreadable as type on
-                    this ground but perfectly legible as a graphic, so the
-                    accent stays in the brand's colour while the label itself
-                    goes to full ink. Transform only, so nothing reflows. */}
-                <Link
-                  href={link.href}
-                  className="font-display text-nybb-ink/70 hover:text-nybb-ink after:bg-nybb-orange relative inline-flex min-h-11 items-center text-xs tracking-[0.1em] transition-colors duration-200 after:absolute after:inset-x-0 after:bottom-[0.6rem] after:h-[2px] after:origin-left after:scale-x-0 after:rounded-full after:transition-transform after:duration-200 hover:after:scale-x-100 sm:text-sm"
-                >
-                  {link.label}
-                </Link>
-              </li>
+            <ul className="flex items-center gap-3 sm:gap-7">
+              {links.map((link) => (
+                <li key={link.href} className={link.onPhone ? undefined : "hidden sm:block"}>
+                  {/* The hover is an orange rule drawing in from the left, not
+                      a colour change on the text. Orange is unreadable as type
+                      on this ground but legible as a graphic. See NavLink. */}
+                  <NavLink href={link.href}>{link.label}</NavLink>
+                </li>
               ))}
             </ul>
           </nav>
