@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 // Shared with components/site/PromoPushOptIn.tsx. Two copies of the iOS rule
 // would be two chances to offer an iPhone a button that cannot work.
-import { needsHomeScreenInstall, pushSupported, vapidKeyBytes } from "@/lib/push/browser";
+import { needsHomeScreenInstall, pushSupported, subscribeForPush } from "@/lib/push/browser";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -106,10 +106,7 @@ export function CustomerPushOptIn({
         return;
       }
 
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
-      });
+      const subscription = await subscribeForPush(registration.pushManager, VAPID_PUBLIC_KEY);
 
       const response = await fetch("/api/push/customer/subscribe", {
         method: "POST",

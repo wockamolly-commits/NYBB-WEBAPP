@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { subscribeForPush } from "@/lib/push/browser";
 
 /**
  * The counter tablet's one-tap opt-in for new-order alerts.
@@ -32,22 +33,6 @@ type State =
   | { kind: "working" }
   | { kind: "on" }
   | { kind: "failed"; message: string };
-
-/**
- * `applicationServerKey` takes bytes, and a VAPID key is distributed as
- * base64url text. The browser rejects the string form with a DOMException that
- * names neither the key nor the encoding.
- */
-function vapidKeyBytes(key: string): Uint8Array<ArrayBuffer> {
-  const padded = key.padEnd(key.length + ((4 - (key.length % 4)) % 4), "=");
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  // Backed by an explicit ArrayBuffer: `new Uint8Array(length)` types as
-  // ArrayBufferLike, which includes SharedArrayBuffer, and BufferSource does
-  // not accept that.
-  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
 
 function supported(): boolean {
   return (
@@ -118,10 +103,7 @@ export function StaffPushOptIn() {
         return;
       }
 
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
-      });
+      const subscription = await subscribeForPush(registration.pushManager, VAPID_PUBLIC_KEY);
 
       const response = await fetch("/api/push/staff/subscribe", {
         method: "POST",

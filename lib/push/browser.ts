@@ -51,3 +51,50 @@ export function needsHomeScreenInstall(): boolean {
   const isApple = /iPad|iPhone|iPod/.test(window.navigator.userAgent);
   return isApple && !isStandalone;
 }
+
+/**
+ * Subscribe this browser for push, replacing a subscription made with a
+ * different VAPID key.
+ *
+ * A browser holds one subscription per service worker, tied to the key it was
+ * made with. When the key changes (rotated, or a different environment served
+ * from the same origin), `subscribe` with the new key throws an
+ * InvalidStateError and the customer sees "a subscription with a different
+ * applicationServerKey already exists". Dropping the old one costs nothing:
+ * our server signs with the current key, so the push service already rejects
+ * everything sent to that stale endpoint. It was carrying no alerts.
+ *
+ * Two checks, because `options.applicationServerKey` is not readable in every
+ * browser. Where it is, a mismatch is replaced before subscribing. Where it is
+ * not, the InvalidStateError itself is the signal, and the subscribe is
+ * retried once after unsubscribing.
+ */
+export async function subscribeForPush(
+  pushManager: PushManager,
+  key: string,
+): Promise<PushSubscription> {
+  const wanted = vapidKeyBytes(key);
+  const options = { userVisibleOnly: true, applicationServerKey: wanted };
+
+  const existing = await pushManager.getSubscription();
+  const held = existing?.options?.applicationServerKey;
+  if (existing && held && !sameBytes(new Uint8Array(held), wanted)) {
+    await existing.unsubscribe();
+  }
+
+  try {
+    return await pushManager.subscribe(options);
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === "InvalidStateError")) throw error;
+    const stale = await pushManager.getSubscription();
+    if (!stale) throw error;
+    await stale.unsubscribe();
+    return pushManager.subscribe(options);
+  }
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) if (a[index] !== b[index]) return false;
+  return true;
+}
