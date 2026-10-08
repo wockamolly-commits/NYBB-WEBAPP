@@ -66,7 +66,17 @@ export function CustomerPushOptIn({
       const registration = await navigator.serviceWorker.getRegistration("/");
       const subscription = await registration?.pushManager.getSubscription();
       const granted = Notification.permission === "granted";
-      return subscription && granted ? ({ kind: "on" } as const) : ({ kind: "off" } as const);
+      if (!subscription || !granted) return { kind: "off" } as const;
+
+      // A subscription on this device says nothing about THIS order. It may
+      // have been made for promos or for an earlier order, and showing "on"
+      // for it meant the customer was promised an alert nobody would send.
+      // Permission is already granted, so following this order as well needs
+      // no prompt: hand the same subscription to the server for this order.
+      // Registration is an upsert, so a device already following it is a
+      // harmless repeat.
+      const followed = await followOrder(shortCode, trackingToken, subscription);
+      return followed ? ({ kind: "on" } as const) : ({ kind: "off" } as const);
     }
 
     look()
@@ -80,7 +90,7 @@ export function CustomerPushOptIn({
     return () => {
       live = false;
     };
-  }, []);
+  }, [shortCode, trackingToken]);
 
   async function turnOn() {
     setState({ kind: "working" });
@@ -106,6 +116,7 @@ export function CustomerPushOptIn({
         return;
       }
 
+      const existing = await registration.pushManager.getSubscription();
       const subscription = await subscribeForPush(registration.pushManager, VAPID_PUBLIC_KEY);
 
       const response = await fetch("/api/push/customer/subscribe", {
@@ -118,7 +129,11 @@ export function CustomerPushOptIn({
         // The browser now holds a subscription the server does not know about.
         // Dropping it keeps the two in step, so tapping again is a clean retry
         // rather than a resubscribe the browser answers from its own cache.
-        await subscription.unsubscribe().catch(() => {});
+        //
+        // Only one this tap created, though. A subscription that was already
+        // here is also what delivers promo alerts and other orders' alerts,
+        // and one refused registration must not silently switch those off.
+        if (!existing) await subscription.unsubscribe().catch(() => {});
         const body = await response.json().catch(() => null);
         setState({
           kind: "failed",
@@ -157,7 +172,7 @@ export function CustomerPushOptIn({
   if (state.kind === "unconfigured") return null;
 
   if (state.kind === "on") {
-    return <Note>We will tell you when this order is ready.</Note>;
+    return <Note>Alerts are on. We will tell you when this order is ready, or if anything goes wrong with it.</Note>;
   }
 
   return (
@@ -172,6 +187,20 @@ export function CustomerPushOptIn({
       ) : null}
     </div>
   );
+}
+
+/** Registers an existing subscription for this order. True when the server took it. */
+async function followOrder(
+  shortCode: string,
+  trackingToken: string | null,
+  subscription: PushSubscription,
+): Promise<boolean> {
+  const response = await fetch("/api/push/customer/subscribe", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ shortCode, trackingToken, subscription: subscription.toJSON() }),
+  });
+  return response.ok;
 }
 
 function Note({ children }: { children: React.ReactNode }) {

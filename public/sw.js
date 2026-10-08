@@ -122,6 +122,13 @@ function read(data) {
   return FALLBACKS[`${audience}:${kind}`];
 }
 
+/** The fallback for a payload that parsed but carries no `url`. */
+function fallbackFor(payload) {
+  const audience = payload.audience === "customer" ? "customer" : "staff";
+  const kind = audience === "customer" && payload.kind === "promo" ? "promo" : "order";
+  return FALLBACKS[`${audience}:${kind}`];
+}
+
 function show(payload) {
   const options = {
     body: payload.body,
@@ -134,9 +141,9 @@ function show(payload) {
     renotify: Boolean(payload.renotify),
     requireInteraction: Boolean(payload.requireInteraction),
     // A real payload always carries its own `url`. This default is only
-    // reached for an unreadable one, which is why it points at the staff
-    // fallback rather than anywhere a customer would land.
-    data: { url: typeof payload.url === "string" ? payload.url : FALLBACKS.staff.url },
+    // reached for a hand-sent one without it, and it follows the payload's own
+    // audience and kind so a customer is never sent to the orders board.
+    data: { url: typeof payload.url === "string" ? payload.url : fallbackFor(payload).url },
   };
 
   // `vibrate: null` is not the same as leaving it out. The payload type allows
@@ -148,9 +155,10 @@ function show(payload) {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  // Again, a real payload always carries its own `url` by the time it gets
-  // here, so this only matters for an unreadable payload.
-  const url = (event.notification.data && event.notification.data.url) || FALLBACKS.staff.url;
+  // `show` always stores a url, so this only matters for a notification some
+  // older worker displayed. Nothing here says who it was for, and "/" is the
+  // one page that is safe for either audience.
+  const url = (event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(open(url));
 });
 

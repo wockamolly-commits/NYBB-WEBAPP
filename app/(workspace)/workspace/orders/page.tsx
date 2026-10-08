@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { ButtonLink } from "@/components/ui/Button";
 import { StaffPushOptIn } from "@/components/workspace/StaffPushOptIn";
+import { BoardAlerts, type BoardAlert } from "./BoardAlerts";
 import { OrderCard } from "./OrderCard";
 import { OrdersPoller } from "./OrdersPoller";
+import { drainPushQueue } from "@/lib/push/drain";
 import { getWorkspaceOrders } from "@/lib/staff/orders";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
 import type { WorkspaceOrder } from "@/lib/staff/order-types";
@@ -38,6 +41,27 @@ export default async function WorkspaceOrdersPage() {
   const mayRefund = hasStaffPermission(profile, "refunds:manage");
   const readAt = manilaTime(new Date());
 
+  // The board is what sends the "payment time ran out" pushes. pg_cron's sweep
+  // queues them every five minutes but cannot send a Web Push itself, and the
+  // free Vercel plan cannot run a cron route more than once a day. The counter
+  // tablet redraws this page at least every 20 seconds for the whole time the
+  // shop takes orders, which is also the only time an unpaid order can expire.
+  // The claim skips locked rows, so two tablets draining at once are safe, and
+  // an empty queue costs one RPC. /api/cron/expire-orders remains the manual
+  // trigger for when no board is open.
+  after(drainPushQueue(10));
+  // What the board can chime about: an order waiting to be started, and a
+  // customer standing at the counter for one that is ready.
+  const alerts: BoardAlert[] = (orders ?? []).flatMap((order): BoardAlert[] => {
+    if (order.status === "pending") {
+      return [{ key: `new:${order.id}`, shortCode: order.shortCode, kind: "new" }];
+    }
+    if (order.status === "ready" && order.customerArrived) {
+      return [{ key: `arrived:${order.id}`, shortCode: order.shortCode, kind: "arrived" }];
+    }
+    return [];
+  });
+
   return (
     <div>
       <OrdersPoller branchId={profile.branchId} />
@@ -66,6 +90,7 @@ export default async function WorkspaceOrdersPage() {
             A second check here would be a second place for the two to drift.
           */}
           <StaffPushOptIn />
+          <BoardAlerts alerts={alerts} />
           <ButtonLink href="/workspace/orders/history" tone="dark" variant="secondary">History</ButtonLink>
         </div>
       </div>

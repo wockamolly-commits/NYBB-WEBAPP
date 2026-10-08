@@ -7,7 +7,7 @@ import {
   readWebhookBody,
   verifyPaymongoSignature,
 } from "@/lib/paymongo/webhook";
-import { notifyCustomer, notifyStaffOfNewOrder } from "@/lib/push/dispatch";
+import { notifyCustomer, notifyCustomerOfRefund, notifyStaffOfNewOrder } from "@/lib/push/dispatch";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 
 export const runtime = "nodejs";
@@ -46,6 +46,12 @@ export async function POST(request: Request) {
     if (error) {
       console.error("[payment] refund webhook reconciliation failed", error.message);
       return Response.json({ error: "reconciliation failed" }, { status: 500 });
+    }
+    if (refund.status === "succeeded") {
+      after(notifyCustomerOfRefund({
+        refundId: refund.refundId,
+        providerRefundId: refund.providerRefundId,
+      }));
     }
     return Response.json({ received: true });
   }

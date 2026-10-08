@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { customerPayload, staffPayload, type CustomerPayloadOrder } from "@/lib/push/payload";
+import {
+  customerPayload,
+  staffArrivalPayload,
+  staffPayload,
+  type CustomerPayloadOrder,
+} from "@/lib/push/payload";
 import * as statusModule from "@/lib/orders/status";
 import { statusCopy } from "@/lib/orders/status";
 
@@ -103,6 +108,27 @@ describe("staffPayload", () => {
 // A tripwire, not a unit test. The value of reusing statusCopy() is that there
 // is one voice talking to the customer, and the way that gets lost is somebody
 // adding "a quick sentence" here rather than editing the copy file.
+describe("staffArrivalPayload", () => {
+  it("names the order and the branch, and goes to the board", () => {
+    const payload = staffArrivalPayload({ shortCode: "NY-ABC234", branchShortName: "Katipunan" });
+    expect(payload.title).toBe("Customer is here: NY-ABC234");
+    expect(payload.body).toContain("Katipunan");
+    expect(payload.url).toBe("/workspace/orders");
+    expect(payload.audience).toBe("staff");
+    expect(payload.requireInteraction).toBe(true);
+  });
+
+  // The new-order notification for the same order may still be unread on the
+  // tablet. Sharing its tag would replace it rather than add to it.
+  it("does not share a tag with the new-order notification", () => {
+    const arrival = staffArrivalPayload({ shortCode: "NY-ABC234", branchShortName: "" });
+    const fresh = staffPayload({
+      shortCode: "NY-ABC234", branchShortName: "", itemCount: 1, pickupStartsAt: null,
+    });
+    expect(arrival.tag).not.toBe(fresh.tag);
+  });
+});
+
 describe("the source itself", () => {
   it("contains no customer sentences of its own", () => {
     const source = readFileSync("lib/push/payload.ts", "utf8");

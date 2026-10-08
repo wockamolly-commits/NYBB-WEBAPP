@@ -10,7 +10,7 @@ import { classifyRefundFailure, isRefundReason, type RefundActionResult } from "
 import { createPaymongoRefund } from "@/lib/paymongo/refunds";
 import { isMockPaymentId, mockPaymentsEnabled } from "@/lib/paymongo/mock";
 import { isRejectReasonCode } from "@/lib/orders/reject-reasons";
-import { notifyCustomer } from "@/lib/push/dispatch";
+import { notifyCustomer, notifyCustomerOfRefund } from "@/lib/push/dispatch";
 import type { StaffOrderActionResult } from "@/lib/staff/order-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -187,6 +187,7 @@ export async function refundOrder(input: {
       console.error("[workspace] mock refund reconciliation failed", reconcileError.message);
       return { ok: false, error: "The mock refund could not be completed." };
     }
+    after(notifyCustomerOfRefund({ refundId: reservation.data.refund_id, providerRefundId: null }));
     revalidateRefundPages();
     return { ok: true, settled: true, message: "Mock refund issued." };
   }
@@ -215,6 +216,10 @@ export async function refundOrder(input: {
     if (reconcileError) {
       console.error("[workspace] refund reconciliation failed", reconcileError.message);
       return { ok: false, error: "The refund is pending confirmation. Do not submit it again." };
+    }
+    // A pending refund settles later through the webhook, which sends then.
+    if (providerStatus === "succeeded") {
+      after(notifyCustomerOfRefund({ refundId: reservation.data.refund_id, providerRefundId: null }));
     }
     revalidateRefundPages();
     return providerStatus === "succeeded"

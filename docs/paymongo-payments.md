@@ -137,6 +137,12 @@ where jobname = 'expire-unpaid-online-orders';
 The guarded `GET /api/cron/expire-orders` endpoint is only a manual test and recovery trigger. It
 requires `Authorization: Bearer <CRON_SECRET>`. It is not scheduled through Vercel.
 
+The sweep only queues the customer's "payment time ran out" push; something on the Node side has to
+send it. That is the staff orders board: `app/(workspace)/workspace/orders/page.tsx` calls
+`drainPushQueue` after every render, and the counter tablet redraws it at least every 20 seconds
+while the shop is open. With no board open, queued pushes wait until one is, or until the endpoint
+above is called by hand.
+
 ## PayMongo webhook
 
 Create a test webhook endpoint at:

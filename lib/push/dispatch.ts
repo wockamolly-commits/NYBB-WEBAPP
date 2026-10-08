@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   customerPayload,
   promoPayload,
+  staffArrivalPayload,
   staffPayload,
   type CustomerPayloadOrder,
   type StaffPayloadOrder,
@@ -445,6 +446,154 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
   } catch (error) {
     console.error(
       "[push] notifyStaffOfNewOrder failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+const refundRowSchema = z.object({
+  order_id: z.uuid(),
+  status: z.string(),
+  payments: z
+    .union([z.object({ status: z.string() }), z.array(z.object({ status: z.string() }))])
+    .nullable(),
+});
+
+/**
+ * Tells the customer their payment was refunded, once the whole of it is.
+ *
+ * ONLY A FULL REFUND. `statusCopy` says "Payment refunded" only when the
+ * payment row reads `refunded`, which `apply_paymongo_refund` (0033) sets once
+ * succeeded refunds cover the payment. A partial refund leaves the payment as
+ * it was, so a push then would repeat whatever the order status already said
+ * ("Collected", say) and tell the customer nothing about their money.
+ *
+ * Two callers settle the same refund: the workspace action when PayMongo
+ * answers at once, and the refund webhook, which PayMongo may also redeliver.
+ * No claim is needed for that. The payload's tag is the short code and a
+ * refund is not a `ready` push, so `renotify` is false and a second send
+ * replaces the first on the lock screen without buzzing again.
+ */
+export async function notifyCustomerOfRefund(ref: {
+  refundId: string | null;
+  providerRefundId: string | null;
+}): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    if (!ref.refundId && !ref.providerRefundId) return;
+    const admin = createAdminClient();
+
+    const query = admin.from("refunds").select("order_id, status, payments ( status )");
+    const { data, error } = await (ref.refundId
+      ? query.eq("id", ref.refundId)
+      : query.eq("provider_refund_id", ref.providerRefundId as string)
+    ).maybeSingle();
+
+    if (error || !data) {
+      if (error) console.error("[push] notifyCustomerOfRefund lookup failed", error.message);
+      return;
+    }
+    const parsed = refundRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error("[push] notifyCustomerOfRefund unreadable refund row", parsed.error.issues);
+      return;
+    }
+    if (parsed.data.status !== "succeeded") return;
+    if (first(parsed.data.payments)?.status !== "refunded") return;
+
+    await notifyCustomer(parsed.data.order_id);
+  } catch (error) {
+    console.error(
+      "[push] notifyCustomerOfRefund failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+const arrivalOrderRowSchema = z.object({
+  id: z.uuid(),
+  branch_id: z.uuid(),
+  branches: z
+    .union([
+      z.object({ short_name: z.string() }),
+      z.array(z.object({ short_name: z.string() })),
+    ])
+    .nullable(),
+});
+
+/**
+ * Tells the counter that a customer pressed "I'm here" (spec N3).
+ *
+ * Takes the short code because that is what the arrival action holds; the
+ * caller has already had `customer_mark_order_arrived` authorize the tap, so
+ * this only runs for a real, ready order.
+ *
+ * FAILS CLOSED, unlike `notifyStaffOfNewOrder`. A missed new-order alert is a
+ * lost order; a missed arrival alert is a customer who waits a little longer
+ * while the board still shows the badge. And the customer can tap as often
+ * as they like, so failing open on a claim error would ring the counter once
+ * per tap.
+ */
+export async function notifyStaffOfArrival(shortCode: string): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    const admin = createAdminClient();
+
+    const { data, error } = await admin
+      .from("orders")
+      .select("id, branch_id, branches ( short_name )")
+      .eq("short_code", shortCode)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error(
+        "[push] notifyStaffOfArrival order lookup failed",
+        error?.message ?? "order not found",
+      );
+      return;
+    }
+
+    const parsed = arrivalOrderRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error(
+        "[push] notifyStaffOfArrival unreadable order row",
+        parsed.error.issues,
+      );
+      return;
+    }
+
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_staff_arrival_notice",
+      { p_order_id: parsed.data.id },
+    );
+    if (claimError) {
+      console.error("[push] claim_staff_arrival_notice failed", claimError.message);
+      return;
+    }
+    if (claimed !== true) return;
+
+    const payload = staffArrivalPayload({
+      shortCode,
+      branchShortName: first(parsed.data.branches)?.short_name ?? "",
+    });
+
+    const { data: targets, error: targetsError } = await admin.rpc(
+      "staff_push_targets",
+      { p_branch_id: parsed.data.branch_id },
+    );
+    if (targetsError || !targets) {
+      console.error(
+        "[push] staff_push_targets failed",
+        targetsError?.message ?? "no data",
+      );
+      return;
+    }
+
+    const dead = await sendWeb(targets as WebTarget[], payload);
+    await deleteDeadEndpoints(admin, dead);
+  } catch (error) {
+    console.error(
+      "[push] notifyStaffOfArrival failed",
       error instanceof Error ? error.message : "unknown",
     );
   }

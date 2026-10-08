@@ -118,6 +118,32 @@ export function staffPayload(order: StaffPayloadOrder): PushPayload {
   };
 }
 
+export type StaffArrivalPayloadOrder = {
+  shortCode: string;
+  branchShortName: string;
+};
+
+/**
+ * The counter's "customer is here" notification (spec N3).
+ *
+ * Its own tag, not the bare short code: the new-order notification for the
+ * same order may still be on the tablet, and replacing it would turn "a new
+ * order" into "somebody is waiting" silently for whoever had not read it yet.
+ */
+export function staffArrivalPayload(order: StaffArrivalPayloadOrder): PushPayload {
+  return {
+    title: `Customer is here: ${order.shortCode}`,
+    body: `Waiting at the ${order.branchShortName ? `${order.branchShortName} ` : ""}counter. It is in the Ready column.`,
+    url: "/workspace/orders",
+    tag: `arrived-${order.shortCode}`,
+    requireInteraction: true,
+    renotify: true,
+    vibrate: [200, 100, 200],
+    audience: "staff",
+    kind: "order",
+  };
+}
+
 export type PromoPayloadInput = {
   code: string;
   description: string | null;

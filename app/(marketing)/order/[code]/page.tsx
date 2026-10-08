@@ -81,10 +81,15 @@ export default async function OrderPage({ params, searchParams }: PageProps) {
             order={lookup.order}
             trackingToken={typeof token === "string" ? token : null}
           />
-          <CustomerPushOptIn
-            shortCode={lookup.order.shortCode}
-            trackingToken={typeof token === "string" ? token : null}
-          />
+          {/* A finished order has nothing left to announce, and the database
+              refuses to register one anyway, so offering the button would only
+              lead to an error. */}
+          {isTerminalStatus(lookup.order.status) ? null : (
+            <CustomerPushOptIn
+              shortCode={lookup.order.shortCode}
+              trackingToken={typeof token === "string" ? token : null}
+            />
+          )}
           {isTerminalStatus(lookup.order.status) ? (
             <div className="mt-8">
               <ReorderButton

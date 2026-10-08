@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { signalArrival } from "@/lib/customer/arrival";
+import { notifyStaffOfArrival } from "@/lib/push/dispatch";
 import { sessionCaller } from "@/lib/customer/cookie-caller";
 import type { CustomerArrivalInput, CustomerArrivalResult } from "@/lib/orders/arrival";
 import { normalizeShortCode } from "@/lib/orders/tracking";
@@ -21,6 +23,11 @@ export async function markCustomerArrived(
   if (!result.ok) return result;
 
   const shortCode = normalizeShortCode(input.shortCode);
-  if (shortCode) revalidatePath(`/order/${shortCode}`);
+  if (shortCode) {
+    // Every tap reaches here, so the once-only guard lives in the dispatch's
+    // claim (0080), not in this condition.
+    after(notifyStaffOfArrival(shortCode));
+    revalidatePath(`/order/${shortCode}`);
+  }
   return result;
 }
