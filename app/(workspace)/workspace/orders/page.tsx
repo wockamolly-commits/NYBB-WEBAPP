@@ -50,14 +50,21 @@ export default async function WorkspaceOrdersPage() {
   // an empty queue costs one RPC. /api/cron/expire-orders remains the manual
   // trigger for when no board is open.
   after(drainPushQueue(10));
-  // What the board can chime about: an order waiting to be started, and a
-  // customer standing at the counter for one that is ready.
+  // What the board can sound for: an order waiting to be started, a customer
+  // on the way for one that is ready, and a customer standing at the counter.
   const alerts: BoardAlert[] = (orders ?? []).flatMap((order): BoardAlert[] => {
     if (order.status === "pending") {
       return [{ key: `new:${order.id}`, shortCode: order.shortCode, kind: "new" }];
     }
     if (order.status === "ready" && order.customerArrived) {
       return [{ key: `arrived:${order.id}`, shortCode: order.shortCode, kind: "arrived" }];
+    }
+    if (order.status === "ready" && order.readyAcknowledgedAt) {
+      return [{
+        key: `coming:${order.id}:${order.readyAcknowledgedAt}`,
+        shortCode: order.shortCode,
+        kind: "coming",
+      }];
     }
     return [];
   });

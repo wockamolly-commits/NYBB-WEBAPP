@@ -5,7 +5,7 @@ import { PICKUP_STEPS, statusCopy, stepIndex } from "@/lib/orders/status";
 import { dayLabel, formatSlotRange, localDateKey } from "@/lib/slots/format";
 import type { TrackedOrder } from "@/lib/orders/types";
 import { cn } from "@/lib/utils";
-import { CustomerArrivalButton } from "./CustomerArrivalButton";
+import { OrderAlerts } from "./OrderAlerts";
 import { PaymentResume } from "./PaymentResume";
 
 /**
@@ -15,7 +15,7 @@ import { PaymentResume } from "./PaymentResume";
  * A server component, and it stays one so customer data is always rendered
  * from the authorized RPC. OrderTrackingLiveRefresh is the small client
  * sibling that listens for a data-free change signal and refreshes this server
- * tree. "I'm here" remains spec section 27's Phase 3.
+ * tree. OrderAlerts is the other: the sounds, the ready alarm and its answer.
  *
  * The pickup code is the largest thing on the screen while it is worth
  * anything, and stops being so the moment it is not. A four digit code shouted
@@ -111,18 +111,17 @@ export function OrderTracker({
             </div>
           ) : null}
 
-          {order.status === "ready" && order.timeline.customerArrivedAt === null ? (
-            <CustomerArrivalButton
-              shortCode={order.shortCode}
-              trackingToken={trackingToken}
-            />
-          ) : null}
-
-          {order.status === "ready" && order.timeline.customerArrivedAt !== null ? (
-            <p className="bg-nybb-yellow text-nybb-ink mt-5 rounded-md px-4 py-3 text-sm leading-relaxed">
-              The counter knows you are here. Have your pickup code ready.
-            </p>
-          ) : null}
+          {/* The ready alarm, "I'm coming", "I'm here", and a sound at every
+              step. One client island, because the alarm has to stop on the
+              same tap that tells the counter. */}
+          <OrderAlerts
+            shortCode={order.shortCode}
+            trackingToken={trackingToken}
+            status={order.status}
+            readyAcknowledgedAt={order.timeline.readyAcknowledgedAt}
+            readyRingAt={order.timeline.readyRingAt}
+            customerArrivedAt={order.timeline.customerArrivedAt}
+          />
 
           {/* The ladder is only drawn for an order that is still on it. A
               cancelled order does not need three dead rungs beside the one it

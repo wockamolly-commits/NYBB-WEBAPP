@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import {
+  ALARM_INTERVAL_MS,
+  COUNTER_NOTICE,
+  NEW_ORDER_ALARM,
+  audioContextConstructor,
+  playPhrase,
+} from "@/lib/orders/alert-sounds";
 
 /**
  * The sound and the banner for whoever is looking at the board (spec section
@@ -19,6 +26,12 @@ import { Button } from "@/components/ui/Button";
  * since before the tab opened is already on screen, and a burst of chimes for
  * it would teach the counter to ignore the sound.
  *
+ * A NEW ORDER RINGS UNTIL SOMEBODY ANSWERS IT. One chime was easy to lose
+ * under a fryer, so a new order loops a loud alarm until it is answered: "Got
+ * it" on the banner, or Start on the card, which takes the order out of the
+ * New column and so out of what this rings for. A customer on the way or at
+ * the counter is news rather than work, and plays once.
+ *
  * WHY A BUTTON FOR THE SOUND. Browsers refuse to play audio until the page has
  * been touched. The tablet is touched constantly, so the first tap anywhere
  * unlocks it, and the button is there so the state is visible rather than a
@@ -26,10 +39,14 @@ import { Button } from "@/components/ui/Button";
  */
 
 export type BoardAlert = {
-  /** Stable per event: "new:<order id>" or "arrived:<order id>". */
+  /**
+   * Stable per event: "new:<order id>", "arrived:<order id>", or
+   * "coming:<order id>:<when they tapped>", so a second "I'm coming" after a
+   * ring from the counter is a new event.
+   */
   key: string;
   shortCode: string;
-  kind: "new" | "arrived";
+  kind: "new" | "arrived" | "coming";
 };
 
 const SEEN_KEY = "nybb-board-alerts-seen";
@@ -72,34 +89,15 @@ function writeSoundPreference(on: boolean): void {
   }
 }
 
-/**
- * Two short rising tones for a new order, three for a customer at the counter.
- * Made in the browser rather than shipped as a file, so there is nothing to
- * load and nothing to go missing.
- */
-function chime(context: AudioContext, kind: BoardAlert["kind"]): void {
-  const notes = kind === "arrived" ? [660, 880, 660] : [660, 990];
-  const start = context.currentTime + 0.02;
-  notes.forEach((frequency, index) => {
-    const at = start + index * 0.22;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.5, at + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start(at);
-    oscillator.stop(at + 0.21);
-  });
-}
-
 export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
   const [banner, setBanner] = useState<BoardAlert[]>([]);
   const [soundOn, setSoundOn] = useState(true);
   const [audioReady, setAudioReady] = useState(false);
+  // New orders this tab has not answered. Checked against the current alerts
+  // below, so an order started on another device stops ringing here too.
+  const [unanswered, setUnanswered] = useState<string[]>([]);
   const context = useRef<AudioContext | null>(null);
+  const sounding = useRef<Set<OscillatorNode>>(new Set());
 
   // The preference and the audio unlock. The context is made on the first
   // touch, because one made before it starts suspended in every browser.
@@ -109,11 +107,14 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
     const read = window.setTimeout(() => setSoundOn(readSoundPreference()), 0);
     const unlock = () => {
       if (!context.current) {
-        const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        const Ctor = audioContextConstructor();
         if (!Ctor) return;
         context.current = new Ctor();
       }
-      void context.current.resume().then(() => setAudioReady(context.current?.state === "running"));
+      void context.current
+        .resume()
+        .then(() => setAudioReady(context.current?.state === "running"))
+        .catch(() => setAudioReady(false));
     };
     window.addEventListener("pointerdown", unlock);
     window.addEventListener("keydown", unlock);
@@ -142,24 +143,72 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
     writeSeen(seen);
 
     const audio = context.current;
-    if (soundOnRef.current && audio && audio.state === "running") {
-      // One chime per redraw, of the more urgent kind. Two orders landing in
-      // the same refresh are one event to the person at the counter.
-      chime(audio, fresh.some((alert) => alert.kind === "arrived") ? "arrived" : "new");
+    if (
+      soundOnRef.current &&
+      audio &&
+      audio.state === "running" &&
+      fresh.some((alert) => alert.kind !== "new")
+    ) {
+      // One notice per redraw. Two customers landing in the same refresh are
+      // one event to the person at the counter.
+      playPhrase(audio, COUNTER_NOTICE, "alarm");
     }
-    // The storage above is the external system; the banner follows it on the
-    // next tick rather than inside this effect's own render pass.
+    // The storage above is the external system; the banner and the alarm
+    // follow it on the next tick rather than inside this effect's own render.
     const show = window.setTimeout(() => {
       setBanner((current) => [...fresh, ...current].slice(0, 5));
+      const newOrders = fresh.filter((alert) => alert.kind === "new").map((alert) => alert.key);
+      if (newOrders.length > 0) {
+        setUnanswered((current) => [...new Set([...current, ...newOrders])]);
+      }
     }, 0);
     return () => window.clearTimeout(show);
   }, [alerts]);
+
+  const liveKeys = useMemo(() => new Set(alerts.map((alert) => alert.key)), [alerts]);
+  const ringing = unanswered.some((key) => liveKeys.has(key));
+
+  const silence = useCallback(() => {
+    for (const osc of sounding.current) {
+      try {
+        osc.stop();
+      } catch {
+        // Already stopped.
+      }
+    }
+    sounding.current.clear();
+  }, []);
+
+  // The new order alarm, looping until it is answered.
+  useEffect(() => {
+    const audio = context.current;
+    if (!ringing || !soundOn || !audioReady || !audio) return;
+    const burst = () =>
+      playPhrase(audio, NEW_ORDER_ALARM, "alarm", (osc) => {
+        sounding.current.add(osc);
+        osc.onended = () => sounding.current.delete(osc);
+      });
+    burst();
+    const timer = window.setInterval(burst, ALARM_INTERVAL_MS);
+    return () => {
+      window.clearInterval(timer);
+      silence();
+    };
+  }, [ringing, soundOn, audioReady, silence]);
+
+  function answer() {
+    setBanner([]);
+    setUnanswered([]);
+    silence();
+  }
 
   function toggleSound() {
     const next = !soundOn;
     setSoundOn(next);
     writeSoundPreference(next);
-    if (next && context.current?.state === "running") chime(context.current, "new");
+    if (next && context.current?.state === "running") {
+      playPhrase(context.current, COUNTER_NOTICE, "notice");
+    }
   }
 
   const soundLabel = !soundOn
@@ -183,17 +232,15 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
               <li key={alert.key} className="font-display text-lg">
                 {alert.kind === "arrived"
                   ? `Customer is here for ${alert.shortCode}`
-                  : `New order ${alert.shortCode}`}
+                  : alert.kind === "coming"
+                    ? `Customer is on the way for ${alert.shortCode}`
+                    : `New order ${alert.shortCode}`}
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            onClick={() => setBanner([])}
-            className="mt-3 text-sm font-semibold underline underline-offset-4"
-          >
-            Dismiss
-          </button>
+          <Button type="button" tone="light" className="mt-3" onClick={answer}>
+            {ringing ? "Got it, stop the alarm" : "Got it"}
+          </Button>
         </div>
       ) : null}
     </>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Clock3, Flame, LoaderCircle, PackageCheck, Phone, Play } from "lucide-react";
+import { BellRing, Check, Clock3, Flame, LoaderCircle, PackageCheck, Phone, Play } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
@@ -13,7 +13,7 @@ import {
 } from "@/lib/orders/reject-reasons";
 import { boardAction, paymentLabel } from "@/lib/staff/board";
 import type { StaffOrderActionResult, WorkspaceOrder } from "@/lib/staff/order-types";
-import { claimOrder, markOrderReady, rejectOrder, startOrder } from "./actions";
+import { claimOrder, markOrderReady, rejectOrder, ringCustomerAgain, startOrder } from "./actions";
 import { RefundControl } from "./RefundControl";
 
 function manilaTime(value: string): string {
@@ -86,9 +86,23 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
         </span>
       </div>
 
+      {/*
+        Three answers to "where is this customer", strongest first. The
+        customer's phone rings from the moment this goes Ready until they tap
+        "I'm coming" (0085), so "not answered" is worth saying: it is the card
+        where Ring again is most likely to help.
+      */}
       {order.customerArrived ? (
         <p className="bg-nybb-yellow text-nybb-ink type-caps mt-3 rounded px-2 py-1 text-center">
           Customer is here
+        </p>
+      ) : order.status === "ready" && order.readyAcknowledgedAt ? (
+        <p className="border-nybb-yellow/70 text-nybb-yellow type-caps mt-3 rounded border px-2 py-1 text-center">
+          Customer on the way
+        </p>
+      ) : order.status === "ready" ? (
+        <p className="border-nybb-bone/30 text-nybb-bone/70 type-caps mt-3 rounded border border-dashed px-2 py-1 text-center">
+          Not answered yet
         </p>
       ) : null}
 
@@ -155,6 +169,31 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
         <Button tone="dark" block className="mt-4" disabled={pending} onClick={() => setClaiming(true)}>
           <PackageCheck aria-hidden className="size-4" /> Claim
         </Button>
+      ) : null}
+      {/*
+        Under Claim and quieter than it, because handing the food over is the
+        job and ringing is for when that is not happening. It sounds the
+        customer's alarm again and pushes to a closed phone.
+      */}
+      {action.kind === "claim" && !claiming ? (
+        <>
+          <Button
+            tone="dark"
+            variant="secondary"
+            block
+            className="mt-2"
+            disabled={pending}
+            onClick={() => run(() => ringCustomerAgain(order.id))}
+          >
+            {pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <BellRing aria-hidden className="size-4" />}
+            Ring customer again
+          </Button>
+          {order.readyRingAt ? (
+            <p className="text-nybb-bone/60 mt-1.5 text-center text-xs">
+              Last rung {manilaTime(order.readyRingAt)}
+            </p>
+          ) : null}
+        </>
       ) : null}
       {action.kind === "claim" && claiming ? (
         <div className="mt-4 space-y-2">

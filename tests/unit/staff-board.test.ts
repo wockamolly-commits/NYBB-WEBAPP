@@ -26,6 +26,8 @@ function order(overrides: Partial<WorkspaceOrder> = {}): WorkspaceOrder {
     placedAt: "2026-08-12T02:00:00.000Z",
     pickupAt: "2026-08-12T04:00:00.000Z",
     customerArrived: false,
+    readyAcknowledgedAt: null,
+    readyRingAt: null,
     payment: { method: "qrph", provider: "paymongo", status: "paid" },
     items: [],
     heatLevels: [],

@@ -78,6 +78,10 @@ export type TrackedOrder = {
     cancelledAt: string | null;
     cancelledReason: string | null;
     customerArrivedAt: string | null;
+    /** The customer tapped "I'm coming". Cleared by a ring from the counter. */
+    readyAcknowledgedAt: string | null;
+    /** The counter's latest "ring again". Null until staff use it. */
+    readyRingAt: string | null;
     noShowAt: string | null;
   };
 };

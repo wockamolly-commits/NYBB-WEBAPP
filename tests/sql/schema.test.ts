@@ -104,6 +104,7 @@ describe("migrations", () => {
       "0082",
       "0083",
       "0084",
+      "0085",
     ]);
   });
 
@@ -505,9 +506,14 @@ describe("migrations", () => {
     //
     // get_branch_directory (0082) is the Branches page: names, addresses,
     // phone numbers and map pins, all of which the page publishes anyway.
+    //
+    // customer_acknowledge_ready_order (0085) is "I'm coming", fenced exactly
+    // like customer_mark_order_arrived: the tracking token or the owner, a
+    // ready order only, and one false for every refusal.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
+      "customer_acknowledge_ready_order",
       "customer_mark_order_arrived",
       "forget_promo_push_subscription",
       "get_branch_directory",

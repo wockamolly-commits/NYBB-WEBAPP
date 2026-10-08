@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   customerPayload,
+  customerReadyRingPayload,
   promoPayload,
   staffArrivalPayload,
   staffPayload,
@@ -201,10 +202,18 @@ export type CustomerNotifyResult =
  * status triggered the notification. Selecting anything narrower here is a
  * shape that compiles today and breaks the next time a status is added.
  *
+ * `reason` is "ring" for the counter's "ring again" (0085), which changes no
+ * status and so has nothing new for `statusCopy()` to say. It is the same
+ * order, the same follow rows and the same lock screen entry, in different
+ * words.
+ *
  * Resolves in every case and rejects in none. See the note on
  * `CustomerNotifyResult` for what the answer is for.
  */
-export async function notifyCustomer(orderId: string): Promise<CustomerNotifyResult> {
+export async function notifyCustomer(
+  orderId: string,
+  reason: "status" | "ring" = "status",
+): Promise<CustomerNotifyResult> {
   try {
     if (!adminConfigured()) return { ok: false, reason: "admin_unconfigured" };
     const admin = createAdminClient();
@@ -262,7 +271,7 @@ export async function notifyCustomer(orderId: string): Promise<CustomerNotifyRes
         : null,
     };
 
-    const payload = customerPayload(order);
+    const payload = reason === "ring" ? customerReadyRingPayload(order) : customerPayload(order);
 
     // Both filters are load-bearing, for different reasons.
     //

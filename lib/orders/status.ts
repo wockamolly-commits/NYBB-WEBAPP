@@ -96,7 +96,9 @@ export type StatusCopy = {
 };
 
 export function statusCopy(
-  order: Pick<TrackedOrder, "status" | "timeline"> & Partial<Pick<TrackedOrder, "payment">>,
+  order: Pick<TrackedOrder, "status"> & {
+    timeline: Pick<TrackedOrder["timeline"], "rejectedReason" | "cancelledReason">;
+  } & Partial<Pick<TrackedOrder, "payment">>,
 ): StatusCopy {
   if (order.payment?.status === "refunded") {
     return {
@@ -219,6 +221,16 @@ export function statusCopy(
       };
   }
 }
+
+/**
+ * What the counter's "ring again" (0085) says, on the lock screen and on the
+ * page. Here beside `statusCopy()` for the same reason: one voice per
+ * customer, written once.
+ */
+export const READY_RING_COPY = {
+  title: "The counter is calling you",
+  body: "Your order is waiting at the counter. Tap \"I'm coming\" to let them know you are on your way.",
+} as const;
 
 /**
  * The ladder, for the step list on the page.

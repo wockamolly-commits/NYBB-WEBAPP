@@ -1,4 +1,4 @@
-import { statusCopy } from "@/lib/orders/status";
+import { READY_RING_COPY, statusCopy } from "@/lib/orders/status";
 import type { OrderStatus, TrackedOrder } from "@/lib/orders/types";
 
 export type PushAudience = "customer" | "staff";
@@ -44,7 +44,8 @@ export type CustomerPayloadOrder = {
   shortCode: string;
   trackingToken: string;
   status: OrderStatus;
-  timeline: TrackedOrder["timeline"];
+  /** The ring stamps (0085) are the page's business, not the push's. */
+  timeline: Omit<TrackedOrder["timeline"], "readyAcknowledgedAt" | "readyRingAt">;
   payment: TrackedOrder["payment"];
 };
 
@@ -81,6 +82,28 @@ export function customerPayload(order: CustomerPayloadOrder): PushPayload {
     requireInteraction: isReady,
     renotify: isReady,
     vibrate: isReady ? [120, 60, 120] : null,
+    audience: "customer",
+    kind: "order",
+  };
+}
+
+/**
+ * The counter ringing the customer again for a ready order (0085).
+ *
+ * Its own words, because nothing about the order changed and repeating
+ * "Ready for collection" would read as a duplicate. Same tag as the status
+ * notification, so it replaces the ready one on the lock screen instead of
+ * stacking beside it, and renotify so the replacement still makes a sound.
+ */
+export function customerReadyRingPayload(order: CustomerPayloadOrder): PushPayload {
+  return {
+    title: READY_RING_COPY.title,
+    body: READY_RING_COPY.body,
+    url: `/order/${order.shortCode}?t=${order.trackingToken}`,
+    tag: order.shortCode,
+    requireInteraction: true,
+    renotify: true,
+    vibrate: [300, 120, 300, 120, 500],
     audience: "customer",
     kind: "order",
   };

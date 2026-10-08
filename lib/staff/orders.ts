@@ -7,7 +7,7 @@ import type { WorkspaceOrder } from "./order-types";
 
 const orderSelect = `
   id, short_code, status, is_test, customer_name, customer_phone, total_cents, notes, placed_at,
-  customer_arrived_at, branch_id,
+  customer_arrived_at, ready_acknowledged_at, ready_ring_at, branch_id,
   pickup_slots ( slot_start ),
   payments ( method, provider, status, provider_payment_id ),
   order_items (
@@ -39,6 +39,8 @@ const rowSchema = z.object({
   notes: z.string().nullable(),
   placed_at: z.string(),
   customer_arrived_at: z.string().nullable(),
+  ready_acknowledged_at: z.string().nullable(),
+  ready_ring_at: z.string().nullable(),
   pickup_slots: z.union([z.object({ slot_start: z.string() }), z.array(z.object({ slot_start: z.string() }))]).nullable(),
   payments: z.union([z.object({ method: z.string(), provider: z.string(), status: z.string(), provider_payment_id: z.string().nullable() }), z.array(z.object({ method: z.string(), provider: z.string(), status: z.string(), provider_payment_id: z.string().nullable() }))]).nullable(),
   order_items: z.array(itemSchema).nullable(),
@@ -77,6 +79,8 @@ function toWorkspaceOrder(value: unknown): WorkspaceOrder | null {
     placedAt: row.placed_at,
     pickupAt: pickup?.slot_start ?? null,
     customerArrived: row.customer_arrived_at !== null,
+    readyAcknowledgedAt: row.ready_acknowledged_at,
+    readyRingAt: row.ready_ring_at,
     payment: payment ? {
       method: payment.method,
       provider: payment.provider,

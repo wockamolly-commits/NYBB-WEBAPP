@@ -31,6 +31,7 @@ function friendly(message: string | undefined): string {
   if (message?.includes("ORDER_NOT_FOUND")) return "That order no longer exists.";
   if (message?.includes("FORBIDDEN")) return "You do not have access to change this order.";
   if (message?.includes("REJECT_REASON_INVALID")) return "Choose a reason before refusing this order.";
+  if (message?.includes("RING_COOLDOWN")) return "The customer was rung a moment ago. Give it a few seconds.";
   return "The order could not be updated. Try again.";
 }
 
@@ -81,6 +82,34 @@ export async function claimOrder(
   const parsed = codeSchema.safeParse(pickupCode.trim());
   if (!parsed.success) return { ok: false, error: "Enter the four-digit pickup code." };
   return setStatus(orderId, "claimed", parsed.data);
+}
+
+/**
+ * Rings the customer again for a ready order (0085).
+ *
+ * For a customer who said "I'm coming" and has not come, or who never opened
+ * the page. The database clears their acknowledgement, which is what makes the
+ * open tracking page ring again, and the push is for a closed one.
+ */
+export async function ringCustomerAgain(orderId: string): Promise<StaffOrderActionResult> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "orders:manage")) {
+    return { ok: false, error: "You do not have access to change orders." };
+  }
+  const parsedId = idSchema.safeParse(orderId);
+  if (!parsedId.success) return { ok: false, error: "Invalid order." };
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_ring_ready_order", {
+    p_order_id: parsedId.data,
+  });
+  if (error) {
+    console.error("[workspace] staff_ring_ready_order failed", error.message);
+    return { ok: false, error: friendly(error.message) };
+  }
+  after(notifyCustomer(parsedId.data, "ring"));
+  revalidatePath("/workspace/orders");
+  return { ok: true };
 }
 
 /**
