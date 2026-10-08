@@ -100,6 +100,10 @@ describe("migrations", () => {
       "0078",
       "0079",
       "0080",
+      "0081",
+      "0082",
+      "0083",
+      "0084",
     ]);
   });
 
@@ -498,11 +502,15 @@ describe("migrations", () => {
     // promo_push_optin_status (0079) lets the promos page show the truth
     // after a reload. It answers yes or no for one endpoint and nothing else,
     // and the same unguessable-endpoint argument bounds it.
+    //
+    // get_branch_directory (0082) is the Branches page: names, addresses,
+    // phone numbers and map pins, all of which the page publishes anyway.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
       "customer_mark_order_arrived",
       "forget_promo_push_subscription",
+      "get_branch_directory",
       "get_order_by_tracking",
       "get_orderable_branches",
       "get_pickup_slots",

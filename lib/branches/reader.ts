@@ -1,8 +1,10 @@
 import "server-only";
+import { cache } from "react";
 import { z } from "zod";
 import { branches as catalogBranches } from "@/lib/catalog/branches";
 import { getPickupSlots } from "@/lib/slots/reader";
 import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
+import { withDirectory, type DirectoryBranch } from "./directory";
 import { mergeStores } from "./merge";
 import type { OrderableBranch, Store } from "./types";
 
@@ -32,6 +34,23 @@ const orderableBranchSchema = z.object({
 });
 
 const orderableBranchesSchema = z.array(orderableBranchSchema);
+
+// lat and lng are numeric columns, which PostgREST returns as numbers here
+// but may return as strings for wide values. Null is "no pin", and is
+// branched on rather than coerced: a coerced null is a pin at 0, 0, in the
+// Gulf of Guinea (AGENTS.md, rule 6).
+const coordinate = z.union([z.number(), z.string().regex(/^-?\d+(\.\d+)?$/).transform(Number)]);
+const directoryRowSchema = z.object({
+  slug: z.string().min(1),
+  name: z.string().min(1),
+  short_name: z.string().min(1),
+  format: z.enum(["street", "mall", "food-hall", "petrol", "hospital", "casino"]),
+  address_line: z.string(),
+  city: z.string(),
+  phones: z.array(z.string()),
+  lat: coordinate.nullable(),
+  lng: coordinate.nullable(),
+});
 
 /**
  * The two ways a database that predates migration 0049 says so.
@@ -119,6 +138,48 @@ async function singleBranchFallback(): Promise<OrderableBranch[]> {
 }
 
 /**
+ * Every branch in the database, for the Branches page and the store picker.
+ *
+ * Falls back to an empty list, never a throw, when the read fails or the
+ * function predates migration 0082: `withDirectory` then returns the catalog
+ * unchanged, which is the page as it was before workspace branches existed.
+ * Cached per request, because the layout, the picker and the page all ask.
+ */
+export const getBranchDirectory = cache(async (): Promise<DirectoryBranch[]> => {
+  if (!supabaseConfigured()) return [];
+
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.rpc("get_branch_directory");
+  if (error) {
+    if (!FUNCTION_MISSING.has(error.code ?? "")) {
+      console.error("[branches] directory read failed:", error.message);
+    }
+    return [];
+  }
+
+  const parsed = z.array(directoryRowSchema).safeParse(data ?? []);
+  if (!parsed.success) {
+    console.error("[branches] directory rows unreadable");
+    return [];
+  }
+  return parsed.data.map((row) => ({
+    slug: row.slug,
+    name: row.name,
+    shortName: row.short_name,
+    format: row.format,
+    addressLine: row.address_line,
+    city: row.city,
+    phones: row.phones,
+    pin: row.lat !== null && row.lng !== null ? { lat: row.lat, lng: row.lng } : null,
+  }));
+});
+
+/** The catalog with workspace pins and workspace-added branches. */
+export async function listBranches() {
+  return withDirectory(catalogBranches, await getBranchDirectory());
+}
+
+/**
  * Every counter, ordered the way a customer should read them.
  *
  * The merge itself is pure and lives in `merge.ts`, so the classification that
@@ -126,5 +187,6 @@ async function singleBranchFallback(): Promise<OrderableBranch[]> {
  * What is left here is the read.
  */
 export async function listStores(): Promise<Store[]> {
-  return mergeStores(catalogBranches, await getOrderableBranches());
+  const [branches, orderable] = await Promise.all([listBranches(), getOrderableBranches()]);
+  return mergeStores(branches, orderable);
 }

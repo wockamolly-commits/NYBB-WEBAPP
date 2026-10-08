@@ -70,7 +70,18 @@ const socials = [
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-export function Footer({ flush = false }: { flush?: boolean }) {
+export function Footer({
+  flush = false,
+  branchCount = branches.length,
+}: {
+  flush?: boolean;
+  /**
+   * Every branch, including any added from the workspace. The storefront
+   * layout passes the database's count; the 404 page, which reads nothing,
+   * falls back to the catalog's.
+   */
+  branchCount?: number;
+}) {
   return (
     // WHY THE TOP MARGIN IS A PROP.
     // ================================================================
@@ -175,7 +186,7 @@ export function Footer({ flush = false }: { flush?: boolean }) {
                   href="/contact"
                   className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink text-sm underline underline-offset-4 transition-colors"
                 >
-                  All {branches.length} branches
+                  All {branchCount} branches
                 </Link>
               </li>
             </ul>

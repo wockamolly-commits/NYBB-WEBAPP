@@ -3,7 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
-import { branches, catalogImage } from "@/lib/catalog";
+import { listBranches } from "@/lib/branches/reader";
+import { catalogImage } from "@/lib/catalog";
 import {
   findItem,
   findOptionGroup,
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
+  const branches = await listBranches();
   const hero = catalogImage("scene-alfresco-dusk");
   const counter = catalogImage("scene-counter");
 

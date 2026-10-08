@@ -42,7 +42,12 @@ const ACTION_LABELS: Record<string, string> = {
   "store.orders_resumed": "Counter resumed",
   "store.hours_changed": "Opening hours changed",
   "store.hours_cleared": "Opening hours cleared",
+  "store.branch_created": "Branch added",
+  "store.branch_deleted": "Branch deleted",
+  "store.branch_details_changed": "Branch details changed",
   "store.branch_settings_changed": "Branch settings changed",
+  "store.branch_location_changed": "Branch map pin set",
+  "store.branch_location_cleared": "Branch map pin removed",
   "store.order_intake_changed": "Business-wide intake changed",
   // Access
   "workspace.access_granted": "Workspace access granted",

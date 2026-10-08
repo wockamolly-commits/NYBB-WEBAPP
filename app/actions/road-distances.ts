@@ -1,8 +1,8 @@
 "use server";
 
 import { headers } from "next/headers";
-import { branches } from "@/lib/catalog";
 import { RECOMMEND_WITHIN_KM, distanceKm } from "@/lib/branches/nearest";
+import { listBranches } from "@/lib/branches/reader";
 import { roadRoutes, roadRoutesConfigured } from "@/lib/branches/road";
 import { originSchema, type RoadRoute } from "@/lib/branches/road-route";
 import { clientAddress } from "@/lib/rate-limit/address";
@@ -15,9 +15,12 @@ import { withinAddressLimit } from "@/lib/rate-limit/limiter";
  * a row shows, and its line is what the counter's map draws, so the two can
  * never disagree and opening a sheet costs no further request.
  *
- * Only the position comes from the browser. The counters are read from the
- * catalog here, so a caller cannot use this to route between points of their
- * own choosing on this site's Mapbox account.
+ * Only the position comes from the browser. The counters are read on the
+ * server, from the same list the Branches page shows (the catalog with
+ * workspace pins laid over it and workspace-added branches after it), so a
+ * caller cannot use this to route between points of their own choosing on
+ * this site's Mapbox account. Reading the catalog alone, as this once did,
+ * left a branch pinned from the workspace with a map and no route line.
  *
  * Returns null whenever there is no road answer, and the page keeps its
  * estimate. That includes a customer who is nowhere near Cebu: the page will
@@ -32,7 +35,7 @@ export async function fetchRoadRoutes(
   const origin = originSchema.safeParse(position);
   if (!origin.success) return null;
 
-  const destinations = branches.flatMap((branch) =>
+  const destinations = (await listBranches()).flatMap((branch) =>
     branch.pin ? [{ slug: branch.slug, pin: branch.pin }] : [],
   );
 

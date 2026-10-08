@@ -8,8 +8,9 @@ import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
 import { ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
-import { branches, catalogImage } from "@/lib/catalog";
+import { catalogImage } from "@/lib/catalog";
 import { storesHref } from "@/lib/branches/href";
+import { listBranches } from "@/lib/branches/reader";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { optionPriceCents } from "@/lib/catalog/pricing";
@@ -169,7 +170,7 @@ export default async function Home() {
   //
   // The slug is free here: getStoreSelection() was already being read on this
   // line. All this costs is sequencing it ahead of the menu read.
-  const selection = await getStoreSelection();
+  const [selection, branches] = await Promise.all([getStoreSelection(), listBranches()]);
 
   const [{ categories }, orderingOpen] = await Promise.all([
     getStorefrontMenu(selection.selected?.slug),
@@ -743,12 +744,19 @@ export default async function Home() {
                       {branch.addressLine}, {branch.city}
                     </p>
                     <div className="flex items-center justify-between gap-3">
-                      <a
-                        href={telHref(branch.phones[0])}
-                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center text-sm transition-colors"
-                      >
-                        {branch.phones[0]}
-                      </a>
+                      {/* A branch added from the workspace may have no
+                          number yet. Leave the row without one rather than
+                          build a call link to nothing. */}
+                      {branch.phones[0] ? (
+                        <a
+                          href={telHref(branch.phones[0])}
+                          className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center text-sm transition-colors"
+                        >
+                          {branch.phones[0]}
+                        </a>
+                      ) : (
+                        <span />
+                      )}
                       {/* Only the counters that take online orders are
                           marked. The other five carry nothing, because the
                           paragraph beside this list already says the rest

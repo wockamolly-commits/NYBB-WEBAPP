@@ -7,9 +7,9 @@ import { ButtonLink } from "@/components/ui/Button";
 import { branchEntries } from "@/lib/branches/entries";
 import type { StoreHoursRow } from "@/lib/branches/hours";
 import { getStoreHours } from "@/lib/branches/hours-reader";
-import { listStores } from "@/lib/branches/reader";
+import { listBranches, listStores } from "@/lib/branches/reader";
 import type { Store } from "@/lib/branches/types";
-import { branches, catalogImage } from "@/lib/catalog";
+import { catalogImage } from "@/lib/catalog";
 import { telHref } from "@/lib/phone";
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ async function readLive(): Promise<{ stores: Store[]; hours: StoreHoursRow[] | n
 
 export default async function ContactPage() {
   const hero = catalogImage("branch-mango-avenue");
-  const { stores, hours } = await readLive();
+  const [{ stores, hours }, branches] = await Promise.all([readLive(), listBranches()]);
   // Shared with the counter picker, which opens the same sheet. See the
   // function for which of the catalog and the database wins each field.
   const entries = branchEntries(branches, stores, hours);

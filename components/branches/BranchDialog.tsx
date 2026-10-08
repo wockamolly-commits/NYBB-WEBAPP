@@ -311,20 +311,22 @@ function BranchDetail({
                 ) : null}
               </DetailRow>
 
-              <DetailRow label={branch.phones.length > 1 ? "Phone numbers" : "Phone"}>
-                <ul>
-                  {branch.phones.map((phone) => (
-                    <li key={phone}>
-                      <a
-                        href={telHref(phone)}
-                        className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center transition-colors"
-                      >
-                        {phone}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </DetailRow>
+              {branch.phones.length > 0 ? (
+                <DetailRow label={branch.phones.length > 1 ? "Phone numbers" : "Phone"}>
+                  <ul>
+                    {branch.phones.map((phone) => (
+                      <li key={phone}>
+                        <a
+                          href={telHref(phone)}
+                          className="font-mono-tabular text-nybb-orange hover:text-nybb-orange-lit inline-flex min-h-11 items-center transition-colors"
+                        >
+                          {phone}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </DetailRow>
+              ) : null}
 
               <DetailRow label="Opening hours" labelId={hoursId}>
                 {branch.week ? (
