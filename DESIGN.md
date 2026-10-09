@@ -1699,8 +1699,10 @@ sits between the delivered files and anything shipped. `scripts/trace-mural.ts` 
 the same corner takes the right half of the dark band in bone at full strength, on a wash that puts
 the film out of its way (`components/site/HeroWall.tsx`). The no-photo tile, which gets one of
 three small motifs at 14% behind the item name.
-And the footer, which is chrome and carries the designer's skyline outline as a full width band. One scene
-per route, and the footer never counts against that.
+And the footer, which is chrome and carries the designer's skyline outline as a full width band, with
+five spot drawings (wing, drumstick, burger, chili, flame) in the same pen line at ink 11% in its empty ground,
+placed per breakpoint so none sits under type (`components/site/FooterDoodles.tsx`). One scene per
+route, and the footer never counts against that: spot drawings are marks, not a scene.
 
 The empty cart carried the traffic signal once, and it was withdrawn. The wall behind every
 marketing page already has signals in it, so the cart restated its own background at a different

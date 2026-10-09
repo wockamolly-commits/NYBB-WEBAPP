@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
+import { FooterDoodles } from "@/components/site/FooterDoodles";
 import { HeatRule } from "@/components/site/HeatRule";
 import { branches } from "@/lib/catalog";
 import { SKYLINE_OUTLINE } from "@/lib/mural/skyline-outline";
@@ -51,13 +52,123 @@ import { cn } from "@/lib/utils";
  * the wordmark and leave it on the clean top of the gradient.
  */
 
+/**
+ * The Company column.
+ *
+ * Promos first: the navbar carries it at every width, and this is the second
+ * way back to it for somebody who has scrolled to the bottom of a long page.
+ *
+ * One franchise route, not two. /franchise carries the inquiry form and the
+ * franchise mailbox for people who would rather write than fill in a form, so
+ * a footer mailto beside it only opened a mail client nobody asked for.
+ */
+const company = [
+  { href: "/promos", label: "Promos" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/franchise", label: "Franchise" },
+];
+
+/**
+ * The two brand glyphs, drawn here because lucide no longer ships brand marks.
+ * Instagram is the outline camera, which is how the platform draws its own
+ * glyph at small sizes. TikTok is the note, filled, because an outlined note
+ * loses its offset shadow shape and stops being recognisable.
+ */
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4.2" />
+      <circle cx="17.4" cy="6.6" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M16.6 2h-3.3v13.4a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9.2a6.3 6.3 0 1 0 5.3 6.2V8.6a8 8 0 0 0 4.4 1.4V6.7a4.6 4.6 0 0 1-4.4-4.7Z" />
+    </svg>
+  );
+}
+
 const socials = [
   // Only Hot Wings channels. The live site's footer still links
   // @ny.bbsportslounge and the Sports Lounge Facebook page, both of which now
   // point at a restaurant that closed in August 2026.
-  { href: "https://www.instagram.com/nybuffalobrads/", label: "Instagram" },
-  { href: "https://www.tiktok.com/@nybbhotwings", label: "TikTok" },
+  {
+    href: "https://www.instagram.com/nybuffalobrads/",
+    label: "Instagram",
+    handle: "@nybuffalobrads",
+    Icon: InstagramIcon,
+  },
+  {
+    href: "https://www.tiktok.com/@nybbhotwings",
+    label: "TikTok",
+    handle: "@nybbhotwings",
+    Icon: TikTokIcon,
+  },
 ];
+
+/**
+ * A column heading with the heat scale under it.
+ *
+ * The five swatches are the same five the heat rule on the footer's top edge
+ * runs, at a size that marks the column rather than divides the page. They are
+ * the one piece of colour in the link block, and orange can be a graphic here
+ * where it cannot be type.
+ */
+function FooterHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="font-display type-caps text-nybb-ink">
+      {children}
+      <span aria-hidden="true" className="mt-2.5 flex h-[3px] w-8 overflow-hidden rounded-full">
+        <span className="bg-nybb-heat-1 flex-1" />
+        <span className="bg-nybb-heat-2 flex-1" />
+        <span className="bg-nybb-heat-3 flex-1" />
+        <span className="bg-nybb-heat-4 flex-1" />
+        <span className="bg-nybb-heat-5 flex-1" />
+      </span>
+    </h2>
+  );
+}
+
+/**
+ * A footer link. Hover darkens the text and draws an orange rule in from the
+ * left. The rule is a scaled pseudo element, so the effect is transform only
+ * and nothing reflows; keyboard focus draws the same rule beside the outline.
+ */
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="group text-nybb-ink/70 hover:text-nybb-ink focus-visible:text-nybb-ink relative inline-flex min-h-11 items-center text-base sm:text-sm transition-colors"
+    >
+      {children}
+      <span
+        aria-hidden="true"
+        className="bg-nybb-orange absolute inset-x-0 bottom-2.5 h-0.5 origin-left scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none"
+      />
+    </Link>
+  );
+}
 
 /**
  * Grain, at 3.5%.
@@ -118,10 +229,11 @@ export function Footer({
           className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035] mix-blend-overlay"
           style={{ backgroundImage: GRAIN }}
         />
+        <FooterDoodles />
 
-        <div className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
-          <div className="grid gap-x-10 gap-y-12 md:grid-cols-[1.3fr_1fr_1fr]">
-            <div>
+        <div className="mx-auto max-w-6xl px-4 pt-14 sm:px-6 sm:pt-16">
+          <div className="grid gap-y-12 lg:grid-cols-12 lg:gap-x-12">
+            <div className="lg:col-span-5">
             {/* Untouched. A transparent PNG on the light ground it was drawn
                 for, which is the whole reason this footer is bone. */}
             <Wordmark
@@ -171,89 +283,87 @@ export function Footer({
               Hot wings, burgers and hotdogs across Cebu. Order ahead, collect
               at the counter.
             </p>
-          </div>
-
-          <div>
-            <h2 className="font-display type-caps text-nybb-ink">Branches</h2>
-            <ul className="mt-5 space-y-2.5">
-              {branches.slice(0, 5).map((branch) => (
-                <li key={branch.slug} className="text-nybb-ink/70 text-sm">
-                  {branch.shortName}
-                </li>
-              ))}
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink text-sm underline underline-offset-4 transition-colors"
-                >
-                  All {branchCount} branches
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="font-display type-caps text-nybb-ink">Company</h2>
-            <ul className="mt-5 space-y-2.5 text-sm">
-              {/* First in the column. The navbar carries Promos too, at
-                  every width; this is the second way back to it for somebody
-                  who has scrolled to the bottom of a long page. */}
-              <li>
-                <Link
-                  href="/promos"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Promos
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/about"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Contact
-                </Link>
-              </li>
-              {/* One franchise route, not two. /franchise carries the figures,
-                  the inquiry form, and the franchise mailbox for people who
-                  would rather write than fill in a form, so a footer mailto
-                  beside it only opened a mail client nobody asked for. */}
-              <li>
-                <Link
-                  href="/franchise"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Franchise
-                </Link>
-              </li>
-            </ul>
-
-            <h2 className="font-display type-caps text-nybb-ink mt-7">Follow</h2>
-            <ul className="mt-5 flex gap-5 text-sm">
-              {socials.map((social) => (
-                <li key={social.href}>
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                  >
-                    {social.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
             </div>
+
+            {/* The three link columns, as one block.
+                ================================================================
+                Follow used to sit under Company, which made the right column
+                twice the height of the middle one and left the footer looking
+                unfinished at the bottom right. Its own column gives three
+                columns of descending length, longest first, which reads as a
+                deliberate stair rather than a ragged edge.
+
+                Every row is 2.75rem whether it is a link or not, so the first
+                branch, Promos and the icons sit on one line across the block
+                and the lists keep a shared rhythm. That is also the system's
+                minimum target height, which the old 1.875rem rows were under.
+
+                On a phone Branches takes the full width, because "Shell Cebu
+                Country Club" cannot share a row with anything at 320px, and
+                Company and Follow pair up beneath it. The block only moves
+                beside the wordmark from `lg`: at tablet width four columns left
+                Branches about 120px, and every Shell name broke over two
+                lines. */}
+            <nav
+              aria-label="Footer"
+              className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-[1.4fr_1fr_auto] sm:gap-x-10 lg:col-span-7"
+            >
+              <div className="col-span-2 sm:col-span-1">
+                <FooterHeading>Branches</FooterHeading>
+                <ul className="mt-3">
+                  {branches.slice(0, 5).map((branch) => (
+                    <li
+                      key={branch.slug}
+                      className="text-nybb-ink/70 flex min-h-11 items-center py-2 text-base sm:text-sm leading-snug"
+                    >
+                      {branch.shortName}
+                    </li>
+                  ))}
+                  <li>
+                    <Link
+                      href="/contact"
+                      className="text-nybb-ink decoration-nybb-orange hover:decoration-nybb-ink inline-flex min-h-11 items-center text-base sm:text-sm font-medium underline decoration-2 underline-offset-[6px] transition-colors"
+                    >
+                      All {branchCount} branches
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <FooterHeading>Company</FooterHeading>
+                <ul className="mt-3">
+                  {company.map((link) => (
+                    <li key={link.href}>
+                      <FooterLink href={link.href}>{link.label}</FooterLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <FooterHeading>Follow</FooterHeading>
+                <ul className="mt-3 flex gap-3 pt-0.5">
+                  {socials.map((social) => (
+                    <li key={social.href}>
+                      <a
+                        href={social.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${social.label}, ${social.handle} (opens in a new tab)`}
+                        title={`${social.label} ${social.handle}`}
+                        className="border-nybb-ink/25 text-nybb-ink/80 hover:border-nybb-ink hover:bg-nybb-ink hover:text-nybb-cream flex size-11 items-center justify-center rounded-full border transition-[translate,background-color,color,border-color] duration-200 ease-out hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                      >
+                        <social.Icon className="size-5" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </nav>
           </div>
         </div>
+
 
         {/* The city the page ends on.
             ================================================================
