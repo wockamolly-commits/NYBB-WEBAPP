@@ -2479,6 +2479,55 @@
       transform: none;
     }
   }
+
+  /* The order board's alert ticket.
+     ================================================================
+     It drops in from above, the way a ticket comes down off the rail,
+     220ms and settling rather than bouncing. That is the arrival. The one
+     piece of motion after it is the bell, which swings while the alarm is
+     sounding and hangs still once it is answered, so the state is visible on
+     a muted tablet as well as audible on a loud one. One swing every 1.5s,
+     well under the three flashes a second WCAG 2.3.1 sets as the ceiling.
+     The global reduced-motion block below stops both; the ticket is simply
+     there and the bell hangs still. */
+  .board-ticket {
+    animation: board-ticket-drop 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes board-ticket-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-1rem);
+    }
+  }
+
+  .board-ticket__bell[data-ringing="true"] {
+    transform-origin: 50% 12%;
+    animation: board-ticket-bell 1.5s ease-in-out infinite;
+  }
+
+  @keyframes board-ticket-bell {
+    0%,
+    56%,
+    100% {
+      transform: rotate(0deg);
+    }
+    8% {
+      transform: rotate(18deg);
+    }
+    18% {
+      transform: rotate(-15deg);
+    }
+    28% {
+      transform: rotate(10deg);
+    }
+    38% {
+      transform: rotate(-6deg);
+    }
+    47% {
+      transform: rotate(3deg);
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

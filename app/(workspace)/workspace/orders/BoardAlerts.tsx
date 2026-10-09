@@ -1,14 +1,17 @@
 "use client";
 
+import { BellRing, Footprints, Store } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HeatRule } from "@/components/site/HeatRule";
 import { Button } from "@/components/ui/Button";
 import {
-  ALARM_INTERVAL_MS,
   COUNTER_NOTICE,
-  NEW_ORDER_ALARM,
+  NEW_ORDER_INTERVAL_MS,
   audioContextConstructor,
+  playNewOrderAlarm,
   playPhrase,
 } from "@/lib/orders/alert-sounds";
+import { cn } from "@/lib/utils";
 
 /**
  * The sound and the banner for whoever is looking at the board (spec section
@@ -47,6 +50,18 @@ export type BoardAlert = {
   key: string;
   shortCode: string;
   kind: "new" | "arrived" | "coming";
+  /**
+   * What the counter needs to decide on a new order without looking away from
+   * the ticket. Formatted on the server, like the rest of the board's times.
+   */
+  ticket?: {
+    customerName: string;
+    itemCount: number;
+    total: string;
+    /** The promised pickup time, or null when the order has none. */
+    pickupAt: string | null;
+    isTest: boolean;
+  };
 };
 
 const SEEN_KEY = "nybb-board-alerts-seen";
@@ -97,7 +112,7 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
   // below, so an order started on another device stops ringing here too.
   const [unanswered, setUnanswered] = useState<string[]>([]);
   const context = useRef<AudioContext | null>(null);
-  const sounding = useRef<Set<OscillatorNode>>(new Set());
+  const sounding = useRef<Set<AudioScheduledSourceNode>>(new Set());
 
   // The preference and the audio unlock. The context is made on the first
   // touch, because one made before it starts suspended in every browser.
@@ -184,12 +199,12 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
     const audio = context.current;
     if (!ringing || !soundOn || !audioReady || !audio) return;
     const burst = () =>
-      playPhrase(audio, NEW_ORDER_ALARM, "alarm", (osc) => {
-        sounding.current.add(osc);
-        osc.onended = () => sounding.current.delete(osc);
+      playNewOrderAlarm(audio, (source) => {
+        sounding.current.add(source);
+        source.onended = () => sounding.current.delete(source);
       });
     burst();
-    const timer = window.setInterval(burst, ALARM_INTERVAL_MS);
+    const timer = window.setInterval(burst, NEW_ORDER_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
       silence();
@@ -222,27 +237,135 @@ export function BoardAlerts({ alerts }: { alerts: BoardAlert[] }) {
       <Button type="button" tone="dark" variant="secondary" onClick={toggleSound} aria-pressed={soundOn}>
         {soundLabel}
       </Button>
-      {banner.length > 0 ? (
-        <div
-          role="alert"
-          className="bg-nybb-yellow text-nybb-charcoal fixed inset-x-4 top-4 z-50 mx-auto max-w-xl rounded-md p-4 shadow-lg"
-        >
-          <ul className="space-y-1">
-            {banner.map((alert) => (
-              <li key={alert.key} className="font-display text-lg">
-                {alert.kind === "arrived"
-                  ? `Customer is here for ${alert.shortCode}`
-                  : alert.kind === "coming"
-                    ? `Customer is on the way for ${alert.shortCode}`
-                    : `New order ${alert.shortCode}`}
-              </li>
-            ))}
-          </ul>
-          <Button type="button" tone="light" className="mt-3" onClick={answer}>
-            {ringing ? "Got it, stop the alarm" : "Got it"}
-          </Button>
-        </div>
-      ) : null}
+      {banner.length > 0 ? <AlertTicket banner={banner} ringing={ringing} onAnswer={answer} /> : null}
     </>
+  );
+}
+
+/**
+ * The banner, drawn as the ticket that just came off the rail.
+ *
+ * It replaced a yellow box of one-line sentences with a generic drop shadow,
+ * which read as a browser notification that had wandered onto the board. The
+ * board is glanced at from across a counter, so what this has to do is say
+ * which kind of news it is from three metres, and then put the one thing
+ * somebody will say out loud, the pickup code, in the largest type on it.
+ *
+ * - The heat rule along the top edge is the navbar's own brand edge, so the
+ *   ticket reads as this restaurant's chrome rather than as the browser's.
+ * - The head band carries the kind of news in its colour as well as its words.
+ *   Orange is work: a new order nobody has started. Signage yellow is news: a
+ *   customer on the way or at the counter. Ink type on both, at 5.4:1 on the
+ *   orange and far above that on the yellow.
+ * - The body is charcoal with a 40% bone edge, the delete confirmation's
+ *   material, for the same measured reason: charcoal on the ink board is
+ *   1.1:1, and a shadow on a near-black page darkens nothing.
+ * - The bell swings while the alarm is sounding and is still when it is not,
+ *   so a muted tablet still shows which state it is in.
+ */
+function AlertTicket({
+  banner,
+  ringing,
+  onAnswer,
+}: {
+  banner: BoardAlert[];
+  ringing: boolean;
+  onAnswer: () => void;
+}) {
+  const newCount = banner.filter((alert) => alert.kind === "new").length;
+  const isWork = newCount > 0;
+  const heading = isWork
+    ? newCount === 1
+      ? "New order"
+      : `${newCount} new orders`
+    : banner.some((alert) => alert.kind === "arrived")
+      ? "Customer at the counter"
+      : "Customer on the way";
+
+  return (
+    <div
+      role="alert"
+      className="board-ticket border-nybb-bone/40 bg-nybb-charcoal text-nybb-bone fixed inset-x-4 top-4 z-50 mx-auto max-w-lg overflow-hidden rounded-md border"
+    >
+      <HeatRule className="h-1.5" />
+      <div
+        className={cn(
+          "text-nybb-ink flex items-center gap-3 px-4 py-3 sm:px-5",
+          isWork ? "bg-nybb-orange" : "bg-nybb-yellow",
+        )}
+      >
+        <BellRing
+          aria-hidden
+          data-ringing={ringing}
+          className="board-ticket__bell size-7 shrink-0"
+          strokeWidth={2.25}
+        />
+        <p className="font-display min-w-0 flex-1 truncate text-[1.75rem] leading-none tracking-[0.02em] uppercase">
+          {heading}
+        </p>
+      </div>
+
+      <ul className="divide-nybb-bone/15 divide-y px-4 sm:px-5">
+        {banner.map((alert) => (
+          <li key={alert.key} className="py-3.5">
+            {alert.kind === "new" ? <NewOrderLine alert={alert} /> : <CounterLine alert={alert} />}
+          </li>
+        ))}
+      </ul>
+
+      <div className="px-4 pt-1 pb-4 sm:px-5 sm:pb-5">
+        <Button type="button" tone="dark" size="lg" className="min-h-14 w-full text-base" onClick={onAnswer}>
+          {ringing ? "Got it, stop the alarm" : "Got it"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NewOrderLine({ alert }: { alert: BoardAlert }) {
+  const ticket = alert.ticket;
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-2">
+          <span className="sr-only">New order </span>
+          <span className="font-mono text-[2.5rem] leading-none font-bold tracking-tight">{alert.shortCode}</span>
+          {ticket?.isTest ? (
+            <span className="border-nybb-yellow/60 text-nybb-yellow rounded border px-1.5 py-0.5 text-xs font-bold tracking-wider uppercase">
+              Test
+            </span>
+          ) : null}
+        </p>
+        {ticket ? (
+          <p className="text-nybb-bone/70 mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
+            <span className="text-nybb-bone min-w-0 truncate">{ticket.customerName}</span>
+            <span className="font-mono">
+              {ticket.itemCount} {ticket.itemCount === 1 ? "item" : "items"}
+            </span>
+            <span className="font-mono">{ticket.total}</span>
+          </p>
+        ) : null}
+      </div>
+      {ticket?.pickupAt ? (
+        <p className="shrink-0 text-right">
+          <span className="text-nybb-bone/60 block text-xs tracking-[0.14em] uppercase">Pickup</span>
+          <span className="text-nybb-orange mt-1 block font-mono text-xl font-bold">{ticket.pickupAt}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function CounterLine({ alert }: { alert: BoardAlert }) {
+  const arrived = alert.kind === "arrived";
+  const Icon = arrived ? Store : Footprints;
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-nybb-yellow flex items-center gap-2 text-sm font-semibold">
+        <Icon aria-hidden className="size-4 shrink-0" />
+        {arrived ? "Customer is here for" : "Customer is on the way for"}
+      </p>
+      <span className="font-mono text-2xl leading-none font-bold tracking-tight">{alert.shortCode}</span>
+    </div>
   );
 }

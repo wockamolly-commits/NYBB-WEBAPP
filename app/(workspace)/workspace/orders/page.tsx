@@ -5,6 +5,7 @@ import { StaffPushOptIn } from "@/components/workspace/StaffPushOptIn";
 import { BoardAlerts, type BoardAlert } from "./BoardAlerts";
 import { OrderCard } from "./OrderCard";
 import { OrdersPoller } from "./OrdersPoller";
+import { formatPeso } from "@/lib/format";
 import { drainPushQueue } from "@/lib/push/drain";
 import { getWorkspaceOrders } from "@/lib/staff/orders";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
@@ -54,7 +55,18 @@ export default async function WorkspaceOrdersPage() {
   // on the way for one that is ready, and a customer standing at the counter.
   const alerts: BoardAlert[] = (orders ?? []).flatMap((order): BoardAlert[] => {
     if (order.status === "pending") {
-      return [{ key: `new:${order.id}`, shortCode: order.shortCode, kind: "new" }];
+      return [{
+        key: `new:${order.id}`,
+        shortCode: order.shortCode,
+        kind: "new",
+        ticket: {
+          customerName: order.customerName,
+          itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          total: formatPeso(order.totalCents),
+          pickupAt: order.pickupAt ? manilaTime(new Date(order.pickupAt)) : null,
+          isTest: order.isTest,
+        },
+      }];
     }
     if (order.status === "ready" && order.customerArrived) {
       return [{ key: `arrived:${order.id}`, shortCode: order.shortCode, kind: "arrived" }];
