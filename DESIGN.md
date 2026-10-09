@@ -1699,7 +1699,7 @@ sits between the delivered files and anything shipped. `scripts/trace-mural.ts` 
 the same corner takes the right half of the dark band in bone at full strength, on a wash that puts
 the film out of its way (`components/site/HeroWall.tsx`). The no-photo tile, which gets one of
 three small motifs at 14% behind the item name.
-And the footer, which is chrome and carries the filled skyline rather than a line drawing. One scene
+And the footer, which is chrome and carries the designer's skyline outline as a full width band. One scene
 per route, and the footer never counts against that.
 
 The empty cart carried the traffic signal once, and it was withdrawn. The wall behind every
@@ -1734,9 +1734,8 @@ by the surface, because the surface is the only thing that knows what it is.
 **The One Drawn Scene Per Page Rule.** The One Heat Surface Per Page Rule, generalised. A heat level
 keeps its swatch everywhere and a drawing keeps its lines everywhere, but the same *form* appears
 once per page. Two street scenes on one route is not a statement and its restatement, it is a repeat. The
-footer's skyline does not count as the second one: it is a filled silhouette off the packaging doing
-a mark's job, chrome that brackets every page the way the heat rule does, and a filled emblem is a
-different form from a line drawing. Count scenes, not drawings.
+footer's skyline does not count as the second one: it is a single pen line doing a mark's job, chrome
+that brackets every page the way the heat rule does, not a scene. Count scenes, not drawings.
 
 **The Hatching Stays Strokes Rule.** Facade hatching is discrete strokes and never a tone. It is
 about ten pixels wide against an eighteen thousand pixel source, so scaling a whole scene down to a

@@ -17,6 +17,7 @@
     "build:static-images": "tsx scripts/build-static-images.ts",
     "build:seed": "tsx scripts/build-seed.ts",
     "build:mural": "tsx scripts/trace-mural.ts",
+    "build:skyline": "tsx scripts/trace-skyline-outline.ts",
     "build:prices-to-confirm": "tsx scripts/build-prices-to-confirm.ts",
     "build:hero-slides": "tsx scripts/build-hero-slides.ts"
   },

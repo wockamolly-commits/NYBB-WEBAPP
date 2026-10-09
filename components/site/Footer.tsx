@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { MuralArt } from "@/components/mural/MuralArt";
 import { HeatRule } from "@/components/site/HeatRule";
 import { branches } from "@/lib/catalog";
+import { SKYLINE_OUTLINE } from "@/lib/mural/skyline-outline";
 import { cn } from "@/lib/utils";
 
 /**
@@ -253,100 +253,56 @@ export function Footer({
             </ul>
             </div>
           </div>
-
-          {/* The skyline off the packaging, traced from the printed cup.
-              Decoration: the wordmark already names the company.
-
-              WHY IT IS DOWN HERE AND NOT ON THE TOP EDGE. The heat rule owns
-              that edge and keeps it. Its stated job is to bracket the page in
-              the brand's own scale and tie the navbar and the footer together
-              as one material, and moving it to make room would trade a
-              structural job for a decorative one. Stacking both on one edge was
-              the other option and it is worse than either alone.
-
-              WHY RIGHT ALIGNED, AND WHY ITS FEET ARE ON THE PLINTH. It was in
-              the brand column first, under the wordmark, and it was wrong
-              there: the two link columns are short, so the footer carried a
-              tall drawing bottom left and a large hole bottom right. Moved
-              across, it fills that hole and balances the wordmark diagonally.
-              The container has no bottom padding under it on purpose, so the
-              buildings stand directly on the legal plinth. That is what turns
-              it from a picture floating in a footer into the ground the page
-              ends on.
-
-              It is an emblem rather than a band because of what it is: this
-              artwork wraps a cup and is centred on the Liberty figure, roughly
-              1.28:1. Stretched full width it would stand four hundred pixels
-              tall. */}
         </div>
 
         {/* The city the page ends on.
             ================================================================
-            Two drawings on one baseline, and they are one object: plain
-            buildings running the full width of the viewport, with the
-            packaging's landmarks rising at the right where the columns end.
+            The designer's traced skyline, drawn as the pen line it is: one
+            continuous stepped outline running the full width of the viewport.
+            It replaced a filled version of the same drawing paired with the
+            packaging's Liberty emblem at the right, changed on request on
+            2026-10-09 to match the designer's reference exactly.
 
-            WHY IT TAKES TWO FILES. The packaging skyline wraps a cup and is
-            centred on the Liberty figure, so it is a compact emblem at roughly
-            1.28:1. Stretched across a footer it would stand four hundred pixels
-            tall, and repeating it to fill the width puts four Statues of
-            Liberty in a row. The width is therefore carried by the designer's
-            own traced outline, which is 15:1 and was drawn for exactly this
-            job, filled at trace time so it matches the packaging's weight
-            rather than reading as a hairline beside a solid.
+            WHY INLINE AND NOT MuralArt. A mask scales its ink with the box, so
+            a line that reads at 1920px is a hairline that disappears on a
+            phone. Inline, the path can carry `non-scaling-stroke`, and the
+            weight is then set in screen pixels: the source's own proportion
+            (5px across 3118) through the middle of the range, held between
+            1.5px and 3px at the ends. The path is 3kB and the footer renders
+            once per page, so inlining costs nothing that matters.
 
-            WHY IT IS DOWN HERE AND NOT ON THE TOP EDGE. The heat rule owns that
-            edge and keeps it: bracketing the page in the brand's own scale is a
-            structural job, and moving it to make room for this would trade it
-            for a decorative one. Stacking both on one edge was the other option
-            and is worse than either alone.
+            WHY THE BOX IS THE FILE'S OWN RATIO. Height comes from the viewBox,
+            so the horizon is scaled, never stretched. Below about 560px that
+            would leave it under 40px tall, so a floor kicks in and `slice`
+            crops the sides instead, keeping the middle of the city at a size
+            the eye can still read as buildings. Centred, so the crop is even.
 
-            Full bleed rather than inside the container, because a horizon that
-            stops short of the window is a picture of a horizon. The emblem
-            stays on the container's right rail so it lands under the last
-            column instead of floating off in the margin. Nothing below it: the
-            buildings stand directly on the legal plinth, which is what makes
-            this the ground the page ends on rather than a graphic sitting near
-            the bottom. */}
-        <div aria-hidden="true" className="relative mt-10">
-          <div className="mx-auto flex max-w-6xl justify-end px-4 sm:px-6">
-            <MuralArt
-              motif="skyline"
-              className="text-nybb-ink w-[10rem] sm:w-[14rem]"
-            />
-          </div>
-          {/* No height: the aspect ratio sets it from the width, so the band is
-              a true horizon at every viewport instead of a stretched one.
+            WHY ITS FEET ARE ON THE PLINTH. The lowest stretches of the line are
+            the ground itself, and the viewBox ends exactly where their ink
+            ends, so they sit on the legal bar's top edge. Nothing below it:
+            that is what makes this the ground the page ends on rather than a
+            graphic floating near the bottom.
 
-              WHY `cover` AND NOT `contain`, WHICH LEFT A HOLE IN THE HORIZON.
-              ================================================================
-              The element already carries the file's own ratio, so on paper the
-              two fit identically and `contain` was the obvious default. It is
-              not identical in practice. `contain` fits the drawing inside the
-              box, the box height is `width * 102 / 1560` and lands on a
-              fraction, and the mask then fits to whichever axis rounds shorter.
-              When that is the height, the drawing is laid down a few pixels
-              narrower than the element, and since it is pinned `left bottom`
-              the whole shortfall opens as bare parchment on the right, with the
-              solid baseline strip stopping dead in mid air. Measured across
-              eleven viewport widths it ran to 11px at 1280 and was never
-              stable: 5px at 1152, 2px at 1440, 0px at 1024, and at 768 the
-              drawing sat 2px in from both edges because the SVG's own
-              `preserveAspectRatio` centres the remainder.
-
-              `cover` fits to the axis that rounds longer, so the width is
-              always covered and the overflow, sub-pixel in every case, goes
-              off the top of the box where the drawing is empty sky. Same
-              intent, no gap at any width. `100% 100%` also holds, and is not
-              used because it would stretch the horizon rather than scale it if
-              the ratio ever drifted. */}
-          <MuralArt
-            motif="skyline-band"
-            fit="cover"
-            position="left bottom"
-            className="text-nybb-ink absolute inset-x-0 bottom-0 w-full"
+            The heat rule keeps the top edge. Bracketing the page in the
+            brand's own scale is a structural job, and moving it to make room
+            for this would trade it for a decorative one. */}
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          viewBox={`0 0 ${SKYLINE_OUTLINE.width} ${SKYLINE_OUTLINE.height}`}
+          preserveAspectRatio="xMidYMax slice"
+          className="text-nybb-ink mt-14 block h-auto min-h-10 w-full sm:mt-20"
+        >
+          <path
+            d={SKYLINE_OUTLINE.d}
+            fill="none"
+            stroke="currentColor"
+            strokeLinejoin="miter"
+            strokeLinecap="butt"
+            vectorEffect="non-scaling-stroke"
+            style={{ strokeWidth: "clamp(1.5px, 0.16vw, 3px)" }}
           />
-        </div>
+        </svg>
       </div>
 
       {/* The legal bar sits on flat bone below the bloom, which is what gives
