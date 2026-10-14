@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { StoreBar } from "@/components/store/StoreBar";
 import { TextLink } from "@/components/ui/TextLink";
 import { getStoreSelection } from "@/lib/branches/selection";
@@ -60,7 +61,8 @@ export default async function MenuPage() {
         <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
           {canOrder
             ? "Prices are the same at every counter. Build the order here, then choose a pickup window at checkout."
-            : "Prices are the same at every counter. Online ordering is not open yet, so call the counter you want to collect from."}
+            : "Prices are the same at every counter. Online ordering for pickup is not open yet, so call the counter you want to collect from."}{" "}
+          For delivery, order on <TablevibeLink />.
         </p>
 
         {/* Only where it can lead somewhere. A band naming the counter an

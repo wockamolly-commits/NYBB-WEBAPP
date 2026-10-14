@@ -510,8 +510,8 @@ export function CartView({
               next screen has been misled by the screen before it. */}
           <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
             {orderingOpen
-              ? `Pickup only, and paid online before the kitchen starts. The next screen shows the windows ${storeName ?? "your counter"} has open.`
-              : "Online ordering is not open yet. The counters are taking orders by phone, and the same menu and prices apply."}
+              ? `This order is for pickup, paid online before the kitchen starts. The next screen shows the windows ${storeName ?? "your counter"} has open.`
+              : "Online ordering for pickup is not open yet. The counters are taking orders by phone, and the same menu and prices apply."}
           </p>
         </div>
       </div>

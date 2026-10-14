@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { FooterDoodles } from "@/components/site/FooterDoodles";
 import { HeatRule } from "@/components/site/HeatRule";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { branches } from "@/lib/catalog";
 import { SKYLINE_OUTLINE } from "@/lib/mural/skyline-outline";
 import { cn } from "@/lib/utils";
@@ -423,7 +424,9 @@ export function Footer({
             Five Brad Dragons Food Franchise Corporation, Cebu Business Park,
             Cebu City.
           </p>
-          <p className="font-mono-tabular">Pickup only. No delivery.</p>
+          <p>
+            Pickup at the counter. Delivery on <TablevibeLink />.
+          </p>
         </div>
       </div>
     </footer>

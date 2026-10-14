@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { HeatMeter } from "@/components/menu/HeatMeter";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { listBranches } from "@/lib/branches/reader";
 import { catalogImage } from "@/lib/catalog";
 import {
@@ -259,10 +260,11 @@ export default async function AboutPage() {
               you asked for and not to the level somebody assumed you wanted.
             </p>
             <p className="text-nybb-ink/75">
-              Then you collect it. There is no delivery here and there is not
-              going to be, which is a decision rather than a gap: fried chicken
-              has a short window where the skin is still the point, and the
-              shortest trip between the fryer and you is the counter.
+              Then you collect it, or it comes to you. The shortest trip
+              between the fryer and you is the counter, because fried chicken
+              has a short window where the skin is still the point, so pickup
+              is what this site is built for. When the counter is too far,
+              delivery is ordered on <TablevibeLink />.
             </p>
             <p className="text-nybb-ink/75">
               Ordering ahead from your phone is being built, branch by branch.

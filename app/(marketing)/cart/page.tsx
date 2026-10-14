@@ -71,8 +71,8 @@ export default async function CartPage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="font-display heading-page">Your cart</h1>
       <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
-        Pickup only, from the counter you choose. Prices are the same at every
-        one.
+        Orders here are for pickup, from the counter you choose. Prices are
+        the same at every one.
       </p>
 
       {canOrder ? (

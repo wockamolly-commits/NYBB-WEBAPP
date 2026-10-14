@@ -4,6 +4,7 @@ import { heatStops } from "@/lib/menu/heat-slider";
 import { HeroSlideshow } from "@/components/site/HeroSlideshow";
 import { HomeTopOnReload } from "@/components/site/HomeLink";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
 import { ProductTile } from "@/components/menu/ProductTile";
 import { ButtonLink } from "@/components/ui/Button";
@@ -475,12 +476,14 @@ export default async function Home() {
               a status sentence reads by universal convention as "live", and this
               is the one sentence on the page saying the service is not.
 
-              "Pickup only" is here rather than in a kicker because that is
-              where it belongs. It is a fact about how the service works, not a
-              brand line, and the kicker slot it used to occupy now holds the
-              store's tagline. This paragraph is already the one place on the
-              first screen that states what is and is not true today, so the
-              fulfilment mode joins it instead of getting a slot of its own. */}
+              How the food reaches you is here rather than in a kicker because
+              that is where it belongs. It is a fact about how the service
+              works, not a brand line, and the kicker slot it used to occupy now
+              holds the store's tagline. This paragraph is already the one place
+              on the first screen that states what is and is not true today, so
+              the fulfilment modes join it instead of getting a slot of their
+              own. It said "Pickup only" until delivery through Tablevibe was
+              reinstated on 2026-10-14: pickup is ordered here, delivery there. */}
               {/* Bone at 85, up from 60, for the reason the lede gives: on a
                   pale photograph the quiet is bought from the scrim rather than
                   from the alpha, and the scrim pays for it by covering the
@@ -489,9 +492,10 @@ export default async function Home() {
               <p className="text-nybb-bone/85 hero-type mt-7 max-w-[46ch] text-sm leading-relaxed">
                 {canOrder
                   ? orderable.length === 1
-                    ? `Pickup only, paid online, collected at ${orderable[0].shortName}. The other counters take orders on the phone.`
-                    : "Pickup only, paid online. Choose the counter you are collecting from and the kitchen holds a window for it."
-                  : "Pickup only, and online ordering is not open yet. Until it is, the counter nearest you takes the order on the phone."}
+                    ? `Pickup orders are paid online and collected at ${orderable[0].shortName}. The other counters take orders on the phone.`
+                    : "Pickup orders are paid online. Choose the counter you are collecting from and the kitchen holds a window for it."
+                  : "Online ordering for pickup is not open yet. Until it is, the counter nearest you takes the order on the phone."}{" "}
+                For delivery, order on <TablevibeLink />.
               </p>
             </div>
           </div>
@@ -677,8 +681,8 @@ export default async function Home() {
               <p className="text-nybb-bone/65 mt-5 max-w-[42ch] leading-relaxed">
                 Mall food halls, petrol forecourts, a medical mall and a resort.
                 {canOrder
-                  ? ` Online ordering is open at ${orderable.length === 1 ? orderable[0].shortName : `${orderable.length} of them`}. The rest take orders on the phone.`
-                  : " Online ordering is not open yet, so the counter nearest you will take it on the phone."}
+                  ? ` Online ordering for pickup is open at ${orderable.length === 1 ? orderable[0].shortName : `${orderable.length} of them`}. The rest take orders on the phone.`
+                  : " Online ordering for pickup is not open yet, so the counter nearest you will take it on the phone."}
               </p>
 
               {/* The way into /franchise from the section that counts the
