@@ -34,6 +34,13 @@ function toHero(behavior: ScrollBehavior) {
  *
  * Modified clicks (a new tab, a new window) are left to the browser.
  */
+/**
+ * Announced on every plain click of the logo, here or from another page.
+ * The delivery card listens for it: closing that card lasts until the
+ * customer refreshes or comes home by the logo. See DeliveryCard.
+ */
+export const LOGO_CLICK_EVENT = "nybb:logo-click";
+
 export function HomeLink({
   className,
   children,
@@ -51,10 +58,11 @@ export function HomeLink({
       className={className}
       aria-label={ariaLabel}
       onClick={(event) => {
-        if (pathname !== "/") return;
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
           return;
         }
+        window.dispatchEvent(new Event(LOGO_CLICK_EVENT));
+        if (pathname !== "/") return;
         event.preventDefault();
         if (window.location.hash) {
           window.history.replaceState(window.history.state, "", "/");

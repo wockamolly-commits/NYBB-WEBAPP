@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { CartBar } from "@/components/cart/CartBar";
 import { CartSync } from "@/components/cart/CartSync";
 import { MuralArt } from "@/components/mural/MuralArt";
+import { DeliveryCard } from "@/components/site/DeliveryCard";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { PromoBar } from "@/components/site/PromoBar";
@@ -112,6 +113,9 @@ export default async function StorefrontLayout({
       {/* After the footer, because it reserves its own height there rather
           than covering the last line of it. */}
       <CartBar />
+      {/* Delivery is Tablevibe's; this card points there. Told whether the
+          promo reminder exists so the two never overlap on a phone. */}
+      <DeliveryCard promoReminder={promos.length > 0} />
     </>
   );
 }

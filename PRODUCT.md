@@ -112,6 +112,8 @@ surface is dark until the owner switches it on. See spec section 18.1.
 - **Pickup only** (locked decision D1). No delivery, no dine-in, no rider subsystem, no
   service-mode selector. Nothing in the codebase may mention delivery, riders, dine-in tables,
   Loyverse, or the reference project's theming.
+  **Amended 2026-10-14:** the one exception is a floating card that links out to Tablevibe for
+  delivery. It is a signpost to another channel, not a delivery feature of this one.
 - **Single branch at launch on a multi-branch schema** (D2). Every menu, pricing, hours, stock,
   order and settings table carries `branch_id`. ~~The branch picker is fully built and flag
   hidden.~~ **Superseded 2026-08-19: the counter picker ships at `/stores` and is not hidden.**

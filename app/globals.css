@@ -2480,6 +2480,46 @@
     }
   }
 
+  /* The floating delivery card rises from below a beat after the page, and
+     the logo tile on its band settles from a wider tilt into its resting
+     one, a little after the card, like a sticker pressed down. That is the
+     one moment. Hovering the band lifts the tile slightly, in answer to the
+     pointer. Under reduced motion it only fades, and the global block below
+     makes that instant. */
+  .delivery-card {
+    transition:
+      transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 220ms ease-out;
+  }
+
+  .delivery-card[data-shown="false"] {
+    transform: translateY(calc(100% + 1.5rem));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .delivery-card-sticker {
+    transform: rotate(-7deg);
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1) 140ms;
+  }
+
+  .delivery-card[data-shown="false"] .delivery-card-sticker {
+    transform: rotate(10deg) scale(0.82);
+  }
+
+  .delivery-card-band:hover .delivery-card-sticker,
+  .delivery-card-band:focus-visible .delivery-card-sticker {
+    transform: rotate(-3deg) translateY(-0.125rem) scale(1.04);
+    transition-delay: 0ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .delivery-card[data-shown="false"],
+    .delivery-card[data-shown="false"] .delivery-card-sticker {
+      transform: none;
+    }
+  }
+
   /* The order board's alert ticket.
      ================================================================
      It drops in from above, the way a ticket comes down off the rail,
