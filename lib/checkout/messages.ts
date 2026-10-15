@@ -182,7 +182,7 @@ export function checkoutFailure(raw: string): CheckoutFailure {
 
     case "PAYMENT_METHOD_UNAVAILABLE":
       return {
-        error: "That payment method is not available. Orders are paid at the counter on collection.",
+        error: "That payment method is not available right now. Please choose another way to pay.",
       };
 
     case "VOUCHERS_DISABLED":

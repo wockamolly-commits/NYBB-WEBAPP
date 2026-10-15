@@ -106,6 +106,8 @@ describe("migrations", () => {
       "0084",
       "0085",
       "0086",
+      "0087",
+      "0088",
     ]);
   });
 
@@ -446,13 +448,11 @@ describe("migrations", () => {
     // Web Push sibling, checked the same way and for the same reason: the
     // native app it served is gone, and a browser needs its own path in.
     //
-    // submit_franchise_inquiry (0045) is the second write here and the only one
-    // that authorizes nothing at all, because a franchise lead is a stranger
-    // introducing themselves. What bounds it is that it writes to a table anon
-    // cannot read back, stores no address or user agent, and refuses anything
-    // over its length limits. The abuse it cannot prevent on its own, a flood of
-    // plausible-looking leads, is bounded in the app by an address rate limit
-    // and a honeypot instead.
+    // submit_franchise_inquiry (0045) was on this list until 0088. It authorizes
+    // nothing, because a franchise lead is a stranger introducing themselves,
+    // so the only thing bounding a flood of junk leads is the address rate
+    // limit in the app. A public grant let a script call it past that limit,
+    // so it is now the server's to call, with the service role.
     //
     // get_orderable_branches (0049) is the narrowest read on this list. The
     // branches table is RLS'd to staff, which left the storefront unable to
@@ -531,7 +531,6 @@ describe("migrations", () => {
       "register_customer_push_device",
       "register_customer_push_subscription",
       "register_promo_push_subscription",
-      "submit_franchise_inquiry",
     ]);
   });
 

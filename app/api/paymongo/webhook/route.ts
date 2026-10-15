@@ -13,6 +13,19 @@ import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client"
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * The answer for an event this deployment cannot write down.
+ *
+ * Not a 2xx, because PayMongo stops delivering an event the moment it gets
+ * one, and without a service role key nothing has been recorded: a paid order
+ * would never reach the counter and nothing would ever try again. A 503 keeps
+ * PayMongo retrying, so the event lands once the key is restored.
+ */
+function cannotRecord(): Response {
+  console.error("[payment] webhook received but SUPABASE_SERVICE_ROLE_KEY is not configured");
+  return Response.json({ error: "not configured" }, { status: 503 });
+}
+
 /** Reconciles PayMongo's signed payment webhook with the one payment row. */
 export async function POST(request: Request) {
   const raw = await readWebhookBody(request);
@@ -35,7 +48,7 @@ export async function POST(request: Request) {
   if ((PAYMONGO_REFUND_EVENT_TYPES as readonly string[]).includes(event.type)) {
     const refund = parsePaymongoRefundEvent(payload);
     if (!refund.refundId && !refund.providerRefundId) return Response.json({ received: true });
-    if (!adminConfigured()) return Response.json({ received: true });
+    if (!adminConfigured()) return cannotRecord();
     const { error } = await createAdminClient().rpc("apply_paymongo_refund", {
       p_refund_id: refund.refundId,
       p_provider_refund_id: refund.providerRefundId,
@@ -56,12 +69,12 @@ export async function POST(request: Request) {
     return Response.json({ received: true });
   }
   const status = event.type === "payment.paid" ? "paid" : event.type === "payment.failed" ? "failed" : null;
-  if (!status || !event.paymentIntentId || !adminConfigured()) {
+  if (!status || !event.paymentIntentId) {
     // A 2xx response tells PayMongo that an irrelevant but valid event does
-    // not need another delivery. Configuration failures stay observable in
-    // deployment health checks rather than being mistaken for a bad signature.
+    // not need another delivery.
     return Response.json({ received: true });
   }
+  if (!adminConfigured()) return cannotRecord();
 
   const { data: orderId, error } = await createAdminClient().rpc("apply_paymongo_payment", {
     p_intent_id: event.paymentIntentId,

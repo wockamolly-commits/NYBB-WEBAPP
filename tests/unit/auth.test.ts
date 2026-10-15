@@ -35,6 +35,18 @@ describe("safeCustomerNextPath", () => {
     }
   });
 
+  it("refuses a destination a browser would read as another site", () => {
+    // A URL parser strips tabs and newlines, so "/\t/evil.com" arrives as
+    // "//evil.com", which is protocol relative. Every character below a space
+    // is refused rather than only the ones known to be stripped today.
+    for (const unsafe of ["/\t/example.com", "/\n/example.com", "/\r/example.com", "/menu\u0000"]) {
+      expect(safeCustomerNextPath(unsafe)).toBe("/account");
+      expect(new URL(safeCustomerNextPath(unsafe), "https://shop.test").origin).toBe(
+        "https://shop.test",
+      );
+    }
+  });
+
   it("uses the caller's fallback for a missing destination", () => {
     expect(safeCustomerNextPath(null, "/menu")).toBe("/menu");
   });
@@ -59,6 +71,7 @@ describe("safeStaffNextPath", () => {
     );
     expect(requestedStaffNextPath("/account")).toBeNull();
     expect(requestedStaffNextPath("/workspace/login")).toBeNull();
+    expect(requestedStaffNextPath("/workspace/\t/orders")).toBeNull();
   });
 });
 

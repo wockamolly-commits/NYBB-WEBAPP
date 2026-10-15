@@ -9,7 +9,7 @@ const BRANCH_SLUG = "pilot";
 
 async function asRole<T>(
   db: PGlite,
-  role: "anon" | "authenticated",
+  role: "anon" | "authenticated" | "service_role",
   userId: string | null,
   sql: string,
 ): Promise<readonly T[]> {
@@ -43,10 +43,11 @@ async function setup() {
     select '${STAFF_ID}', 'staff', 'manager', 'Manager', id
     from branches where slug = '${BRANCH_SLUG}';
   `);
-  // One lead, left by a stranger through the public path.
+  // One lead, left by a stranger through the form, which is the server calling
+  // with the service role (0088).
   await asRole(
     db,
-    "anon",
+    "service_role",
     null,
     `select submit_franchise_inquiry('Maria Santos', 'm@example.com', '09170000000')`,
   );
