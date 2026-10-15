@@ -8,6 +8,7 @@ import {
   manilaDateEndExclusiveIso,
   manilaDateStartIso,
 } from "./manila-dates";
+import { BUSINESS_WIDE_BRANCH, normalizeBranchFilter } from "./branch-filter";
 import { ilikeOrFilter, ilikePattern } from "./search-pattern";
 
 export const AUDIT_PAGE_SIZE = 50;
@@ -18,6 +19,11 @@ export type AuditLogFilters = {
   to: string;
   /** Keyset cursor: only rows older than this id. Empty means the newest page. */
   before: string;
+  /**
+   * A branch id, BUSINESS_WIDE_BRANCH, or "" for everything this session can
+   * read. Honoured for the Super Admin only; see lib/staff/branch-filter.ts.
+   */
+  branch: string;
 };
 
 export type AuditLogEntry = {
@@ -147,6 +153,7 @@ export function normalizeAuditFilters(
     // A bigserial id, so digits only and short enough that no arithmetic on it
     // can leave the range Postgres will accept.
     before: /^\d{1,19}$/.test(beforeValue) ? beforeValue : "",
+    branch: normalizeBranchFilter(firstSearchValue(values.branch), { allowBusinessWide: true }),
   };
 }
 
@@ -159,6 +166,7 @@ export function auditFilterParams(
   if (filters.query) params.set("q", filters.query);
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
+  if (filters.branch) params.set("branch", filters.branch);
   if (before) params.set("before", before);
   return params.toString();
 }
@@ -195,6 +203,9 @@ export function toAuditLogEntry(value: unknown): AuditLogEntry | null {
  * still be scoped, and a page that passed the wrong one could not widen it.
  * Returns null when the read failed, which the screen says differently from an
  * empty trail.
+ *
+ * `filters.branch` narrows inside that scope and never widens it. The page
+ * clears it for anyone but the Super Admin before it gets here.
  */
 export async function getAuditLog(
   filters: AuditLogFilters,
@@ -211,6 +222,8 @@ export async function getAuditLog(
   if (from) query.gte("created_at", from);
   if (to) query.lt("created_at", to);
   if (filters.before) query.lt("id", filters.before);
+  if (filters.branch === BUSINESS_WIDE_BRANCH) query.is("branch_id", null);
+  else if (filters.branch) query.eq("branch_id", filters.branch);
 
   const pattern = ilikePattern(filters.query);
   if (pattern) query.or(ilikeOrFilter(["action", "target_id"], pattern));

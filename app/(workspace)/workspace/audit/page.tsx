@@ -3,13 +3,20 @@ import { CalendarClock, ShieldAlert, UserRound } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import {
   auditFilterParams,
   getAuditLog,
   normalizeAuditFilters,
   type AuditLogEntry,
 } from "@/lib/staff/audit-log";
+import {
+  BUSINESS_WIDE_BRANCH,
+  canFilterByBranch,
+  effectiveBranchFilter,
+} from "@/lib/staff/branch-filter";
 import { requireStaffPermission } from "@/lib/staff/session";
+import { listAssignableBranches } from "@/lib/staff/team";
 
 export const metadata: Metadata = { title: "Audit log" };
 
@@ -104,13 +111,25 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [, values] = await Promise.all([
+  const [{ profile }, values] = await Promise.all([
     requireStaffPermission("audit:view", "/workspace/audit"),
     searchParams,
   ]);
-  const filters = normalizeAuditFilters(values);
+  const requested = normalizeAuditFilters(values);
+  // The branch in the URL is honoured for the Super Admin only. Anyone else
+  // reads exactly what they would without it, and the row policies under that
+  // still pin an assigned manager to their own counter.
+  const filters = { ...requested, branch: effectiveBranchFilter(profile, requested.branch) };
   const datesReversed = filters.from !== "" && filters.to !== "" && filters.from > filters.to;
-  const page = await getAuditLog(filters);
+  const [page, branches] = await Promise.all([
+    getAuditLog(filters),
+    canFilterByBranch(profile) ? listAssignableBranches() : Promise.resolve(null),
+  ]);
+  const branchOptions: WorkspaceSelectOption<string>[] = [
+    { value: "", label: "All branches" },
+    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.shortName })),
+    { value: BUSINESS_WIDE_BRANCH, label: "Business wide only" },
+  ];
   const olderHref = page?.olderCursor
     ? `/workspace/audit?${auditFilterParams(filters, page.olderCursor)}`
     : null;
@@ -132,7 +151,10 @@ export default async function AuditLogPage({
         </ButtonLink>
       </div>
 
-      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-4">
+      <form
+        role="search"
+        className={`bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 ${branches ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+      >
         <div>
           <WorkspaceFieldLabel htmlFor="audit-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -155,6 +177,16 @@ export default async function AuditLogPage({
           label="Recorded through"
           defaultValue={filters.to}
         />
+        {branches ? (
+          <WorkspaceSelect
+            id="audit-branch"
+            name="branch"
+            label="Branch"
+            options={branchOptions}
+            defaultValue={filters.branch}
+            placeholder="All branches"
+          />
+        ) : null}
         <div className="flex items-end gap-2">
           <Button type="submit" tone="dark" className="flex-1">Filter</Button>
           <ButtonLink href="/workspace/audit" tone="dark" variant="ghost">Reset</ButtonLink>
