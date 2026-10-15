@@ -248,9 +248,16 @@ public key actually reached the build.
 - [ ] The staff push opt-in on `/workspace/orders` does **not** say "not configured on this
       deployment". If it does, the public VAPID key did not reach the build. See trap 1.
 
+## Step 4b: the function region
+
+`vercel.json` pins functions to `sin1` (Singapore). The database is in Supabase's ap-southeast-1,
+also Singapore, and the customers are in Cebu. Until 2026-10-15 the project ran on Vercel's default,
+`iad1` in Washington DC, so every query from a server render or a Server Action crossed the Pacific
+and back, several times per page. The file holds nothing else, and in particular no cron entry.
+
 ## Step 5: the cron endpoint, which is not a Vercel Cron
 
-There is no `vercel.json` and therefore no Vercel Cron entry. That is deliberate. The expiry sweep
+There is no Vercel Cron entry in `vercel.json`. That is deliberate. The expiry sweep
 runs inside Supabase on `pg_cron` every five minutes, because cancelling an unpaid order must not
 depend on Vercel being reachable. `/api/cron/expire-orders` is the manual handle on the same
 function, guarded by a constant-time bearer comparison against `CRON_SECRET`
