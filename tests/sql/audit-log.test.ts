@@ -114,7 +114,13 @@ describe("Audit log scope", () => {
         -- catalog serves all nine counters. This is the row the 0056 ruling
         -- exists to make visible to the manager who made it.
         ('${BRANCH_MANAGER}', 'menu.item.option_prices_set', 'menu_items',
-         '${MENU_ITEM_TARGET}', '{"after": {"price_cents": 3000}}'::jsonb);
+         '${MENU_ITEM_TARGET}', '{"after": {"price_cents": 3000}}'::jsonb),
+        -- A permission handed to one person. 0060 writes it against
+        -- staff_permission_overrides rather than profiles, with the person's
+        -- profile id as the target, so it is a row about a person under a
+        -- second table name.
+        ('${SUPER_ADMIN}', 'workspace.permission_granted', 'staff_permission_overrides',
+         '${BRANCH_CASHIER}', '{"permission": "menu:configure", "before": null, "after": true}'::jsonb);
     `);
   }, 120_000);
 
@@ -139,9 +145,10 @@ describe("Audit log scope", () => {
       await scalar<number>(
         db,
         `select count(*)::int from audit_logs
-         where target_table = 'profiles' and branch_id is null`,
+         where target_table in ('profiles', 'staff_permission_overrides')
+           and branch_id is null`,
       ),
-    ).toBe(1);
+    ).toBe(2);
   });
 
   // 0056, on the owner's ruling of 2026-08-27, refining what 0023 shipped.
@@ -182,6 +189,23 @@ describe("Audit log scope", () => {
     ).toEqual([]);
   });
 
+  // 2b. The same hole under the table name 0060 introduced. 0056 tested for
+  // target_table = 'profiles' and 0060, written a week later, audits a
+  // permission change against staff_permission_overrides instead, so every
+  // branch assigned manager at every counter could read who had been handed
+  // which permission across the whole business. 0086 closes it.
+  it("keeps a branch manager out of a permission change about a person", async () => {
+    const rows = await actingAs<{ action: string; target_table: string }>(
+      db,
+      BRANCH_MANAGER,
+      "select action, target_table from audit_logs where target_table = 'staff_permission_overrides'",
+    );
+    expect(
+      rows.map((row) => `${row.action} on ${row.target_table}`),
+      "a branch assigned manager can read a permission change about a person. See 0086",
+    ).toEqual([]);
+  });
+
   // 3. The widening not becoming a general unscoping. Another counter's own
   // rows carry that counter's branch_id and are still invisible.
   it("still keeps a branch manager out of another branch's rows", async () => {
@@ -203,6 +227,7 @@ describe("Audit log scope", () => {
     const visible = await actions(db, ROVING_MANAGER);
     expect(visible).toContain("menu.item.option_prices_set");
     expect(visible).toContain("workspace.access_granted");
+    expect(visible).toContain("workspace.permission_granted");
     expect(visible).toContain("order.claimed");
   });
 
@@ -213,11 +238,12 @@ describe("Audit log scope", () => {
       "order.claimed",
       "order.started",
       "workspace.access_granted",
+      "workspace.permission_granted",
     ]);
   });
 
   it("shows the whole trail to the Super Admin", async () => {
-    expect((await actions(db, SUPER_ADMIN)).length).toBe(5);
+    expect((await actions(db, SUPER_ADMIN)).length).toBe(6);
   });
 
   it("shows nothing to a role without the audit permission", async () => {
