@@ -5,6 +5,7 @@ import { CartCount } from "@/components/cart/CartCount";
 import { HeatRule } from "@/components/site/HeatRule";
 import { HomeLink } from "@/components/site/HomeLink";
 import { NavLink } from "@/components/site/NavLink";
+import { SiteHeaderShell } from "@/components/site/SiteHeaderShell";
 import { storefrontIdentityLink } from "@/lib/auth/navigation";
 import { getStorefrontSession } from "@/lib/auth/session";
 import { getStaffProfile } from "@/lib/staff/session";
@@ -69,7 +70,9 @@ export async function Header() {
     // The shadow is warm and offset, so the bar floats above the hero video
     // rather than being butted against it with a hard seam. A neutral grey
     // shadow on a warm page reads as dirt.
-    <header className="surface-chrome text-nybb-ink sticky top-0 z-50 shadow-[0_12px_28px_-14px_rgba(84,46,8,0.32)]">
+    // It slides away on a scroll down and back on a scroll up. See
+    // SiteHeaderShell, which is the client half of this element.
+    <SiteHeaderShell className="surface-chrome text-nybb-ink sticky top-0 z-50 shadow-[0_12px_28px_-14px_rgba(84,46,8,0.32)]">
       {/* h-18/h-22 (72/88px), up from h-14/h-16. The bar used to be shorter
           than the logo inside it: a 104px wordmark renders 60px tall and was
           spilling out of a 56px header. These heights sit the mark with even
@@ -127,6 +130,6 @@ export async function Header() {
       </div>
 
       <HeatRule className="h-[3px]" />
-    </header>
+    </SiteHeaderShell>
   );
 }

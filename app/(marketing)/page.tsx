@@ -557,7 +557,7 @@ export default async function Home() {
           ============================================================ */}
       <section
         aria-labelledby="heat-title"
-        className="band-ink text-nybb-bone"
+        className="band-ink band-brick text-nybb-bone"
       >
         {/* The fire on the bar lights the band it is burning on. See
             The Lit Thing Lights Its Ground Rule in globals.css: this is
@@ -663,7 +663,7 @@ export default async function Home() {
       <section
         id="branches"
         aria-labelledby="branches-title"
-        className="band-ink text-nybb-bone scroll-mt-18 sm:scroll-mt-22"
+        className="band-ink band-brick text-nybb-bone scroll-mt-18 sm:scroll-mt-22"
       >
         {/* Buffalo Orange here rather than the heat ramp, because what
             is alight in this band is a shopfront under the store's own

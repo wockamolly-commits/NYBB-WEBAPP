@@ -1972,6 +1972,56 @@
     );
   }
 
+  /* THE BRICK WALL, ON THE TWO LANDING PAGE BANDS ONLY.
+     ================================================================
+     A modifier on `.band-ink`, so the sign in page and the promo bar keep
+     the printed tooth. The photograph replaces the hatching in `::before`,
+     and the grain and the dot screen go with it, because a dither and a
+     halftone laid over a photograph read as damage to it rather than as a
+     material. The lit fields stay: they are spill light, and a brick wall
+     is exactly the kind of ground that catches it.
+
+     The file is the photograph stacked over its own vertical mirror, so it
+     repeats down a band of any height without a seam: each tile ends on the
+     row the next one starts with. Sized to the wider of the band and 1100px,
+     so a phone shows bricks at roughly the scale a wall has at arm's length
+     instead of a cover crop blowing two courses up to the height of a screen.
+
+     The scrim is Char at 65 percent, and the number is the copy's floor
+     rather than a taste. The orange phone numbers are the tightest type on
+     either band, and over the scrim they hold 4.5:1 on the brightest five
+     percent of the bricks (5.2:1 on the median). The bone at 50 and 55 that
+     the flat Char ground could afford cannot stay on bricks this bright, so
+     inside a brick band they are lifted to 65, which measures 6.3:1 on the
+     same bright bricks. 78 percent was tried first and kept every class as
+     it was, and the wall read as a wall at night. */
+  .band-brick::before {
+    background-color: var(--color-nybb-ink);
+    background-image:
+      linear-gradient(
+        180deg,
+        rgb(11 11 12 / 0.76) 0,
+        rgb(11 11 12 / 0.65) 12rem,
+        rgb(11 11 12 / 0.65) calc(100% - 12rem),
+        rgb(11 11 12 / 0.76) 100%
+      ),
+      url("/texture/bricks.webp");
+    background-size:
+      100% 100%,
+      max(100%, 1100px) auto;
+    background-repeat: no-repeat, repeat-y;
+    background-position:
+      0 0,
+      center top;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .band-brick::after,
+  .band-brick > .band-screen {
+    display: none;
+  }
+
   /* The sliding heat bar.
      ================================================================
      The picture is components/menu/HotnessMeter.tsx and its CSS module.
@@ -2486,6 +2536,40 @@
      one moment. Hovering the band lifts the tile slightly, in answer to the
      pointer. Under reduced motion it only fades, and the global block below
      makes that instant. */
+  /* The header slides up out of the way on a scroll down, and back on a
+     scroll up. A transform rather than `top`, so it never reflows the page,
+     and the sticky box keeps its place in the flow either way. Its shadow
+     goes with it, because a shadow left hanging under a header that is no
+     longer there reads as a smudge across the top of the screen. See
+     components/site/SiteHeaderShell.tsx. */
+  .site-header {
+    transition:
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 260ms ease-out;
+  }
+
+  .site-header[data-hidden="true"] {
+    transform: translateY(-100%);
+    box-shadow: none;
+  }
+
+  /* The way back up. Fades and lifts in rather than popping, and moves to
+     stand clear of the floating cards with the same easing. See
+     components/site/BackToTop.tsx. */
+  .back-to-top {
+    transition:
+      opacity 200ms ease-out,
+      transform 200ms ease-out,
+      bottom 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 150ms ease-out;
+  }
+
+  .back-to-top[data-shown="false"] {
+    opacity: 0;
+    transform: translateY(0.5rem);
+    pointer-events: none;
+  }
+
   /* Where the delivery card stands, worked out from what is on screen below
      it rather than from props. Below lg it stands on the cart bar when there
      is one (5.75rem) and on the promo reminder while that is showing (its
@@ -2605,5 +2689,26 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* The faint bone a brick band cannot afford, lifted to 65. In the utilities
+   layer, because a rule in components loses to the colour utility it is
+   overriding however specific it is. See .band-brick above for the numbers. */
+@layer utilities {
+  .band-brick .text-nybb-bone\/50,
+  .band-brick .text-nybb-bone\/55 {
+    color: color-mix(in oklab, var(--color-nybb-bone) 65%, transparent);
+  }
+
+  /* The menu's category rail is pinned under the header, so when the header
+     slides away the rail follows it up to the top of the screen. Here and
+     not beside the header, because it overrides the rail's own top utility. */
+  .category-rail {
+    transition: top 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  [data-header-hidden] .category-rail {
+    top: 0;
   }
 }

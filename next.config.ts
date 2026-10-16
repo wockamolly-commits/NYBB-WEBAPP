@@ -71,6 +71,13 @@ const securityHeaders = [
 const IMAGE_MINIMUM_CACHE_TTL = 31_536_000; // seconds = 365 days
 
 const nextConfig: NextConfig = {
+  // The development-only "N" badge defaults to the bottom left, which is
+  // where the storefront's back to top button lives, and it sits on top of
+  // the button and swallows its clicks. Development only: production renders
+  // no badge at all.
+  devIndicators: {
+    position: "bottom-right",
+  },
   images: {
     remotePatterns,
     minimumCacheTTL: IMAGE_MINIMUM_CACHE_TTL,

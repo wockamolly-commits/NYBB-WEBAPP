@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { CartBar } from "@/components/cart/CartBar";
 import { CartSync } from "@/components/cart/CartSync";
+import { BackToTop } from "@/components/site/BackToTop";
 import { MuralArt } from "@/components/mural/MuralArt";
 import { DeliveryCard } from "@/components/site/DeliveryCard";
 import { Footer } from "@/components/site/Footer";
@@ -116,6 +117,8 @@ export default async function StorefrontLayout({
       {/* Delivery is Tablevibe's; this card points there. It stands clear of
           the promo reminder and the cart bar on its own (see globals.css). */}
       <DeliveryCard />
+      {/* Last, so it can measure the three above and stand clear of them. */}
+      <BackToTop />
     </>
   );
 }
