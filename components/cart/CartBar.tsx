@@ -38,7 +38,7 @@ export function CartBar() {
           of the footer. */}
       <div aria-hidden className="h-20 lg:hidden" />
 
-      <div className="bg-nybb-charcoal text-nybb-bone fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_28px_-14px_rgba(11,11,12,0.55)] lg:hidden">
+      <div data-cart-bar className="bg-nybb-charcoal text-nybb-bone fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_28px_-14px_rgba(11,11,12,0.55)] lg:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <p className="min-w-0">
             <span className="font-display block text-sm leading-none">

@@ -2486,10 +2486,37 @@
      one moment. Hovering the band lifts the tile slightly, in answer to the
      pointer. Under reduced motion it only fades, and the global block below
      makes that instant. */
+  /* Where the delivery card stands, worked out from what is on screen below
+     it rather than from props. Below lg it stands on the cart bar when there
+     is one (5.75rem) and on the promo reminder while that is showing (its
+     3.125rem plus a 0.625rem gap), and it glides down when the reminder
+     slides away rather than leaving a hole where it was. A desktop has no
+     cart bar, and there the reminder is in the other corner. */
   .delivery-card {
+    --delivery-card-lift: 1rem;
+    bottom: calc(env(safe-area-inset-bottom) + var(--delivery-card-lift));
     transition:
       transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
-      opacity 220ms ease-out;
+      opacity 220ms ease-out,
+      bottom 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body:has(.promo-float[data-shown="true"]) .delivery-card {
+    --delivery-card-lift: 4.75rem;
+  }
+
+  body:has([data-cart-bar]) .delivery-card {
+    --delivery-card-lift: 5.75rem;
+  }
+
+  body:has([data-cart-bar]):has(.promo-float[data-shown="true"]) .delivery-card {
+    --delivery-card-lift: 9.5rem;
+  }
+
+  @media (min-width: 64rem) {
+    .delivery-card {
+      bottom: 1.5rem;
+    }
   }
 
   .delivery-card[data-shown="false"] {

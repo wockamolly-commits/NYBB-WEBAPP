@@ -113,9 +113,9 @@ export default async function StorefrontLayout({
       {/* After the footer, because it reserves its own height there rather
           than covering the last line of it. */}
       <CartBar />
-      {/* Delivery is Tablevibe's; this card points there. Told whether the
-          promo reminder exists so the two never overlap on a phone. */}
-      <DeliveryCard promoReminder={promos.length > 0} />
+      {/* Delivery is Tablevibe's; this card points there. It stands clear of
+          the promo reminder and the cart bar on its own (see globals.css). */}
+      <DeliveryCard />
     </>
   );
 }
