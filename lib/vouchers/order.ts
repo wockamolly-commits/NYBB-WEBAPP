@@ -108,3 +108,65 @@ export function moveVoucher<T extends { id: string }>(
   [next[from], next[to]] = [next[to], next[from]];
   return next;
 }
+
+type RankedVoucher = { id: string; status: VoucherStatus; displayPriority: number | null };
+
+/**
+ * The whole order after one LIVE code moves, for a panel that shows only live
+ * codes.
+ *
+ * The panel hides codes customers cannot see (scheduled, ended, used up,
+ * switched off), but admin_set_voucher_order un-ranks every placed code the
+ * posted list leaves out. Posting only the visible codes would quietly throw
+ * away a scheduled campaign's place the first time anything above it moved.
+ *
+ * So the move happens among the live codes only, every hidden code keeps the
+ * slot it holds in `full`, and the result is renumbered. Live codes are all
+ * placed (that is what moving means, as before); a hidden code keeps a rank
+ * only if it already had one, so an ended code nobody placed stays unplaced.
+ * The ids to post are the rows whose displayPriority is not null, in order.
+ */
+export function moveLiveVoucher<T extends RankedVoucher>(
+  full: readonly T[],
+  id: string,
+  direction: -1 | 1,
+): T[] {
+  const moved = moveVoucher(
+    full.filter((v) => v.status === "active"),
+    id,
+    direction,
+  );
+  let next = 0;
+  let rank = 0;
+  return full
+    .map((v) => (v.status === "active" ? moved[next++] : v))
+    .map((v) =>
+      v.status === "active" || v.displayPriority !== null
+        ? { ...v, displayPriority: ++rank }
+        : v,
+    );
+}
+
+/**
+ * When the next advertised code goes live or ends, as epoch milliseconds, or
+ * null if no date ahead would change what the storefront shows.
+ *
+ * The panel refreshes itself at that moment, so a code drops out of (or into)
+ * the order on its own date without anybody reloading the page. Used up is
+ * not a date and cannot be scheduled; it shows on the next page load.
+ */
+export function nextStatusChange(
+  vouchers: readonly { startsAt: string | null; expiresAt: string | null }[],
+  now: number = Date.now(),
+): number | null {
+  let soonest: number | null = null;
+  for (const v of vouchers) {
+    for (const at of [v.startsAt, v.expiresAt]) {
+      // Null is "live already" or "never ends", never a moment.
+      if (at === null) continue;
+      const ms = new Date(at).getTime();
+      if (ms > now && (soonest === null || ms < soonest)) soonest = ms;
+    }
+  }
+  return soonest;
+}

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   featuredVoucherId,
+  moveLiveVoucher,
   moveVoucher,
+  nextStatusChange,
   parseVoucherOrder,
   storefrontOrder,
   type OrderableVoucher,
@@ -83,6 +85,79 @@ describe("moveVoucher", () => {
   it("does nothing past either end", () => {
     expect(moveVoucher(list, A, -1).map((x) => x.id)).toEqual([A, B, C]);
     expect(moveVoucher(list, C, 1).map((x) => x.id)).toEqual([A, B, C]);
+  });
+});
+
+describe("moveLiveVoucher", () => {
+  const D = "44444444-4444-4444-8444-444444444444";
+
+  it("moves among live codes and keeps a hidden placed code in its slot", () => {
+    // Posting only the visible codes would un-rank the scheduled one.
+    const next = moveLiveVoucher(
+      [
+        v({ id: A, code: "ONE", displayPriority: 1 }),
+        v({ id: B, code: "LATER", displayPriority: 2, status: "scheduled" }),
+        v({ id: C, code: "TWO", displayPriority: 3 }),
+      ],
+      C,
+      -1,
+    );
+    expect(next.map((x) => [x.code, x.displayPriority])).toEqual([
+      ["TWO", 1],
+      ["LATER", 2],
+      ["ONE", 3],
+    ]);
+  });
+
+  it("places every live code but leaves an unplaced hidden code unplaced", () => {
+    const next = moveLiveVoucher(
+      [
+        v({ id: A, code: "ONE" }),
+        v({ id: B, code: "TWO" }),
+        v({ id: D, code: "ENDED", status: "expired" }),
+      ],
+      B,
+      -1,
+    );
+    expect(next.map((x) => [x.code, x.displayPriority])).toEqual([
+      ["TWO", 1],
+      ["ONE", 2],
+      ["ENDED", null],
+    ]);
+  });
+
+  it("does nothing past the last live code", () => {
+    const next = moveLiveVoucher(
+      [v({ id: A, code: "ONE", displayPriority: 1 }), v({ id: B, code: "OFF", displayPriority: 2, status: "disabled" })],
+      A,
+      1,
+    );
+    expect(next.map((x) => [x.code, x.displayPriority])).toEqual([
+      ["ONE", 1],
+      ["OFF", 2],
+    ]);
+  });
+});
+
+describe("nextStatusChange", () => {
+  const now = new Date("2026-10-16T08:00:00Z").getTime();
+
+  it("finds the soonest start or end still ahead", () => {
+    expect(
+      nextStatusChange(
+        [
+          { startsAt: null, expiresAt: "2026-10-20T00:00:00Z" },
+          { startsAt: "2026-10-18T00:00:00Z", expiresAt: null },
+          { startsAt: "2026-10-01T00:00:00Z", expiresAt: "2026-10-10T00:00:00Z" },
+        ],
+        now,
+      ),
+    ).toBe(new Date("2026-10-18T00:00:00Z").getTime());
+  });
+
+  it("is null when nothing is dated ahead, never zero", () => {
+    expect(nextStatusChange([{ startsAt: null, expiresAt: null }], now)).toBeNull();
+    expect(nextStatusChange([], now)).toBeNull();
   });
 });
 

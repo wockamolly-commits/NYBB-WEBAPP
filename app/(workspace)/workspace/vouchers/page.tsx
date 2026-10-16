@@ -45,6 +45,13 @@ const STATUS_FILTERS = [
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
 
+/**
+ * Live by default: the codes customers can use right now are what somebody
+ * opening this screen almost always means. Any status is one choice away, and
+ * so are the ended and switched off codes, which stay fully editable.
+ */
+const DEFAULT_STATUS: StatusFilter = "active";
+
 function isStatusFilter(value: string): value is StatusFilter {
   return STATUS_FILTERS.some((option) => option.value === value);
 }
@@ -138,9 +145,9 @@ export default async function WorkspaceVouchersPage({
 
   const params = await searchParams;
   const rawQuery = typeof params.q === "string" ? params.q : "";
-  const rawStatus = typeof params.status === "string" ? params.status : "all";
+  const rawStatus = typeof params.status === "string" ? params.status : DEFAULT_STATUS;
   const query = rawQuery.trim().slice(0, 80);
-  const status: StatusFilter = isStatusFilter(rawStatus) ? rawStatus : "all";
+  const status: StatusFilter = isStatusFilter(rawStatus) ? rawStatus : DEFAULT_STATUS;
 
   const [all, enginesOn] = await Promise.all([listVouchers(), getVouchersEnabled()]);
 
@@ -159,7 +166,6 @@ export default async function WorkspaceVouchersPage({
     );
   });
 
-  const filtered = query !== "" || status !== "all";
 
   return (
     <div>
@@ -198,6 +204,8 @@ export default async function WorkspaceVouchersPage({
             .filter(Boolean)
             .join(". "),
           poster: voucher.poster,
+          startsAt: voucher.startsAt,
+          expiresAt: voucher.expiresAt,
         }))}
       />
 
@@ -231,9 +239,11 @@ export default async function WorkspaceVouchersPage({
 
       {vouchers.length === 0 ? (
         <p className="text-nybb-bone/55 mt-7 text-sm leading-relaxed">
-          {filtered
-            ? "No promo code matches that. Try a different search, or reset the filters."
-            : "No promo codes yet. The New code button above starts one."}
+          {all.length === 0
+            ? "No promo codes yet. The New code button above starts one."
+            : status === "active" && query === ""
+              ? "No code is live right now. Choose Any status to see the rest."
+              : "No promo code matches that. Try a different search, or choose Any status."}
         </p>
       ) : (
         // Two layouts, one DOM, per DESIGN.md's workspace table: the cells stack

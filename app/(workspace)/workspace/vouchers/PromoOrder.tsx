@@ -1,11 +1,12 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { featuredVoucherId, moveVoucher } from "@/lib/vouchers/order";
+import { featuredVoucherId, moveLiveVoucher, nextStatusChange } from "@/lib/vouchers/order";
 import type { VoucherActionState } from "@/lib/vouchers/schema";
-import { VOUCHER_STATUS_LABELS, type VoucherStatus } from "@/lib/vouchers/status";
+import type { VoucherStatus } from "@/lib/vouchers/status";
 import { setVoucherOrder } from "./actions";
 import { PosterThumb } from "./PosterThumb";
 
@@ -24,10 +25,15 @@ import { PosterThumb } from "./PosterThumb";
  * the save is refused, the list goes back to what the server holds and the
  * reason is shown under it.
  *
- * Codes that are on the storefront but not live (scheduled, ended, used up,
- * switched off) stay in the list, so the owner can line a campaign up before
- * it starts, and are marked so it is clear why the featured badge skipped
- * them.
+ * ONLY LIVE CODES ARE LISTED. A code that is scheduled, ended, used up or
+ * switched off is not shown to customers, so it is not shown here either; the
+ * table below still lists it, with its status, for editing. Hiding is not
+ * forgetting: a hidden code that was placed keeps its slot through every move
+ * (moveLiveVoucher), so a scheduled campaign comes in where it was put.
+ *
+ * The page refreshes itself when the next advertised code starts or ends
+ * (nextStatusChange), so a code drops out on its end date, or in on its start
+ * date, without anybody reloading.
  */
 
 export type PromoOrderRow = {
@@ -37,12 +43,33 @@ export type PromoOrderRow = {
   displayPriority: number | null;
   offer: string;
   poster: { url: string; width: number; height: number } | null;
+  /** Null is "live already". */
+  startsAt: string | null;
+  /** Null is "never ends". */
+  expiresAt: string | null;
 };
+
+/** The longest delay setTimeout honours; past it the timer fires at once. */
+const MAX_TIMEOUT_MS = 2_147_483_647;
 
 const INITIAL: VoucherActionState = { ok: false };
 
 export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
   const [state, action, pending] = useActionState(setVoucherOrder, INITIAL);
+  const router = useRouter();
+
+  // Statuses are worked out on the server when the page renders, so the page
+  // has to render again for a code to leave or join the list on its date.
+  // A second late, so the server's clock is past the boundary when it does.
+  const changeAt = nextStatusChange(rows);
+  useEffect(() => {
+    if (changeAt === null) return;
+    const timer = setTimeout(
+      () => router.refresh(),
+      Math.min(Math.max(changeAt - Date.now(), 0) + 1000, MAX_TIMEOUT_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [changeAt, router]);
 
   // The server's order, and the order on screen. They differ only between a
   // move and the refreshed page arriving, or after a refused save, when the
@@ -61,18 +88,24 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
   }
 
   const placed = list.some((r) => r.displayPriority !== null);
-  const featured = featuredVoucherId(list.map((r) => ({ ...r, publicise: true, expiresAt: null })));
+  const featured = featuredVoucherId(list.map((r) => ({ ...r, publicise: true })));
+  const shown = list.filter((r) => r.status === "active");
+  const hidden = list.length - shown.length;
 
   function save(next: PromoOrderRow[]) {
     const formData = new FormData();
-    formData.set("order", JSON.stringify(next.map((r) => r.id)));
+    formData.set(
+      "order",
+      JSON.stringify(next.filter((r) => r.displayPriority !== null).map((r) => r.id)),
+    );
     startTransition(() => action(formData));
   }
 
   function move(id: string, direction: -1 | 1) {
-    // Moving anything places everything, in the order on screen, so the
-    // storefront matches this list exactly from the first move on.
-    const next = moveVoucher(list, id, direction).map((r, i) => ({ ...r, displayPriority: i + 1 }));
+    // Moving anything places every live code, in the order on screen, so the
+    // storefront matches this list exactly from the first move on. Hidden
+    // codes ride along in their slots (see moveLiveVoucher).
+    const next = moveLiveVoucher(list, id, direction);
     setList(next);
     save(next);
   }
@@ -114,15 +147,15 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
         ) : null}
       </div>
 
-      {list.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="text-nybb-bone/55 mt-4 text-sm leading-relaxed">
-          No code is on the storefront yet. Switch on Show it on the storefront
-          on a code, and it appears here to be placed.
+          {list.length === 0
+            ? "No code is on the storefront yet. Switch on Show it on the storefront on a code, and it appears here to be placed."
+            : "No code on the storefront is live right now. A scheduled code appears here on its start date."}
         </p>
       ) : (
         <ol className="mt-4" aria-busy={pending}>
-          {list.map((row, index) => {
-            const live = row.status === "active";
+          {shown.map((row, index) => {
             const isFeatured = row.id === featured;
             return (
               <li
@@ -150,11 +183,6 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
                         Featured
                       </span>
                     ) : null}
-                    {!live ? (
-                      <span className="type-caps text-nybb-bone/55">
-                        {VOUCHER_STATUS_LABELS[row.status]}, not shown
-                      </span>
-                    ) : null}
                   </p>
                   <p className="text-nybb-bone/55 mt-0.5 truncate text-xs">{row.offer}</p>
                 </div>
@@ -171,7 +199,7 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
                   <button
                     type="button"
                     onClick={() => move(row.id, 1)}
-                    disabled={pending || index === list.length - 1}
+                    disabled={pending || index === shown.length - 1}
                     aria-label={`Move ${row.code} down`}
                     className="text-nybb-bone/70 hover:text-nybb-bone hover:bg-nybb-bone/10 inline-flex size-11 items-center justify-center rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                   >
@@ -183,6 +211,15 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
           })}
         </ol>
       )}
+
+      {hidden > 0 ? (
+        <p className="text-nybb-bone/55 mt-3 text-xs leading-relaxed">
+          {hidden === 1 ? "1 code is" : `${hidden} codes are`} set to show on the
+          storefront but not live (scheduled, ended, used up or off), so customers
+          do not see {hidden === 1 ? "it" : "them"}. Find {hidden === 1 ? "it" : "them"} in
+          the list below.
+        </p>
+      ) : null}
 
       {state.error ? (
         <p role="alert" className="border-nybb-red text-nybb-bone mt-3 border-l-2 pl-3 text-sm">
