@@ -226,11 +226,6 @@ export type VoucherActionState = {
   savedId?: string;
   /** Set when the record is gone, so the screen can leave rather than reload. */
   deleted?: boolean;
-  /**
-   * Set when the code saved but its poster did not, so the screen can say so
-   * without treating the save itself as failed.
-   */
-  posterError?: string;
 };
 
 /**

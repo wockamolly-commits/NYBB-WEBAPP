@@ -12,16 +12,18 @@ import {
   isAcceptablePosterFile,
 } from "@/lib/staff/voucher-poster-limits";
 import type { VoucherActionState } from "@/lib/vouchers/schema";
-import { removeVoucherPoster, uploadVoucherPoster } from "./actions";
+import { uploadVoucherPoster } from "./actions";
 
 /**
- * The poster a promo code is advertised with.
+ * The poster a promo code is advertised with. Required from 0089.
  *
  * Two modes, one look. On a new code there is no id to key an upload to yet,
- * so the chosen file is handed up to the form and saveVoucher attaches it once
- * the code exists. On a saved code the field has its own Upload and Remove,
- * posting to their own actions, because a poster is not a term and has to stay
- * changeable after the code is locked (0077).
+ * so the chosen file is handed up to the form and saveVoucher uploads it and
+ * creates the code with it in one call; without one the code is not created.
+ * On a saved code the field has its own Replace, posting to its own action,
+ * because a poster is not a term and has to stay changeable after the code is
+ * locked (0077). There is no Remove: a required poster can be swapped, not
+ * emptied.
  *
  * The file is held in state rather than read off the input at submit, for the
  * reason ImageField gives: React 19 resets a form after its action runs, which
@@ -108,24 +110,37 @@ function FileInput({
   disabled,
   onFile,
   inputRef,
+  required,
+  errorId,
 }: {
   id: string;
   label: string;
   disabled?: boolean;
   onFile: (file: File | null) => void;
   inputRef?: React.Ref<HTMLInputElement>;
+  /** Announced as required. Not the native attribute, for the reason below. */
+  required?: boolean;
+  /** The id of the message describing what is wrong, when something is. */
+  errorId?: string;
 }) {
   return (
     <div>
       <WorkspaceFieldLabel htmlFor={id}>{label}</WorkspaceFieldLabel>
       {/* No name. The file travels from state, never from this input, so a
-          reset form cannot lose it and a disabled fieldset cannot drop it. */}
+          reset form cannot lose it and a disabled fieldset cannot drop it.
+          aria-required rather than required for the same reason: React empties
+          this input when a refused save resets the form, and a native required
+          would then block a resubmit while the chosen file is still in state.
+          VoucherEditor checks the state instead. */}
       <input
         id={id}
         ref={inputRef}
         type="file"
         accept={VOUCHER_POSTER_ACCEPT}
         disabled={disabled}
+        aria-required={required || undefined}
+        aria-invalid={errorId ? true : undefined}
+        aria-describedby={errorId}
         onChange={(event) => onFile(event.target.files?.[0] ?? null)}
         className="text-nybb-bone/55 mt-2 flex min-h-11 w-full items-center text-xs file:mr-3 file:rounded-md file:border-0 file:bg-nybb-bone/10 file:px-3.5 file:py-2 file:text-sm file:text-nybb-bone disabled:opacity-60"
       />
@@ -133,9 +148,17 @@ function FileInput({
   );
 }
 
-function Message({ kind, children }: { kind: "error" | "status"; children: React.ReactNode }) {
+function Message({
+  kind,
+  id,
+  children,
+}: {
+  kind: "error" | "status";
+  id?: string;
+  children: React.ReactNode;
+}) {
   return kind === "error" ? (
-    <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
+    <p id={id} role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
       {children}
     </p>
   ) : (
@@ -145,23 +168,45 @@ function Message({ kind, children }: { kind: "error" | "status"; children: React
   );
 }
 
-/** The create form's poster: chosen here, uploaded by saveVoucher. */
-export function NewPosterField({ onChange }: { onChange: (file: File | null) => void }) {
-  const uid = useId();
+/**
+ * The create form's poster: chosen here, uploaded by saveVoucher, required.
+ *
+ * `error` is the form's word on the poster: missing when Create was pressed
+ * without one, or the server's refusal of the one that was sent. A problem
+ * with the file just chosen is this field's own and is shown first.
+ */
+export function NewPosterField({
+  inputId,
+  onChange,
+  error,
+}: {
+  inputId: string;
+  onChange: (file: File | null) => void;
+  error?: string;
+}) {
   const { chosen, fileError, take } = usePosterChoice();
+  const message = fileError ?? error ?? null;
+  const errorId = message ? `${inputId}-error` : undefined;
 
   return (
     <div className="flex flex-wrap items-start gap-5">
       <PosterPreview chosen={chosen} saved={null} />
       <div className="min-w-56 flex-1 space-y-3">
         <FileInput
-          id={`${uid}-poster`}
-          label="Choose a poster"
+          id={inputId}
+          label="Choose a poster (required)"
+          required
+          errorId={errorId}
           onFile={(file) => onChange(take(file))}
         />
-        {fileError ? <Message kind="error">{fileError}</Message> : null}
+        {message ? (
+          <Message kind="error" id={errorId}>
+            {message}
+          </Message>
+        ) : null}
         <p className="text-nybb-bone/55 text-xs leading-relaxed">
-          Optional. It is uploaded when the code is created.
+          Required. The code is created together with its poster, so it cannot
+          be saved until a poster has been chosen and uploads successfully.
         </p>
       </div>
     </div>
@@ -173,20 +218,16 @@ export function SavedPosterField({
   voucherId,
   poster,
   publicise,
-  failedOnCreate,
 }: {
   voucherId: string;
   poster: SavedPoster | null;
   publicise: boolean;
-  /** The code was just created but its poster did not go up with it. */
-  failedOnCreate?: boolean;
 }) {
   const uid = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const { chosen, fileError, take, clear } = usePosterChoice();
   const [uploadState, uploadAction, uploadPending] = useActionState(uploadVoucherPoster, INITIAL);
-  const [removeState, removeAction, removePending] = useActionState(removeVoucherPoster, INITIAL);
-  const pending = uploadPending || removePending;
+  const pending = uploadPending;
 
   // A finished upload is now the saved poster the server re-rendered, so the
   // local copy is dropped and the input emptied. Compared against the state
@@ -208,21 +249,18 @@ export function SavedPosterField({
     startTransition(() => uploadAction(formData));
   }
 
-  function remove() {
-    const formData = new FormData();
-    formData.set("id", voucherId);
-    startTransition(() => removeAction(formData));
-  }
-
-  const error = fileError ?? uploadState.error ?? removeState.error ?? null;
+  const error = fileError ?? uploadState.error ?? null;
 
   return (
     <div className="flex flex-wrap items-start gap-5">
       <PosterPreview chosen={chosen} saved={poster} />
       <div className="min-w-56 flex-1 space-y-3">
-        {failedOnCreate && !poster ? (
+        {/* Only a code made before 0089 can be here without one. It keeps
+            working; this asks for the poster every new code now has. */}
+        {!poster ? (
           <Message kind="error">
-            The code was created, but its poster could not be uploaded. Choose it again here.
+            This code was made before posters were required. Upload one so it
+            shows on the storefront like every other code.
           </Message>
         ) : null}
         <FileInput
@@ -242,18 +280,6 @@ export function SavedPosterField({
           >
             {uploadPending ? "Uploading" : poster ? "Replace poster" : "Upload poster"}
           </Button>
-          {poster && !chosen ? (
-            <Button
-              type="button"
-              tone="dark"
-              variant="ghost"
-              onClick={remove}
-              disabled={pending}
-              className="min-h-11"
-            >
-              {removePending ? "Removing" : "Remove poster"}
-            </Button>
-          ) : null}
           {chosen ? (
             <Button
               type="button"

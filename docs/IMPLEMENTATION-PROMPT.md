@@ -1752,6 +1752,16 @@ not a column on `push_subscriptions`, so revoking marketing never silences an or
 a deliberate staff action, not a trigger on `publicise`, and `claim_promo_announcement` makes it
 exactly once for the life of the code.
 
+**Every new code has a poster, added 2026-10-16.** The poster (0077) was optional and was attached
+after the code was created, so a failed upload left a live code with no artwork. Migration 0089
+makes it part of creating: `admin_create_voucher` takes the terms and the poster together and
+writes both in one transaction, and `admin_upsert_voucher` now refuses a create (it still does
+every edit). The workspace action uploads and processes the image before calling it, and the form
+refuses Create until a valid image is chosen, all three with the same rules from
+`voucherPosterProblem`. A poster can be replaced, including on a locked code, but no longer
+removed. Codes created before 0089 without a poster keep working and can be given one; the
+workspace list marks them "No poster yet".
+
 ---
 
 ## 19. Loyalty: recommendation

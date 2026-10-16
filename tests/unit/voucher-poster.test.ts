@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { POSTER_MAX_SIDE, processPosterImage } from "@/lib/staff/voucher-poster";
 import {
   VOUCHER_POSTER_MAX_BYTES,
+  VOUCHER_POSTER_REQUIRED_MESSAGE,
+  VOUCHER_POSTER_SIZE_MESSAGE,
+  VOUCHER_POSTER_TYPE_MESSAGE,
   isAcceptablePosterFile,
+  voucherPosterProblem,
 } from "@/lib/staff/voucher-poster-limits";
 
 /**
@@ -90,5 +94,36 @@ describe("what a poster upload may be", () => {
 
   it("allows a larger source than a menu photograph", () => {
     expect(VOUCHER_POSTER_MAX_BYTES).toBe(8 * 1024 * 1024);
+  });
+});
+
+describe("voucherPosterProblem, shared by the form and the server", () => {
+  const ok = { name: "poster.png", type: "image/png", size: 1024 };
+
+  it("passes a decodable image under the ceiling", () => {
+    expect(voucherPosterProblem(ok)).toBeNull();
+    expect(voucherPosterProblem({ ...ok, size: VOUCHER_POSTER_MAX_BYTES })).toBeNull();
+  });
+
+  it("treats no file, and an empty one, as missing", () => {
+    // An empty file is what a browser sends for a file input left blank.
+    expect(voucherPosterProblem(null)).toBe(VOUCHER_POSTER_REQUIRED_MESSAGE);
+    expect(voucherPosterProblem(undefined)).toBe(VOUCHER_POSTER_REQUIRED_MESSAGE);
+    expect(voucherPosterProblem({ ...ok, size: 0 })).toBe(VOUCHER_POSTER_REQUIRED_MESSAGE);
+  });
+
+  it("refuses a file that is not one of the four image formats", () => {
+    expect(voucherPosterProblem({ name: "poster.svg", type: "image/svg+xml", size: 10 })).toBe(
+      VOUCHER_POSTER_TYPE_MESSAGE,
+    );
+    expect(voucherPosterProblem({ name: "terms.pdf", type: "application/pdf", size: 10 })).toBe(
+      VOUCHER_POSTER_TYPE_MESSAGE,
+    );
+  });
+
+  it("refuses a file over the ceiling", () => {
+    expect(voucherPosterProblem({ ...ok, size: VOUCHER_POSTER_MAX_BYTES + 1 })).toBe(
+      VOUCHER_POSTER_SIZE_MESSAGE,
+    );
   });
 });

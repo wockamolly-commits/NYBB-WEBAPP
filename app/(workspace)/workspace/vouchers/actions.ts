@@ -12,10 +12,8 @@ import {
   VOUCHER_POSTER_CACHE_CONTROL,
   VOUCHER_POSTER_CONTENT_TYPE,
   VOUCHER_POSTER_EXTENSION,
-  VOUCHER_POSTER_MAX_BYTES,
-  VOUCHER_POSTER_SIZE_MESSAGE,
-  VOUCHER_POSTER_TYPE_MESSAGE,
-  isAcceptablePosterFile,
+  VOUCHER_POSTER_REQUIRED_MESSAGE,
+  voucherPosterProblem,
 } from "@/lib/staff/voucher-poster-limits";
 import { createStaffClient } from "@/lib/supabase/server";
 import { voucherFormInput, voucherRpcPayload } from "@/lib/vouchers/form";
@@ -97,17 +95,26 @@ export async function saveVoucher(
   // default is optional in the schema's input type.
   const parsed = voucherFormSchema.safeParse(voucherFormInput(formData));
 
-  if (!parsed.success) {
+  // A new code has no id yet, and a new code needs its poster (0089). Checked
+  // beside the schema rather than after it, so a form with a bad amount and no
+  // poster is told about both at once.
+  const creating = !formData.get("id");
+  const posterEntry = formData.get("poster");
+  const posterFile = posterEntry instanceof File ? posterEntry : null;
+  const posterProblem = creating ? voucherPosterProblem(posterFile) : null;
+
+  if (!parsed.success || posterProblem) {
     // Field messages written into the schema are staff copy and are shown
     // beside the control. A structural complaint is about a request no form
     // could have produced, so it gets the neutral wording.
     const fieldErrors: Record<string, string> = {};
-    for (const issue of parsed.error.issues) {
+    for (const issue of parsed.success ? [] : parsed.error.issues) {
       const field = issue.path[0];
       if (typeof field === "string" && !(field in fieldErrors)) {
         fieldErrors[field] = issue.message;
       }
     }
+    if (posterProblem) fieldErrors.poster = posterProblem;
     return {
       ok: false,
       error: "Some of this needs another look.",
@@ -116,28 +123,45 @@ export async function saveVoucher(
   }
 
   const supabase = await createStaffClient();
-  const { data, error } = await supabase.rpc("admin_upsert_voucher", {
-    p_voucher: voucherRpcPayload(parsed.data),
-  });
 
-  if (error) return refuse(errorFor(error.message));
-
-  const savedId = typeof data === "string" ? data : null;
-
-  // A poster chosen on the create form rides along here, after the code
-  // exists, because the poster is keyed to its id. The code is saved either
-  // way: a poster that fails is reported beside the poster field and can be
-  // tried again from the edit screen, and a failed image must never cost the
-  // person the whole form they just filled in.
-  let posterError: string | undefined;
-  const posterEntry = formData.get("poster");
-  if (savedId && posterEntry instanceof File && posterEntry.size > 0) {
-    const attached = await attachPoster(supabase, savedId, posterEntry);
-    if (!attached.ok) posterError = attached.error;
+  // posterProblem has already refused a create with no file, so `!posterFile`
+  // never sends a create down this path. It is here so TypeScript knows that.
+  if (!creating || !posterFile) {
+    const { data, error } = await supabase.rpc("admin_upsert_voucher", {
+      p_voucher: voucherRpcPayload(parsed.data),
+    });
+    if (error) return refuse(errorFor(error.message));
+    const savedId = typeof data === "string" ? data : null;
+    refresh(savedId);
+    return { ok: true, savedId: savedId ?? undefined };
   }
 
+  // The poster goes up first, and the code is created with it in one call.
+  // admin_create_voucher writes the terms and the poster in one transaction,
+  // so a poster refused anywhere leaves no code behind. A code that is
+  // refused (a duplicate, say) leaves only an unreferenced file in the
+  // bucket, which is what a replaced poster leaves too.
+  const stored = await storePoster(supabase, posterFile);
+  if (!stored.ok) {
+    return { ok: false, error: stored.error, fieldErrors: { poster: stored.error } };
+  }
+
+  const { data, error } = await supabase.rpc("admin_create_voucher", {
+    p_voucher: voucherRpcPayload(parsed.data),
+    p_poster: stored.poster,
+  });
+  if (error) {
+    const aboutPoster =
+      error.message?.includes("POSTER_REQUIRED") || error.message?.includes("INVALID_INPUT");
+    const message = aboutPoster ? posterErrorFor(error.message) : errorFor(error.message);
+    return aboutPoster
+      ? { ok: false, error: message, fieldErrors: { poster: message } }
+      : refuse(message);
+  }
+
+  const savedId = typeof data === "string" ? data : null;
   refresh(savedId);
-  return { ok: true, savedId: savedId ?? undefined, posterError };
+  return { ok: true, savedId: savedId ?? undefined };
 }
 
 type StaffClient = Awaited<ReturnType<typeof createStaffClient>>;
@@ -145,43 +169,38 @@ type StaffClient = Awaited<ReturnType<typeof createStaffClient>>;
 const voucherIdSchema = z.uuid();
 
 /**
- * errorFor, plus the one refusal that means something specific here. Only
- * admin_set_voucher_poster raises INVALID_INPUT for a poster, and errorFor's
- * generic wording would send the person to retry a save rather than the upload.
+ * errorFor, plus the refusals that are about the poster. INVALID_INPUT on a
+ * poster path means the stored poster was refused, and errorFor's generic
+ * wording would send the person to retry a save rather than the upload.
  */
 function posterErrorFor(message: string | undefined): string {
+  if (message?.includes("POSTER_REQUIRED")) return VOUCHER_POSTER_REQUIRED_MESSAGE;
   if (message?.includes("INVALID_INPUT")) {
     return "That poster could not be saved. Try uploading it again.";
   }
   return errorFor(message);
 }
 
-/** The file checks both poster paths run, before sharp sees a byte. */
-function posterFileProblem(file: File): string | null {
-  // By name as well as declared type, for the Windows reason
-  // isDecodableImageFile records. processPosterImage checks the real bytes.
-  if (!isAcceptablePosterFile(file.name, file.type)) return VOUCHER_POSTER_TYPE_MESSAGE;
-  if (file.size > VOUCHER_POSTER_MAX_BYTES) return VOUCHER_POSTER_SIZE_MESSAGE;
-  return null;
-}
+type StoredPoster = { url: string; width: number; height: number; blur: string };
 
 /**
- * Process one poster, land it at a fresh path and point the voucher at it.
+ * Check, process and land one poster at a fresh path, and say where it is.
  *
  * Module private because a "use server" file may only export async functions
  * that are meant to be called from a browser, and this one takes a client.
+ * Nothing here touches the voucher row: the caller hands the result to
+ * admin_create_voucher or admin_set_voucher_poster.
  *
  * The path is `${year}/${randomUUID()}.webp` with upsert: false, for the reason
  * uploadMenuImageObject gives: next.config.ts caches an optimized image for a
  * year, so a replacement has to be a new URL. Uploaded through the signed-in
  * staff client, so 0077's storage policy is what lets it through.
  */
-async function attachPoster(
+async function storePoster(
   supabase: StaffClient,
-  voucherId: string,
   file: File,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const problem = posterFileProblem(file);
+): Promise<{ ok: true; poster: StoredPoster } | { ok: false; error: string }> {
+  const problem = voucherPosterProblem(file);
   if (problem) return { ok: false, error: problem };
 
   let processed;
@@ -209,18 +228,15 @@ async function attachPoster(
     .from(VOUCHER_POSTER_BUCKET)
     .getPublicUrl(objectPath);
 
-  const { error } = await supabase.rpc("admin_set_voucher_poster", {
-    p_voucher_id: voucherId,
-    p_url: publicUrl.publicUrl,
-    p_width: processed.width,
-    p_height: processed.height,
-    p_blur: processed.blurDataURL,
-  });
-  if (error) {
-    console.error("[workspace] voucher poster could not be set:", error.message);
-    return { ok: false, error: posterErrorFor(error.message) };
-  }
-  return { ok: true };
+  return {
+    ok: true,
+    poster: {
+      url: publicUrl.publicUrl,
+      width: processed.width,
+      height: processed.height,
+      blur: processed.blurDataURL,
+    },
+  };
 }
 
 /**
@@ -230,6 +246,9 @@ async function attachPoster(
  * setVoucherPublicise is: a poster is not a term, and once a code has met an
  * order the upsert refuses every save. The artwork on a running promo is the
  * thing an owner most wants to change, so it stays changeable on a locked code.
+ *
+ * There is no remove. A poster is required from 0089, so it can be replaced
+ * and never emptied.
  */
 export async function uploadVoucherPoster(
   _previous: VoucherActionState,
@@ -244,36 +263,20 @@ export async function uploadVoucherPoster(
   if (!(file instanceof File) || file.size === 0) return refuse("Choose a poster first.");
 
   const supabase = await createStaffClient();
-  const attached = await attachPoster(supabase, id.data, file);
-  if (!attached.ok) return refuse(attached.error);
+  const stored = await storePoster(supabase, file);
+  if (!stored.ok) return refuse(stored.error);
 
-  refresh(id.data);
-  return { ok: true };
-}
-
-/**
- * Taking the poster off a code. The code itself is untouched and keeps
- * appearing on /promos as a plain card. The object stays in the bucket, as a
- * replaced menu photograph does: there is no delete policy, by design.
- */
-export async function removeVoucherPoster(
-  _previous: VoucherActionState,
-  formData: FormData,
-): Promise<VoucherActionState> {
-  if (!(await authorized())) return refuse("You do not have access to manage promo codes.");
-
-  const id = voucherIdSchema.safeParse(formData.get("id"));
-  if (!id.success) return refuse("We could not tell which code that was.");
-
-  const supabase = await createStaffClient();
   const { error } = await supabase.rpc("admin_set_voucher_poster", {
     p_voucher_id: id.data,
-    p_url: null,
-    p_width: null,
-    p_height: null,
-    p_blur: null,
+    p_url: stored.poster.url,
+    p_width: stored.poster.width,
+    p_height: stored.poster.height,
+    p_blur: stored.poster.blur,
   });
-  if (error) return refuse(posterErrorFor(error.message));
+  if (error) {
+    console.error("[workspace] voucher poster could not be set:", error.message);
+    return refuse(posterErrorFor(error.message));
+  }
 
   refresh(id.data);
   return { ok: true };

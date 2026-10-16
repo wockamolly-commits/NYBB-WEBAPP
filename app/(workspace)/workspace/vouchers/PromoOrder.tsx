@@ -7,6 +7,7 @@ import { featuredVoucherId, moveVoucher } from "@/lib/vouchers/order";
 import type { VoucherActionState } from "@/lib/vouchers/schema";
 import { VOUCHER_STATUS_LABELS, type VoucherStatus } from "@/lib/vouchers/status";
 import { setVoucherOrder } from "./actions";
+import { PosterThumb } from "./PosterThumb";
 
 /**
  * Which promo leads the storefront, and in what order the rest follow.
@@ -35,6 +36,7 @@ export type PromoOrderRow = {
   status: VoucherStatus;
   displayPriority: number | null;
   offer: string;
+  poster: { url: string; width: number; height: number } | null;
 };
 
 const INITIAL: VoucherActionState = { ok: false };
@@ -133,6 +135,7 @@ export function PromoOrder({ rows }: { rows: PromoOrderRow[] }) {
                 >
                   {index + 1}
                 </span>
+                <PosterThumb poster={row.poster} className="h-11 w-8" />
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <a

@@ -23,6 +23,14 @@ import { freshDatabase } from "./harness";
 const MANAGER_ID = "78000000-0000-4000-8000-000000000001";
 const CASHIER_ID = "78000000-0000-4000-8000-000000000002";
 
+/** A complete poster, for every create. 0089 refuses a create without one. */
+const POSTER = JSON.stringify({
+  url: "https://example.supabase.co/storage/v1/object/public/voucher-posters/2026/a.webp",
+  width: 1200,
+  height: 1600,
+  blur: "data:image/webp;base64,AAAA",
+});
+
 async function asUser<T>(db: PGlite, id: string, sql: string): Promise<readonly T[]> {
   await db.exec(`
     create or replace function auth.uid()
@@ -75,7 +83,7 @@ async function create(db: PGlite, over: Record<string, unknown> = {}): Promise<s
   const rows = await asUser<{ id: string }>(
     db,
     MANAGER_ID,
-    `select admin_upsert_voucher('${payload(over)}'::jsonb) as id`,
+    `select admin_create_voucher('${payload(over)}'::jsonb, '${POSTER}'::jsonb) as id`,
   );
   return rows[0].id;
 }

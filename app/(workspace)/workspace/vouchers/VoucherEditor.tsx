@@ -17,7 +17,11 @@ import {
   setVoucherActive,
   setVoucherPublicise,
 } from "./actions";
+import { VOUCHER_POSTER_REQUIRED_MESSAGE } from "@/lib/staff/voucher-poster-limits";
 import { NewPosterField, SavedPosterField } from "./PosterField";
+
+/** The create form's poster input, focused when Create is pressed without one. */
+const NEW_POSTER_INPUT_ID = "voucher-poster";
 
 /**
  * The promo code form.
@@ -314,13 +318,10 @@ function AnnounceNotice({ voucher }: { voucher: VoucherDetail }) {
 export function VoucherEditor({
   voucher,
   choices,
-  posterFailed = false,
 }: {
   /** Null when this is a new code. */
   voucher: VoucherDetail | null;
   choices: ScopeChoices;
-  /** The code was just created and its poster did not go up with it. */
-  posterFailed?: boolean;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveVoucher, INITIAL);
@@ -371,22 +372,44 @@ export function VoucherEditor({
   // so React resetting the form after a refused save cannot lose it. See
   // PosterField for the rest of that reasoning.
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  // Create pressed with no poster chosen. Cleared by choosing one.
+  const [posterMissing, setPosterMissing] = useState(false);
+  // A poster chosen after the last save attempt, so the server's refusal of
+  // the previous file stops being shown beside the new one.
+  const [posterChangedSinceSave, setPosterChangedSinceSave] = useState(false);
+
+  function choosePoster(file: File | null) {
+    setPosterFile(file);
+    setPosterChangedSinceSave(true);
+    if (file) setPosterMissing(false);
+  }
+
+  // Refused before the action runs, not inside it. A form action that returns
+  // early still counts as run, and React then resets every uncontrolled field,
+  // which would throw away the code and description the person just typed.
+  // preventDefault here means React never starts the action at all. The server
+  // and migration 0089 refuse the same thing again; this is the fast message.
+  function guardSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (voucher === null && !posterFile) {
+      event.preventDefault();
+      setPosterMissing(true);
+      document.getElementById(NEW_POSTER_INPUT_ID)?.focus();
+    }
+  }
 
   function submit(formData: FormData) {
     if (voucher === null && posterFile) formData.set("poster", posterFile);
+    setPosterChangedSinceSave(false);
     formAction(formData);
   }
 
   // A create returns the new id, and the editor for it lives at another URL.
-  // Pushing rather than replacing, so Back still goes to the list. A poster
-  // that failed to go up with the code is carried across in the URL, because
-  // this component's state does not survive the navigation.
+  // Pushing rather than replacing, so Back still goes to the list.
   useEffect(() => {
     if (state.ok && state.savedId && voucher === null) {
-      const suffix = state.posterError ? "?poster=failed" : "";
-      router.push(`/workspace/vouchers/${state.savedId}${suffix}`);
+      router.push(`/workspace/vouchers/${state.savedId}`);
     }
-  }, [state.ok, state.savedId, state.posterError, voucher, router]);
+  }, [state.ok, state.savedId, voucher, router]);
 
   function toggle(set: Set<string>, apply: (next: Set<string>) => void, id: string) {
     const next = new Set(set);
@@ -414,12 +437,17 @@ export function VoucherEditor({
   });
 
   const fieldErrors = state.fieldErrors ?? {};
+  const posterError = posterMissing
+    ? VOUCHER_POSTER_REQUIRED_MESSAGE
+    : posterChangedSinceSave
+      ? undefined
+      : fieldErrors.poster;
 
   return (
     <>
       {frozen && voucher ? <LockedNotice voucher={voucher} /> : null}
       {voucher ? <AnnounceNotice voucher={voucher} /> : null}
-      <form action={submit} className="mt-7">
+      <form action={submit} onSubmit={guardSubmit} className="mt-7">
         {/* One attribute freezes the whole form. A disabled fieldset
             disables every control inside it, so no field has to know the
             rule, and the workspace CSS already draws the disabled state for
@@ -669,7 +697,11 @@ export function VoucherEditor({
 
           {voucher === null ? (
             <WorkspaceSection title="Poster" description={<PosterDescription />}>
-              <NewPosterField onChange={setPosterFile} />
+              <NewPosterField
+                inputId={NEW_POSTER_INPUT_ID}
+                onChange={choosePoster}
+                error={posterError}
+              />
             </WorkspaceSection>
           ) : null}
 
@@ -788,7 +820,11 @@ export function VoucherEditor({
                 </ButtonLink>
                 {/* Whatever blocks or refused the button is stated beside it, at
                     the weight of body copy rather than as the quietest text here. */}
-                {state.error ? (
+                {posterMissing ? (
+                  <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
+                    Choose a poster before creating the code.
+                  </p>
+                ) : state.error ? (
                   <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
                     {state.error}
                   </p>
@@ -814,7 +850,6 @@ export function VoucherEditor({
               voucherId={voucher.id}
               poster={voucher.poster}
               publicise={voucher.publicise}
-              failedOnCreate={posterFailed}
             />
           </WorkspaceSection>
         </div>
@@ -827,8 +862,9 @@ function PosterDescription() {
   return (
     <>
       <p>
-        The artwork for this promo. It opens in a popup when a customer arrives
-        on the storefront and sits on the code&rsquo;s card on the promos page.
+        The artwork for this promo, and every code needs one. It opens in a
+        popup when a customer arrives on the storefront and sits on the
+        code&rsquo;s card on the promos page.
       </p>
       <p>
         It only shows while the code is live: switched on, inside its dates,

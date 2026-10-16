@@ -50,3 +50,25 @@ export const VOUCHER_POSTER_TYPE_MESSAGE =
   "Choose a JPEG, PNG, WebP or AVIF image. Other file types cannot be used.";
 
 export const VOUCHER_POSTER_SIZE_MESSAGE = "That poster is over 8 MB. Choose a smaller file.";
+
+export const VOUCHER_POSTER_REQUIRED_MESSAGE =
+  "Add a poster. A promo code cannot be created without one.";
+
+/**
+ * What is wrong with a chosen poster, or null when it can be uploaded.
+ *
+ * One function for both sides, so the form's message and the server's refusal
+ * are the same words for the same file. Missing is a problem, because 0089
+ * makes the poster part of creating a code. The checks are on the name, the
+ * declared type and the size; processPosterImage reads the real bytes after.
+ */
+export function voucherPosterProblem(
+  file: { name: string; type: string; size: number } | null | undefined,
+): string | null {
+  if (!file || file.size === 0) return VOUCHER_POSTER_REQUIRED_MESSAGE;
+  // By name as well as declared type, for the Windows reason
+  // isDecodableImageFile records.
+  if (!isAcceptablePosterFile(file.name, file.type)) return VOUCHER_POSTER_TYPE_MESSAGE;
+  if (file.size > VOUCHER_POSTER_MAX_BYTES) return VOUCHER_POSTER_SIZE_MESSAGE;
+  return null;
+}

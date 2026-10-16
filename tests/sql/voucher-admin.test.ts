@@ -30,6 +30,14 @@ async function asUser<T>(db: PGlite, id: string, sql: string): Promise<readonly 
   }
 }
 
+/** A complete poster, for every create. 0089 refuses a create without one. */
+const POSTER = JSON.stringify({
+  url: "https://example.supabase.co/storage/v1/object/public/voucher-posters/2026/a.webp",
+  width: 1200,
+  height: 1600,
+  blur: "data:image/webp;base64,AAAA",
+});
+
 /** The same call, when the point of the test is that it is refused. */
 async function expectRefused(db: PGlite, id: string, sql: string, reason: RegExp): Promise<void> {
   await expect(asUser(db, id, sql)).rejects.toThrow(reason);
@@ -89,7 +97,7 @@ describe("who may manage a voucher", () => {
     const rows = await asUser<{ id: string }>(
       db,
       ROVING_ID,
-      `select admin_upsert_voucher('${payload()}'::jsonb) as id`,
+      `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb) as id`,
     );
     expect(rows[0].id).toBeTruthy();
   });
@@ -98,7 +106,7 @@ describe("who may manage a voucher", () => {
     await expectRefused(
       db,
       CASHIER_ID,
-      `select admin_upsert_voucher('${payload()}'::jsonb)`,
+      `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb)`,
       /FORBIDDEN/,
     );
   });
@@ -110,7 +118,7 @@ describe("who may manage a voucher", () => {
     await expectRefused(
       db,
       PINNED_ID,
-      `select admin_upsert_voucher('${payload()}'::jsonb)`,
+      `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb)`,
       /FORBIDDEN/,
     );
   });
@@ -123,7 +131,7 @@ describe("who may manage a voucher", () => {
     const rows = await asUser<{ id: string }>(
       db,
       PINNED_ID,
-      `select admin_upsert_voucher('${payload()}'::jsonb) as id`,
+      `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb) as id`,
     );
     expect(rows[0].id).toBeTruthy();
   });
@@ -150,7 +158,7 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload()}'::jsonb) as id`,
+        `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
 
@@ -172,7 +180,7 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload({ maxUses: null })}'::jsonb) as id`,
+        `select admin_create_voucher('${payload({ maxUses: null })}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
     expect(await scalar<number | null>(db, `select max_uses from vouchers where id = '${id}'`)).toBe(
@@ -184,23 +192,23 @@ describe("saving a voucher", () => {
     await expectRefused(
       db,
       ROVING_ID,
-      `select admin_upsert_voucher('${payload({ amountCents: 5000, percentOff: 10 })}'::jsonb)`,
+      `select admin_create_voucher('${payload({ amountCents: 5000, percentOff: 10 })}'::jsonb, '${POSTER}'::jsonb)`,
       /ONE_DISCOUNT_KIND/,
     );
     await expectRefused(
       db,
       ROVING_ID,
-      `select admin_upsert_voucher('${payload({ amountCents: null, percentOff: null })}'::jsonb)`,
+      `select admin_create_voucher('${payload({ amountCents: null, percentOff: null })}'::jsonb, '${POSTER}'::jsonb)`,
       /ONE_DISCOUNT_KIND/,
     );
   });
 
   it("refuses a code somebody else already has", async () => {
-    await asUser(db, ROVING_ID, `select admin_upsert_voucher('${payload()}'::jsonb)`);
+    await asUser(db, ROVING_ID, `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb)`);
     await expectRefused(
       db,
       ROVING_ID,
-      `select admin_upsert_voucher('${payload({ code: "launch50" })}'::jsonb)`,
+      `select admin_create_voucher('${payload({ code: "launch50" })}'::jsonb, '${POSTER}'::jsonb)`,
       /DUPLICATE_CODE/,
     );
   });
@@ -210,13 +218,14 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher(
+        `select admin_create_voucher(
            jsonb_set(
              jsonb_set('${payload()}'::jsonb, '{branchIds}',
                (select jsonb_agg(to_jsonb(b.id::text)) from branches b where b.slug = 'mango-avenue')),
              '{categoryIds}',
              (select jsonb_agg(to_jsonb(c.id::text)) from menu_categories c where c.slug = 'chicken-wings')
-           )
+           ),
+           '${POSTER}'::jsonb
          ) as id`,
       )
     )[0].id;
@@ -236,7 +245,7 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload({ customerPhones: ["0917 000 4321", "+63 918 111 2222"] })}'::jsonb) as id`,
+        `select admin_create_voucher('${payload({ customerPhones: ["0917 000 4321", "+63 918 111 2222"] })}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
 
@@ -252,9 +261,10 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher(
+        `select admin_create_voucher(
            jsonb_set('${payload()}'::jsonb, '{branchIds}',
-             (select jsonb_agg(to_jsonb(b.id::text)) from branches b where b.slug = 'mango-avenue'))
+             (select jsonb_agg(to_jsonb(b.id::text)) from branches b where b.slug = 'mango-avenue')),
+           '${POSTER}'::jsonb
          ) as id`,
       )
     )[0].id;
@@ -279,7 +289,7 @@ describe("saving a voucher", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload({ maxUses: 10 })}'::jsonb) as id`,
+        `select admin_create_voucher('${payload({ maxUses: 10 })}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
     await db.exec(`update vouchers set uses_count = 4 where id = '${id}'`);
@@ -305,7 +315,7 @@ describe("switching a voucher off and removing it", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload()}'::jsonb) as id`,
+        `select admin_create_voucher('${payload()}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
   }
@@ -481,7 +491,7 @@ describe("a code that has met an order", () => {
       await asUser<{ id: string }>(
         db,
         ROVING_ID,
-        `select admin_upsert_voucher('${payload(over)}'::jsonb) as id`,
+        `select admin_create_voucher('${payload(over)}'::jsonb, '${POSTER}'::jsonb) as id`,
       )
     )[0].id;
   }

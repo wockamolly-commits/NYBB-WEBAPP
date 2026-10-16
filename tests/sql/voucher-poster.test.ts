@@ -105,7 +105,7 @@ describe("setting a poster", () => {
     db = await world();
   });
 
-  it("sets and clears it", async () => {
+  it("sets it", async () => {
     const id = await voucher(db);
     await asUser(db, MANAGER_ID, setPoster(id));
     expect(await posterOf(db, id)).toEqual({
@@ -113,16 +113,17 @@ describe("setting a poster", () => {
       poster_width: 1200,
       poster_height: 1600,
     });
-    await asUser(
-      db,
-      MANAGER_ID,
-      `select admin_set_voucher_poster('${id}', null, null, null, null)`,
-    );
-    expect(await posterOf(db, id)).toEqual({
-      poster_url: null,
-      poster_width: null,
-      poster_height: null,
-    });
+  });
+
+  it("refuses to take it off (0089)", async () => {
+    // A required poster that could be emptied the next minute is not
+    // required. Replacing it is still allowed, below.
+    const id = await voucher(db);
+    await asUser(db, MANAGER_ID, setPoster(id));
+    await expect(
+      asUser(db, MANAGER_ID, `select admin_set_voucher_poster('${id}', null, null, null, null)`),
+    ).rejects.toThrow(/POSTER_REQUIRED/);
+    expect((await posterOf(db, id)).poster_url).toBe(URL_OK);
   });
 
   it("refuses somebody without vouchers:manage", async () => {
@@ -243,5 +244,127 @@ describe("who may call it", () => {
     expect(rows.rows.map((r) => r.grantee).sort()).toEqual(
       ["authenticated", "postgres"].sort(),
     );
+  });
+});
+
+describe("creating a code requires its poster (0089)", () => {
+  let db: PGlite;
+  beforeEach(async () => {
+    db = await world();
+  });
+
+  const TERMS = JSON.stringify({
+    code: "POSTER10",
+    amountCents: 1000,
+    percentOff: null,
+    maxDiscountCents: null,
+    minOrderCents: 0,
+    maxUses: null,
+    maxUsesPerCustomer: 1,
+    startsAt: null,
+    expiresAt: null,
+    isActive: true,
+    publicise: true,
+    branchIds: [],
+    itemIds: [],
+    categoryIds: [],
+    customerPhones: [],
+    customerUserIds: [],
+  });
+
+  function poster(over: Record<string, unknown> = {}): string {
+    return JSON.stringify({ url: URL_OK, width: 1200, height: 1600, blur: BLUR, ...over });
+  }
+
+  function create(posterJson: string | null) {
+    const arg = posterJson === null ? "null" : `'${posterJson}'::jsonb`;
+    return `select admin_create_voucher('${TERMS}'::jsonb, ${arg}) as id`;
+  }
+
+  async function count(): Promise<number> {
+    const rows = await db.query<{ n: number }>(
+      "select count(*)::int as n from vouchers where code = 'POSTER10'",
+    );
+    return rows.rows[0].n;
+  }
+
+  it("creates the code and its poster together", async () => {
+    const [row] = await asUser<{ id: string }>(db, MANAGER_ID, create(poster()));
+    expect(await posterOf(db, row.id)).toEqual({
+      poster_url: URL_OK,
+      poster_width: 1200,
+      poster_height: 1600,
+    });
+    expect((await listed(db))[0]).toMatchObject({ code: "POSTER10", posterUrl: URL_OK });
+  });
+
+  it("refuses a create with no poster, and writes nothing", async () => {
+    await expect(asUser(db, MANAGER_ID, create(null))).rejects.toThrow(/POSTER_REQUIRED/);
+    await expect(asUser(db, MANAGER_ID, create("{}"))).rejects.toThrow(/POSTER_REQUIRED/);
+    await expect(asUser(db, MANAGER_ID, create(poster({ url: "" })))).rejects.toThrow(
+      /POSTER_REQUIRED/,
+    );
+    expect(await count()).toBe(0);
+  });
+
+  it("refuses a malformed poster, and the code is rolled back with it", async () => {
+    // The terms are written first inside the function. If the poster is then
+    // refused the whole call fails, so there is never a code without one.
+    for (const bad of [
+      poster({ url: "https://evil.example.com/a.webp" }),
+      poster({ width: 0 }),
+      poster({ height: "tall" }),
+      poster({ blur: "javascript:alert(1)" }),
+    ]) {
+      await expect(asUser(db, MANAGER_ID, create(bad))).rejects.toThrow(/INVALID_INPUT/);
+    }
+    expect(await count()).toBe(0);
+  });
+
+  it("refuses somebody without vouchers:manage before looking at the poster", async () => {
+    await expect(asUser(db, CASHIER_ID, create(null))).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  it("will not edit through the create path", async () => {
+    const id = await voucher(db);
+    const withId = JSON.stringify({ ...JSON.parse(TERMS), id });
+    await expect(
+      asUser(db, MANAGER_ID, `select admin_create_voucher('${withId}'::jsonb, '${poster()}'::jsonb)`),
+    ).rejects.toThrow(/INVALID_INPUT/);
+  });
+
+  it("closes the old create path through admin_upsert_voucher", async () => {
+    await expect(
+      asUser(db, MANAGER_ID, `select admin_upsert_voucher('${TERMS}'::jsonb)`),
+    ).rejects.toThrow(/POSTER_REQUIRED/);
+    expect(await count()).toBe(0);
+  });
+
+  it("still edits a code made before posters were required", async () => {
+    // Codes from before 0089 may have no poster. They keep working and stay
+    // editable; the rule is about creating, not about what already exists.
+    const id = await voucher(db);
+    const edit = JSON.stringify({ ...JSON.parse(TERMS), id, amountCents: 2000 });
+    await asUser(db, MANAGER_ID, `select admin_upsert_voucher('${edit}'::jsonb)`);
+    const rows = await db.query<{ amount_cents: number; poster_url: string | null }>(
+      `select amount_cents, poster_url from vouchers where id = '${id}'`,
+    );
+    expect(rows.rows[0]).toEqual({ amount_cents: 2000, poster_url: null });
+  });
+
+  it("leaves the unchecked bodies reachable by nobody", async () => {
+    const rows = await db.query<{ routine_name: string; grantee: string }>(`
+      select routine_name, grantee from information_schema.routine_privileges
+      where routine_name in (
+        'admin_create_voucher', 'voucher_upsert_unchecked', 'voucher_set_poster_unchecked'
+      ) and privilege_type = 'EXECUTE'
+      order by 1, 2
+    `);
+    expect(rows.rows).toEqual([
+      { routine_name: "admin_create_voucher", grantee: "authenticated" },
+      { routine_name: "admin_create_voucher", grantee: "postgres" },
+      { routine_name: "voucher_set_poster_unchecked", grantee: "postgres" },
+      { routine_name: "voucher_upsert_unchecked", grantee: "postgres" },
+    ]);
   });
 });

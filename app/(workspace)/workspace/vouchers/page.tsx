@@ -6,6 +6,7 @@ import { formatPeso } from "@/lib/format";
 import { requireStaffPermission } from "@/lib/staff/session";
 import { getVouchersEnabled, listVouchers, type VoucherListRow } from "@/lib/staff/vouchers";
 import { EngineSwitch } from "./EngineSwitch";
+import { PosterThumb } from "./PosterThumb";
 import { PromoOrder } from "./PromoOrder";
 import { storefrontOrder } from "@/lib/vouchers/order";
 import {
@@ -196,6 +197,7 @@ export default async function WorkspaceVouchersPage({
           offer: [discountLabel(voucher) + " off", voucher.description]
             .filter(Boolean)
             .join(". "),
+          poster: voucher.poster,
         }))}
       />
 
@@ -253,20 +255,27 @@ export default async function WorkspaceVouchersPage({
                 key={voucher.id}
                 className="border-nybb-bone/15 border-b py-4 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] lg:items-baseline lg:gap-4"
               >
-                <div className="min-w-0">
-                  {/* The whole row's target is the code, because editing is the
-                      only thing anybody comes to this list to do. */}
-                  <a
-                    href={`/workspace/vouchers/${voucher.id}`}
-                    className="font-display text-nybb-bone hover:text-nybb-orange focus-visible:text-nybb-orange break-words underline-offset-4 hover:underline focus-visible:underline"
-                  >
-                    {voucher.code}
-                  </a>
-                  {voucher.description ? (
-                    <p className="text-nybb-bone/55 mt-1 text-xs leading-relaxed">
-                      {voucher.description}
-                    </p>
-                  ) : null}
+                <div className="flex min-w-0 items-start gap-3">
+                  <PosterThumb poster={voucher.poster} className="h-14 w-10" />
+                  <div className="min-w-0">
+                    {/* The whole row's target is the code, because editing is the
+                        only thing anybody comes to this list to do. */}
+                    <a
+                      href={`/workspace/vouchers/${voucher.id}`}
+                      className="font-display text-nybb-bone hover:text-nybb-orange focus-visible:text-nybb-orange break-words underline-offset-4 hover:underline focus-visible:underline"
+                    >
+                      {voucher.code}
+                    </a>
+                    {voucher.description ? (
+                      <p className="text-nybb-bone/55 mt-1 text-xs leading-relaxed">
+                        {voucher.description}
+                      </p>
+                    ) : null}
+                    {/* Only a code from before 0089 can lack one. */}
+                    {voucher.poster ? null : (
+                      <p className="text-nybb-yellow mt-1 text-xs">No poster yet</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 lg:mt-0">

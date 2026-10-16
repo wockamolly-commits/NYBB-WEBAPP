@@ -86,7 +86,13 @@ const nextConfig: NextConfig = {
       // no action body executed. 6mb rather than 5mb leaves room for the
       // multipart boundaries and part headers the raw body carries beside
       // the file, per the framework docs' own 10-20 KB rule of thumb.
-      bodySizeLimit: "6mb",
+      //
+      // 9mb since the voucher poster became required: VOUCHER_POSTER_MAX_BYTES
+      // is 8 MB, and at 6mb every poster between 6 and 8 MB was refused by the
+      // framework with no message, so the create form could not be submitted
+      // with a file it had just accepted. The create form also carries the
+      // voucher's own fields, which are a few KB.
+      bodySizeLimit: "9mb",
     },
   },
   async headers() {
