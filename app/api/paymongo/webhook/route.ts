@@ -4,6 +4,7 @@ import {
   PAYMONGO_REFUND_EVENT_TYPES,
   parsePaymongoEvent,
   parsePaymongoRefundEvent,
+  paymongoMode,
   readWebhookBody,
   verifyPaymongoSignature,
 } from "@/lib/paymongo/webhook";
@@ -26,6 +27,36 @@ function cannotRecord(): Response {
   return Response.json({ error: "not configured" }, { status: 503 });
 }
 
+/**
+ * Whether this event id has been handled already (0099). PayMongo redelivers,
+ * and asks for deduplication by event id. A failed lookup answers false: the
+ * row guards in the payment and refund functions still stop a second write, so
+ * handling an event twice is the safe way to be wrong.
+ */
+async function alreadyHandled(eventId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from("paymongo_webhook_events")
+    .select("event_id")
+    .eq("event_id", eventId)
+    .maybeSingle();
+  if (error) {
+    console.error("[payment] webhook event lookup failed", error.message);
+    return false;
+  }
+  return data !== null;
+}
+
+/** Writes the event id down once it has been handled. A duplicate is fine. */
+async function markHandled(event: { eventId: string | null; type: string; livemode: boolean | null }) {
+  if (!event.eventId) return;
+  const { error } = await createAdminClient()
+    .from("paymongo_webhook_events")
+    .insert({ event_id: event.eventId, event_type: event.type, livemode: event.livemode });
+  if (error && error.code !== "23505") {
+    console.error("[payment] webhook event could not be recorded", error.message);
+  }
+}
+
 /** Reconciles PayMongo's signed payment webhook with the one payment row. */
 export async function POST(request: Request) {
   const raw = await readWebhookBody(request);
@@ -45,6 +76,19 @@ export async function POST(request: Request) {
   }
 
   const event = parsePaymongoEvent(payload);
+
+  // An event from the other environment. PayMongo's best practices name this
+  // check, and acknowledging it is what they recommend: it is not an error
+  // that a retry could fix.
+  if (event.livemode !== null && event.livemode !== (paymongoMode() === "live")) {
+    console.error("[payment] webhook event from the other PayMongo mode ignored", event.type);
+    return Response.json({ received: true });
+  }
+
+  if (event.eventId && adminConfigured() && (await alreadyHandled(event.eventId))) {
+    return Response.json({ received: true });
+  }
+
   if ((PAYMONGO_REFUND_EVENT_TYPES as readonly string[]).includes(event.type)) {
     const refund = parsePaymongoRefundEvent(payload);
     if (!refund.refundId && !refund.providerRefundId) return Response.json({ received: true });
@@ -60,6 +104,7 @@ export async function POST(request: Request) {
       console.error("[payment] refund webhook reconciliation failed", error.message);
       return Response.json({ error: "reconciliation failed" }, { status: 500 });
     }
+    await markHandled(event);
     if (refund.status === "succeeded") {
       after(notifyCustomerOfRefund({
         refundId: refund.refundId,
@@ -86,6 +131,7 @@ export async function POST(request: Request) {
     console.error("[payment] webhook reconciliation failed", error.message);
     return Response.json({ error: "reconciliation failed" }, { status: 500 });
   }
+  await markHandled(event);
 
   // The counter hears about an order when it is paid for, not when it is
   // placed. Under payment first an unpaid order is not on the board at all, so

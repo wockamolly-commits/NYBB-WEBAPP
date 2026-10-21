@@ -297,7 +297,7 @@ export function ItemConfigurator({
                 at 12px with normal tracking close up into a single shape.
                 It keeps its own tracking rather than the legend's, so it
                 stays visibly a second voice inside the same line. */}
-            <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-[0.08em]">
+            <span className="text-nybb-bone/55 ml-2 font-sans text-xs tracking-[0.08em]">
               {group.minSelect > 0 ? "Required" : "Optional"}
               {group.maxSelect > 1 ? `, up to ${group.maxSelect}` : ""}
             </span>

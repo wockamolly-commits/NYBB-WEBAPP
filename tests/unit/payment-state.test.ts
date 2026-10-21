@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { paymentState } from "@/lib/orders/payment-state";
+import { paymentState, paymentWindowClosing } from "@/lib/orders/payment-state";
 
 /**
  * The rule a waiting payment screen moves on by. Only a payment row the
@@ -34,6 +34,13 @@ describe("paymentState", () => {
   it("closes when the order ended before it was paid", () => {
     expect(paymentState(order("cancelled", { method: "qrph", status: "pending" }))).toBe("closed");
     expect(paymentState(order("rejected", { method: "qrph", status: "refunded" }))).toBe("closed");
+  });
+
+  it("closes an order that ended even when money arrived for it", () => {
+    // Paid after the expiry sweep cancelled it. The money is owed back; the
+    // screen must not send the customer on as though the food is coming.
+    expect(paymentState(order("cancelled", { method: "qrph", status: "paid" }))).toBe("closed");
+    expect(paymentState(order("rejected", { method: "qrph", status: "paid" }))).toBe("closed");
   });
 
   it("never settles a counter order or an order with no payment row", () => {
@@ -85,5 +92,24 @@ describe("POST /api/orders/payment-state", () => {
     const response = await POST(post("{not json"));
     expect(response.status).toBe(400);
     expect(mocks.read).not.toHaveBeenCalled();
+  });
+});
+
+describe("paymentWindowClosing", () => {
+  const placed = "2026-10-21T02:00:00.000Z";
+  const at = (minutes: number) => new Date(Date.parse(placed) + minutes * 60_000);
+
+  it("lets a payment start well inside the window", () => {
+    expect(paymentWindowClosing(placed, 15, at(5))).toBe(false);
+    expect(paymentWindowClosing(placed, 15, at(11.9))).toBe(false);
+  });
+
+  it("refuses to open a payment in the last minutes before the sweep", () => {
+    expect(paymentWindowClosing(placed, 15, at(12))).toBe(true);
+    expect(paymentWindowClosing(placed, 15, at(20))).toBe(true);
+  });
+
+  it("does not refuse on a timestamp it cannot read", () => {
+    expect(paymentWindowClosing("not a date", 15, at(20))).toBe(false);
   });
 });

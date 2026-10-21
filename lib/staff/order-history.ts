@@ -257,7 +257,13 @@ export function matchesOrderHistoryQuery(
 
 export function summarizeOrderHistory(orders: readonly OrderHistoryEntry[]) {
   const realOrders = orders.filter((order) => !order.isTest);
-  const paidOrders = realOrders.filter((order) => order.payment?.status === "paid");
+  // A sale the branch refused or the customer pulled is money owed back, not
+  // money taken, the same line order_analytics draws (0063). Counting them
+  // here made "Paid sales" include refunds still to be made.
+  const paidOrders = realOrders.filter(
+    (order) =>
+      order.payment?.status === "paid" && order.status !== "rejected" && order.status !== "cancelled",
+  );
   return {
     orderCount: orders.length,
     testOrderCount: orders.length - realOrders.length,

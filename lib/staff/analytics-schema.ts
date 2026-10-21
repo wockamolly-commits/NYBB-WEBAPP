@@ -97,6 +97,9 @@ export const salesReportSchema = z.object({
   orders_count: z.number().int(),
   paid_count: z.number().int(),
   gross_sales_cents: z.number(),
+  // Since 0096. Defaulted so a database that predates it still parses; a
+  // missing figure there genuinely is "no refunds subtracted".
+  refunded_cents: z.number().optional().default(0),
   avg_order_value_cents: z.number(),
   discounts: z.object({
     given_cents: z.number(),

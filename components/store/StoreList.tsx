@@ -15,6 +15,7 @@ import {
   suggestNearest,
 } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
+import { formatOpening } from "@/lib/slots/format";
 import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
 import { NearestCounter } from "./NearestCounter";
@@ -515,7 +516,13 @@ export function StoreList({
 
                     {shut ? (
                       <span className="mt-1 block">
-                        Closed right now. You can choose it once it opens.
+                        {store.branch?.opensAt
+                          ? `Closed right now. Opens at ${formatOpening(
+                              store.branch.opensAt,
+                              store.branch.timezone,
+                              new Date().toISOString(),
+                            )}.`
+                          : "Closed right now. You can choose it once it opens."}
                       </span>
                     ) : null}
                   </span>

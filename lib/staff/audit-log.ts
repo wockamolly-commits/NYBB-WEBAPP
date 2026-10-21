@@ -10,6 +10,7 @@ import {
 } from "./manila-dates";
 import { BUSINESS_WIDE_BRANCH, normalizeBranchFilter } from "./branch-filter";
 import { ilikeOrFilter, ilikePattern } from "./search-pattern";
+import { RESTRICTED_VALUE } from "./audit-detail";
 
 export const AUDIT_PAGE_SIZE = 50;
 
@@ -34,8 +35,19 @@ export type AuditLogEntry = {
   targetId: string | null;
   branchName: string | null;
   actorName: string | null;
+  /**
+   * True when a person made the change but their profile is not readable to
+   * this viewer, which is what a branch manager sees for the Super Admin.
+   * Distinct from a null actor, which is the system.
+   */
+  actorHidden: boolean;
   actorRole: "admin" | "staff" | null;
   detail: Record<string, unknown> | null;
+  /**
+   * True when the detail still carries a promo code this viewer may not read
+   * (0098). The database masked it and declined to hand over the full copy.
+   */
+  restricted: boolean;
 };
 
 export type AuditLogPage = {
@@ -94,7 +106,19 @@ function isRedactedKey(key: string): boolean {
   return REDACTED_KEYS.has(normalized)
     || normalized.endsWith("_token")
     || normalized.endsWith("_secret")
-    || normalized.endsWith("_phone");
+    || normalized.endsWith("_phone")
+    // Lists of numbers, like a voucher's restricted customers. The database
+    // masks these since 0095; this covers any row or key it does not.
+    || normalized.endsWith("phones")
+    || normalized.endsWith("phone_digits");
+}
+
+/** Whether any value in the diff is a promo code the database masked. */
+export function hasRestrictedValue(value: unknown): boolean {
+  if (value === RESTRICTED_VALUE) return true;
+  if (Array.isArray(value)) return value.some(hasRestrictedValue);
+  if (value && typeof value === "object") return Object.values(value).some(hasRestrictedValue);
+  return false;
 }
 
 /** Walks the diff and blanks any value whose key names a credential. */
@@ -123,13 +147,14 @@ const rowSchema = z.object({
   action: z.string(),
   target_table: z.string(),
   target_id: z.string().nullable(),
+  actor_profile_id: z.string().nullable().optional(),
   diff: z.unknown(),
   branches: z.union([branchSchema, z.array(branchSchema)]).nullable(),
   actor: z.union([actorSchema, z.array(actorSchema)]).nullable(),
 });
 
 const auditSelect = `
-  id, created_at, action, target_table, target_id, diff,
+  id, created_at, action, target_table, target_id, actor_profile_id, diff,
   branches ( short_name ),
   actor:profiles!audit_logs_actor_profile_id_fkey ( display_name, role )
 `;
@@ -187,12 +212,44 @@ export function toAuditLogEntry(value: unknown): AuditLogEntry | null {
     targetId: row.target_id,
     branchName: first(row.branches)?.short_name ?? null,
     actorName: actor?.display_name ?? null,
+    actorHidden: !actor && Boolean(row.actor_profile_id),
     actorRole: actor?.role ?? null,
     detail:
       detail && typeof detail === "object" && !Array.isArray(detail)
         ? (detail as Record<string, unknown>)
         : null,
+    restricted: hasRestrictedValue(detail),
   };
+}
+
+const restrictedRowSchema = z.object({
+  audit_log_id: z.union([z.number().int(), z.string()]),
+  diff: z.unknown(),
+});
+
+/**
+ * Puts the full diff back on the entries whose promo codes were masked, for a
+ * viewer the database allows to see them. The policy on
+ * audit_log_restricted_details (0098) decides: vouchers:manage, and the audit
+ * row itself readable. This asks for every masked entry on the page and
+ * swaps in whatever comes back, so a viewer without the permission simply
+ * gets nothing and keeps the masked copy.
+ */
+export function withRestrictedDetails(
+  entries: AuditLogEntry[],
+  rows: readonly unknown[],
+): AuditLogEntry[] {
+  const full = new Map<string, unknown>();
+  for (const row of rows) {
+    const parsed = restrictedRowSchema.safeParse(row);
+    if (parsed.success) full.set(String(parsed.data.audit_log_id), parsed.data.diff);
+  }
+  return entries.map((entry) => {
+    if (!full.has(entry.id)) return entry;
+    const detail = redactAuditDetail(full.get(entry.id));
+    if (!detail || typeof detail !== "object" || Array.isArray(detail)) return entry;
+    return { ...entry, detail: detail as Record<string, unknown>, restricted: false };
+  });
 }
 
 /**
@@ -234,13 +291,27 @@ export async function getAuditLog(
     return null;
   }
 
-  const entries = (data ?? [])
+  let entries = (data ?? [])
     .map((row) => {
       const entry = toAuditLogEntry(row);
       if (!entry) console.error("[workspace] skipped an unreadable audit row");
       return entry;
     })
     .filter((entry): entry is AuditLogEntry => entry !== null);
+
+  const masked = entries.filter((entry) => entry.restricted).map((entry) => entry.id);
+  if (masked.length > 0) {
+    const restricted = await supabase
+      .from("audit_log_restricted_details")
+      .select("audit_log_id, diff")
+      .in("audit_log_id", masked);
+    if (restricted.error) {
+      // The masked copy is still right to show; it is only less complete.
+      console.error("[workspace] restricted audit detail query failed:", restricted.error.message);
+    } else {
+      entries = withRestrictedDetails(entries, restricted.data ?? []);
+    }
+  }
 
   // A full page is the only evidence that another one exists. Asking for one
   // more row per page to know for certain is not worth a second query shape.

@@ -150,7 +150,7 @@ describe("item write RPCs", () => {
 
   it("grants execute to authenticated and never to anon", async () => {
     for (const signature of [
-      "staff_save_menu_item(uuid, uuid, text, text, text, boolean, boolean, jsonb, uuid[])",
+      "staff_save_menu_item(uuid, uuid, text, text, text, boolean, boolean, jsonb, uuid[], jsonb)",
       "staff_set_menu_item_image(uuid, text, int, int, text, text, text)",
       "staff_set_option_variation_prices(uuid, uuid, jsonb)",
     ]) {
@@ -456,12 +456,12 @@ describe("item write RPCs", () => {
 
   it("writes the image columns together", async () => {
     const item = await itemId(db, "fries");
-    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 900, 900, 'data:image/webp;base64,AA', 'cutout', 'uploaded')`);
+    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 900, 900, 'data:image/webp;base64,AA', 'cutout', 'uploaded')`);
     const row = (await asUser<{ image_url: string; image_width: number; image_height: number; image_blur_data_url: string; image_treatment: string; image_source: string }>(
       db, MANAGER, `select image_url, image_width, image_height, image_blur_data_url, image_treatment, image_source from menu_items where id = '${item}'`,
     ))[0];
     expect(row).toEqual({
-      image_url: "https://example.test/a.webp",
+      image_url: "https://example.supabase.co/storage/v1/object/public/menu-images/a.webp",
       image_width: 900,
       image_height: 900,
       image_blur_data_url: "data:image/webp;base64,AA",
@@ -476,8 +476,8 @@ describe("item write RPCs", () => {
 
   it("clears an image and writes no second audit row for a repeat", async () => {
     const item = await itemId(db, "fries");
-    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 900, 900, null, null, null)`);
-    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 900, 900, null, null, null)`);
+    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 900, 900, null, null, null)`);
+    await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 900, 900, null, null, null)`);
     await asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', null, null, null, null, null, null)`);
 
     expect(await scalar<string | null>(db, `select image_url from menu_items where id = '${item}'`)).toBeNull();
@@ -488,20 +488,20 @@ describe("item write RPCs", () => {
   it("refuses an image url that arrives without a width and a height", async () => {
     const item = await itemId(db, "fries");
     await expect(
-      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', null, 900, null, null, null)`),
+      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', null, 900, null, null, null)`),
     ).rejects.toThrow(/INVALID_INPUT/);
     await expect(
-      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 900, null, null, null, null)`),
+      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 900, null, null, null, null)`),
     ).rejects.toThrow(/INVALID_INPUT/);
     await expect(
-      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 0, 900, null, null, null)`),
+      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 0, 900, null, null, null)`),
     ).rejects.toThrow(/INVALID_INPUT/);
   });
 
   it("refuses a treatment the column would not accept and an item that is not there", async () => {
     const item = await itemId(db, "fries");
     await expect(
-      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.test/a.webp', 900, 900, null, 'sepia', null)`),
+      asUser(db, MANAGER, `select staff_set_menu_item_image('${item}', 'https://example.supabase.co/storage/v1/object/public/menu-images/a.webp', 900, 900, null, 'sepia', null)`),
     ).rejects.toThrow(/INVALID_INPUT/);
     await expect(
       asUser(db, MANAGER, `select staff_set_menu_item_image('${MISSING}', null, null, null, null, null, null)`),

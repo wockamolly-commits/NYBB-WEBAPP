@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/Button";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
 import { formatPeso } from "@/lib/format";
 import { telHref } from "@/lib/phone";
+import { cn } from "@/lib/utils";
 import {
   REJECT_REASON_CODES,
   REJECT_REASON_LABELS,
   type RejectReasonCode,
 } from "@/lib/orders/reject-reasons";
-import { boardAction, paymentLabel } from "@/lib/staff/board";
+import { boardAction, paymentLabel, pickupUrgency } from "@/lib/staff/board";
 import type { StaffOrderActionResult, WorkspaceOrder } from "@/lib/staff/order-types";
 import { claimOrder, markOrderReady, rejectOrder, ringCustomerAgain, startOrder } from "./actions";
 import { RefundControl } from "./RefundControl";
+import { useBoardClock } from "./useBoardClock";
 
 function manilaTime(value: string): string {
   return new Date(value).toLocaleTimeString("en-PH", {
@@ -41,6 +43,8 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
   }
 
   const action = boardAction(order);
+  const now = useBoardClock();
+  const urgency = now === null ? null : pickupUrgency(order, now);
 
   return (
     <article className="bg-nybb-charcoal rounded-md p-4">
@@ -78,11 +82,38 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
           appear twice and a counter had no way to tell which "6:45" was the
           one the customer was coming back for.
         */}
-        <span className="bg-nybb-graphite shrink-0 rounded px-2 py-1 text-right">
-          <span className="type-caps text-nybb-bone/60 block text-[0.625rem]">Pickup</span>
+        <span
+          className={cn(
+            "shrink-0 rounded px-2 py-1 text-right",
+            urgency?.kind === "late"
+              ? "bg-nybb-red-deep text-nybb-bone"
+              : urgency?.kind === "overdue"
+                ? "bg-nybb-yellow text-nybb-ink"
+                : "bg-nybb-graphite",
+          )}
+        >
+          <span
+            className={cn(
+              "type-caps block text-xs",
+              urgency?.kind === "overdue" ? "text-nybb-ink/75" : "text-nybb-bone/70",
+            )}
+          >
+            Pickup
+          </span>
           <span className="mt-0.5 block font-mono text-sm">
             {order.pickupAt ? manilaTime(order.pickupAt) : "Not set"}
           </span>
+          {/* The countdown spec section 13 asks for. Words as well as colour,
+              so the state does not depend on telling amber from red. */}
+          {urgency ? (
+            <span className="mt-0.5 block text-xs font-medium">
+              {urgency.kind === "upcoming"
+                ? `in ${urgency.minutes} min`
+                : urgency.minutes === 0
+                  ? "due now"
+                  : `${urgency.minutes} min past`}
+            </span>
+          ) : null}
         </span>
       </div>
 
@@ -151,6 +182,14 @@ export function OrderCard({ order, mayRefund }: { order: WorkspaceOrder; mayRefu
         <p className="border-nybb-bone/20 text-nybb-bone/55 mt-4 flex items-center justify-center gap-2 rounded-md border border-dashed px-3 py-3 text-sm">
           <Clock3 aria-hidden className="size-4" />
           Waiting for the customer to pay
+        </p>
+      ) : null}
+      {action.kind === "refunded" ? (
+        // A refund finished while the order was still live. Starting or
+        // readying it would hand over food that has been paid back, and
+        // staff_set_order_status refuses it for the same reason.
+        <p className="border-nybb-red/50 text-nybb-bone mt-4 rounded-md border border-dashed px-3 py-3 text-center text-sm">
+          Payment refunded. Refuse this order so it leaves the board.
         </p>
       ) : null}
       {action.kind === "start" ? (

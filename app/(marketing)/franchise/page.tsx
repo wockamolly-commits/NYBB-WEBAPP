@@ -63,7 +63,7 @@ export default function FranchisePage() {
               the margin of a contact form. The numbers themselves are kept in
               docs/IMPLEMENTATION-PROMPT.md and PRODUCT.md. */}
           <section>
-            <h2 className="type-caps text-nybb-ink/50">Talk to a person</h2>
+            <h2 className="type-caps text-nybb-ink/70">Talk to a person</h2>
             <p className="mt-3">
               Five Brad Dragons Food Franchise Corporation
               <br />

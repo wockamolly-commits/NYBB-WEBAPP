@@ -219,7 +219,8 @@ function HoursEditor({
           );
         })}
       </div>
-      <p className="text-nybb-bone/55 mt-3 text-xs">Saved as: {week.filter((day) => !day.isClosed).map(formatWindow).join(", ") || "No published hours"}</p>
+      <p className="text-nybb-bone/55 mt-3 text-xs">To stay open all day, set 12:00 AM to 12:00 AM.</p>
+      <p className="text-nybb-bone/55 mt-1 text-xs">Saved as: {week.filter((day) => !day.isClosed).map(formatWindow).join(", ") || "No published hours"}</p>
       <Button type="submit" tone="dark" variant="secondary" className="mt-5" disabled={pending}>{pending ? <LoaderCircle aria-hidden className="size-4 animate-spin motion-reduce:animate-none" /> : <Save aria-hidden className="size-4" />}Save hours</Button>
       <Message state={state} />
     </form>

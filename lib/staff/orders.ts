@@ -97,16 +97,32 @@ function toWorkspaceOrder(value: unknown): WorkspaceOrder | null {
   };
 }
 
+/**
+ * How many live orders the board reads. Ordered newest first, so when there
+ * are more than this it is the oldest that fall off rather than the order that
+ * just landed, and the board says so (see `truncated`).
+ *
+ * It used to read the 100 OLDEST, which meant a backlog of forgotten Ready
+ * orders could silently push every new order off the screen.
+ */
+export const BOARD_ACTIVE_LIMIT = 200;
+
+export type WorkspaceBoard = {
+  orders: WorkspaceOrder[];
+  /** True when there were more live orders than the board reads. */
+  truncated: boolean;
+};
+
 export async function getWorkspaceOrders(
   branchId: string | null,
-): Promise<WorkspaceOrder[] | null> {
+): Promise<WorkspaceBoard | null> {
   const supabase = await createReadOnlyStaffClient();
   const activeQuery = supabase
     .from("orders")
     .select(orderSelect)
     .in("status", ["pending", "accepted", "preparing", "ready"])
-    .order("placed_at", { ascending: true })
-    .limit(100);
+    .order("placed_at", { ascending: false })
+    .limit(BOARD_ACTIVE_LIMIT);
   const claimedQuery = supabase
     .from("orders")
     .select(orderSelect)
@@ -126,10 +142,92 @@ export async function getWorkspaceOrders(
     return null;
   }
 
-  return [...(active.data ?? []), ...(claimed.data ?? [])]
+  const orders = [...(active.data ?? []).reverse(), ...(claimed.data ?? [])]
     .map(toWorkspaceOrder)
     .filter((order): order is WorkspaceOrder => order !== null)
-    // An online order is not work for the kitchen until the webhook confirms
-    // it. Counter orders retain the existing pending queue behaviour.
-    .filter((order) => order.payment?.provider !== "paymongo" || order.payment.status === "paid");
+    .filter(onTheBoard);
+
+  return { orders, truncated: (active.data ?? []).length >= BOARD_ACTIVE_LIMIT };
+}
+
+/**
+ * Whether an order belongs on the board at all.
+ *
+ * An online order is not work for the kitchen until the webhook confirms it,
+ * so one still waiting on PayMongo (or whose payment failed) stays off. A
+ * refunded one stays ON: it was paid, it may already be in the kitchen, and
+ * hiding it used to leave it live but invisible, in neither the board nor
+ * History, which lists only finished orders. Counter orders keep the existing
+ * pending queue behaviour.
+ */
+export function onTheBoard(order: WorkspaceOrder): boolean {
+  if (order.payment?.provider !== "paymongo") return true;
+  return order.payment.status === "paid" || order.payment.status === "refunded";
+}
+
+export type RefundOwed = {
+  id: string;
+  shortCode: string;
+  status: "cancelled" | "rejected";
+  customerName: string;
+  customerPhone: string;
+  totalCents: number;
+  closedReason: string | null;
+};
+
+const refundOwedSchema = z.object({
+  id: z.uuid(),
+  short_code: z.string(),
+  status: z.enum(["cancelled", "rejected"]),
+  customer_name: z.string(),
+  customer_phone: z.string(),
+  total_cents: z.coerce.number().int().nonnegative(),
+  cancelled_reason: z.string().nullable(),
+  payments: z.union([
+    z.object({ needs_refund: z.boolean() }),
+    z.array(z.object({ needs_refund: z.boolean() })),
+  ]).nullable(),
+});
+
+/**
+ * Ended orders holding money that has to go back.
+ *
+ * payments.needs_refund is set when a payment lands on an order that is
+ * already cancelled or rejected: a customer who paid after the expiry sweep, or
+ * an order refused after it was paid. Nothing read it before, so the only way
+ * to find one was to scroll History. The board lists them until the refund is
+ * made, which clears the flag (0033).
+ */
+export async function getRefundsOwed(branchId: string | null): Promise<RefundOwed[]> {
+  const supabase = await createReadOnlyStaffClient();
+  const query = supabase
+    .from("orders")
+    .select(
+      "id, short_code, status, customer_name, customer_phone, total_cents, cancelled_reason, payments!inner ( needs_refund )",
+    )
+    .in("status", ["cancelled", "rejected"])
+    .eq("payments.needs_refund", true)
+    .order("placed_at", { ascending: false })
+    .limit(20);
+  if (branchId) query.eq("branch_id", branchId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("[workspace] refunds owed query failed", error.message);
+    return [];
+  }
+  return (data ?? []).flatMap((value) => {
+    const parsed = refundOwedSchema.safeParse(value);
+    if (!parsed.success) return [];
+    const row = parsed.data;
+    return [{
+      id: row.id,
+      shortCode: row.short_code,
+      status: row.status,
+      customerName: row.customer_name,
+      customerPhone: row.customer_phone,
+      totalCents: row.total_cents,
+      closedReason: row.cancelled_reason,
+    }];
+  });
 }

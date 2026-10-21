@@ -115,7 +115,16 @@ export type ManagedOptionGroup = {
   options: ManagedOption[];
   /** Item ids this group is linked to, for the "used by" line. */
   linkedItemIds: string[];
+  /**
+   * The selection rule this group most often has where it is linked, so an
+   * item that newly offers it starts from the same rule rather than from
+   * "optional, one choice". Null when it is linked nowhere.
+   */
+  typicalRule?: OptionRule | null;
 };
+
+/** How many choices a customer must and may make from one group on one item. */
+export type OptionRule = { minSelect: number; maxSelect: number };
 
 export type ManagedItemOptionLink = {
   groupId: string;

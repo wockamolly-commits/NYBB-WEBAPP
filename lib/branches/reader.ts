@@ -31,6 +31,8 @@ const orderableBranchSchema = z.object({
   prepMinutes: z.number().int().positive(),
   acceptsOrdersNow: z.boolean(),
   isOpenNow: z.boolean(),
+  // Since 0092. Defaulted so a database that predates it still parses.
+  opensAt: z.string().nullable().optional().default(null),
 });
 
 const orderableBranchesSchema = z.array(orderableBranchSchema);
@@ -133,6 +135,7 @@ async function singleBranchFallback(): Promise<OrderableBranch[]> {
       prepMinutes: slots.branch.prepMinutes,
       acceptsOrdersNow: slots.unavailableReason !== "not_accepting",
       isOpenNow: slots.unavailableReason !== "closed_now",
+      opensAt: slots.opensAt ?? null,
     },
   ];
 }

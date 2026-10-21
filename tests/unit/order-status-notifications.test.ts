@@ -25,6 +25,12 @@ const revalidatePath = vi.fn();
 const notifyCustomer = vi.fn<(orderId: string) => Promise<CustomerNotifyResult>>(
   async () => ({ ok: true, delivered: 1 }),
 );
+// The ready push goes through a once-per-order claim (0097), so a repeated
+// Ready tap does not buzz the customer twice. What it does after the claim is
+// notifyCustomer, tested on its own.
+const notifyCustomerReady = vi.fn<(orderId: string) => Promise<CustomerNotifyResult | null>>(
+  async () => ({ ok: true, delivered: 1 }),
+);
 const rpc = vi.fn<(...args: unknown[]) => Promise<{ data: unknown; error: unknown }>>(
   async () => ({ data: null, error: null }),
 );
@@ -46,6 +52,7 @@ vi.mock("next/cache", () => ({
 }));
 vi.mock("@/lib/push/dispatch", () => ({
   notifyCustomer: (orderId: string) => notifyCustomer(orderId),
+  notifyCustomerReady: (orderId: string) => notifyCustomerReady(orderId),
 }));
 vi.mock("@/lib/staff/session", () => ({
   getStaffProfile: () => getStaffProfile(),
@@ -71,8 +78,9 @@ describe("who setStatus and rejectOrder tell", () => {
   it("notifies the customer exactly once when an order is marked ready", async () => {
     const result = await markOrderReady(ORDER_ID);
     expect(result.ok).toBe(true);
-    expect(notifyCustomer).toHaveBeenCalledTimes(1);
-    expect(notifyCustomer).toHaveBeenCalledWith(ORDER_ID);
+    expect(notifyCustomerReady).toHaveBeenCalledTimes(1);
+    expect(notifyCustomerReady).toHaveBeenCalledWith(ORDER_ID);
+    expect(notifyCustomer).not.toHaveBeenCalled();
     expect(after).toHaveBeenCalledTimes(1);
   });
 

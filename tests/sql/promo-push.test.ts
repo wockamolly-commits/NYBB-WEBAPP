@@ -24,8 +24,8 @@ import { freshDatabase, scalar } from "./harness";
 const STAFF = "79000000-0000-4000-8000-000000000001";
 const CUSTOMER = "79000000-0000-4000-8000-000000000002";
 
-const ENDPOINT = "https://push.example/promo-a";
-const TABLET = "https://push.example/counter-tablet";
+const ENDPOINT = "https://fcm.googleapis.com/fcm/send/promo-a";
+const TABLET = "https://fcm.googleapis.com/fcm/send/counter-tablet";
 const P256DH = "p256dh-key";
 const AUTH = "auth-key";
 
@@ -210,7 +210,7 @@ describe("who gets sent to", () => {
     await optIn(db);
     await db.exec(`
       insert into push_subscriptions (audience, transport, endpoint, p256dh, auth_key)
-      values ('customer', 'web', 'https://push.example/order-only', 'k', 'a');
+      values ('customer', 'web', 'https://fcm.googleapis.com/fcm/send/order-only', 'k', 'a');
     `);
     const rows = await db.query<{ endpoint: string }>("select endpoint from promo_push_targets()");
     expect(rows.rows.map((r) => r.endpoint)).toEqual([ENDPOINT]);
@@ -352,16 +352,28 @@ describe("who may call what", () => {
   const can = (role: string, signature: string) =>
     scalar<boolean>(db, `select has_function_privilege('${role}', '${signature}', 'execute')`);
 
-  it("lets a browser opt in and out, guest or signed in", async () => {
+  it("registers only through the server, and lets a browser opt out directly", async () => {
     const reg = "register_promo_push_subscription(text, text, text)";
     const forget = "forget_promo_push_subscription(text)";
-    expect(await can("anon", reg)).toBe(true);
-    expect(await can("authenticated", reg)).toBe(true);
+    // 0094: registering is service role only, behind the Server Action's
+    // address limit. A direct call could otherwise add any number of
+    // endpoints, each of which the announcement then POSTs to.
+    expect(await can("anon", reg)).toBe(false);
+    expect(await can("authenticated", reg)).toBe(false);
+    expect(await can("service_role", reg)).toBe(true);
     expect(await can("anon", forget)).toBe(true);
     expect(await can("authenticated", forget)).toBe(true);
-    // The send path reads subscriptions directly and has no reason to
-    // register one, the same reasoning 0047 records.
-    expect(await can("service_role", reg)).toBe(false);
+  });
+
+  it("refuses an endpoint that is not a browser push service", async () => {
+    expect(
+      await scalar<boolean>(
+        db,
+        "select register_promo_push_subscription('https://169.254.169.254/latest/meta-data', 'k', 'a')",
+      ),
+    ).toBe(false);
+    // The control: a real push service host on the same settings is accepted.
+    expect(await optIn(db)).toBe(true);
   });
 
   it("keeps the subscriber list and the announcement claim server side", async () => {

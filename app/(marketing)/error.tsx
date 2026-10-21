@@ -31,7 +31,10 @@ export default function StorefrontError({
   }, [error]);
 
   return (
-    <main id="main" role="alert" className="mx-auto max-w-xl px-4 py-16 text-center sm:py-24">
+    // A div, not <main>: this renders inside the storefront layout's own
+    // <main id="main">, and a second one nested in it was a duplicate landmark
+    // and a duplicate id.
+    <div role="alert" className="mx-auto max-w-xl px-4 py-16 text-center sm:py-24">
       <p className="type-caps text-nybb-ink/65 font-mono-tabular">Something broke</p>
       <h1 className="font-display heading-page mt-4">This page did not load</h1>
       <p className="text-nybb-ink/75 mt-5 text-base leading-relaxed">
@@ -52,6 +55,6 @@ export default function StorefrontError({
       {error.digest ? (
         <p className="text-nybb-ink/60 mt-8 font-mono text-xs">Reference {error.digest}</p>
       ) : null}
-    </main>
+    </div>
   );
 }

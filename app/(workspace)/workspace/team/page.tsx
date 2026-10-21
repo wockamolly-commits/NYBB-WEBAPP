@@ -6,7 +6,7 @@ import {
   listAssignableBranches,
   listPermissionOverrides,
 } from "@/lib/staff/team";
-import { requireStaff } from "@/lib/staff/session";
+import { requireStaff, WORKSPACE_DENIED } from "@/lib/staff/session";
 import { WorkspaceAccessManager } from "./WorkspaceAccessManager";
 
 // Every other workspace page names its own tab. This one did not, so the
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Workspace access" };
 
 export default async function WorkspaceTeamPage() {
   const { profile } = await requireStaff("/workspace/team");
-  if (profile.role !== "admin") redirect("/workspace");
+  if (profile.role !== "admin") redirect(WORKSPACE_DENIED);
 
   const [members, branches, overrides] = await Promise.all([
     getWorkspaceMembers(),

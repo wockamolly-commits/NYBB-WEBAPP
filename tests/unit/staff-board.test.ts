@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { awaitsPayment, boardAction, describePayment, paymentLabel } from "@/lib/staff/board";
+import {
+  awaitsPayment,
+  boardAction,
+  describePayment,
+  paymentLabel,
+  pickupUrgency,
+} from "@/lib/staff/board";
 import type { WorkspaceOrder } from "@/lib/staff/order-types";
 
 /**
@@ -138,5 +144,39 @@ describe("what a closed order says about money", () => {
     const due = { method: "counter", status: "due" };
     expect(describePayment(due)).toBe("Collect at counter");
     expect(describePayment(due, { settled: true })).toBe("Never paid at the counter");
+  });
+});
+
+describe("an order whose payment was refunded while it was live", () => {
+  const refunded = { method: "qrph", provider: "paymongo", status: "refunded" };
+
+  it("offers nothing to cook or hand over", () => {
+    for (const status of ["pending", "accepted", "preparing", "ready"] as const) {
+      expect(boardAction(order({ status, payment: refunded })), status).toEqual({ kind: "refunded" });
+    }
+  });
+
+  it("leaves a claimed order done", () => {
+    expect(boardAction(order({ status: "claimed", payment: refunded }))).toEqual({ kind: "done" });
+  });
+});
+
+describe("pickupUrgency", () => {
+  const pickupAt = "2026-08-12T04:00:00.000Z";
+  const at = (minutes: number) => Date.parse(pickupAt) + minutes * 60_000;
+
+  it("counts down to the pickup time", () => {
+    expect(pickupUrgency(order({ status: "preparing", pickupAt }), at(-12))).toEqual({ kind: "upcoming", minutes: 12 });
+  });
+
+  it("turns amber once the time passes, then red a window later", () => {
+    expect(pickupUrgency(order({ status: "ready", pickupAt }), at(0))).toEqual({ kind: "overdue", minutes: 0 });
+    expect(pickupUrgency(order({ status: "ready", pickupAt }), at(14))).toEqual({ kind: "overdue", minutes: 14 });
+    expect(pickupUrgency(order({ status: "pending", pickupAt }), at(15))).toEqual({ kind: "late", minutes: 15 });
+  });
+
+  it("has nothing to say about a collected order or one with no time", () => {
+    expect(pickupUrgency(order({ status: "claimed", pickupAt }), at(60))).toBeNull();
+    expect(pickupUrgency(order({ pickupAt: null }), at(60))).toBeNull();
   });
 });

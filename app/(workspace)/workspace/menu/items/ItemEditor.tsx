@@ -15,6 +15,7 @@ import type {
   ManagedItem,
   ManagedOptionGroup,
   MenuActionState,
+  OptionRule,
 } from "@/lib/staff/menu-types";
 import { deleteMenuEntity, saveMenuItem } from "../actions";
 import { MenuStatusMessage } from "../MenuStatusMessage";
@@ -105,6 +106,28 @@ export function ItemEditor({
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(
     () => new Set((item?.optionLinks ?? []).map((link) => link.groupId)),
   );
+
+  /**
+   * How many choices each linked group asks for, keyed by group id.
+   *
+   * Seeded from the saved links. A group ticked during this visit starts from
+   * the rule it already has on other items (its typicalRule), and only falls
+   * back to "optional, one choice" when it is linked nowhere. Before this, the
+   * screen never sent a rule at all, so a relinked flavour group silently
+   * became optional and wings could be ordered with no flavour.
+   */
+  const [rules, setRules] = useState<Map<string, OptionRule>>(
+    () =>
+      new Map(
+        (item?.optionLinks ?? []).map((link) => [
+          link.groupId,
+          { minSelect: link.minSelect, maxSelect: link.maxSelect },
+        ]),
+      ),
+  );
+  const ruleFor = (groupId: string): OptionRule =>
+    rules.get(groupId) ??
+    optionGroups.find((group) => group.id === groupId)?.typicalRule ?? { minSelect: 0, maxSelect: 1 };
 
   /**
    * Re-seed the size rows when the saved sizes change underneath the form.
@@ -198,6 +221,7 @@ export function ItemEditor({
       isActive: size.isActive,
     })),
     optionGroupIds: orderedGroupIds,
+    optionGroupRules: orderedGroupIds.map((groupId) => ({ groupId, ...ruleFor(groupId) })),
   });
 
   /**
@@ -221,7 +245,11 @@ export function ItemEditor({
         ? "An item needs at least one size on the menu, even if it only has one price."
         : activeSizes.some((size) => !size.label.trim() || !size.shortLabel.trim())
           ? "Every size needs a name and a short name for the ticket."
-          : sizes.some((size) => !size.isActive && (!size.label.trim() || !size.shortLabel.trim()))
+          : activeSizes.some((size) => pesosToCents(size.pesos) <= 0)
+            ? "Every size on the menu needs a price. A blank price would sell it for nothing."
+            : orderedGroupIds.some((groupId) => ruleFor(groupId).minSelect > ruleFor(groupId).maxSelect)
+              ? "An option group cannot require more choices than it allows."
+            : sizes.some((size) => !size.isActive && (!size.label.trim() || !size.shortLabel.trim()))
             ? "A size you removed is missing its name. Undo it, fill it in, then remove it again."
             : sizes.some((size) => pesosToCents(size.pesos) > MAX_PRICE_CENTS)
               ? "A price cannot be more than PHP 100,000."
@@ -334,6 +362,10 @@ export function ItemEditor({
 
   function updateSize(key: string, patch: Partial<SizeDraft>) {
     setSizes((current) => current.map((size) => (size.key === key ? { ...size, ...patch } : size)));
+  }
+
+  function setRule(groupId: string, patch: Partial<OptionRule>) {
+    setRules((current) => new Map(current).set(groupId, { ...ruleFor(groupId), ...patch }));
   }
 
   function toggleGroup(groupId: string, checked: boolean) {
@@ -531,25 +563,65 @@ export function ItemEditor({
               <p className="text-nybb-bone/65 text-sm">No option groups exist yet.</p>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {optionGroups.map((group) => (
-                  <label
-                    key={group.id}
-                    className="border-nybb-bone/15 flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2"
-                  >
-                    <WorkspaceCheckbox
-                      checked={selectedGroupIds.has(group.id)}
-                      onChange={(event) => toggleGroup(group.id, event.target.checked)}
-                      disabled={disabled}
-                    />
-                    <span className="min-w-0 text-sm">
-                      {group.name}
-                      <span className="text-nybb-bone/65 ml-2 text-xs">
-                        {group.options.length} option{group.options.length === 1 ? "" : "s"}
-                        {group.isActive ? "" : ", off the menu"}
-                      </span>
-                    </span>
-                  </label>
-                ))}
+                {optionGroups.map((group) => {
+                  const selected = selectedGroupIds.has(group.id);
+                  const rule = ruleFor(group.id);
+                  // At least one, so a group whose options are all off can
+                  // still be linked and saved.
+                  const most = Math.max(1, Math.min(20, group.options.length));
+                  return (
+                    <div key={group.id} className="border-nybb-bone/15 rounded-md border">
+                      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3.5 py-2">
+                        <WorkspaceCheckbox
+                          checked={selected}
+                          onChange={(event) => toggleGroup(group.id, event.target.checked)}
+                          disabled={disabled}
+                        />
+                        <span className="min-w-0 text-sm">
+                          {group.name}
+                          <span className="text-nybb-bone/65 ml-2 text-xs">
+                            {group.options.length} option{group.options.length === 1 ? "" : "s"}
+                            {group.isActive ? "" : ", off the menu"}
+                          </span>
+                        </span>
+                      </label>
+                      {selected ? (
+                        <div className="border-nybb-bone/15 flex flex-wrap items-center gap-x-5 gap-y-2 border-t px-3.5 py-2.5 text-sm">
+                          <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                            <WorkspaceCheckbox
+                              checked={rule.minSelect > 0}
+                              onChange={(event) =>
+                                setRule(group.id, { minSelect: event.target.checked ? 1 : 0 })
+                              }
+                              disabled={disabled}
+                              aria-label={`Customer must choose from ${group.name}`}
+                            />
+                            Customer must choose
+                          </label>
+                          <WorkspaceSelect
+                            id={`${uid}-max-${group.id}`}
+                            name="maxSelectControl"
+                            label="Most they can pick"
+                            triggerLabel={`Most choices from ${group.name}`}
+                            className="min-w-40"
+                            options={Array.from(
+                              { length: Math.max(most, rule.maxSelect) },
+                              (_unused, index) => {
+                                const count = index + 1;
+                                return { value: String(count), label: `${count} ${count === 1 ? "choice" : "choices"}` };
+                              },
+                            )}
+                            value={String(rule.maxSelect)}
+                            onValueChange={(value) => {
+                              if (value) setRule(group.id, { maxSelect: Number(value) });
+                            }}
+                            disabled={disabled}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </WorkspaceSection>

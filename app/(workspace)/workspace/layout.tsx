@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
+import { Suspense } from "react";
 import { HeatRule } from "@/components/site/HeatRule";
+import { WorkspaceDeniedNotice } from "@/components/workspace/WorkspaceDeniedNotice";
 import { WorkspaceNav, type WorkspaceNavItem } from "@/components/workspace/WorkspaceNav";
 import { WorkspaceSignOut } from "@/components/workspace/WorkspaceSignOut";
 import { STAFF_ROLES } from "@/lib/staff/roles";
@@ -104,6 +106,9 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
         <HeatRule className="h-1" />
       </header>
       <main id="workspace-main" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <Suspense fallback={null}>
+          <WorkspaceDeniedNotice />
+        </Suspense>
         {children}
       </main>
     </div>

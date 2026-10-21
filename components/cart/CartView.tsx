@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
  * is right.
  */
 
-function DroppedNotice({ dropped, repriced }: CartChanges) {
+export function DroppedNotice({ dropped, repriced }: CartChanges) {
   return (
     <div
       role="status"

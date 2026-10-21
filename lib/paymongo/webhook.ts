@@ -25,11 +25,21 @@ export async function readWebhookBody(request: Request): Promise<string | null> 
   return body + decoder.decode();
 }
 
+/**
+ * Which of PayMongo's two environments this deployment is wired to, from the
+ * secret key it calls the API with. The signature header carries one part per
+ * environment (`te`, `li`) and every event says which one it came from
+ * (`livemode`), and both have to agree with this.
+ */
+export function paymongoMode(): "test" | "live" {
+  return process.env.PAYMONGO_SECRET_KEY?.startsWith("sk_live") ? "live" : "test";
+}
+
 export function verifyPaymongoSignature(
   rawBody: string,
   header: string,
   secret: string,
-  mode: "test" | "live" = process.env.PAYMONGO_SECRET_KEY?.startsWith("sk_live") ? "live" : "test",
+  mode: "test" | "live" = paymongoMode(),
   nowSeconds: number = Math.floor(Date.now() / 1_000),
 ): boolean {
   if (!header || !secret) return false;
@@ -50,18 +60,28 @@ export function verifyPaymongoSignature(
 }
 
 export function parsePaymongoEvent(payload: unknown): {
+  /** The event's own id (`evt_...`), which PayMongo keeps across redeliveries. */
+  eventId: string | null;
   type: string;
+  /** Null when the event does not say, which PayMongo's documented events always do. */
+  livemode: boolean | null;
   paymentIntentId: string | null;
   paymentId: string | null;
 } {
-  const attributes = payload && typeof payload === "object"
-    ? (payload as { data?: { attributes?: { type?: unknown; payment_intent_id?: unknown; data?: unknown } } }).data?.attributes
+  const envelope = payload && typeof payload === "object"
+    ? (payload as { data?: { id?: unknown; attributes?: { type?: unknown; livemode?: unknown; payment_intent_id?: unknown; data?: unknown } } }).data
     : undefined;
+  const attributes = envelope?.attributes;
   const resource = attributes?.data && typeof attributes.data === "object"
     ? attributes.data as { id?: unknown; attributes?: { payment_intent_id?: unknown } }
     : undefined;
   return {
+    eventId:
+      typeof envelope?.id === "string" && envelope.id.length > 0 && envelope.id.length <= 255
+        ? envelope.id
+        : null,
     type: typeof attributes?.type === "string" ? attributes.type : "",
+    livemode: typeof attributes?.livemode === "boolean" ? attributes.livemode : null,
     paymentIntentId:
       (typeof attributes?.payment_intent_id === "string" ? attributes.payment_intent_id : null)
       ?? (typeof resource?.attributes?.payment_intent_id === "string" ? resource.attributes.payment_intent_id : null),
@@ -80,9 +100,17 @@ export type PaymongoRefundEvent = {
   status: "succeeded" | "failed" | "pending" | null;
 };
 
+/**
+ * PayMongo documents four refund statuses: pending, processing, succeeded and
+ * failed. A QR Ph refund waits in `processing` until the customer claims the
+ * transfer, so it is read as still pending rather than as unknown.
+ */
 function refundStatus(value: unknown): PaymongoRefundEvent["status"] {
+  if (value === "processing") return "pending";
   return value === "succeeded" || value === "failed" || value === "pending" ? value : null;
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Reads both documented refund delivery shapes without trusting webhook data. */
 export function parsePaymongoRefundEvent(payload: unknown): PaymongoRefundEvent {
@@ -96,7 +124,11 @@ export function parsePaymongoRefundEvent(payload: unknown): PaymongoRefundEvent 
     id?: unknown;
     attributes?: { status?: unknown; metadata?: { refund_id?: unknown }; refunds?: unknown };
   };
+  // Our own refund row's id, which lib/paymongo/refunds.ts writes into the
+  // metadata. Anything that is not a uuid did not come from there, and passing
+  // it on would make the database raise and PayMongo retry it forever.
   const metadataId = typeof item.attributes?.metadata?.refund_id === "string"
+    && UUID.test(item.attributes.metadata.refund_id)
     ? item.attributes.metadata.refund_id
     : null;
   const directStatus = refundStatus(item.attributes?.status);

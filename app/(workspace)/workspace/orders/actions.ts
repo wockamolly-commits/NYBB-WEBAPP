@@ -10,7 +10,7 @@ import { classifyRefundFailure, isRefundReason, type RefundActionResult } from "
 import { createPaymongoRefund } from "@/lib/paymongo/refunds";
 import { isMockPaymentId, mockPaymentsEnabled } from "@/lib/paymongo/mock";
 import { isRejectReasonCode } from "@/lib/orders/reject-reasons";
-import { notifyCustomer, notifyCustomerOfRefund } from "@/lib/push/dispatch";
+import { notifyCustomer, notifyCustomerOfRefund, notifyCustomerReady } from "@/lib/push/dispatch";
 import type { StaffOrderActionResult } from "@/lib/staff/order-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -60,7 +60,9 @@ async function setStatus(
   // Only ready is worth a customer's lock screen. Preparing and claimed are
   // both things they either already know or are standing there for.
   if (status === "ready") {
-    after(notifyCustomer(parsedId.data));
+    // Claimed once per order (0097), so a second Ready tap on an order that is
+    // already ready does not buzz the customer again.
+    after(notifyCustomerReady(parsedId.data));
   }
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace");
@@ -281,6 +283,14 @@ function friendlyRefund(message: string | undefined): string {
   if (message?.includes("REFUND_PAYMENT_NOT_PAID")) return "This payment is not available for a refund.";
   if (message?.includes("REFUND_PROVIDER_UNSUPPORTED")) return "Only PayMongo payments can be refunded here.";
   if (message?.includes("FORBIDDEN")) return "You do not have access to issue refunds.";
+  // These four cannot succeed on a retry, so "Try again" sent staff round a
+  // loop. Each says what to do instead.
+  if (message?.includes("REFUND_BELOW_MINIMUM")) return "A refund has to be at least PHP 1.00.";
+  if (message?.includes("REFUND_NO_PROVIDER_PAYMENT")) {
+    return "PayMongo has no completed payment for this order, so there is nothing to refund through it. Settle it with the customer directly.";
+  }
+  if (message?.includes("PAYMENT_NOT_FOUND")) return "This order has no payment to refund.";
+  if (message?.includes("REFUND_REASON_INVALID")) return "Choose a reason for the refund.";
   return "The refund could not be started. Try again.";
 }
 

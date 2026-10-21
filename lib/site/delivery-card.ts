@@ -37,6 +37,16 @@ export const DELIVERY_CARD_COPY = FREE_DELIVERY_OFFER
  */
 const HIDDEN_ON = ["/cart", "/checkout", "/order"] as const;
 
+/**
+ * An item page, /menu/<category>/<item>. The card stood over the flavour grid
+ * there on a desktop screen, which is the one place a customer is choosing
+ * something, so on the owner's decision of 2026-10-21 it stays off item pages
+ * at every width. The menu, its categories and the rest of the storefront
+ * still carry it.
+ */
+const ITEM_PAGE = /^\/menu\/[^/]+\/[^/]+\/?$/;
+
 export function deliveryCardAllowedOn(pathname: string): boolean {
+  if (ITEM_PAGE.test(pathname)) return false;
   return !HIDDEN_ON.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }

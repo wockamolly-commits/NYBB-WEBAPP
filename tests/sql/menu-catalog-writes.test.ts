@@ -250,7 +250,7 @@ describe("catalog write RPCs", () => {
     const option = await optionId(db);
     for (const dimensions of ["null, null", "1200, null", "null, 900", "0, 900", "1200, -1"]) {
       await expect(
-        asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'menu/abc.jpg', ${dimensions}, null, null)`),
+        asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'https://example.supabase.co/storage/v1/object/public/menu-images/menu/abc.jpg', ${dimensions}, null, null)`),
       ).rejects.toThrow(/INVALID_INPUT/);
     }
     await asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', null, null, null, null, null)`);
@@ -259,12 +259,12 @@ describe("catalog write RPCs", () => {
 
   it("writes every image column together and records the change", async () => {
     const option = await optionId(db);
-    await asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'menu/abc.jpg', 1200, 900, 'data:image/png;base64,AAAA', '2024/05/Classic-Buffalo.jpg')`);
+    await asUser(db, MANAGER, `select staff_set_menu_option_image('${option}', 'https://example.supabase.co/storage/v1/object/public/menu-images/menu/abc.jpg', 1200, 900, 'data:image/png;base64,AAAA', '2024/05/Classic-Buffalo.jpg')`);
     const row = (await asUser<{ image_url: string; image_width: number; image_height: number; image_blur_data_url: string; image_source: string }>(
       db, MANAGER, `select image_url, image_width, image_height, image_blur_data_url, image_source from menu_options where id = '${option}'`,
     ))[0];
     expect(row).toEqual({
-      image_url: "menu/abc.jpg",
+      image_url: "https://example.supabase.co/storage/v1/object/public/menu-images/menu/abc.jpg",
       image_width: 1200,
       image_height: 900,
       image_blur_data_url: "data:image/png;base64,AAAA",
@@ -275,7 +275,7 @@ describe("catalog write RPCs", () => {
     expect(audit.map((entry) => entry.action)).toEqual(["menu.option.image_changed"]);
     expect(audit[0]?.diff.option_name).toBe("Classic Buffalo");
 
-    await expect(asUser(db, MANAGER, `select staff_set_menu_option_image('00000000-0000-4000-8000-0000000000ff', 'menu/abc.jpg', 1, 1, null, null)`)).rejects.toThrow(/OPTION_NOT_FOUND/);
+    await expect(asUser(db, MANAGER, `select staff_set_menu_option_image('00000000-0000-4000-8000-0000000000ff', 'https://example.supabase.co/storage/v1/object/public/menu-images/menu/abc.jpg', 1, 1, null, null)`)).rejects.toThrow(/OPTION_NOT_FOUND/);
   });
 
   it("reorders by the position of each id in the array", async () => {

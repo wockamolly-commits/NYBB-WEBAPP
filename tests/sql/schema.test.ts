@@ -109,6 +109,18 @@ describe("migrations", () => {
       "0087",
       "0088",
       "0089",
+      "0090",
+      "0091",
+      "0092",
+      "0093",
+      "0094",
+      "0095",
+      "0096",
+      "0097",
+      "0098",
+      "0099",
+      "0100",
+      "0101",
     ]);
   });
 
@@ -464,14 +476,12 @@ describe("migrations", () => {
     // that decide whether a card is selectable. No capacity figures, no
     // reservations, no settings. Everything in it is painted on the shopfront.
     //
-    // preview_voucher (0065) is here because a guest has to be able to try a
-    // promo code, and guests are most of the orders this platform takes. It
-    // reserves nothing and charges nothing: place_order resolves the code again
-    // and its answer is the one billed, so the worst a caller can get out of
-    // this is a number that the placement then corrects. Guessing at codes is
-    // bounded by the address rate limit the Server Action in front of it
-    // applies, the same one cart writes already use, and no refusal it returns
-    // ever describes a voucher's value, cap, scope or owner.
+    // preview_voucher (0065) was on this list until 0094. The address limit
+    // that was meant to bound guessing lived only in the Server Action, so a
+    // direct call guessed codes without limit and learned whether a phone
+    // number was on a restricted list. Guests now reach it on the service role
+    // behind that limit; signed-in customers call it themselves, limited per
+    // account inside the function.
     //
     // get_store_hours (0071) is the weekly schedule of each active branch, for
     // the branches page. A slug, a weekday and a window: the hours painted on
@@ -490,8 +500,15 @@ describe("migrations", () => {
     // by phone. It answers with an empty array while vouchers_enabled is off,
     // so a caller cannot even learn the feature exists.
     //
+    // register_promo_push_subscription left this list in 0094: anyone could
+    // register any number of endpoints at any https address, and announcing a
+    // promo POSTs to every one. It is the server's to call now, behind the
+    // address limit, and only for browser push service hosts. What follows is
+    // the reasoning it was granted under, which still holds for
+    // forget_promo_push_subscription.
+    //
     // register_promo_push_subscription and forget_promo_push_subscription
-    // (0075) are here because a promo subscriber may never have ordered, so
+    // (0075) were here because a promo subscriber may never have ordered, so
     // unlike register_customer_push_subscription above there is no short code
     // to present. What bounds the first is that a push endpoint is an
     // unguessable URL minted by the browser's own push service, so holding one
@@ -527,11 +544,9 @@ describe("migrations", () => {
       "get_storefront_menu",
       "list_customer_promos",
       "place_order",
-      "preview_voucher",
       "promo_push_optin_status",
       "register_customer_push_device",
       "register_customer_push_subscription",
-      "register_promo_push_subscription",
     ]);
   });
 

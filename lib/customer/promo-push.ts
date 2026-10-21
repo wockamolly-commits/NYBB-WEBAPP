@@ -1,6 +1,8 @@
 import "server-only";
 import { z } from "zod";
+import { isBrowserPushEndpoint } from "@/lib/push/endpoints";
 import { withinAddressLimit } from "@/lib/rate-limit/limiter";
+import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 import { supabaseConfigured } from "@/lib/supabase/public-client";
 import { callerClient, type CustomerCaller } from "./caller";
 
@@ -71,7 +73,13 @@ export async function subscribeToPromos(
   }
 
   const { subscription } = parsed.data;
-  const supabase = await callerClient(caller);
+  // Only a browser push service, which is all a real browser ever hands us.
+  // The database refuses anything else too (0094); this saves the round trip.
+  if (!isBrowserPushEndpoint(subscription.endpoint)) return refused();
+  // Service role since 0094: the function is no longer callable by anon, so
+  // the limit above is the only way in. It never read the caller's identity.
+  if (!adminConfigured()) return refused();
+  const supabase = createAdminClient();
   const { data, error } = await supabase.rpc("register_promo_push_subscription", {
     p_endpoint: subscription.endpoint,
     p_p256dh: subscription.keys.p256dh,

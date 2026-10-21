@@ -13,7 +13,8 @@ import { OrderTotals, VoucherField } from "@/components/checkout/VoucherField";
 import { PromoStub } from "@/components/promos/PromoStub";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
-import { clearCart } from "@/lib/cart/store";
+import { DroppedNotice } from "@/components/cart/CartView";
+import { clearCart, reconcileCart } from "@/lib/cart/store";
 import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
@@ -21,7 +22,7 @@ import { formatSlotRange } from "@/lib/slots/format";
 import { readPendingPromo, rememberPendingPromo } from "@/lib/promos/pending";
 import { promoHeadline, type Promo } from "@/lib/promos/schema";
 import { storefrontAccessToken } from "@/lib/supabase/browser";
-import type { CheckoutDetails, CheckoutField, PlacedOrder } from "@/lib/checkout/types";
+import type { CheckoutDetails, CheckoutField, PlaceOrderInput, PlacedOrder } from "@/lib/checkout/types";
 import type { PickupSlots } from "@/lib/slots/types";
 import type { MenuCategory } from "@/lib/menu/types";
 import type { OnlineMethod } from "@/lib/paymongo/methods";
@@ -102,7 +103,15 @@ export function CheckoutView({
   promos?: readonly Promo[];
 }) {
   const router = useRouter();
-  const { cart, loaded } = useCart();
+  const { cart, loaded, changes } = useCart();
+
+  // The same reconciliation the cart page runs. A line can stop resolving
+  // between the cart and here (sold out at this counter, a size taken off, a
+  // different counter chosen in the store bar), and without this it silently
+  // vanished from "Your order" and the total shrank with no explanation.
+  useEffect(() => {
+    reconcileCart(categories);
+  }, [categories]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [details, setDetails] = useState<CheckoutDetails>(initialDetails);
   const [failure, setFailure] = useState<{ message: string; field: CheckoutField | null } | null>(
@@ -149,6 +158,11 @@ export function CheckoutView({
   const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [checkingVoucher, startCheckingVoucher] = useTransition();
+  // True while the server is being asked about the applied code. The
+  // transition above only wraps the synchronous state changes, so on its own
+  // "Checking" never showed and the button kept the undiscounted figure until
+  // the verdict landed.
+  const [voucherInFlight, setVoucherInFlight] = useState(false);
 
   /**
    * The idempotency key, minted lazily and reused on every retry.
@@ -160,10 +174,19 @@ export function CheckoutView({
    * under the same id, and `place_order` will either place the order once or
    * hand back the one it already placed.
    */
-  const attempt = useRef<string | null>(null);
-  function attemptId(): string {
-    attempt.current ??= crypto.randomUUID();
-    return attempt.current;
+  const attempt = useRef<{ id: string; order: string } | null>(null);
+  /**
+   * The key for this exact order. A retry of the same order reuses it; a
+   * changed order gets a new one. Before, a customer whose first submit
+   * committed but whose response was lost, and who then edited the cart and
+   * pressed again, was handed back the FIRST order under the old key, and the
+   * edited cart was cleared as though it had been placed.
+   */
+  function attemptId(order: string): string {
+    if (attempt.current?.order !== order) {
+      attempt.current = { id: crypto.randomUUID(), order };
+    }
+    return attempt.current.id;
   }
 
   const resolved = resolveCart(categories, cart);
@@ -231,6 +254,7 @@ export function CheckoutView({
     if (cartSignature === "[]") return;
     let cancelled = false;
     void (async () => {
+      setVoucherInFlight(true);
       const result = await checkVoucher({
         code: appliedCode,
         branchSlug: previewBranchSlug,
@@ -238,6 +262,7 @@ export function CheckoutView({
         lines: JSON.parse(cartSignature) as typeof voucherLines,
       });
       if (cancelled) return;
+      setVoucherInFlight(false);
       if (result.ok) {
         setVoucher(result.voucher);
         setVoucherError(null);
@@ -248,8 +273,20 @@ export function CheckoutView({
     })();
     return () => {
       cancelled = true;
+      setVoucherInFlight(false);
     };
   }, [appliedCode, cartSignature, previewBranchSlug]);
+
+  // A refused name or phone is said next to its field, which on a phone is two
+  // cards above the button that was just pressed. Without moving focus there,
+  // the button simply went back to normal and nothing visible changed.
+  useEffect(() => {
+    if (failure && isDetailField(failure.field)) {
+      const field = document.getElementById(`checkout-${failure.field}`);
+      field?.focus();
+      field?.scrollIntoView({ block: "center" });
+    }
+  }, [failure]);
 
   // Kept for the tab, so a code asked for with an empty cart survives the trip
   // to the menu and is waiting when the customer comes back. Removing it
@@ -316,7 +353,8 @@ export function CheckoutView({
     }
     return (
       <div className="mt-8">
-        <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
+        {changes ? <DroppedNotice dropped={changes.dropped} repriced={changes.repriced} /> : null}
+        <p className="text-nybb-ink/70 mt-6 max-w-prose leading-relaxed">
           There is nothing to check out. Build an order first and the pickup times will be
           waiting here.
         </p>
@@ -354,6 +392,24 @@ export function CheckoutView({
     event.preventDefault();
     if (!selectedSlot || needsStore || submitting) return;
 
+    const order: Omit<PlaceOrderInput, "attemptId"> = {
+      // The counter the customer chose, not whichever one the slot reader
+      // happened to resolve. Those were the same value while the picker did
+      // not exist; they are not once it does, and the one that matters is
+      // the one the screen named above the window grid.
+      branchSlug: branchSlug ?? slots.branch?.slug ?? null,
+      pickupSlotStart: selectedSlot,
+      details,
+      paymentMethod,
+      // A code, never a discount. place_order resolves what it is worth from
+      // the vouchers row, and anything this browser claimed about the money
+      // would be ignored.
+      voucherCode: appliedCode ?? "",
+      // Slugs and quantities. Not one price leaves this browser, because not
+      // one price sent from a browser would be believed.
+      lines: voucherLines,
+    };
+
     startSubmitting(async () => {
       let accessToken: string | null = null;
       if (signedIn) {
@@ -364,24 +420,23 @@ export function CheckoutView({
         }
       }
 
-      const result = await placeOrder({
-        attemptId: attemptId(),
-        // The counter the customer chose, not whichever one the slot reader
-        // happened to resolve. Those were the same value while the picker did
-        // not exist; they are not once it does, and the one that matters is
-        // the one the screen named above the window grid.
-        branchSlug: branchSlug ?? slots.branch?.slug ?? null,
-        pickupSlotStart: selectedSlot,
-        details,
-        paymentMethod,
-        // A code, never a discount. place_order resolves what it is worth from
-        // the vouchers row, and anything this browser claimed about the money
-        // would be ignored.
-        voucherCode: appliedCode ?? "",
-        // Slugs and quantities. Not one price leaves this browser, because not
-        // one price sent from a browser would be believed.
-        lines: voucherLines,
-      }, accessToken);
+      // A network failure throws rather than returning a refusal. Uncaught,
+      // it reached the error page, which remounted this screen and threw the
+      // attempt key away, so pressing again could place a second order. Caught
+      // here, the key survives and the retry is safe: place_order hands back
+      // the order it already placed if the first request did land.
+      let result: Awaited<ReturnType<typeof placeOrder>>;
+      try {
+        result = await placeOrder({ attemptId: attemptId(JSON.stringify(order)), ...order }, accessToken);
+      } catch {
+        setFailure({
+          message:
+            "We could not reach the shop to place this order. Check your connection and press the " +
+            "button again. If the first try went through, pressing again will not order twice.",
+          field: null,
+        });
+        return;
+      }
 
       if (result.ok) {
         // The order exists, so this attempt is spent and the cart it was built
@@ -393,12 +448,24 @@ export function CheckoutView({
         // waiting for a cart. The state keeps it; the tab forgets it.
         rememberPendingPromo(null);
         if (onlineMethod) {
-          const payment = await payOrder({
-            shortCode: result.order.shortCode,
-            trackingToken: result.order.trackingToken,
-            paymentAttemptId: crypto.randomUUID(),
-            method: onlineMethod,
-          });
+          // The order exists and the cart is already cleared, so whatever
+          // happens next has to land on the payment screen, which carries the
+          // tracking link and a retry. A throw here used to reach the error
+          // page instead, and a guest lost the only way back to their order.
+          let payment: PayOrderResult;
+          try {
+            payment = await payOrder({
+              shortCode: result.order.shortCode,
+              trackingToken: result.order.trackingToken,
+              paymentAttemptId: crypto.randomUUID(),
+              method: onlineMethod,
+            });
+          } catch {
+            payment = {
+              ok: false,
+              error: "Your order is in, but we could not start the payment. Please try again.",
+            };
+          }
           setPendingPayment({ order: result.order, method: onlineMethod, result: payment });
         } else {
           setPlaced(result.order);
@@ -435,6 +502,11 @@ export function CheckoutView({
       onSubmit={submit}
       className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12"
     >
+      {changes ? (
+        <div className="lg:col-span-2 [&>*]:mt-0">
+          <DroppedNotice dropped={changes.dropped} repriced={changes.repriced} />
+        </div>
+      ) : null}
       <div className="space-y-6">
         <div className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-7">
           <SlotPicker
@@ -497,7 +569,7 @@ export function CheckoutView({
             }}
             applied={voucher}
             error={voucherError}
-            busy={checkingVoucher}
+            busy={checkingVoucher || voucherInFlight}
             disabled={submitting}
             onApply={() => applyVoucher()}
             onRemove={removeVoucher}
@@ -540,11 +612,13 @@ export function CheckoutView({
             tone="dark"
             size="lg"
             block
-            disabled={!selectedSlot || needsStore || !onlineMethod || submitting}
+            disabled={!selectedSlot || needsStore || !onlineMethod || submitting || voucherInFlight}
             className="mt-6"
           >
             {submitting
               ? "Placing the order"
+              : voucherInFlight
+                ? "Checking the code"
               : !onlineMethod
                 ? "Online payment is not open yet"
                 : needsStore

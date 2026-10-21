@@ -171,19 +171,19 @@ export default async function OrderHistoryPage({
         <>
           <section aria-label="History summary" className="mt-5 grid gap-px overflow-hidden rounded-md bg-nybb-bone/15 sm:grid-cols-3">
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Orders</p>
+              <p className="type-caps text-nybb-bone/55">Orders</p>
               <p className="font-display heading-panel mt-2">{summary.orderCount}</p>
               {summary.testOrderCount ? <p className="text-nybb-bone/55 mt-1 text-xs">Includes {summary.testOrderCount} test</p> : null}
             </div>
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Paid orders</p>
+              <p className="type-caps text-nybb-bone/55">Paid orders</p>
               <p className="font-display heading-panel mt-2">{summary.paidOrderCount}</p>
-              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test, refused and cancelled orders excluded</p>
             </div>
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Paid sales</p>
+              <p className="type-caps text-nybb-bone/55">Paid sales</p>
               <p className="font-display heading-panel mt-2">{formatPeso(summary.paidSalesCents)}</p>
-              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test, refused and cancelled orders excluded</p>
             </div>
           </section>
 
@@ -256,7 +256,7 @@ export default async function OrderHistoryPage({
             {orders.length === 0 ? (
               <div className="border-nybb-bone/25 rounded-md border border-dashed px-4 py-12 text-center">
                 <p className="font-display heading-panel">No matching orders</p>
-                <p className="text-nybb-bone/50 mt-2 text-sm">
+                <p className="text-nybb-bone/55 mt-2 text-sm">
                   Nothing closed matches these filters. A search runs across every closed
                   order for this branch, so a code that finds nothing here was never placed
                   at this counter.

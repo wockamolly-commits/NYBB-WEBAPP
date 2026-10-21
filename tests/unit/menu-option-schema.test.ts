@@ -185,3 +185,14 @@ describe("optionSchema code", () => {
     expect(optionSchema.safeParse({ ...base, code: "N".repeat(16) }).success).toBe(true);
   });
 });
+
+describe("optionSchema flat prices", () => {
+  it("refuses a flat price of nothing, which used to save as free", () => {
+    expect(optionSchema.safeParse({ ...base, pricing: "flat", priceCents: "0" }).success).toBe(false);
+  });
+
+  it("keeps a real flat price and a deliberate Free", () => {
+    expect(parse({ pricing: "flat", priceCents: "2900" }).resolvedPriceCents).toBe(2900);
+    expect(parse({ pricing: "free", priceCents: "0" }).resolvedPriceCents).toBe(0);
+  });
+});

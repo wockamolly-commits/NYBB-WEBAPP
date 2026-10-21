@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { formatPeso } from "@/lib/format";
 import { joinNames, voucherSummary } from "@/lib/vouchers/status";
+import { isImagePlaceholder, isOwnStorageImageUrl } from "@/lib/images/safe-url";
+import { VOUCHER_POSTER_BUCKET } from "@/lib/staff/voucher-poster-limits";
 
 /**
  * A promo as the storefront reads it, parsed rather than trusted.
@@ -93,11 +95,13 @@ export function promoPoster(promo: Promo): PromoPoster | null {
   if (promo.posterUrl === null || promo.posterWidth === null || promo.posterHeight === null) {
     return null;
   }
+  // Only a file in this project's poster bucket is drawn (0101).
+  if (!isOwnStorageImageUrl(promo.posterUrl, VOUCHER_POSTER_BUCKET)) return null;
   return {
     url: promo.posterUrl,
     width: promo.posterWidth,
     height: promo.posterHeight,
-    blurDataUrl: promo.posterBlurDataUrl,
+    blurDataUrl: isImagePlaceholder(promo.posterBlurDataUrl) ? promo.posterBlurDataUrl : null,
   };
 }
 

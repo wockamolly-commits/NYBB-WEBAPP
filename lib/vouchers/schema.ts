@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
+import { isOwnStorageImageUrl } from "@/lib/images/safe-url";
+import { VOUCHER_POSTER_BUCKET } from "@/lib/staff/voucher-poster-limits";
 
 /**
  * The voucher form, as its Save posts it, and the payload the RPC reads.
@@ -291,6 +293,7 @@ export function toVoucher(row: VoucherRow) {
     createdAt: row.created_at,
     poster:
       row.poster_url !== null && row.poster_width !== null && row.poster_height !== null
+        && isOwnStorageImageUrl(row.poster_url, VOUCHER_POSTER_BUCKET)
         ? { url: row.poster_url, width: row.poster_width, height: row.poster_height }
         : null,
     displayPriority: row.display_priority,

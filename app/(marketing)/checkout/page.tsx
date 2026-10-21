@@ -87,7 +87,7 @@ export default async function CheckoutPage({
       <h1 className="font-display heading-page">Checkout</h1>
       <p className="text-nybb-ink/70 mt-4 max-w-lg text-base leading-relaxed">
         {canOrder
-          ? "Two things left: where you collect, and when. The kitchen holds one slot per order, so the time you choose is the time your wings are ready."
+          ? "A few things left: where you collect, when, and the name we call out. The kitchen holds one slot per order, so the time you choose is the time your wings are ready."
           : "Online ordering is not open on this site yet, so this order cannot be completed here. Nothing in your cart is lost."}
       </p>
 

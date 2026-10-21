@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { storesHref } from "@/lib/branches/href";
+import { formatOpening } from "@/lib/slots/format";
 import type { StoreSelection } from "@/lib/branches/selection";
 import { cn } from "@/lib/utils";
 
@@ -118,8 +119,20 @@ export function StoreBar({
 
       {selected?.closedNow ? (
         <p className="border-nybb-bone/15 text-nybb-bone/75 mt-4 border-t pt-4 text-sm leading-relaxed">
-          {selected.shortName} is closed at the moment. Checkout will show the
-          windows it has open next, and nothing is cooked before its window.
+          {/*
+            The same rule the server holds (0092): a closed counter offers no
+            pickup times and place_order refuses it, so this says "not taking
+            orders" plainly rather than suggesting an order can be placed for
+            later.
+          */}
+          {selected.shortName} is closed right now and is not taking orders.{" "}
+          {selected.branch?.opensAt
+            ? `You can order from it again when it opens at ${formatOpening(
+                selected.branch.opensAt,
+                selected.branch.timezone,
+                new Date().toISOString(),
+              )}.`
+            : "You can order from it again once it opens."}
         </p>
       ) : null}
     </div>

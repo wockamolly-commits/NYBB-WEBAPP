@@ -253,7 +253,16 @@ describe("saving a voucher", () => {
       `select phone_digits from voucher_customers where voucher_id = $1 order by 1`,
       [id],
     );
-    expect(rows.rows.map((row) => row.phone_digits)).toEqual(["09170004321", "639181112222"]);
+    // 0090: every written form of a mobile is stored as 639XXXXXXXXX.
+    expect(rows.rows.map((row) => row.phone_digits)).toEqual(["639170004321", "639181112222"]);
+
+    // 0095: the audit row keeps only the last four digits of each.
+    const logged = await scalar<string>(
+      db,
+      `select (diff->'scope'->'customerPhones')::text from audit_logs
+        where target_table = 'vouchers' and target_id = '${id}' and action = 'voucher.create'`,
+    );
+    expect(JSON.parse(logged)).toEqual(["********4321", "********2222"]);
   });
 
   it("replaces scope wholesale, so clearing a list means everywhere again", async () => {

@@ -174,7 +174,13 @@ function Report({ report }: { report: SalesReport }) {
         <Tile
           label="Gross sales"
           value={formatPeso(report.gross_sales_cents)}
-          note="Paid, and not refused"
+          note={
+            report.refunded_cents > 0
+              ? `Paid, and not refused. ${formatPeso(report.refunded_cents)} refunded, so ${formatPeso(
+                  report.gross_sales_cents - report.refunded_cents,
+                )} kept`
+              : "Paid, and not refused"
+          }
         />
         <Tile label="Average order" value={formatPeso(report.avg_order_value_cents)} />
         <Tile
@@ -278,12 +284,24 @@ function Report({ report }: { report: SalesReport }) {
           title="Discount check"
           hint="Compare this against the POS's own discount report for the same dates. Equal means the counter is applying them correctly. Lower there means a discount was forgotten and somebody was overcharged; higher means one was rung that no order asked for."
         >
-          <p className="font-mono-tabular text-2xl">{formatPeso(report.discounts.given_cents)}</p>
-          <p className="text-nybb-bone/70 mt-2 text-sm">
-            {report.discounts.discounted_orders} of {report.discounts.rung_in_pos_orders}{" "}
-            {report.discounts.rung_in_pos_orders === 1 ? "order" : "orders"} rung into the POS
-            {discounted !== null ? ` (${discounted}%)` : ""}
-          </p>
+          {report.discounts.rung_in_pos_orders === 0 ? (
+            // Nothing writes pos_sync.entered_at any more (the "entered in POS"
+            // step was dropped in 0035), so every figure here would read zero
+            // whatever was discounted. Saying so beats a confident PHP 0.00.
+            <p className="text-nybb-bone/70 text-sm">
+              Not measured yet. The workspace does not record when an order is keyed into the POS,
+              so there is nothing for this check to compare.
+            </p>
+          ) : (
+            <>
+              <p className="font-mono-tabular text-2xl">{formatPeso(report.discounts.given_cents)}</p>
+              <p className="text-nybb-bone/70 mt-2 text-sm">
+                {report.discounts.discounted_orders} of {report.discounts.rung_in_pos_orders}{" "}
+                {report.discounts.rung_in_pos_orders === 1 ? "order" : "orders"} rung into the POS
+                {discounted !== null ? ` (${discounted}%)` : ""}
+              </p>
+            </>
+          )}
         </Card>
 
         <Card title="Heat mix" hint="Which levels the kitchen is actually cooking.">

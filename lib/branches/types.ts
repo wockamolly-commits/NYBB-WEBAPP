@@ -23,6 +23,8 @@ export type OrderableBranch = {
   prepMinutes: number;
   acceptsOrdersNow: boolean;
   isOpenNow: boolean;
+  /** When a shut counter next opens, or null when it is open or has no hours. */
+  opensAt?: string | null;
 };
 
 /**

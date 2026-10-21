@@ -113,6 +113,10 @@ export default function RouteMap({
       attributionControl: false,
       pitchWithRotate: false,
       dragRotate: false,
+      // Mapbox's optional performance report, which sends the browser's user
+      // agent, screen and graphics details. Map load and session events stay:
+      // they are how Mapbox bills, and its terms forbid removing them.
+      performanceMetricsCollection: false,
     });
     mapRef.current = map;
     map.addControl(new mapboxgl.AttributionControl({ compact: true }));

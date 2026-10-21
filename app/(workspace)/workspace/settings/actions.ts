@@ -6,6 +6,8 @@ import type { AvailabilityActionState } from "@/lib/staff/availability-types";
 import { readBranchCreateForm, readBranchEditForm } from "@/lib/staff/branch-create-schema";
 import { insidePhilippines, parseCoordinates, readBranchLocationForm } from "@/lib/staff/branch-location-schema";
 import { parseTime12 } from "@/lib/staff/availability-types";
+import { SLOT_MINUTES_MESSAGE, slotMinutesDivideDay } from "@/lib/slots/grid";
+import { accidentalAllDay } from "@/lib/staff/store-hours";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
 
@@ -13,7 +15,11 @@ const branchSettingsSchema = z.object({
   branchId: z.uuid(),
   isActive: z.boolean(),
   prepMinutes: z.coerce.number().int().min(1).max(240),
-  slotMinutes: z.coerce.number().int().min(5).max(120),
+  // Has to divide a day evenly, or the pickup grid, which is anchored to local
+  // midnight, shifts at midnight (migration 0092 enforces the same rule).
+  slotMinutes: z.coerce.number().int().min(5).max(120).refine(slotMinutesDivideDay, {
+    message: SLOT_MINUTES_MESSAGE,
+  }),
   slotCapacity: z.coerce.number().int().min(1).max(200),
 });
 
@@ -36,6 +42,7 @@ const intakeSchema = z.object({
 function errorFor(message: string | undefined, fallback: string): string {
   if (message?.includes("FORBIDDEN") || message?.includes("BRANCH_FORBIDDEN")) return "You do not have access to change these settings.";
   if (message?.includes("BUSINESS_WIDE_FORBIDDEN")) return "Only a business-wide manager can change this setting.";
+  if (message?.includes("branches_slot_minutes_divide_day")) return SLOT_MINUTES_MESSAGE;
   if (message?.includes("WINDOW_EMPTY")) return "Opening and closing times cannot be the same.";
   if (message?.includes("WINDOW_")) return "Each open day needs valid opening and closing times.";
   return fallback;
@@ -63,7 +70,10 @@ export async function saveBranchSettings(
     slotMinutes: formData.get("slotMinutes"),
     slotCapacity: formData.get("slotCapacity"),
   });
-  if (!parsed.success) return { status: "error", message: "Prep, slot length, and capacity need valid values." };
+  if (!parsed.success) {
+    const slotIssue = parsed.error.issues.find((issue) => issue.message === SLOT_MINUTES_MESSAGE);
+    return { status: "error", message: slotIssue?.message ?? "Prep, slot length, and capacity need valid values." };
+  }
   if (!(await settingsProfile())) return { status: "error", message: "You do not have access to change settings." };
 
   const supabase = await createStaffClient();
@@ -97,6 +107,13 @@ export async function saveStoreHours(
   });
   const parsed = hoursSchema.safeParse({ branchId: formData.get("branchId"), hours });
   if (!parsed.success) return { status: "error", message: "Every open day needs a valid time, such as 11:00 AM.", savedHours: previous.savedHours };
+  // Any equal pair reads as open all day (0026), so 10:00 AM to 10:00 AM typed
+  // by mistake silently kept a counter open around the clock. Only midnight to
+  // midnight says that on purpose.
+  const accidental = accidentalAllDay(parsed.data.hours);
+  if (accidental !== null) {
+    return { status: "error", message: accidental, savedHours: previous.savedHours };
+  }
   if (!(await settingsProfile())) return { status: "error", message: "You do not have access to change settings.", savedHours: previous.savedHours };
 
   const supabase = await createStaffClient();

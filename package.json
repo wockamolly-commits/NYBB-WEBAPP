@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "paymongo": "node scripts/paymongo.mjs",
+    "handover:super-admin": "node scripts/hand-over-super-admin.mjs",
     "ingest:images": "tsx scripts/ingest-legacy-images.ts",
     "build:static-images": "tsx scripts/build-static-images.ts",
     "build:seed": "tsx scripts/build-seed.ts",

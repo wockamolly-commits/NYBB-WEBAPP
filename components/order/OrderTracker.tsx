@@ -74,7 +74,10 @@ export function OrderTracker({
           className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-7"
         >
           <p className="type-caps text-nybb-bone/55">Order {order.shortCode}</p>
+          {/* polite: the status changes while the page is open (realtime and
+              polling refresh it), and only Ready had an alert of its own. */}
           <h2
+            aria-live="polite"
             id="order-status"
             className={cn("font-display heading-minor mt-2", accent)}
           >
@@ -160,7 +163,7 @@ export function OrderTracker({
                         aria-hidden
                         className={cn(
                           "type-caps mt-2 hidden sm:block",
-                          done ? "text-nybb-bone" : "text-nybb-bone/40",
+                          done ? "text-nybb-bone" : "text-nybb-bone/55",
                         )}
                       >
                         {step.label}
@@ -307,7 +310,9 @@ export function OrderTracker({
                 ? "Paid in full. Nothing to settle when you collect."
                 : awaitingOnlinePayment
                   ? "Complete QR Ph payment before the kitchen receives this order."
-                  : "This order has no completed payment against it. Please call the branch below before setting off."}
+                  : order.branch.phones.length > 0
+                    ? "This order has no completed payment against it. Please call the branch on the number under Where and when before setting off."
+                    : "This order has no completed payment against it. Please call the branch before setting off. Its number is on the Branches page."}
           </p>
 
           {order.notes ? (

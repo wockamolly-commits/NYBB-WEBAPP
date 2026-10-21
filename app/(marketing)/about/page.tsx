@@ -131,7 +131,7 @@ export default async function AboutPage() {
           <dl className="reveal-stagger space-y-5">
             {facts.map((fact) => (
               <div key={fact.label}>
-                <dt className="type-caps text-nybb-bone/50">{fact.label}</dt>
+                <dt className="type-caps text-nybb-bone/55">{fact.label}</dt>
                 <dd className="font-mono-tabular text-nybb-orange mt-1 text-3xl">
                   {fact.value}
                 </dd>
@@ -141,7 +141,7 @@ export default async function AboutPage() {
 
           {insane ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
-              <p className="type-caps text-nybb-bone/50">Top of the scale</p>
+              <p className="type-caps text-nybb-bone/55">Top of the scale</p>
               <HeatMeter
                 percent={insane.heatPercent ?? 100}
                 label={insane.name}

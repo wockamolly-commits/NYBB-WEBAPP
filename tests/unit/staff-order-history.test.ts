@@ -129,4 +129,16 @@ describe("workspace order history", () => {
       paidSalesCents: 45000,
     });
   });
+
+  it("leaves a paid order that was then refused or cancelled out of sales", () => {
+    // The money on these is owed back, not taken.
+    const real = order();
+    const refused = order({ id: "44444444-4444-4444-8444-444444444444", status: "rejected" });
+    const lapsed = order({ id: "55555555-5555-4555-8555-555555555555", status: "cancelled" });
+    expect(summarizeOrderHistory([real, refused, lapsed])).toMatchObject({
+      orderCount: 3,
+      paidOrderCount: 1,
+      paidSalesCents: 45000,
+    });
+  });
 });

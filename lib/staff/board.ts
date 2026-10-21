@@ -25,6 +25,12 @@ export type BoardAction =
   | { kind: "start" }
   /** Nothing to do yet. The customer has not paid. */
   | { kind: "awaiting_payment" }
+  /**
+   * The money went back before the order finished. Nothing to cook or hand
+   * over; the only sensible step left is to refuse it, which the card offers
+   * below every live order anyway.
+   */
+  | { kind: "refunded" }
   /** In the kitchen. The Ready button. */
   | { kind: "ready" }
   /** Ready for collection, and the pickup code decides. */
@@ -46,6 +52,7 @@ export function awaitsPayment(order: WorkspaceOrder): boolean {
 }
 
 export function boardAction(order: WorkspaceOrder): BoardAction {
+  if (order.status !== "claimed" && order.payment?.status === "refunded") return { kind: "refunded" };
   switch (order.status) {
     case "pending":
     case "accepted":
@@ -95,4 +102,32 @@ export function describePayment(
 
 export function paymentLabel(order: WorkspaceOrder): string {
   return describePayment(order.payment);
+}
+
+/**
+ * How a live order stands against its pickup time, for the card's chip.
+ *
+ * Spec section 13: "Orders past their slot time turn amber, then red." Amber
+ * from the moment the pickup time passes, red once it is LATE_AFTER_MINUTES
+ * past, which is one standard window. Null for an order with no pickup time or
+ * one that has already been collected, because there is nothing to chase.
+ */
+export const LATE_AFTER_MINUTES = 15;
+
+export type PickupUrgency =
+  | { kind: "upcoming"; minutes: number }
+  | { kind: "overdue"; minutes: number }
+  | { kind: "late"; minutes: number };
+
+export function pickupUrgency(
+  order: Pick<WorkspaceOrder, "status" | "pickupAt">,
+  nowMs: number,
+): PickupUrgency | null {
+  if (!order.pickupAt || order.status === "claimed") return null;
+  const pickupMs = Date.parse(order.pickupAt);
+  if (!Number.isFinite(pickupMs)) return null;
+  const past = (nowMs - pickupMs) / 60_000;
+  if (past < 0) return { kind: "upcoming", minutes: Math.ceil(-past) };
+  const minutes = Math.floor(past);
+  return minutes >= LATE_AFTER_MINUTES ? { kind: "late", minutes } : { kind: "overdue", minutes };
 }

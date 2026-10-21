@@ -171,7 +171,7 @@ export function StaffPushOptIn() {
 
 function Note({ children }: { children: React.ReactNode }) {
   return (
-    <p role="status" className="text-nybb-bone/50 max-w-md text-sm">
+    <p role="status" className="text-nybb-bone/55 max-w-md text-sm">
       {children}
     </p>
   );

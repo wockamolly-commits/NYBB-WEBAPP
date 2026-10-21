@@ -67,7 +67,20 @@ describe("PayMongo payment helpers", () => {
   it("extracts the payment identifiers from a payment event", () => {
     expect(parsePaymongoEvent({
       data: { attributes: { type: "payment.paid", data: { id: "pay_1", attributes: { payment_intent_id: "pi_1" } } } },
-    })).toEqual({ type: "payment.paid", paymentIntentId: "pi_1", paymentId: "pay_1" });
+    })).toEqual({ eventId: null, type: "payment.paid", livemode: null, paymentIntentId: "pi_1", paymentId: "pay_1" });
+  });
+
+  it("reads the event id and the mode from PayMongo's documented envelope", () => {
+    expect(parsePaymongoEvent({
+      data: {
+        id: "evt_9w6KTxQY3hmuDQaALHoAZnRp",
+        attributes: {
+          type: "payment.paid",
+          livemode: false,
+          data: { id: "pay_1", attributes: { amount: 10000, currency: "PHP", payment_intent_id: "pi_1" } },
+        },
+      },
+    })).toMatchObject({ eventId: "evt_9w6KTxQY3hmuDQaALHoAZnRp", livemode: false });
   });
 
   it("creates a refund payload that connects its webhook back to the reservation", () => {
@@ -89,15 +102,27 @@ describe("PayMongo payment helpers", () => {
     expect(parsePaymongoRefundEvent({
       data: { attributes: { data: {
         id: "ref_1",
-        attributes: { status: "succeeded", metadata: { refund_id: "local_1" } },
+        attributes: { status: "succeeded", metadata: { refund_id: "00000000-0000-4000-8000-000000000001" } },
       } } },
-    })).toEqual({ refundId: "local_1", providerRefundId: "ref_1", status: "succeeded" });
+    })).toEqual({ refundId: "00000000-0000-4000-8000-000000000001", providerRefundId: "ref_1", status: "succeeded" });
     expect(parsePaymongoRefundEvent({
       data: { attributes: { data: {
         id: "pay_1",
         attributes: { refunds: [{ id: "ref_2", status: "pending" }] },
       } } },
     })).toEqual({ refundId: null, providerRefundId: "ref_2", status: "pending" });
+  });
+
+  it("reads a processing refund as pending, and ignores a refund id that is not ours", () => {
+    expect(parsePaymongoRefundEvent({
+      data: { attributes: { data: { id: "ref_3", attributes: { status: "processing" } } } },
+    })).toEqual({ refundId: null, providerRefundId: "ref_3", status: "pending" });
+    expect(parsePaymongoRefundEvent({
+      data: { attributes: { data: {
+        id: "ref_4",
+        attributes: { status: "succeeded", metadata: { refund_id: "'; drop table refunds; --" } },
+      } } },
+    })).toEqual({ refundId: null, providerRefundId: "ref_4", status: "succeeded" });
   });
 
   it("keeps a reservation for any outcome that may have reached PayMongo", () => {

@@ -14,6 +14,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const admin = vi.hoisted(() => ({
   configured: false,
   rpc: vi.fn(),
+  /** Event ids the ledger (0099) already holds. */
+  handled: new Set<string>(),
+  inserted: [] as unknown[],
 }));
 
 vi.mock("next/server", () => ({ after: vi.fn() }));
@@ -29,7 +32,21 @@ vi.mock("@/lib/push/dispatch", () => ({
 }));
 vi.mock("@/lib/supabase/admin-client", () => ({
   adminConfigured: () => admin.configured,
-  createAdminClient: () => ({ rpc: admin.rpc }),
+  createAdminClient: () => ({
+    rpc: admin.rpc,
+    from: () => ({
+      select: () => ({
+        eq: (_column: string, id: string) => ({
+          maybeSingle: async () => ({ data: admin.handled.has(id) ? { event_id: id } : null, error: null }),
+        }),
+      }),
+      insert: async (row: { event_id: string }) => {
+        admin.inserted.push(row);
+        admin.handled.add(row.event_id);
+        return { error: null };
+      },
+    }),
+  }),
 }));
 
 const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -57,7 +74,10 @@ const REFUNDED = {
   data: {
     attributes: {
       type: "payment.refund.updated",
-      data: { id: "ref_1", attributes: { status: "succeeded", metadata: { refund_id: "r1" } } },
+      data: {
+        id: "ref_1",
+        attributes: { status: "succeeded", metadata: { refund_id: "00000000-0000-4000-8000-000000000001" } },
+      },
     },
   },
 };
@@ -90,6 +110,8 @@ describe("the PayMongo webhook with a service role key", () => {
     admin.configured = true;
     admin.rpc.mockReset();
     admin.rpc.mockResolvedValue({ data: null, error: null });
+    admin.handled.clear();
+    admin.inserted = [];
   });
 
   it("records a paid event and acknowledges it", async () => {
@@ -99,5 +121,27 @@ describe("the PayMongo webhook with a service role key", () => {
       "apply_paymongo_payment",
       expect.objectContaining({ p_intent_id: "pi_1", p_status: "paid" }),
     );
+  });
+
+  it("handles an event once, and acknowledges its redelivery without handling it again", async () => {
+    const event = { data: { id: "evt_1", attributes: { ...PAID.data.attributes, livemode: false } } };
+    expect((await deliver(event)).status).toBe(200);
+    expect((await deliver(event)).status).toBe(200);
+    expect(admin.rpc).toHaveBeenCalledTimes(1);
+    expect(admin.inserted).toEqual([{ event_id: "evt_1", event_type: "payment.paid", livemode: false }]);
+  });
+
+  it("does not record an event whose handling failed, so PayMongo's retry is handled", async () => {
+    admin.rpc.mockResolvedValueOnce({ data: null, error: { message: "boom" } });
+    const event = { data: { id: "evt_2", attributes: { ...PAID.data.attributes, livemode: false } } };
+    expect((await deliver(event)).status).toBe(500);
+    expect((await deliver(event)).status).toBe(200);
+    expect(admin.rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("acknowledges and ignores an event from the other PayMongo mode", async () => {
+    const event = { data: { id: "evt_3", attributes: { ...PAID.data.attributes, livemode: true } } };
+    expect((await deliver(event)).status).toBe(200);
+    expect(admin.rpc).not.toHaveBeenCalled();
   });
 });

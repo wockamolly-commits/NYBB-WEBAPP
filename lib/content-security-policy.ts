@@ -27,7 +27,9 @@ type ContentSecurityPolicyOptions = {
  *   - Mapbox is gated behind `mapsEnabled`, on when there is a browser token.
  *     The route map on /stores is Mapbox GL JS, bundled from npm, so its
  *     script is ours and inherits the nonce's trust. It needs only
- *     `connect-src` for its tiles, styles, fonts and usage events, and runs
+ *     `connect-src` for its tiles, styles, fonts and usage events (map loads,
+ *     which Mapbox bills by; its optional performance report is switched off
+ *     in both map constructors), and runs
  *     its workers from `blob:`, which `worker-src` already allows. Its classic
  *     styles are used rather than Mapbox Standard, which would also need
  *     `'wasm-unsafe-eval'` in `script-src`.

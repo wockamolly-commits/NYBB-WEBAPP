@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeCustomerPhone } from "@/lib/phone";
 import { MAX_LINES } from "@/lib/cart/lines";
 import { MAX_QUANTITY, MIN_QUANTITY } from "@/lib/menu/line-pricing";
 
@@ -53,7 +54,24 @@ export const placeOrderInputSchema = z.object({
   pickupSlotStart: z.iso.datetime({ offset: true }),
   details: z.object({
     name: z.string().trim().min(1, "Please tell us who to hand the order to").max(120),
-    phone: z.string().trim().min(1, "We need a number in case the kitchen has a question").max(40),
+    // Normalised rather than stored as typed, because the voucher engine
+    // recognises a customer by their number. See normalizeCustomerPhone.
+    phone: z
+      .string()
+      .trim()
+      .min(1, "We need a number in case the kitchen has a question")
+      .max(40)
+      .transform((value, ctx) => {
+        const phone = normalizeCustomerPhone(value);
+        if (phone === null) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Enter a mobile number like 0917 123 4567, or include the country code",
+          });
+          return z.NEVER;
+        }
+        return phone;
+      }),
     email: z.string().trim().max(160),
     notes: z.string().trim().max(500),
   }),

@@ -194,6 +194,32 @@ export type CustomerNotifyResult =
   | { ok: false; reason: CustomerNotifyFailure };
 
 /**
+ * The "your order is ready" push, at most once per order.
+ *
+ * staff_set_order_status answers a repeated Ready tap with success, so the
+ * action cannot tell a real transition from a replay. The claim (0097) can:
+ * only the first caller for a ready order gets true. Ring again goes through
+ * notifyCustomer directly, because sounding a second time is its whole point.
+ */
+export async function notifyCustomerReady(orderId: string): Promise<CustomerNotifyResult | null> {
+  try {
+    if (!adminConfigured()) return { ok: false, reason: "admin_unconfigured" };
+    const { data, error } = await createAdminClient().rpc("claim_customer_ready_notice", {
+      p_order_id: orderId,
+    });
+    if (error) {
+      console.error("[push] ready notice claim failed", error.message);
+      return { ok: false, reason: "order_lookup_failed" };
+    }
+    if (data !== true) return null;
+    return await notifyCustomer(orderId);
+  } catch (error) {
+    console.error("[push] notifyCustomerReady failed", error instanceof Error ? error.message : "unknown");
+    return null;
+  }
+}
+
+/**
  * Tells the customer holding the tracking link what just happened.
  *
  * `customerPayload` needs the full timeline and the full payment, not just the

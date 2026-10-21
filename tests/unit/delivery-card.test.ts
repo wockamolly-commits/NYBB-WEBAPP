@@ -14,6 +14,12 @@ describe("deliveryCardAllowedOn", () => {
     }
   });
 
+  it("stays off an item page, where it stood over the flavour grid", () => {
+    for (const path of ["/menu/chicken-wings/chicken-wings", "/menu/sides/fries/"]) {
+      expect(deliveryCardAllowedOn(path)).toBe(false);
+    }
+  });
+
   it("matches whole segments, not prefixes of words", () => {
     expect(deliveryCardAllowedOn("/orders-info")).toBe(true);
   });

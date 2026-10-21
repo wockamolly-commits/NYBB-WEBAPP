@@ -26,7 +26,10 @@ import { ArrowUp } from "lucide-react";
 const SHOW_AFTER = 0.8;
 const GAP = 12;
 const EDGE = 16;
-const OBSTACLES = '.delivery-card[data-shown="true"], .promo-float[data-shown="true"], [data-cart-bar]';
+const OBSTACLES =
+  '.delivery-card[data-shown="true"], .promo-float[data-shown="true"], [data-cart-bar], [data-back-to-top-obstacle]';
+/** The button's own height (size-12). */
+const SIZE = 48;
 
 export function BackToTop() {
   const [shown, setShown] = useState(false);
@@ -44,14 +47,17 @@ export function BackToTop() {
 
       // The button's column: the left edge, the inset plus its own width.
       const left = window.innerWidth >= 640 ? 24 : EDGE;
-      const right = left + 48;
+      const right = left + SIZE;
       let floor = window.innerHeight - EDGE;
       const boxes = Array.from(document.querySelectorAll<HTMLElement>(OBSTACLES))
         .map((element) => element.getBoundingClientRect())
         .filter((box) => box.height > 0 && box.left < right && box.right > left)
         .sort((a, b) => b.bottom - a.bottom);
       for (const box of boxes) {
-        if (box.bottom > floor - GAP && box.top < floor) floor = box.top - GAP;
+        // Overlap with the button's whole height, not just its bottom edge. The
+        // edge-only test let a box ending just above the floor through, so with
+        // the cart bar showing on a phone the button sat on the delivery card.
+        if (box.bottom > floor - SIZE - GAP && box.top < floor) floor = box.top - GAP;
       }
       const lifted = window.innerHeight - floor;
       setBottom(lifted > EDGE ? lifted : null);

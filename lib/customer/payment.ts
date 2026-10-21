@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { CHECKOUT_ATTEMPT_PATTERN } from "@/lib/checkout/schema";
-import { paymentState, type PaymentState } from "@/lib/orders/payment-state";
+import { paymentState, paymentWindowClosing, type PaymentState } from "@/lib/orders/payment-state";
 import { readOrderByTracking } from "@/lib/orders/reader";
 import { normalizeShortCode, normalizeTrackingToken } from "@/lib/orders/tracking";
 import { mapAttachResult, type PayOrderResult } from "@/lib/paymongo/attach-result";
@@ -156,10 +156,22 @@ export async function startPayment(
   const admin = createAdminClient();
   const { data: settings, error: settingsError } = await admin
     .from("app_settings")
-    .select("paymongo_enabled, paymongo_methods")
+    .select("paymongo_enabled, paymongo_methods, online_payment_expiry_minutes")
     .eq("id", 1)
     .single();
   if (settingsError || !settings) return unavailable();
+
+  if (
+    typeof settings.online_payment_expiry_minutes === "number" &&
+    paymentWindowClosing(lookup.order.placedAt, settings.online_payment_expiry_minutes)
+  ) {
+    return {
+      ok: false,
+      error:
+        "This order is about to lapse without payment, so we have not opened a " +
+        "new payment for it. Please place the order again.",
+    };
+  }
 
   // The tracking RPC deliberately does not reveal an internal id. Read the
   // order by its public short code only after that authorization has passed.

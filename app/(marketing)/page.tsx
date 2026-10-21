@@ -744,7 +744,7 @@ export default async function Home() {
                         {branch.shortName}
                       </p>
                     </div>
-                    <p className="text-nybb-bone/50 mt-2 text-xs leading-snug">
+                    <p className="text-nybb-bone/55 mt-2 text-xs leading-snug">
                       {branch.addressLine}, {branch.city}
                     </p>
                     <div className="flex items-center justify-between gap-3">

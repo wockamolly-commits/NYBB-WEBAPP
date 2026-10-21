@@ -196,6 +196,8 @@ describe("what get_orderable_branches refuses to expose", () => {
       "format",
       "isOpenNow",
       "name",
+      // 0092: when a shut counter opens. Published hours, not an operational figure.
+      "opensAt",
       "phones",
       "prepMinutes",
       "shortName",

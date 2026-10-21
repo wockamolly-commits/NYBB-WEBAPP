@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { PRESSABLE } from "@/components/ui/Button";
 import {
   capacityNote,
@@ -28,6 +29,9 @@ import { cn } from "@/lib/utils";
  * the same one `place_order` will book against, so the picker cannot offer a
  * minute the database would then refuse.
  */
+/** How many windows show before "Show more". Four rows of two on a phone. */
+const VISIBLE_SLOTS = 8;
+
 export function SlotPicker({
   slots,
   selected,
@@ -46,8 +50,28 @@ export function SlotPicker({
   onSelect: (startsAt: string | null) => void;
   disabled?: boolean;
 }) {
-  const days = groupSlotsByDay(slots);
+  const [expanded, setExpanded] = useState(false);
+  const allDays = groupSlotsByDay(slots);
   const unavailable = unavailableMessage(slots);
+
+  // The first few windows, then the rest on request. A full day is around 30
+  // windows, which on a phone is 15 rows of tiles between the customer and the
+  // name and phone fields. Most people want one of the next few anyway. The
+  // chosen window always stays visible, wherever it is in the list.
+  const total = allDays.reduce((sum, day) => sum + day.slots.length, 0);
+  const position = new Map(
+    allDays.flatMap((day) => day.slots).map((slot, index) => [slot.startsAt, index] as const),
+  );
+  const days = allDays
+    .map((day) => ({
+      ...day,
+      slots: day.slots.filter(
+        (slot) =>
+          expanded || (position.get(slot.startsAt) ?? 0) < VISIBLE_SLOTS || slot.startsAt === selected,
+      ),
+    }))
+    .filter((day) => day.slots.length > 0);
+  const hidden = total - days.reduce((sum, day) => sum + day.slots.length, 0);
 
   function choose(startsAt: string) {
     onSelect(selected === startsAt ? null : startsAt);
@@ -57,7 +81,7 @@ export function SlotPicker({
     <section aria-labelledby="pickup-time">
       <h2 id="pickup-time" className="font-display heading-panel">
         Pickup time
-        <span className="text-nybb-bone/50 ml-2 font-sans text-xs tracking-[0.08em]">
+        <span className="text-nybb-bone/55 ml-2 font-sans text-xs tracking-[0.08em]">
           Required
         </span>
       </h2>
@@ -157,6 +181,17 @@ export function SlotPicker({
         </div>
       ))}
 
+      {hidden > 0 || (expanded && total > VISIBLE_SLOTS) ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((current) => !current)}
+          className="text-nybb-bone hover:text-nybb-orange mt-4 min-h-11 text-sm font-medium underline underline-offset-4"
+        >
+          {expanded ? "Show fewer times" : `Show ${hidden} more ${hidden === 1 ? "time" : "times"}`}
+        </button>
+      ) : null}
+
       {/* IT USED TO OPEN "Collect at NYBB Hot Wings, Central Bloc". The band
           at the top of the screen now names the counter, and repeating it
           eight lines later reads as a page saying the same thing twice rather
@@ -164,7 +199,7 @@ export function SlotPicker({
           panel can explain: why the grid starts where it starts, and how long
           each window is. Both are per branch, which is exactly why they are
           worth printing. */}
-      {slots.branch && days.length > 0 ? (
+      {slots.branch && allDays.length > 0 ? (
         <p className="text-nybb-bone/65 mt-4 max-w-[62ch] text-sm leading-relaxed">
           Windows are {slots.branch.slotMinutes} minutes long, and the earliest is{" "}
           {slots.branch.prepMinutes} minutes from now because that is how long this
