@@ -68,9 +68,16 @@ const company = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
   { href: "/franchise", label: "Franchise" },
-  // Here and not in the legal bar under the skyline, which is where they
-  // first went: the delivery card floats over that bar at every width, so on
-  // the live site both links were present and covered.
+];
+
+/**
+ * The Legal column, its own heading rather than two more Company rows.
+ *
+ * Not in the legal bar under the skyline, which is where these first went:
+ * the floating delivery card sits over that bar at every width, so on the live
+ * site both links were present and covered.
+ */
+const legal = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Service" },
 ];
@@ -312,7 +319,7 @@ export function Footer({
                 lines. */}
             <nav
               aria-label="Footer"
-              className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-[1.4fr_1fr_auto] sm:gap-x-10 lg:col-span-7"
+              className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-[1.4fr_1fr_auto] sm:gap-x-10 lg:col-span-7 xl:grid-cols-[1.4fr_1fr_auto_auto]"
             >
               <div className="col-span-2 sm:col-span-1">
                 <FooterHeading>Branches</FooterHeading>
@@ -362,6 +369,17 @@ export function Footer({
                       >
                         <social.Icon className="size-5" />
                       </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <FooterHeading>Legal</FooterHeading>
+                <ul className="mt-3">
+                  {legal.map((link) => (
+                    <li key={link.href}>
+                      <FooterLink href={link.href}>{link.label}</FooterLink>
                     </li>
                   ))}
                 </ul>
