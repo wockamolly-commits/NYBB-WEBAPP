@@ -1,10 +1,27 @@
 const BLOCKED_PREFIXES = ["/api", "/auth", "/workspace"];
 
+/**
+ * Whether a path stays on this site once a browser has parsed it.
+ *
+ * Checking the raw string for "//" is not enough on its own, because the URL
+ * parser deletes tabs and newlines before it reads anything: "/\t/evil.com"
+ * passes a "//" test and is then followed to evil.com. So every control
+ * character is refused outright, not only the three the parser strips today.
+ */
+function isSameSitePath(path: string): boolean {
+  return (
+    path.startsWith("/") &&
+    !path.startsWith("//") &&
+    !path.includes("\\") &&
+    !/[\u0000-\u001f\u007f]/.test(path)
+  );
+}
+
 /** A same-origin storefront destination, never an external or staff URL. */
 export function safeCustomerNextPath(value: unknown, fallback = "/account"): string {
   if (typeof value !== "string") return fallback;
   const path = value.trim();
-  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) return fallback;
+  if (!isSameSitePath(path)) return fallback;
   const pathname = path.split(/[?#]/, 1)[0];
   if (
     BLOCKED_PREFIXES.some(
@@ -25,7 +42,7 @@ export function safeStaffNextPath(value: unknown, fallback = "/workspace"): stri
 export function requestedStaffNextPath(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const path = value.trim();
-  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) return null;
+  if (!isSameSitePath(path)) return null;
   const pathname = path.split(/[?#]/, 1)[0];
   if (pathname !== "/workspace" && !pathname.startsWith("/workspace/")) return null;
   if (pathname === "/workspace/login" || pathname.startsWith("/workspace/login/")) {

@@ -18,6 +18,7 @@ export async function proxy(request: NextRequest) {
   // load the secret key merely to decide which browser origins are allowed.
   const csp = contentSecurityPolicy(nonce, {
     paymentsEnabled: Boolean(process.env.NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY),
+    mapsEnabled: Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim()),
   });
 
   const requestHeaders = new Headers(request.headers);

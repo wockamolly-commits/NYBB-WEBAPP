@@ -18,6 +18,13 @@ import {
 
 export const WORKSPACE_HOME = "/workspace";
 
+/**
+ * Where a person is sent when a page is not theirs to open. The flag makes the
+ * workspace say so (WorkspaceDeniedNotice); before it, a bookmarked page beyond
+ * someone's role bounced them to their landing screen with no word of why.
+ */
+export const WORKSPACE_DENIED = "/workspace?denied=1";
+
 export type StaffProfile = {
   id: string;
   role: "admin" | "staff";
@@ -142,6 +149,6 @@ export async function requireStaffPermission(
   returnTo = WORKSPACE_HOME,
 ): Promise<{ user: User; profile: StaffProfile }> {
   const context = await requireStaff(returnTo);
-  if (!hasStaffPermission(context.profile, permission)) redirect(WORKSPACE_HOME);
+  if (!hasStaffPermission(context.profile, permission)) redirect(WORKSPACE_DENIED);
   return context;
 }

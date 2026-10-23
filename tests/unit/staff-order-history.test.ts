@@ -59,7 +59,7 @@ describe("workspace order history", () => {
       from: "bad",
       to: "2026-08-10",
       status: "claimed",
-    })).toEqual({ query: "Maria", from: "", to: "2026-08-10", status: "claimed" });
+    })).toEqual({ query: "Maria", from: "", to: "2026-08-10", status: "claimed", branch: "" });
     expect(normalizeOrderHistoryFilters({ status: "pending" }).status).toBe("all");
   });
 
@@ -85,6 +85,26 @@ describe("workspace order history", () => {
     })).toMatchObject({ closedAt: "2026-08-10T02:30:00.000Z", reason: "Kitchen closed" });
   });
 
+  it("names a stored reason code in words rather than showing the code", () => {
+    const rejected = (code: string) => toOrderHistoryEntry({
+      ...row, status: "rejected", claimed_at: null,
+      rejected_at: "2026-08-10T02:30:00.000Z", rejected_reason: code,
+    })?.reason;
+    const cancelled = (code: string) => toOrderHistoryEntry({
+      ...row, status: "cancelled", claimed_at: null,
+      cancelled_at: "2026-08-10T02:30:00.000Z", cancelled_reason: code,
+    })?.reason;
+
+    expect(rejected("sold_out")).toBe("Sold out");
+    expect(rejected("too_busy")).toBe("Kitchen at capacity");
+    expect(rejected("closing")).toBe("Closing before pickup");
+    expect(rejected("other")).toBe("Another reason");
+    expect(cancelled("payment_timeout")).toBe("Payment was not completed in time");
+    expect(cancelled("payment_failed")).toBe("Payment did not go through");
+    // An unknown code still shows, so nothing a branch recorded goes missing.
+    expect(cancelled("something_new")).toBe("something_new");
+  });
+
   it("searches code and customer details without case sensitivity", () => {
     const mapped = order();
     expect(matchesOrderHistoryQuery(mapped, "abc123")).toBe(true);
@@ -105,6 +125,18 @@ describe("workspace order history", () => {
     expect(summarizeOrderHistory([real, test, unpaid])).toEqual({
       orderCount: 3,
       testOrderCount: 1,
+      paidOrderCount: 1,
+      paidSalesCents: 45000,
+    });
+  });
+
+  it("leaves a paid order that was then refused or cancelled out of sales", () => {
+    // The money on these is owed back, not taken.
+    const real = order();
+    const refused = order({ id: "44444444-4444-4444-8444-444444444444", status: "rejected" });
+    const lapsed = order({ id: "55555555-5555-4555-8555-555555555555", status: "cancelled" });
+    expect(summarizeOrderHistory([real, refused, lapsed])).toMatchObject({
+      orderCount: 3,
       paidOrderCount: 1,
       paidSalesCents: 45000,
     });

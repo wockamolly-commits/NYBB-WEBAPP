@@ -9,6 +9,7 @@ import { orderTrackingHref } from "@/lib/orders/tracking";
 import type { PayOrderResult } from "@/lib/paymongo/attach-result";
 import type { OnlineMethod } from "@/lib/paymongo/methods";
 import type { PlacedOrder } from "@/lib/checkout/types";
+import { usePaymentState } from "@/components/order/usePaymentState";
 import { MockPayment } from "./MockPayment";
 
 export function PendingPayment({
@@ -23,10 +24,51 @@ export function PendingPayment({
   const [result, setResult] = useState(initialResult);
   const [retrying, startRetry] = useTransition();
   const tracking = orderTrackingHref(order.shortCode, order.trackingToken);
+  const payment = usePaymentState({
+    shortCode: order.shortCode,
+    trackingToken: order.trackingToken,
+    active: result.ok && !("redirectUrl" in result),
+  });
 
   useEffect(() => {
     if (result.ok && "redirectUrl" in result) window.location.assign(result.redirectUrl);
   }, [result]);
+
+  // Only a payment the server has confirmed moves the customer on. A replace,
+  // not a push, so Back does not land on a QR code for an order already paid.
+  // And a full navigation rather than the router: the mock simulator settles
+  // through a Server Action, and a router navigation racing that action's
+  // re-render is silently dropped.
+  useEffect(() => {
+    if (payment === "paid") window.location.replace(tracking);
+  }, [payment, tracking]);
+
+  if (payment === "paid") {
+    return (
+      <p role="status" className="mt-8 text-nybb-ink/70">
+        Payment confirmed. Opening your order.
+      </p>
+    );
+  }
+
+  if (payment === "closed") {
+    return (
+      <div className="mt-8 max-w-2xl">
+        <section className="bg-nybb-charcoal text-nybb-bone rounded-md p-6 sm:p-8">
+          <p className="type-caps text-nybb-orange">Payment not completed</p>
+          <p role="alert" className="text-nybb-bone/75 mt-3 max-w-prose leading-relaxed">
+            This payment did not go through, so the order was not sent to the kitchen. Your order
+            page has the details.
+          </p>
+        </section>
+        <div className="mt-6">
+          <ButtonLink href={tracking} tone="light" size="lg">
+            View this order
+          </ButtonLink>
+        </div>
+      </div>
+    );
+  }
 
   function retry() {
     startRetry(async () => {
@@ -72,8 +114,8 @@ export function PendingPayment({
         <p className="type-caps text-nybb-orange">Payment needed</p>
         <h2 className="font-display heading-minor mt-3">Scan to pay with QR Ph</h2>
         <p className="text-nybb-bone/70 mt-3 max-w-prose leading-relaxed">
-          Pay {formatPeso(order.totalCents)} to send this order to the kitchen. We will update
-          your order as soon as PayMongo confirms the payment.
+          Pay {formatPeso(order.totalCents)} to send this order to the kitchen. This page opens
+          your order by itself as soon as PayMongo confirms the payment.
         </p>
 
         {result.ok && "qr" in result ? (
@@ -104,7 +146,7 @@ export function PendingPayment({
             <p className="text-nybb-bone/75 mt-2 max-w-prose text-sm leading-relaxed">
               <strong>Do not scan the code above.</strong> PayMongo generates a real QR Ph code
               in test mode, and paying it moves real money. Complete this payment on PayMongo&rsquo;s
-              simulation page instead.
+              simulation page instead, then come back to this tab.
             </p>
             <a
               href={result.qr.testUrl}
@@ -119,8 +161,8 @@ export function PendingPayment({
 
         {result.ok && "done" in result ? (
           <p className="bg-nybb-yellow text-nybb-ink mt-6 rounded-md px-4 py-3 text-sm leading-relaxed">
-            Payment is being confirmed. Keep this page open and check your order status in a
-            moment.
+            Payment is being confirmed. Keep this page open, and it will open your order once
+            the payment is through.
           </p>
         ) : null}
 

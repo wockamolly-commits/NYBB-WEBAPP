@@ -42,6 +42,15 @@ export async function chooseStore(slug: string): Promise<ChooseStoreResult> {
     };
   }
 
+  // Live, but shut at this minute. The picker shows it greyed out rather than
+  // pressable, and this is the same rule for a page rendered before it shut.
+  if (store.closedNow) {
+    return {
+      ok: false,
+      error: `${store.shortName} is closed right now. Please choose a counter that is open.`,
+    };
+  }
+
   const jar = await cookies();
   jar.set(BRANCH_COOKIE, store.slug, branchCookieOptions);
 

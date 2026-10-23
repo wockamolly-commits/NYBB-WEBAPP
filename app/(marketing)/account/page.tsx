@@ -73,7 +73,7 @@ export default async function AccountPage({
             These fill checkout automatically. You can still change them on any order.
           </p>
           <AccountProfileForm profile={profile ?? { displayName: "", phone: "" }} />
-          <p className="border-nybb-bone/15 text-nybb-bone/50 mt-5 border-t pt-4 text-xs leading-relaxed">
+          <p className="border-nybb-bone/15 text-nybb-bone/55 mt-5 border-t pt-4 text-xs leading-relaxed">
             Signed in as {user.email ?? "your verified email"}.
           </p>
         </section>

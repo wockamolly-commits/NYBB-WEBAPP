@@ -7,6 +7,7 @@ import type { NextConfig } from "next";
 // script writing to "menu" and this pattern permitting "menu-images", and
 // nothing could catch it because no code path read both.
 import { MENU_IMAGE_BUCKET } from "./lib/staff/menu-image-limits";
+import { VOUCHER_POSTER_BUCKET } from "./lib/staff/voucher-poster-limits";
 
 const remotePatterns: NonNullable<NextConfig["images"]>["remotePatterns"] = [];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,6 +18,13 @@ if (supabaseHost) {
     protocol: "https",
     hostname: supabaseHost,
     pathname: `/storage/v1/object/public/${MENU_IMAGE_BUCKET}/**`,
+  });
+  // Voucher posters (0077). Every upload is a fresh path, so the year-long
+  // optimized cache below is as safe here as it is for the menu.
+  remotePatterns.push({
+    protocol: "https",
+    hostname: supabaseHost,
+    pathname: `/storage/v1/object/public/${VOUCHER_POSTER_BUCKET}/**`,
   });
 }
 
@@ -63,6 +71,13 @@ const securityHeaders = [
 const IMAGE_MINIMUM_CACHE_TTL = 31_536_000; // seconds = 365 days
 
 const nextConfig: NextConfig = {
+  // The development-only "N" badge defaults to the bottom left, which is
+  // where the storefront's back to top button lives, and it sits on top of
+  // the button and swallows its clicks. Development only: production renders
+  // no badge at all.
+  devIndicators: {
+    position: "bottom-right",
+  },
   images: {
     remotePatterns,
     minimumCacheTTL: IMAGE_MINIMUM_CACHE_TTL,
@@ -78,7 +93,13 @@ const nextConfig: NextConfig = {
       // no action body executed. 6mb rather than 5mb leaves room for the
       // multipart boundaries and part headers the raw body carries beside
       // the file, per the framework docs' own 10-20 KB rule of thumb.
-      bodySizeLimit: "6mb",
+      //
+      // 9mb since the voucher poster became required: VOUCHER_POSTER_MAX_BYTES
+      // is 8 MB, and at 6mb every poster between 6 and 8 MB was refused by the
+      // framework with no message, so the create form could not be submitted
+      // with a file it had just accepted. The create form also carries the
+      // voucher's own fields, which are a few KB.
+      bodySizeLimit: "9mb",
     },
   },
   async headers() {

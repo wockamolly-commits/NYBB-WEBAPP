@@ -7,6 +7,7 @@ import { createStaffClient } from "@/lib/supabase/server";
 // the database sent.
 import { HOLD_REASONS } from "./menu-types";
 import type {
+  OptionRule,
   HoldKind,
   HoldReason,
   ManagedCategory,
@@ -100,6 +101,26 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
     itemsByGroup.set(row.group_id, groupItems);
   }
 
+  // The most common rule per group, ties to the stricter (higher minimum), the
+  // same choice staff_save_menu_item makes for a new link (0093).
+  const ruleCounts = new Map<string, Map<string, number>>();
+  for (const row of rows.links) {
+    const counts = ruleCounts.get(row.group_id) ?? new Map<string, number>();
+    const key = `${row.min_select}:${row.max_select}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+    ruleCounts.set(row.group_id, counts);
+  }
+  const typicalRule = (groupId: string): OptionRule | null => {
+    const counts = ruleCounts.get(groupId);
+    if (!counts) return null;
+    const [best] = [...counts.entries()].sort(
+      ([keyA, countA], [keyB, countB]) =>
+        countB - countA || Number(keyB.split(":")[0]) - Number(keyA.split(":")[0]),
+    );
+    const [minSelect, maxSelect] = best[0].split(":").map(Number);
+    return { minSelect, maxSelect };
+  };
+
   const holdsByItem = new Map<string, ManagedItem["holds"]>();
   for (const row of rows.holds) {
     const list = holdsByItem.get(row.item_id) ?? [];
@@ -184,6 +205,7 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
       sortOrder: row.sort_order,
       options: (optionsByGroup.get(row.id) ?? []).sort(bySortOrder),
       linkedItemIds: itemsByGroup.get(row.id) ?? [],
+      typicalRule: typicalRule(row.id),
     }))
     .sort(bySortOrder);
 

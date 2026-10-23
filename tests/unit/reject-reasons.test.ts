@@ -51,6 +51,8 @@ const rejected: TrackedOrder = {
     cancelledAt: null,
     cancelledReason: null,
     customerArrivedAt: null,
+    readyAcknowledgedAt: null,
+    readyRingAt: null,
     noShowAt: null,
   },
 };

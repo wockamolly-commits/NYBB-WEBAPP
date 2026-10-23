@@ -10,15 +10,19 @@ import { PendingPayment } from "@/components/checkout/PendingPayment";
 import { payOrder } from "@/app/actions/payment";
 import { SlotPicker } from "@/components/checkout/SlotPicker";
 import { OrderTotals, VoucherField } from "@/components/checkout/VoucherField";
+import { PromoStub } from "@/components/promos/PromoStub";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
-import { clearCart } from "@/lib/cart/store";
+import { DroppedNotice } from "@/components/cart/CartView";
+import { clearCart, reconcileCart } from "@/lib/cart/store";
 import { resolveCart } from "@/lib/cart/lines";
 import { useCart } from "@/lib/cart/use-cart";
 import { formatPeso } from "@/lib/format";
 import { formatSlotRange } from "@/lib/slots/format";
+import { readPendingPromo, rememberPendingPromo } from "@/lib/promos/pending";
+import { promoHeadline, type Promo } from "@/lib/promos/schema";
 import { storefrontAccessToken } from "@/lib/supabase/browser";
-import type { CheckoutDetails, CheckoutField, PlacedOrder } from "@/lib/checkout/types";
+import type { CheckoutDetails, CheckoutField, PlaceOrderInput, PlacedOrder } from "@/lib/checkout/types";
 import type { PickupSlots } from "@/lib/slots/types";
 import type { MenuCategory } from "@/lib/menu/types";
 import type { OnlineMethod } from "@/lib/paymongo/methods";
@@ -60,6 +64,8 @@ export function CheckoutView({
   branchSlug = null,
   storeChosen = false,
   storeCount = 0,
+  initialPromoCode = null,
+  promos = [],
 }: {
   categories: MenuCategory[];
   slots: PickupSlots;
@@ -79,9 +85,33 @@ export function CheckoutView({
   storeChosen?: boolean;
   /** How many counters can take an order. Decides whether the choice is real. */
   storeCount?: number;
+  /**
+   * A code carried in from `/promos`, already normalised on the server.
+   *
+   * It seeds the same two pieces of state the Apply button sets and nothing
+   * else, so a code arriving in a URL goes through exactly the same server
+   * check as one typed into the field. There is no second validation path
+   * here, and there must never be one: the browser sends a code and the
+   * server decides what it is worth.
+   */
+  initialPromoCode?: string | null;
+  /**
+   * Promos running at this counter that this customer has not spent, for the
+   * one-tap suggestions under the code field. Read by the page from the same
+   * memoised listing the promo bar uses, so the two never disagree.
+   */
+  promos?: readonly Promo[];
 }) {
   const router = useRouter();
-  const { cart, loaded } = useCart();
+  const { cart, loaded, changes } = useCart();
+
+  // The same reconciliation the cart page runs. A line can stop resolving
+  // between the cart and here (sold out at this counter, a size taken off, a
+  // different counter chosen in the store bar), and without this it silently
+  // vanished from "Your order" and the total shrank with no explanation.
+  useEffect(() => {
+    reconcileCart(categories);
+  }, [categories]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [details, setDetails] = useState<CheckoutDetails>(initialDetails);
   const [failure, setFailure] = useState<{ message: string; field: CheckoutField | null } | null>(
@@ -108,11 +138,31 @@ export function CheckoutView({
    * cart changes back, without the customer having to notice and retype
    * anything. One code, because the stacking rule is one code.
    */
-  const [voucherCode, setVoucherCode] = useState("");
-  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  //
+  // Seeded from `?promo=` when the customer came from the promos page. Setting
+  // `appliedCode` is precisely what `applyVoucher` does, so the re-check effect
+  // below fires on mount and asks the server about the real cart. Done in the
+  // initialiser rather than in an effect so there is no render where the field
+  // is empty, and so Remove genuinely removes: the seed cannot run twice.
+  //
+  // Failing a `?promo=`, a code this tab asked for earlier is picked up from
+  // session storage (see lib/promos/pending.ts). Reading it in the initialiser
+  // is safe on hydration because this component renders the same skeleton on
+  // both passes until the cart store reports it has loaded.
+  const [voucherCode, setVoucherCode] = useState(
+    () => initialPromoCode ?? readPendingPromo() ?? "",
+  );
+  const [appliedCode, setAppliedCode] = useState<string | null>(
+    () => initialPromoCode ?? readPendingPromo(),
+  );
   const [voucher, setVoucher] = useState<AppliedVoucher | null>(null);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [checkingVoucher, startCheckingVoucher] = useTransition();
+  // True while the server is being asked about the applied code. The
+  // transition above only wraps the synchronous state changes, so on its own
+  // "Checking" never showed and the button kept the undiscounted figure until
+  // the verdict landed.
+  const [voucherInFlight, setVoucherInFlight] = useState(false);
 
   /**
    * The idempotency key, minted lazily and reused on every retry.
@@ -124,10 +174,19 @@ export function CheckoutView({
    * under the same id, and `place_order` will either place the order once or
    * hand back the one it already placed.
    */
-  const attempt = useRef<string | null>(null);
-  function attemptId(): string {
-    attempt.current ??= crypto.randomUUID();
-    return attempt.current;
+  const attempt = useRef<{ id: string; order: string } | null>(null);
+  /**
+   * The key for this exact order. A retry of the same order reuses it; a
+   * changed order gets a new one. Before, a customer whose first submit
+   * committed but whose response was lost, and who then edited the cart and
+   * pressed again, was handed back the FIRST order under the old key, and the
+   * edited cart was cleared as though it had been placed.
+   */
+  function attemptId(order: string): string {
+    if (attempt.current?.order !== order) {
+      attempt.current = { id: crypto.randomUUID(), order };
+    }
+    return attempt.current.id;
   }
 
   const resolved = resolveCart(categories, cart);
@@ -183,8 +242,19 @@ export function CheckoutView({
     // drop a code (Remove, and applying a different one) clear the verdict in
     // the same handler, so this never has to catch up by setting state.
     if (appliedCode === null) return;
+    // NOTHING TO CHECK A CODE AGAINST YET.
+    //
+    // Until `?promo=` existed this was unreachable: appliedCode could only be
+    // set by the Apply button, and that button lives below a cart that has
+    // lines in it. A seeded code breaks that invariant, and without this the
+    // effect would call previewVoucher with an empty array, fail its `min(1)`
+    // on lines, and render "We could not read that request" on a screen whose
+    // real problem is that the cart is empty. It also covers the render before
+    // the cart has been read out of localStorage at all.
+    if (cartSignature === "[]") return;
     let cancelled = false;
     void (async () => {
+      setVoucherInFlight(true);
       const result = await checkVoucher({
         code: appliedCode,
         branchSlug: previewBranchSlug,
@@ -192,6 +262,7 @@ export function CheckoutView({
         lines: JSON.parse(cartSignature) as typeof voucherLines,
       });
       if (cancelled) return;
+      setVoucherInFlight(false);
       if (result.ok) {
         setVoucher(result.voucher);
         setVoucherError(null);
@@ -202,11 +273,30 @@ export function CheckoutView({
     })();
     return () => {
       cancelled = true;
+      setVoucherInFlight(false);
     };
   }, [appliedCode, cartSignature, previewBranchSlug]);
 
-  function applyVoucher() {
-    const code = voucherCode.trim().toUpperCase();
+  // A refused name or phone is said next to its field, which on a phone is two
+  // cards above the button that was just pressed. Without moving focus there,
+  // the button simply went back to normal and nothing visible changed.
+  useEffect(() => {
+    if (failure && isDetailField(failure.field)) {
+      const field = document.getElementById(`checkout-${failure.field}`);
+      field?.focus();
+      field?.scrollIntoView({ block: "center" });
+    }
+  }, [failure]);
+
+  // Kept for the tab, so a code asked for with an empty cart survives the trip
+  // to the menu and is waiting when the customer comes back. Removing it
+  // forgets it the same way. Only a request is stored, never a discount.
+  useEffect(() => {
+    rememberPendingPromo(appliedCode);
+  }, [appliedCode]);
+
+  function applyVoucher(chosen?: string) {
+    const code = (chosen ?? voucherCode).trim().toUpperCase();
     if (code === "") return;
     startCheckingVoucher(() => {
       // Applying replaces whatever was applied before. One code per order, so
@@ -252,11 +342,21 @@ export function CheckoutView({
   }
 
   if (resolved.lines.length === 0) {
+    if (appliedCode) {
+      return (
+        <HeldPromo
+          code={appliedCode}
+          promo={promos.find((promo) => promo.code === appliedCode) ?? null}
+          onRemove={removeVoucher}
+        />
+      );
+    }
     return (
       <div className="mt-8">
-        <p className="text-nybb-ink/70 max-w-prose leading-relaxed">
-          There is nothing to check out. Build an order first and the pickup
-          times will be waiting here.
+        {changes ? <DroppedNotice dropped={changes.dropped} repriced={changes.repriced} /> : null}
+        <p className="text-nybb-ink/70 mt-6 max-w-prose leading-relaxed">
+          There is nothing to check out. Build an order first and the pickup times will be
+          waiting here.
         </p>
         <div className="mt-6">
           <ButtonLink href="/menu" tone="light">
@@ -292,6 +392,24 @@ export function CheckoutView({
     event.preventDefault();
     if (!selectedSlot || needsStore || submitting) return;
 
+    const order: Omit<PlaceOrderInput, "attemptId"> = {
+      // The counter the customer chose, not whichever one the slot reader
+      // happened to resolve. Those were the same value while the picker did
+      // not exist; they are not once it does, and the one that matters is
+      // the one the screen named above the window grid.
+      branchSlug: branchSlug ?? slots.branch?.slug ?? null,
+      pickupSlotStart: selectedSlot,
+      details,
+      paymentMethod,
+      // A code, never a discount. place_order resolves what it is worth from
+      // the vouchers row, and anything this browser claimed about the money
+      // would be ignored.
+      voucherCode: appliedCode ?? "",
+      // Slugs and quantities. Not one price leaves this browser, because not
+      // one price sent from a browser would be believed.
+      lines: voucherLines,
+    };
+
     startSubmitting(async () => {
       let accessToken: string | null = null;
       if (signedIn) {
@@ -302,24 +420,23 @@ export function CheckoutView({
         }
       }
 
-      const result = await placeOrder({
-        attemptId: attemptId(),
-        // The counter the customer chose, not whichever one the slot reader
-        // happened to resolve. Those were the same value while the picker did
-        // not exist; they are not once it does, and the one that matters is
-        // the one the screen named above the window grid.
-        branchSlug: branchSlug ?? slots.branch?.slug ?? null,
-        pickupSlotStart: selectedSlot,
-        details,
-        paymentMethod,
-        // A code, never a discount. place_order resolves what it is worth from
-        // the vouchers row, and anything this browser claimed about the money
-        // would be ignored.
-        voucherCode: appliedCode ?? "",
-        // Slugs and quantities. Not one price leaves this browser, because not
-        // one price sent from a browser would be believed.
-        lines: voucherLines,
-      }, accessToken);
+      // A network failure throws rather than returning a refusal. Uncaught,
+      // it reached the error page, which remounted this screen and threw the
+      // attempt key away, so pressing again could place a second order. Caught
+      // here, the key survives and the retry is safe: place_order hands back
+      // the order it already placed if the first request did land.
+      let result: Awaited<ReturnType<typeof placeOrder>>;
+      try {
+        result = await placeOrder({ attemptId: attemptId(JSON.stringify(order)), ...order }, accessToken);
+      } catch {
+        setFailure({
+          message:
+            "We could not reach the shop to place this order. Check your connection and press the " +
+            "button again. If the first try went through, pressing again will not order twice.",
+          field: null,
+        });
+        return;
+      }
 
       if (result.ok) {
         // The order exists, so this attempt is spent and the cart it was built
@@ -327,13 +444,28 @@ export function CheckoutView({
         // a customer who navigates back finds a cart that was already sold.
         attempt.current = null;
         clearCart();
+        // The code has been used on this order, so it is no longer a request
+        // waiting for a cart. The state keeps it; the tab forgets it.
+        rememberPendingPromo(null);
         if (onlineMethod) {
-          const payment = await payOrder({
-            shortCode: result.order.shortCode,
-            trackingToken: result.order.trackingToken,
-            paymentAttemptId: crypto.randomUUID(),
-            method: onlineMethod,
-          });
+          // The order exists and the cart is already cleared, so whatever
+          // happens next has to land on the payment screen, which carries the
+          // tracking link and a retry. A throw here used to reach the error
+          // page instead, and a guest lost the only way back to their order.
+          let payment: PayOrderResult;
+          try {
+            payment = await payOrder({
+              shortCode: result.order.shortCode,
+              trackingToken: result.order.trackingToken,
+              paymentAttemptId: crypto.randomUUID(),
+              method: onlineMethod,
+            });
+          } catch {
+            payment = {
+              ok: false,
+              error: "Your order is in, but we could not start the payment. Please try again.",
+            };
+          }
           setPendingPayment({ order: result.order, method: onlineMethod, result: payment });
         } else {
           setPlaced(result.order);
@@ -370,6 +502,11 @@ export function CheckoutView({
       onSubmit={submit}
       className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12"
     >
+      {changes ? (
+        <div className="lg:col-span-2 [&>*]:mt-0">
+          <DroppedNotice dropped={changes.dropped} repriced={changes.repriced} />
+        </div>
+      ) : null}
       <div className="space-y-6">
         <div className="bg-nybb-charcoal text-nybb-bone rounded-md p-5 sm:p-7">
           <SlotPicker
@@ -432,10 +569,14 @@ export function CheckoutView({
             }}
             applied={voucher}
             error={voucherError}
-            busy={checkingVoucher}
+            busy={checkingVoucher || voucherInFlight}
             disabled={submitting}
-            onApply={applyVoucher}
+            onApply={() => applyVoucher()}
             onRemove={removeVoucher}
+            // Not the code the customer already asked for: if it was refused
+            // for this cart, offering it again under the error is a loop.
+            suggestions={promos.filter((promo) => promo.code !== appliedCode)}
+            onUse={applyVoucher}
           />
 
           <OrderTotals subtotalCents={resolved.subtotalCents} applied={voucher} />
@@ -471,11 +612,13 @@ export function CheckoutView({
             tone="dark"
             size="lg"
             block
-            disabled={!selectedSlot || needsStore || !onlineMethod || submitting}
+            disabled={!selectedSlot || needsStore || !onlineMethod || submitting || voucherInFlight}
             className="mt-6"
           >
             {submitting
               ? "Placing the order"
+              : voucherInFlight
+                ? "Checking the code"
               : !onlineMethod
                 ? "Online payment is not open yet"
                 : needsStore
@@ -551,5 +694,66 @@ export function CheckoutView({
         </div>
       </div>
     </form>
+  );
+}
+
+/**
+ * A code the customer asked for before there was anything to apply it to.
+ *
+ * This is where somebody lands after tapping Apply on /promos with an empty
+ * cart. It used to be one grey sentence telling them the code was not applied
+ * and asking them to come back and tap Apply again. The code is now kept for
+ * the tab (lib/promos/pending.ts), so the honest thing to say is that it is
+ * saved, and the screen's job is to send them to the menu with the code in
+ * hand rather than to explain a failure.
+ *
+ * The value line only appears when the code is one of the promos published at
+ * this counter. A code handed out privately has no public description, and
+ * the server is the only thing allowed to say what it is worth.
+ */
+function HeldPromo({
+  code,
+  promo,
+  onRemove,
+}: {
+  code: string;
+  promo: Promo | null;
+  onRemove: () => void;
+}) {
+  const headline = promo ? promoHeadline(promo) : null;
+  return (
+    <section
+      aria-labelledby="held-promo-heading"
+      className="bg-nybb-charcoal text-nybb-bone mt-8 max-w-2xl rounded-md p-5 sm:p-7"
+    >
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+        <PromoStub code={code} size="lg" />
+        {headline?.value ? (
+          <div className="min-w-0">
+            <p className="font-display text-2xl leading-tight tracking-wide uppercase">
+              {headline.value}
+            </p>
+            <p className="text-nybb-bone/70 mt-1 text-sm">{headline.scope}</p>
+          </div>
+        ) : null}
+      </div>
+
+      <h2 id="held-promo-heading" className="font-display heading-panel mt-6">
+        Saved for your order
+      </h2>
+      <p className="text-nybb-bone/70 mt-2 max-w-prose leading-relaxed">
+        Your cart is empty, so there is nothing to take it off yet. Add something from the menu
+        and the code will be in the promo field when you come back to check out.
+      </p>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <ButtonLink href="/menu" tone="dark">
+          Browse the menu
+        </ButtonLink>
+        <Button type="button" tone="dark" variant="ghost" onClick={onRemove}>
+          Remove the code
+        </Button>
+      </div>
+    </section>
   );
 }

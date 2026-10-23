@@ -58,7 +58,7 @@ const photoRows: ManagedMenuRows = {
   items: [
     { id: "item-none", category_id: "cat-wings", slug: "no-photo", name: "No Photo", code: null, description: null, image_url: null, image_source: null, image_width: null, image_height: null, image_blur_data_url: null, image_treatment: null, is_featured: false, is_active: true, sort_order: 10 },
     { id: "item-archive", category_id: "cat-wings", slug: "archive-photo", name: "Archive Photo", code: null, description: null, image_url: null, image_source: ARCHIVE_SOURCE_PATH, image_width: null, image_height: null, image_blur_data_url: null, image_treatment: null, is_featured: false, is_active: true, sort_order: 20 },
-    { id: "item-uploaded", category_id: "cat-wings", slug: "uploaded-photo", name: "Uploaded Photo", code: null, description: null, image_url: "https://storage.test/2026/abc.webp", image_source: null, image_width: 900, image_height: 900, image_blur_data_url: "data:image/webp;base64,AAA", image_treatment: "cutout", is_featured: false, is_active: true, sort_order: 30 },
+    { id: "item-uploaded", category_id: "cat-wings", slug: "uploaded-photo", name: "Uploaded Photo", code: null, description: null, image_url: "https://ktltawglqblcqduavcre.supabase.co/storage/v1/object/public/menu-images/2026/abc.webp", image_source: null, image_width: 900, image_height: 900, image_blur_data_url: "data:image/webp;base64,AAA", image_treatment: "cutout", is_featured: false, is_active: true, sort_order: 30 },
   ],
   options: [
     { id: "opt-archive", group_id: "grp-heat", slug: "archive-option", name: "Archive Option", code: null, description: null, price_cents: 0, heat_percent: 0, image_url: null, image_source: ARCHIVE_SOURCE_PATH, image_width: null, image_height: null, image_blur_data_url: null, is_active: true, sort_order: 10 },
@@ -111,11 +111,11 @@ describe("assembleManagedMenu", () => {
     const menu = assembleManagedMenu(photoRows);
     const item = menu.categories[0]?.items.find((row) => row.slug === "uploaded-photo");
     expect(item?.image).toEqual({
-      src: "https://storage.test/2026/abc.webp",
+      src: "https://ktltawglqblcqduavcre.supabase.co/storage/v1/object/public/menu-images/2026/abc.webp",
       origin: "uploaded",
       // The uncropped original, beside the tile, so the crop can be changed
       // on a later visit rather than only at the moment of upload.
-      editableSrc: "https://storage.test/2026/abc.original.webp",
+      editableSrc: "https://ktltawglqblcqduavcre.supabase.co/storage/v1/object/public/menu-images/2026/abc.original.webp",
     });
   });
 

@@ -150,8 +150,10 @@ describe("reading an audit row", () => {
       targetId: "8f14e45f-ceea-4b7c-9c2f-2a1b3c4d5e6f",
       branchName: "Central Bloc",
       actorName: "Ana Reyes",
+      actorHidden: false,
       actorRole: "staff",
       detail: { from: "ready", to: "claimed", pickup_code: "[redacted]" },
+      restricted: false,
     });
   });
 
@@ -170,6 +172,22 @@ describe("reading an audit row", () => {
     expect(entry?.actorName).toBeNull();
     expect(entry?.branchName).toBeNull();
     expect(entry?.action).toBe("order.claimed");
+  });
+
+  it("tells a person the viewer cannot look up apart from the system", () => {
+    const hidden = toAuditLogEntry({
+      ...row,
+      actor: null,
+      actor_profile_id: "7a000000-0000-4000-8000-000000000001",
+    });
+    expect(hidden?.actorHidden).toBe(true);
+    expect(toAuditLogEntry({ ...row, actor: null, actor_profile_id: null })?.actorHidden).toBe(false);
+  });
+
+  it("masks a list of customer phone numbers", () => {
+    expect(redactAuditDetail({ scope: { customerPhones: ["09171234567"], branchIds: ["b"] } })).toEqual({
+      scope: { customerPhones: "[redacted]", branchIds: ["b"] },
+    });
   });
 
   it("refuses a row it cannot read rather than rendering half of one", () => {

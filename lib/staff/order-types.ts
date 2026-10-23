@@ -12,6 +12,10 @@ export type WorkspaceOrder = {
   placedAt: string;
   pickupAt: string | null;
   customerArrived: boolean;
+  /** The customer tapped "I'm coming" (0085). Cleared by a ring from here. */
+  readyAcknowledgedAt: string | null;
+  /** The last time the counter rang the customer again. */
+  readyRingAt: string | null;
   payment: { method: string; provider: string; status: string; isMock?: boolean } | null;
   items: Array<{
     quantity: number;

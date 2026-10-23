@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { MENU_IMAGE_BUCKET } from "@/lib/staff/menu-image-limits";
+import { VOUCHER_POSTER_BUCKET } from "@/lib/staff/voucher-poster-limits";
 import { freshDatabase, migrationFiles, scalar } from "./harness";
 
 /**
@@ -91,6 +92,35 @@ describe("migrations", () => {
       "0070",
       "0071",
       "0072",
+      "0073",
+      "0074",
+      "0075",
+      "0076",
+      "0077",
+      "0078",
+      "0079",
+      "0080",
+      "0081",
+      "0082",
+      "0083",
+      "0084",
+      "0085",
+      "0086",
+      "0087",
+      "0088",
+      "0089",
+      "0090",
+      "0091",
+      "0092",
+      "0093",
+      "0094",
+      "0095",
+      "0096",
+      "0097",
+      "0098",
+      "0099",
+      "0100",
+      "0101",
     ]);
   });
 
@@ -105,7 +135,10 @@ describe("migrations", () => {
       public: boolean;
       file_size_limit: number | null;
       allowed_mime_types: string[] | null;
-    }>(`select id, public, file_size_limit, allowed_mime_types from storage.buckets`);
+    }>(
+      `select id, public, file_size_limit, allowed_mime_types from storage.buckets
+       where id = '${MENU_IMAGE_BUCKET}'`,
+    );
     expect(buckets.rows).toHaveLength(1);
     const [bucket] = buckets.rows;
     // Checked against the constant, not a second literal of this test's own:
@@ -125,6 +158,7 @@ describe("migrations", () => {
       select cmd, roles::text as roles, coalesce(with_check, '') as qual
       from pg_policies
       where schemaname = 'storage' and tablename = 'objects'
+        and coalesce(with_check, '') like '%menu-images%'
     `);
     expect(policies.rows).toHaveLength(1);
     const [policy] = policies.rows;
@@ -135,6 +169,48 @@ describe("migrations", () => {
     // next.config.ts caches an optimized menu image for a year on the promise
     // that a replacement always produces a new URL.
     expect(policy.qual).toContain("menu-images");
+  });
+
+  // 0077. The same shape for voucher posters, on its own bucket because a
+  // voucher manager need not hold menu:configure. Checked against the constant
+  // the upload action and next.config.ts read, for the reason given above.
+  it("let a vouchers:manage session upload into the voucher posters bucket", async () => {
+    const buckets = await db.query<{
+      id: string;
+      public: boolean;
+      file_size_limit: number | null;
+      allowed_mime_types: string[] | null;
+    }>(
+      `select id, public, file_size_limit, allowed_mime_types from storage.buckets
+       where id = '${VOUCHER_POSTER_BUCKET}'`,
+    );
+    expect(buckets.rows).toHaveLength(1);
+    const [bucket] = buckets.rows;
+    expect(bucket.public).toBe(true);
+    expect(bucket.file_size_limit).toBe(3 * 1024 * 1024);
+    expect(bucket.allowed_mime_types).toEqual(["image/webp"]);
+
+    const policies = await db.query<{ cmd: string; roles: string; qual: string }>(`
+      select cmd, roles::text as roles, coalesce(with_check, '') as qual
+      from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+        and coalesce(with_check, '') like '%voucher-posters%'
+    `);
+    expect(policies.rows).toHaveLength(1);
+    const [policy] = policies.rows;
+    expect(policy.cmd).toBe("INSERT");
+    expect(policy.roles).toContain("authenticated");
+    expect(policy.qual).toContain("vouchers:manage");
+  });
+
+  it("give storage.objects nothing but insert policies", async () => {
+    // Every upload path is fresh and images are cached for a year, so an
+    // update or delete policy would only ever be a way to break that promise.
+    const rows = await db.query<{ cmd: string }>(`
+      select distinct cmd from pg_policies
+      where schemaname = 'storage' and tablename = 'objects'
+    `);
+    expect(rows.rows.map((r) => r.cmd)).toEqual(["INSERT"]);
   });
 
   it("enable row level security on every table", async () => {
@@ -385,13 +461,11 @@ describe("migrations", () => {
     // Web Push sibling, checked the same way and for the same reason: the
     // native app it served is gone, and a browser needs its own path in.
     //
-    // submit_franchise_inquiry (0045) is the second write here and the only one
-    // that authorizes nothing at all, because a franchise lead is a stranger
-    // introducing themselves. What bounds it is that it writes to a table anon
-    // cannot read back, stores no address or user agent, and refuses anything
-    // over its length limits. The abuse it cannot prevent on its own, a flood of
-    // plausible-looking leads, is bounded in the app by an address rate limit
-    // and a honeypot instead.
+    // submit_franchise_inquiry (0045) was on this list until 0088. It authorizes
+    // nothing, because a franchise lead is a stranger introducing themselves,
+    // so the only thing bounding a flood of junk leads is the address rate
+    // limit in the app. A public grant let a script call it past that limit,
+    // so it is now the server's to call, with the service role.
     //
     // get_orderable_branches (0049) is the narrowest read on this list. The
     // branches table is RLS'd to staff, which left the storefront unable to
@@ -402,34 +476,77 @@ describe("migrations", () => {
     // that decide whether a card is selectable. No capacity figures, no
     // reservations, no settings. Everything in it is painted on the shopfront.
     //
-    // preview_voucher (0065) is here because a guest has to be able to try a
-    // promo code, and guests are most of the orders this platform takes. It
-    // reserves nothing and charges nothing: place_order resolves the code again
-    // and its answer is the one billed, so the worst a caller can get out of
-    // this is a number that the placement then corrects. Guessing at codes is
-    // bounded by the address rate limit the Server Action in front of it
-    // applies, the same one cart writes already use, and no refusal it returns
-    // ever describes a voucher's value, cap, scope or owner.
+    // preview_voucher (0065) was on this list until 0094. The address limit
+    // that was meant to bound guessing lived only in the Server Action, so a
+    // direct call guessed codes without limit and learned whether a phone
+    // number was on a restricted list. Guests now reach it on the service role
+    // behind that limit; signed-in customers call it themselves, limited per
+    // account inside the function.
     //
     // get_store_hours (0071) is the weekly schedule of each active branch, for
     // the branches page. A slug, a weekday and a window: the hours painted on
     // the shop door. No branch ids, no audit columns, and nothing for a branch
     // that is switched off.
+    //
+    // list_customer_promos (0074) is the one read in this schema that
+    // volunteers a code nobody typed, so it is the one that needed the most
+    // argument to get here. 0009 kept the code space unscrapeable by giving
+    // customers no select on vouchers at all, and this does not repeal that:
+    // it returns a voucher only when an admin ticked `publicise` on that one
+    // row, or when the row belongs to the caller's own account. It takes no
+    // code, so there is no input an attacker can vary to learn anything, which
+    // is what makes a listing safer than an oracle. It never returns an id,
+    // the owner's note, the use counters, or any voucher that names a customer
+    // by phone. It answers with an empty array while vouchers_enabled is off,
+    // so a caller cannot even learn the feature exists.
+    //
+    // register_promo_push_subscription left this list in 0094: anyone could
+    // register any number of endpoints at any https address, and announcing a
+    // promo POSTs to every one. It is the server's to call now, behind the
+    // address limit, and only for browser push service hosts. What follows is
+    // the reasoning it was granted under, which still holds for
+    // forget_promo_push_subscription.
+    //
+    // register_promo_push_subscription and forget_promo_push_subscription
+    // (0075) were here because a promo subscriber may never have ordered, so
+    // unlike register_customer_push_subscription above there is no short code
+    // to present. What bounds the first is that a push endpoint is an
+    // unguessable URL minted by the browser's own push service, so holding one
+    // already means holding the device; it also refuses an endpoint belonging
+    // to the staff audience, which is what keeps a counter tablet from being
+    // converted out of staff_push_targets, and refuses outright while the
+    // engine is off. The second is granted to anon deliberately and is not
+    // rate limited: somebody must always be able to stop hearing from us, and
+    // a limit on the way out is a limit on consent being withdrawn.
+    //
+    // promo_push_optin_status (0079) lets the promos page show the truth
+    // after a reload. It answers yes or no for one endpoint and nothing else,
+    // and the same unguessable-endpoint argument bounds it.
+    //
+    // get_branch_directory (0082) is the Branches page: names, addresses,
+    // phone numbers and map pins, all of which the page publishes anyway.
+    //
+    // customer_acknowledge_ready_order (0085) is "I'm coming", fenced exactly
+    // like customer_mark_order_arrived: the tracking token or the owner, a
+    // ready order only, and one false for every refusal.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
+      "customer_acknowledge_ready_order",
       "customer_mark_order_arrived",
+      "forget_promo_push_subscription",
+      "get_branch_directory",
       "get_order_by_tracking",
       "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
       "get_store_hours",
       "get_storefront_menu",
+      "list_customer_promos",
       "place_order",
-      "preview_voucher",
+      "promo_push_optin_status",
       "register_customer_push_device",
       "register_customer_push_subscription",
-      "submit_franchise_inquiry",
     ]);
   });
 

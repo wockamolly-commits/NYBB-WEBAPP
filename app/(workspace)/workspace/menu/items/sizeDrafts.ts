@@ -61,12 +61,12 @@ export function centsToPesosInput(cents: number): string {
  * This module is client-safe and carries no "use server", which is what lets
  * a client component import it.
  *
- * A blank or unparsable input is 0, not an error. A free size is a real thing
- * and the RPC accepts 0, so there is nothing to refuse here. The option
- * editor relies on the same reading: its amount field is only rendered when
- * pricing is "flat", so an empty flat amount saves as a flat 0. A price above
- * MAX_PRICE_CENTS is refused, but by the form's gate, which can point at the
- * field, rather than silently here.
+ * A blank or unparsable input reads as 0 here, and it is the callers that
+ * refuse it: ItemEditor's gate and itemSchema in lib/staff/menu-schemas.ts
+ * both refuse an active size priced at 0, because a blank price saved this
+ * way once put a size on sale for nothing. A price above MAX_PRICE_CENTS is
+ * refused by the form's gate too, which can point at the field, rather than
+ * silently here.
  */
 export function pesosToCents(pesos: string): number {
   const value = Number.parseFloat(pesos);

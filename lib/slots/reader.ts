@@ -43,6 +43,8 @@ export const pickupSlotsSchema = z.object({
   unavailableReason: z
     .enum(["no_branch", "not_accepting", "no_hours", "closed_now", "fully_booked"])
     .nullable(),
+  // Since 0092. Optional so a database that predates it still parses.
+  opensAt: z.string().nullable().optional(),
 });
 
 /** What a storefront with no database in front of it correctly knows. */

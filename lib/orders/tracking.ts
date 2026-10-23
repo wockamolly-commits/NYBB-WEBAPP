@@ -147,6 +147,10 @@ export const trackedOrderSchema = z.object({
     cancelledAt: z.string().nullable(),
     cancelledReason: z.string().nullable(),
     customerArrivedAt: z.string().nullable(),
+    // 0085. Defaulted rather than required, so a database that has not had
+    // the migration yet still renders the page, with no ring to answer.
+    readyAcknowledgedAt: z.string().nullable().default(null),
+    readyRingAt: z.string().nullable().default(null),
     noShowAt: z.string().nullable(),
   }),
 });

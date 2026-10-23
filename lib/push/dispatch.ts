@@ -3,10 +3,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import {
   customerPayload,
+  customerReadyRingPayload,
+  promoPayload,
+  staffArrivalPayload,
   staffPayload,
   type CustomerPayloadOrder,
   type StaffPayloadOrder,
 } from "./payload";
+import { promoSentence } from "@/lib/promos/schema";
 import { sendWeb, type WebTarget } from "./web";
 import {
   adminConfigured,
@@ -29,6 +33,23 @@ import {
  * counter tablet alike; there is no separate delivery mechanism per audience
  * anymore.
  */
+
+/**
+ * The columns a promo notification needs, parsed rather than trusted.
+ *
+ * The three nullable ones are nullable here too, for the reason AGENTS.md
+ * rule 6 gives: `promoSentence` branches on them, and a coalesce anywhere
+ * upstream would turn a percentage promo into "PHP 0.00 off" on a lock
+ * screen, which is a correction that cannot be issued.
+ */
+const promoVoucherRowSchema = z.object({
+  code: z.string().min(1),
+  description: z.string().nullable(),
+  amount_cents: z.union([z.null(), z.coerce.number().int()]),
+  percent_off: z.number().int().nullable(),
+  max_discount_cents: z.union([z.null(), z.coerce.number().int()]),
+  min_order_cents: z.coerce.number().int(),
+});
 
 /** A relationship embed comes back as an object or an array depending on the
  * shape of the foreign key, so every embed here is normalized the same way
@@ -173,6 +194,32 @@ export type CustomerNotifyResult =
   | { ok: false; reason: CustomerNotifyFailure };
 
 /**
+ * The "your order is ready" push, at most once per order.
+ *
+ * staff_set_order_status answers a repeated Ready tap with success, so the
+ * action cannot tell a real transition from a replay. The claim (0097) can:
+ * only the first caller for a ready order gets true. Ring again goes through
+ * notifyCustomer directly, because sounding a second time is its whole point.
+ */
+export async function notifyCustomerReady(orderId: string): Promise<CustomerNotifyResult | null> {
+  try {
+    if (!adminConfigured()) return { ok: false, reason: "admin_unconfigured" };
+    const { data, error } = await createAdminClient().rpc("claim_customer_ready_notice", {
+      p_order_id: orderId,
+    });
+    if (error) {
+      console.error("[push] ready notice claim failed", error.message);
+      return { ok: false, reason: "order_lookup_failed" };
+    }
+    if (data !== true) return null;
+    return await notifyCustomer(orderId);
+  } catch (error) {
+    console.error("[push] notifyCustomerReady failed", error instanceof Error ? error.message : "unknown");
+    return null;
+  }
+}
+
+/**
  * Tells the customer holding the tracking link what just happened.
  *
  * `customerPayload` needs the full timeline and the full payment, not just the
@@ -181,10 +228,18 @@ export type CustomerNotifyResult =
  * status triggered the notification. Selecting anything narrower here is a
  * shape that compiles today and breaks the next time a status is added.
  *
+ * `reason` is "ring" for the counter's "ring again" (0085), which changes no
+ * status and so has nothing new for `statusCopy()` to say. It is the same
+ * order, the same follow rows and the same lock screen entry, in different
+ * words.
+ *
  * Resolves in every case and rejects in none. See the note on
  * `CustomerNotifyResult` for what the answer is for.
  */
-export async function notifyCustomer(orderId: string): Promise<CustomerNotifyResult> {
+export async function notifyCustomer(
+  orderId: string,
+  reason: "status" | "ring" = "status",
+): Promise<CustomerNotifyResult> {
   try {
     if (!adminConfigured()) return { ok: false, reason: "admin_unconfigured" };
     const admin = createAdminClient();
@@ -242,7 +297,7 @@ export async function notifyCustomer(orderId: string): Promise<CustomerNotifyRes
         : null,
     };
 
-    const payload = customerPayload(order);
+    const payload = reason === "ring" ? customerReadyRingPayload(order) : customerPayload(order);
 
     // Both filters are load-bearing, for different reasons.
     //
@@ -426,6 +481,264 @@ export async function notifyStaffOfNewOrder(orderId: string): Promise<void> {
   } catch (error) {
     console.error(
       "[push] notifyStaffOfNewOrder failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+const refundRowSchema = z.object({
+  order_id: z.uuid(),
+  status: z.string(),
+  payments: z
+    .union([z.object({ status: z.string() }), z.array(z.object({ status: z.string() }))])
+    .nullable(),
+});
+
+/**
+ * Tells the customer their payment was refunded, once the whole of it is.
+ *
+ * ONLY A FULL REFUND. `statusCopy` says "Payment refunded" only when the
+ * payment row reads `refunded`, which `apply_paymongo_refund` (0033) sets once
+ * succeeded refunds cover the payment. A partial refund leaves the payment as
+ * it was, so a push then would repeat whatever the order status already said
+ * ("Collected", say) and tell the customer nothing about their money.
+ *
+ * Two callers settle the same refund: the workspace action when PayMongo
+ * answers at once, and the refund webhook, which PayMongo may also redeliver.
+ * No claim is needed for that. The payload's tag is the short code and a
+ * refund is not a `ready` push, so `renotify` is false and a second send
+ * replaces the first on the lock screen without buzzing again.
+ */
+export async function notifyCustomerOfRefund(ref: {
+  refundId: string | null;
+  providerRefundId: string | null;
+}): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    if (!ref.refundId && !ref.providerRefundId) return;
+    const admin = createAdminClient();
+
+    const query = admin.from("refunds").select("order_id, status, payments ( status )");
+    const { data, error } = await (ref.refundId
+      ? query.eq("id", ref.refundId)
+      : query.eq("provider_refund_id", ref.providerRefundId as string)
+    ).maybeSingle();
+
+    if (error || !data) {
+      if (error) console.error("[push] notifyCustomerOfRefund lookup failed", error.message);
+      return;
+    }
+    const parsed = refundRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error("[push] notifyCustomerOfRefund unreadable refund row", parsed.error.issues);
+      return;
+    }
+    if (parsed.data.status !== "succeeded") return;
+    if (first(parsed.data.payments)?.status !== "refunded") return;
+
+    await notifyCustomer(parsed.data.order_id);
+  } catch (error) {
+    console.error(
+      "[push] notifyCustomerOfRefund failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+const arrivalOrderRowSchema = z.object({
+  id: z.uuid(),
+  branch_id: z.uuid(),
+  branches: z
+    .union([
+      z.object({ short_name: z.string() }),
+      z.array(z.object({ short_name: z.string() })),
+    ])
+    .nullable(),
+});
+
+/**
+ * Tells the counter that a customer pressed "I'm here" (spec N3).
+ *
+ * Takes the short code because that is what the arrival action holds; the
+ * caller has already had `customer_mark_order_arrived` authorize the tap, so
+ * this only runs for a real, ready order.
+ *
+ * FAILS CLOSED, unlike `notifyStaffOfNewOrder`. A missed new-order alert is a
+ * lost order; a missed arrival alert is a customer who waits a little longer
+ * while the board still shows the badge. And the customer can tap as often
+ * as they like, so failing open on a claim error would ring the counter once
+ * per tap.
+ */
+export async function notifyStaffOfArrival(shortCode: string): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    const admin = createAdminClient();
+
+    const { data, error } = await admin
+      .from("orders")
+      .select("id, branch_id, branches ( short_name )")
+      .eq("short_code", shortCode)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error(
+        "[push] notifyStaffOfArrival order lookup failed",
+        error?.message ?? "order not found",
+      );
+      return;
+    }
+
+    const parsed = arrivalOrderRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error(
+        "[push] notifyStaffOfArrival unreadable order row",
+        parsed.error.issues,
+      );
+      return;
+    }
+
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_staff_arrival_notice",
+      { p_order_id: parsed.data.id },
+    );
+    if (claimError) {
+      console.error("[push] claim_staff_arrival_notice failed", claimError.message);
+      return;
+    }
+    if (claimed !== true) return;
+
+    const payload = staffArrivalPayload({
+      shortCode,
+      branchShortName: first(parsed.data.branches)?.short_name ?? "",
+    });
+
+    const { data: targets, error: targetsError } = await admin.rpc(
+      "staff_push_targets",
+      { p_branch_id: parsed.data.branch_id },
+    );
+    if (targetsError || !targets) {
+      console.error(
+        "[push] staff_push_targets failed",
+        targetsError?.message ?? "no data",
+      );
+      return;
+    }
+
+    const dead = await sendWeb(targets as WebTarget[], payload);
+    await deleteDeadEndpoints(admin, dead);
+  } catch (error) {
+    console.error(
+      "[push] notifyStaffOfArrival failed",
+      error instanceof Error ? error.message : "unknown",
+    );
+  }
+}
+
+/**
+ * Telling the people who asked that a promo is running.
+ *
+ * THE CLAIM IS THE GUARD, and it is not advisory. `claim_promo_announcement`
+ * refuses a second caller the same way `claim_staff_new_order_notice` does,
+ * and it also re-tests publicise, is_active and the expiry inside the same
+ * statement, so a promo unpublicised a moment ago cannot be announced by a
+ * request already in flight.
+ *
+ * WHERE THIS DIFFERS FROM THE STAFF PATH, AND WHY. `notifyStaffOfNewOrder`
+ * continues when the claim errors, because a database hiccup there would
+ * silently cost the counter an order and a duplicate alert is the cheaper
+ * mistake. That trade runs the other way here. Nobody is waiting on this, a
+ * duplicate lands on strangers' lock screens, and the cost of not sending is
+ * that an advert goes out later when somebody presses the button again. So a
+ * claim that cannot be confirmed sends nothing.
+ *
+ * It never throws, like everything else in this file: it is called from a
+ * staff action through `after()`, and a notification failure must not fail
+ * the save it was attached to.
+ */
+export async function notifyCustomersOfPromo(voucherId: string): Promise<void> {
+  try {
+    if (!adminConfigured()) return;
+    const admin = createAdminClient();
+
+    const { data: claimed, error: claimError } = await admin.rpc(
+      "claim_promo_announcement",
+      { p_voucher_id: voucherId },
+    );
+
+    if (claimError) {
+      console.error("[push] claim_promo_announcement failed", claimError.message);
+      return;
+    }
+    if (claimed !== true) return;
+
+    const { data, error } = await admin
+      .from("vouchers")
+      .select(
+        "code, description, amount_cents, percent_off, max_discount_cents, min_order_cents",
+      )
+      .eq("id", voucherId)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.error(
+        "[push] promo lookup failed",
+        error?.message ?? "voucher not found",
+      );
+      return;
+    }
+
+    const parsed = promoVoucherRowSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error("[push] unreadable promo row", parsed.error.issues);
+      return;
+    }
+    const row = parsed.data;
+
+    // The scope names are deliberately not read. A notification body is one
+    // line on a lock screen, and "10% off Wings and Sides at IT Park and two
+    // other counters, once that reaches PHP 500" is not a line. The promos
+    // page the notification opens carries the full sentence, so the terms are
+    // one tap away rather than truncated by the operating system.
+    const payload = promoPayload({
+      code: row.code,
+      description: row.description,
+      sentence: promoSentence({
+        code: row.code,
+        description: row.description,
+        amountCents: row.amount_cents,
+        percentOff: row.percent_off,
+        maxDiscountCents: row.max_discount_cents,
+        minOrderCents: row.min_order_cents,
+        expiresAt: null,
+        personal: false,
+        itemNames: [],
+        categoryNames: [],
+        branchNames: [],
+        // A lock-screen line has no room for a picture, and the sentence
+        // never reads the poster anyway.
+        posterUrl: null,
+        posterWidth: null,
+        posterHeight: null,
+        posterBlurDataUrl: null,
+        placed: false,
+      }),
+    });
+
+    const { data: targets, error: targetsError } = await admin.rpc("promo_push_targets");
+
+    if (targetsError || !targets) {
+      console.error(
+        "[push] promo_push_targets failed",
+        targetsError?.message ?? "no data",
+      );
+      return;
+    }
+
+    const dead = await sendWeb(targets as WebTarget[], payload);
+    await deleteDeadEndpoints(admin, dead);
+  } catch (error) {
+    console.error(
+      "[push] notifyCustomersOfPromo failed",
       error instanceof Error ? error.message : "unknown",
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import type { VoucherActionState } from "@/lib/vouchers/schema";
 import { setVouchersEnabled } from "./actions";
@@ -23,6 +23,14 @@ const INITIAL: VoucherActionState = { ok: false };
  */
 export function EngineSwitch({ enabled }: { enabled: boolean }) {
   const [state, action, pending] = useActionState(setVouchersEnabled, INITIAL);
+  // Two steps to switch off, like refusing an order or deleting a code. One
+  // tap turns off every promo at every counter mid-service, and a slip of the
+  // finger on a tablet is the likeliest way that happens.
+  const [confirming, setConfirming] = useState(false);
+  // Reset once codes are off, so turning them back on later does not open
+  // straight onto the confirmation. Adjusted during render, React's pattern
+  // for state that follows a prop.
+  if (!enabled && confirming) setConfirming(false);
 
   if (enabled) {
     return (
@@ -31,9 +39,23 @@ export function EngineSwitch({ enabled }: { enabled: boolean }) {
         <p className="text-nybb-bone/55 text-sm leading-relaxed">
           Promo codes are being accepted at checkout.
         </p>
-        <Button type="submit" tone="dark" variant="ghost" disabled={pending}>
-          {pending ? "Stopping" : "Stop accepting codes"}
-        </Button>
+        {confirming ? (
+          <>
+            <p className="text-nybb-bone text-sm">
+              Every code stops working at every counter. Stop now?
+            </p>
+            <Button type="submit" tone="dark" disabled={pending}>
+              {pending ? "Stopping" : "Yes, stop accepting codes"}
+            </Button>
+            <Button type="button" tone="dark" variant="ghost" disabled={pending} onClick={() => setConfirming(false)}>
+              Keep them running
+            </Button>
+          </>
+        ) : (
+          <Button type="button" tone="dark" variant="ghost" onClick={() => setConfirming(true)}>
+            Stop accepting codes
+          </Button>
+        )}
         {state.error ? (
           <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm">
             {state.error}

@@ -401,7 +401,7 @@ describe("scope", () => {
   it("refuses a customer the code was not issued to", async () => {
     const id = await makeVoucher(db, { code: "MINEONLY", amountCents: 5000 });
     await db.query(
-      "insert into voucher_customers (voucher_id, phone_digits) values ($1, '09991112222')",
+      "insert into voucher_customers (voucher_id, phone_digits) values ($1, normalize_phone_digits('09991112222'))",
       [id],
     );
     expect((await preview(db, "MINEONLY", [WINGS], "0906 440 9999")).reason).toBe(

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { CHECKOUT_ATTEMPT_PATTERN } from "@/lib/checkout/schema";
+import { paymentState, paymentWindowClosing, type PaymentState } from "@/lib/orders/payment-state";
 import { readOrderByTracking } from "@/lib/orders/reader";
 import { normalizeShortCode, normalizeTrackingToken } from "@/lib/orders/tracking";
 import { mapAttachResult, type PayOrderResult } from "@/lib/paymongo/attach-result";
@@ -66,6 +67,37 @@ export function paymentReturnUrl(
   return url.toString();
 }
 
+const paymentStateRequestSchema = z.object({
+  shortCode: z.string(),
+  trackingToken: z.string().nullable().optional(),
+});
+
+/**
+ * Whether an order's online payment has been confirmed, for a screen that is
+ * waiting on it.
+ *
+ * Authorized by the same tracking lookup as the order page, and it answers
+ * with one word rather than the order: the caller already holds the link and
+ * only needs to know whether to move on. Null means "cannot say", which a
+ * waiting screen treats the same as waiting.
+ */
+export async function readPaymentState(
+  input: unknown,
+  caller: CustomerCaller,
+): Promise<PaymentState | null> {
+  const parsed = paymentStateRequestSchema.safeParse(input);
+  if (!parsed.success) return null;
+  const shortCode = normalizeShortCode(parsed.data.shortCode);
+  if (!shortCode) return null;
+
+  const lookup = await readOrderByTracking(
+    caller,
+    shortCode,
+    normalizeTrackingToken(parsed.data.trackingToken),
+  );
+  return lookup.state === "found" ? paymentState(lookup.order) : null;
+}
+
 /** Starts a QR Ph payment after the customer has already placed an order. */
 export async function startPayment(
   input: unknown,
@@ -124,10 +156,22 @@ export async function startPayment(
   const admin = createAdminClient();
   const { data: settings, error: settingsError } = await admin
     .from("app_settings")
-    .select("paymongo_enabled, paymongo_methods")
+    .select("paymongo_enabled, paymongo_methods, online_payment_expiry_minutes")
     .eq("id", 1)
     .single();
   if (settingsError || !settings) return unavailable();
+
+  if (
+    typeof settings.online_payment_expiry_minutes === "number" &&
+    paymentWindowClosing(lookup.order.placedAt, settings.online_payment_expiry_minutes)
+  ) {
+    return {
+      ok: false,
+      error:
+        "This order is about to lapse without payment, so we have not opened a " +
+        "new payment for it. Please place the order again.",
+    };
+  }
 
   // The tracking RPC deliberately does not reveal an internal id. Read the
   // order by its public short code only after that authorization has passed.

@@ -39,6 +39,8 @@ const EMPTY_TIMELINE: TrackedOrder["timeline"] = {
   cancelledAt: null,
   cancelledReason: null,
   customerArrivedAt: null,
+  readyAcknowledgedAt: null,
+  readyRingAt: null,
   noShowAt: null,
 };
 

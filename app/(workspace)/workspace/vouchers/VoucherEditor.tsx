@@ -11,7 +11,17 @@ import { WorkspaceToggle } from "@/components/ui/WorkspaceToggle";
 import type { ScopeChoices, VoucherDetail } from "@/lib/staff/vouchers";
 import type { VoucherActionState } from "@/lib/vouchers/schema";
 import { voucherSummary } from "@/lib/vouchers/status";
-import { saveVoucher, setVoucherActive } from "./actions";
+import {
+  announceVoucher,
+  saveVoucher,
+  setVoucherActive,
+  setVoucherPublicise,
+} from "./actions";
+import { VOUCHER_POSTER_REQUIRED_MESSAGE } from "@/lib/staff/voucher-poster-limits";
+import { NewPosterField, SavedPosterField } from "./PosterField";
+
+/** The create form's poster input, focused when Create is pressed without one. */
+const NEW_POSTER_INPUT_ID = "voucher-poster";
 
 /**
  * The promo code form.
@@ -126,17 +136,26 @@ function ScopeList({
  * What a used code offers instead of an edit.
  *
  * Migration 0067 freezes the terms once any order has named the code, so the
- * form below is drawn read-only and this says why. It carries the one control
- * that still works, because switching a code off is not a change to its terms:
- * it stops the code being accepted from now on and says nothing about what it
- * was worth to anybody who already used it. That control has to stay reachable,
- * since it is the only way to stop a live code that is losing money.
+ * form below is drawn read-only and this says why. It carries the two controls
+ * that still work, because neither is a change to the terms. Switching a code
+ * off stops it being accepted from now on and says nothing about what it was
+ * worth to anybody who already used it, and it has to stay reachable since it
+ * is the only way to stop a live code that is losing money. Taking it off the
+ * storefront says even less: the code keeps working exactly as it did for
+ * everybody holding it and only stops being shown to people who are not.
  *
- * It posts to setVoucherActive rather than to the form's own Save, which is the
- * whole reason admin_set_voucher_active is a separate function from the upsert.
+ * That second one is the gentler brake, and a freeze that froze it would push
+ * an owner whose campaign had gone wrong toward the harder one, refusing a
+ * code somebody is in the middle of checking out with. It is also how a code
+ * gets published after a soft launch, which is the ordinary campaign order.
+ *
+ * Both post to their own action rather than to the form's Save, which is the
+ * whole reason admin_set_voucher_active and admin_set_voucher_publicise are
+ * separate functions from the upsert.
  */
 function LockedNotice({ voucher }: { voucher: VoucherDetail }) {
   const [state, action, pending] = useActionState(setVoucherActive, INITIAL);
+  const [listState, listAction, listPending] = useActionState(setVoucherPublicise, INITIAL);
 
   return (
     <section className="border-nybb-orange/60 bg-nybb-orange/10 mt-7 rounded-md border p-4 sm:p-5">
@@ -168,6 +187,127 @@ function LockedNotice({ voucher }: { voucher: VoucherDetail }) {
         {state.error ? (
           <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm">
             {state.error}
+          </p>
+        ) : null}
+      </form>
+
+      {/* The second control a frozen code still has, and the gentler of the
+          two. Taking a promo off the storefront changes nothing for anybody
+          holding the code, so it is not a term and 0067 does not freeze it.
+          This is also how a code gets published after a soft launch. */}
+      <form
+        action={listAction}
+        className="border-nybb-bone/15 mt-4 flex flex-wrap items-center gap-3 border-t pt-4"
+      >
+        <input type="hidden" name="id" value={voucher.id} />
+        <input type="hidden" name="publicise" value={voucher.publicise ? "false" : "true"} />
+        <Button type="submit" tone="dark" variant="secondary" disabled={listPending}>
+          {listPending
+            ? voucher.publicise
+              ? "Hiding"
+              : "Showing"
+            : voucher.publicise
+              ? "Take it off the storefront"
+              : "Show it on the storefront"}
+        </Button>
+        <p className="text-nybb-bone/55 text-sm leading-relaxed">
+          {voucher.publicise
+            ? "It is listed on the promos page. Taking it off stops it being advertised and leaves it working for everybody who already has it."
+            : "It is not advertised. Anybody who has the code can still use it."}
+        </p>
+        {listState.error ? (
+          <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm">
+            {listState.error}
+          </p>
+        ) : null}
+      </form>
+    </section>
+  );
+}
+
+/**
+ * Sending the promo to the phones that asked for promos.
+ *
+ * SHOWN ONLY WHEN THE PROMO IS ACTUALLY LISTABLE, because announcing a code
+ * customers cannot then find would be an advert pointing at an empty page.
+ * The button is the last step of a campaign, not part of saving one, which is
+ * why publicising and announcing are two deliberate acts rather than one.
+ *
+ * ONCE, AND THE SCREEN SAYS SO BEFORE IT IS PRESSED. `announced_at` is
+ * written by the claim inside the send, so a second press sends nothing.
+ * Saying that up front is what stops somebody pressing it repeatedly because
+ * nothing visible happened: a fan-out is asynchronous and there is no
+ * progress bar to watch.
+ */
+function AnnounceNotice({ voucher }: { voucher: VoucherDetail }) {
+  const [state, action, pending] = useActionState(announceVoucher, INITIAL);
+  // Read once on mount rather than during render, which keeps render pure.
+  // A screen left open past the start shows the button after a reload.
+  const [now] = useState(() => Date.now());
+
+  if (!voucher.publicise || !voucher.isActive) return null;
+
+  // 0079 refuses the claim before the start, so the button would send
+  // nothing. The notification says a promo has started and opens a page that
+  // does not list it yet, so waiting is the only honest option.
+  const startsAt = voucher.startsAt === null ? null : Date.parse(voucher.startsAt);
+  if (voucher.announcedAt === null && startsAt !== null && startsAt > now) {
+    const when = new Intl.DateTimeFormat("en-PH", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Manila",
+    }).format(startsAt);
+    return (
+      <section className="border-nybb-bone/15 mt-7 rounded-md border p-4 sm:p-5">
+        <h2 className="font-display heading-panel text-nybb-bone uppercase">
+          Announce once it starts
+        </h2>
+        <p className="text-nybb-bone/70 mt-2 max-w-2xl text-sm leading-relaxed">
+          This code starts {when}. Customers are told a promo has started, so
+          the announcement button appears here once it is live.
+        </p>
+      </section>
+    );
+  }
+
+  if (voucher.announcedAt !== null) {
+    return (
+      <section className="border-nybb-bone/15 mt-7 rounded-md border p-4 sm:p-5">
+        <h2 className="font-display heading-panel text-nybb-bone uppercase">Announced</h2>
+        <p className="text-nybb-bone/70 mt-2 max-w-2xl text-sm leading-relaxed">
+          This code has been pushed to everybody who opted in to promo
+          notifications. It can only go out once, so a second announcement
+          means a second code. It stays on the promos page either way.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="border-nybb-bone/15 mt-7 rounded-md border p-4 sm:p-5">
+      <h2 className="font-display heading-panel text-nybb-bone uppercase">
+        Not announced yet
+      </h2>
+      <p className="text-nybb-bone/70 mt-2 max-w-2xl text-sm leading-relaxed">
+        It is on the promos page, so customers can find it. Announcing it also
+        pushes a notification to everybody who opted in to hear about promos.
+        That can only be done once for this code, and it cannot be recalled.
+      </p>
+      <form action={action} className="mt-4 flex flex-wrap items-center gap-3">
+        <input type="hidden" name="id" value={voucher.id} />
+        <Button type="submit" tone="dark" disabled={pending}>
+          {pending ? "Sending" : "Announce it"}
+        </Button>
+        {state.error ? (
+          <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm">
+            {state.error}
+          </p>
+        ) : state.ok ? (
+          <p role="status" className="text-nybb-bone/65 text-sm">
+            On its way.
           </p>
         ) : null}
       </form>
@@ -211,6 +351,11 @@ export function VoucherEditor({
     String(voucher?.maxUsesPerCustomer ?? 1),
   );
   const [isActive, setIsActive] = useState(voucher?.isActive ?? true);
+  // False for a new code, the opposite default to isActive above. A code that
+  // exists is meant to work; a code is not automatically meant to be
+  // advertised, and every code nobody ticks keeps migration 0009's promise
+  // that the code space cannot be scraped.
+  const [publicise, setPublicise] = useState(voucher?.publicise ?? false);
 
   const [branchIds, setBranchIds] = useState<Set<string>>(
     new Set(voucher?.scope.branchIds ?? []),
@@ -222,6 +367,41 @@ export function VoucherEditor({
   const [customerPhones, setCustomerPhones] = useState(
     (voucher?.scope.customerPhones ?? []).join("\n"),
   );
+
+  // The create form's poster, held here rather than in a named file input,
+  // so React resetting the form after a refused save cannot lose it. See
+  // PosterField for the rest of that reasoning.
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  // Create pressed with no poster chosen. Cleared by choosing one.
+  const [posterMissing, setPosterMissing] = useState(false);
+  // A poster chosen after the last save attempt, so the server's refusal of
+  // the previous file stops being shown beside the new one.
+  const [posterChangedSinceSave, setPosterChangedSinceSave] = useState(false);
+
+  function choosePoster(file: File | null) {
+    setPosterFile(file);
+    setPosterChangedSinceSave(true);
+    if (file) setPosterMissing(false);
+  }
+
+  // Refused before the action runs, not inside it. A form action that returns
+  // early still counts as run, and React then resets every uncontrolled field,
+  // which would throw away the code and description the person just typed.
+  // preventDefault here means React never starts the action at all. The server
+  // and migration 0089 refuse the same thing again; this is the fast message.
+  function guardSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (voucher === null && !posterFile) {
+      event.preventDefault();
+      setPosterMissing(true);
+      document.getElementById(NEW_POSTER_INPUT_ID)?.focus();
+    }
+  }
+
+  function submit(formData: FormData) {
+    if (voucher === null && posterFile) formData.set("poster", posterFile);
+    setPosterChangedSinceSave(false);
+    formAction(formData);
+  }
 
   // A create returns the new id, and the editor for it lives at another URL.
   // Pushing rather than replacing, so Back still goes to the list.
@@ -257,11 +437,17 @@ export function VoucherEditor({
   });
 
   const fieldErrors = state.fieldErrors ?? {};
+  const posterError = posterMissing
+    ? VOUCHER_POSTER_REQUIRED_MESSAGE
+    : posterChangedSinceSave
+      ? undefined
+      : fieldErrors.poster;
 
   return (
     <>
       {frozen && voucher ? <LockedNotice voucher={voucher} /> : null}
-      <form action={formAction} className="mt-7">
+      {voucher ? <AnnounceNotice voucher={voucher} /> : null}
+      <form action={submit} onSubmit={guardSubmit} className="mt-7">
         {/* One attribute freezes the whole form. A disabled fieldset
             disables every control inside it, so no field has to know the
             rule, and the workspace CSS already draws the disabled state for
@@ -270,6 +456,7 @@ export function VoucherEditor({
         <fieldset disabled={frozen} className="space-y-4">
           {voucher ? <input type="hidden" name="id" value={voucher.id} /> : null}
           <input type="hidden" name="isActive" value={isActive ? "true" : "false"} />
+          <input type="hidden" name="publicise" value={publicise ? "true" : "false"} />
           <input type="hidden" name="discountKind" value={discountKind} />
 
           {/* The sentence, above everything, because it is the thing being checked
@@ -508,6 +695,16 @@ export function VoucherEditor({
             </div>
           </WorkspaceSection>
 
+          {voucher === null ? (
+            <WorkspaceSection title="Poster" description={<PosterDescription />}>
+              <NewPosterField
+                inputId={NEW_POSTER_INPUT_ID}
+                onChange={choosePoster}
+                error={posterError}
+              />
+            </WorkspaceSection>
+          ) : null}
+
           <WorkspaceSection
             title="How often"
             description={
@@ -591,6 +788,29 @@ export function VoucherEditor({
                 />
               </label>
 
+              {/* Second, and under the first, because it only means anything
+                  once the code works at all. The two are genuinely separate:
+                  a code can be live and unadvertised, which is every code
+                  handed out on a flyer, and that is the default. */}
+              <label className="border-nybb-bone/15 mt-5 flex cursor-pointer items-center justify-between gap-4 border-t pt-5">
+                <span>
+                  <span className="type-caps text-nybb-bone/65 block">
+                    Show it on the storefront
+                  </span>
+                  <span className="text-nybb-bone/55 mt-1 block text-xs leading-relaxed">
+                    On means the code is listed on the promos page and announced
+                    in the bar at the top of the site, so customers who were
+                    never told it can find it. Off, it still works for anybody
+                    who has it.
+                  </span>
+                </span>
+                <WorkspaceToggle
+                  on={publicise}
+                  onClick={() => setPublicise((value) => !value)}
+                  aria-label="Show it on the storefront"
+                />
+              </label>
+
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Button type="submit" tone="dark" disabled={pending}>
                   {pending ? "Saving" : voucher ? "Save changes" : "Create code"}
@@ -600,7 +820,11 @@ export function VoucherEditor({
                 </ButtonLink>
                 {/* Whatever blocks or refused the button is stated beside it, at
                     the weight of body copy rather than as the quietest text here. */}
-                {state.error ? (
+                {posterMissing ? (
+                  <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
+                    Choose a poster before creating the code.
+                  </p>
+                ) : state.error ? (
                   <p role="alert" className="border-nybb-red text-nybb-bone border-l-2 pl-3 text-sm leading-relaxed">
                     {state.error}
                   </p>
@@ -615,6 +839,37 @@ export function VoucherEditor({
           </WorkspaceSection>
         </fieldset>
       </form>
+
+      {/* Outside the form, and so outside its frozen fieldset, on purpose. A
+          poster is not a term (0077), so it stays changeable once the code is
+          locked, and it posts to its own actions rather than to Save. */}
+      {voucher ? (
+        <div className="mt-4">
+          <WorkspaceSection title="Poster" description={<PosterDescription />}>
+            <SavedPosterField
+              voucherId={voucher.id}
+              poster={voucher.poster}
+              publicise={voucher.publicise}
+            />
+          </WorkspaceSection>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function PosterDescription() {
+  return (
+    <>
+      <p>
+        The artwork for this promo, and every code needs one. It opens in a
+        popup when a customer arrives on the storefront and sits on the
+        code&rsquo;s card on the promos page.
+      </p>
+      <p>
+        It only shows while the code is live: switched on, inside its dates,
+        not used up. It is never cropped, so a portrait poster stays portrait.
+      </p>
     </>
   );
 }

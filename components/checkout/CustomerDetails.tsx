@@ -133,7 +133,7 @@ export function CustomerDetails({
         <div className="sm:col-span-2">
           <label htmlFor="checkout-email" className="type-caps text-nybb-bone/55">
             Email
-            <span className="text-nybb-bone/40 ml-2 tracking-[0.08em] normal-case">
+            <span className="text-nybb-bone/55 ml-2 tracking-[0.08em] normal-case">
               optional
             </span>
           </label>
@@ -155,7 +155,7 @@ export function CustomerDetails({
         <div className="sm:col-span-2">
           <label htmlFor="checkout-notes" className="type-caps text-nybb-bone/55">
             Anything the kitchen should know
-            <span className="text-nybb-bone/40 ml-2 tracking-[0.08em] normal-case">
+            <span className="text-nybb-bone/55 ml-2 tracking-[0.08em] normal-case">
               optional
             </span>
           </label>

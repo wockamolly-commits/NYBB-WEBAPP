@@ -107,7 +107,7 @@ export function InquiryForm() {
       <div>
         <label htmlFor="inquiry-city" className="type-caps text-nybb-bone/60">
           Where are you looking to open?
-          <span className="text-nybb-bone/40"> (optional)</span>
+          <span className="text-nybb-bone/55"> (optional)</span>
         </label>
         <input
           id="inquiry-city"
@@ -123,7 +123,7 @@ export function InquiryForm() {
       <div>
         <label htmlFor="inquiry-message" className="type-caps text-nybb-bone/60">
           Anything you want us to know?
-          <span className="text-nybb-bone/40"> (optional)</span>
+          <span className="text-nybb-bone/55"> (optional)</span>
         </label>
         <textarea
           id="inquiry-message"
@@ -158,7 +158,7 @@ export function InquiryForm() {
         )}
       </Button>
 
-      <p className="text-nybb-bone/50 text-xs leading-relaxed">
+      <p className="text-nybb-bone/55 text-xs leading-relaxed">
         We use these details to answer your inquiry. We do not sell them, and we do not add you
         to a mailing list.
       </p>

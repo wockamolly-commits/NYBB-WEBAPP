@@ -27,6 +27,8 @@ export type BranchEntry = {
   directionsUrl: string;
   /** False when the map is drawn from the street address rather than a pin. */
   pinned: boolean;
+  /** The counter's confirmed pin, for the route map. Null where there is none. */
+  pin: { lat: number; lng: number } | null;
   /** Null when the counter's week is not published, or could not be read. */
   week: DayHours[] | null;
   /**
@@ -72,6 +74,7 @@ export function branchEntries(
       mapUrl: mapEmbedUrl(branch),
       directionsUrl: directionsUrl(branch),
       pinned: Boolean(branch.pin),
+      pin: branch.pin ?? null,
       week,
       hoursUnavailable: hours === null,
       summary: summarizeWeek(week),

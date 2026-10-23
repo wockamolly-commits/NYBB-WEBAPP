@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { isRejectReasonCode, REJECT_REASON_LABELS } from "@/lib/orders/reject-reasons";
 import type { OrderStatus } from "@/lib/orders/types";
 import { createReadOnlyStaffClient } from "@/lib/supabase/server";
 import {
@@ -9,6 +10,7 @@ import {
   manilaDateEndExclusiveIso,
   manilaDateStartIso,
 } from "./manila-dates";
+import { normalizeBranchFilter } from "./branch-filter";
 import { ilikeOrFilter, ilikePattern } from "./search-pattern";
 
 export {
@@ -34,11 +36,18 @@ export type OrderHistoryFilters = {
   from: string;
   to: string;
   status: "all" | OrderHistoryStatus;
+  /**
+   * A branch id, or "" for every branch this session can read. Honoured for
+   * the Super Admin only; see lib/staff/branch-filter.ts.
+   */
+  branch: string;
 };
 
 export type OrderHistoryEntry = {
   id: string;
   shortCode: string;
+  /** The counter's short name, or null when the branch row is not readable. */
+  branchName: string | null;
   status: OrderHistoryStatus;
   isTest: boolean;
   customer: {
@@ -90,6 +99,7 @@ const paymentSchema = z.object({
 });
 
 const pickupSchema = z.object({ slot_start: z.string() });
+const branchSchema = z.object({ short_name: z.string() });
 
 const rowSchema = z.object({
   id: z.uuid(),
@@ -109,6 +119,8 @@ const rowSchema = z.object({
   cancelled_reason: z.string().nullable(),
   no_show_at: z.string().nullable(),
   pickup_slots: z.union([pickupSchema, z.array(pickupSchema)]).nullable(),
+  // Optional so a row read without the embed still parses.
+  branches: z.union([branchSchema, z.array(branchSchema)]).nullable().optional(),
   payments: z.union([paymentSchema, z.array(paymentSchema)]).nullable(),
   order_items: z.array(itemSchema).nullable(),
 });
@@ -120,12 +132,34 @@ const historySelect = `
   claimed_at, rejected_at, rejected_reason,
   cancelled_at, cancelled_reason, no_show_at,
   pickup_slots ( slot_start ),
+  branches ( short_name ),
   payments ( method, provider, status, amount_cents, paid_at, refunds ( amount_cents, status ) ),
   order_items (
     qty, item_name_snapshot, variation_label_snapshot,
     order_item_options ( name_snapshot )
   )
 `;
+
+/**
+ * The cancellation codes the database writes (0033 and the payment lifecycle).
+ * Staff wording, because this is the workspace, not the customer's screen.
+ */
+const CANCELLED_REASON_LABELS: Record<string, string> = {
+  payment_timeout: "Payment was not completed in time",
+  payment_failed: "Payment did not go through",
+};
+
+/**
+ * A stored reason in words. The database keeps codes, so showing the column
+ * as it is put "sold_out" on the screen. An unrecognized value is shown as it
+ * is rather than hidden, the same choice the audit screen makes.
+ */
+function reasonLabel(status: OrderHistoryStatus, reason: string | null): string | null {
+  if (reason === null) return null;
+  if (status === "rejected" && isRejectReasonCode(reason)) return REJECT_REASON_LABELS[reason];
+  if (status === "cancelled") return CANCELLED_REASON_LABELS[reason] ?? reason;
+  return reason;
+}
 
 function first<T>(value: T | T[] | null): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -146,6 +180,7 @@ export function normalizeOrderHistoryFilters(
     status: HISTORY_STATUSES.includes(statusValue as OrderHistoryStatus)
       ? statusValue as OrderHistoryStatus
       : "all",
+    branch: normalizeBranchFilter(firstSearchValue(values.branch)),
   };
 }
 
@@ -172,6 +207,7 @@ export function toOrderHistoryEntry(value: unknown): OrderHistoryEntry | null {
   return {
     id: row.id,
     shortCode: row.short_code,
+    branchName: first(row.branches ?? null)?.short_name ?? null,
     status: row.status,
     isTest: row.is_test,
     customer: {
@@ -184,7 +220,7 @@ export function toOrderHistoryEntry(value: unknown): OrderHistoryEntry | null {
     placedAt: row.placed_at,
     pickupAt: pickup?.slot_start ?? null,
     closedAt: closedAt ?? row.placed_at,
-    reason,
+    reason: reasonLabel(row.status, reason),
     payment: payment ? {
       method: payment.method,
       provider: payment.provider,
@@ -221,7 +257,13 @@ export function matchesOrderHistoryQuery(
 
 export function summarizeOrderHistory(orders: readonly OrderHistoryEntry[]) {
   const realOrders = orders.filter((order) => !order.isTest);
-  const paidOrders = realOrders.filter((order) => order.payment?.status === "paid");
+  // A sale the branch refused or the customer pulled is money owed back, not
+  // money taken, the same line order_analytics draws (0063). Counting them
+  // here made "Paid sales" include refunds still to be made.
+  const paidOrders = realOrders.filter(
+    (order) =>
+      order.payment?.status === "paid" && order.status !== "rejected" && order.status !== "cancelled",
+  );
   return {
     orderCount: orders.length,
     testOrderCount: orders.length - realOrders.length,
@@ -233,6 +275,11 @@ export function summarizeOrderHistory(orders: readonly OrderHistoryEntry[]) {
   };
 }
 
+/**
+ * `branchId` narrows the read and cannot widen it: the row policies already pin
+ * a branch assigned session to its own counter. The page passes the person's
+ * own branch, or for the Super Admin the branch they picked.
+ */
 export async function getOrderHistory(
   branchId: string | null,
   filters: OrderHistoryFilters,

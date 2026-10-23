@@ -15,10 +15,12 @@ import {
   suggestNearest,
 } from "@/lib/branches/nearest";
 import { telHref } from "@/lib/phone";
+import { formatOpening } from "@/lib/slots/format";
 import type { Store } from "@/lib/branches/types";
 import { cn } from "@/lib/utils";
 import { NearestCounter } from "./NearestCounter";
 import { useCustomerLocation } from "./useCustomerLocation";
+import { routeKm, useRoadRoutes } from "./useRoadRoutes";
 
 /**
  * Choosing the counter, which on a pickup-only platform is the first real
@@ -214,18 +216,28 @@ export function StoreList({
     });
   }
 
-  // Worked out here, in the browser. See lib/branches/nearest.ts. Nine
+  // Estimated here the moment the position lands, then replaced by the length
+  // of each Mapbox driving route when they arrive. See lib/branches/nearest.ts. Nine
   // stores, so there is nothing to memoise.
   const { location, locate } = useCustomerLocation();
   const position = location.status === "located" ? location.position : null;
-  const distances = position ? distancesBySlug(stores, position) : null;
+  const routes = useRoadRoutes(position);
+  const measured = routeKm(routes);
+  const distances = position ? distancesBySlug(stores, position, measured) : null;
+  const isMeasured = (slug: string) => measured?.[slug] !== undefined;
 
   const publishedOrderable = orderingOpen ? stores.filter((store) => store.orderable) : [];
   const publishedClosed = orderingOpen ? stores.filter((store) => !store.orderable) : stores;
-  const orderable = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
+  // Open counters above shut ones, so the rows that can be pressed are the
+  // ones read first. Stable, so each half keeps its distance order.
+  const ranked = distances ? rankByDistance(publishedOrderable, distances) : publishedOrderable;
+  const orderable = [
+    ...ranked.filter((store) => !store.closedNow),
+    ...ranked.filter((store) => store.closedNow),
+  ];
   const closed = distances ? rankByDistance(publishedClosed, distances) : publishedClosed;
 
-  const suggestion = position ? suggestNearest(orderable, position) : null;
+  const suggestion = distances ? suggestNearest(orderable, distances, measured) : null;
   const nearestSlug = suggestion?.kind === "nearest" ? suggestion.store.slug : null;
 
   // Raised for REORDER_GRACE_MS when the order of the choosable rows changes,
@@ -289,11 +301,13 @@ export function StoreList({
         branch={detailEntry}
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
-        detail={detailKm !== undefined ? `${distanceLabel(detailKm)} in a straight line.` : null}
+        routeFrom={position}
+        route={detailSlug ? (routes?.[detailSlug] ?? null) : null}
+        detail={detailKm !== undefined ? `${distanceLabel(detailKm, isMeasured(detailSlug!))}.` : null}
         actions={
           // Only a counter this page can choose gets the choice in its sheet.
           // Anything else falls back to the directory's Directions and Call.
-          detailEntry && detailStore?.orderable && orderingOpen ? (
+          detailEntry && detailStore?.orderable && !detailStore.closedNow && orderingOpen ? (
             <>
               <button
                 type="button"
@@ -351,10 +365,25 @@ export function StoreList({
         }
       />
 
+      {/* The board arrives as one object, not row by row.
+
+          This is the same distinction the Branches page's nine cards fall on
+          the other side of. Those are separate plates with gaps between them,
+          so a wave through them is the list's own shape moving. These rows are
+          welded into one panel by `divide-y` and clipped by its rounded
+          corners, and this component's own note at the top of the file is that
+          it is a board rather than a grid of cards, on purpose. Staggering the
+          rows drifts the hairlines against each other and leaves the bottom
+          row clipped by `overflow-hidden` while it is still carrying its
+          offset. One panel, one arrival. */}
       {orderable.length > 0 ? (
-        <ul className={BOARD}>
+        <ul className={cn(BOARD, "reveal")}>
           {orderable.map((store) => {
-            const selected = store.slug === selectedSlug;
+            // Shut at this minute: listed so the customer can see it, but not
+            // choosable. Disabled rather than moved to the phone board, because
+            // it is a live counter that will take orders again when it opens.
+            const shut = store.closedNow;
+            const selected = !shut && store.slug === selectedSlug;
             const busy = choosing === store.slug;
             const detailsId = `counter-${store.slug}-details`;
             const km = distances?.get(store.slug);
@@ -365,15 +394,17 @@ export function StoreList({
                   type="button"
                   onClick={() => {
                     // See REORDER_GRACE_MS: this row may have just moved.
-                    if (settling.current) return;
+                    if (settling.current || shut) return;
                     choose(store);
                   }}
-                  disabled={pending}
+                  disabled={pending || shut}
                   aria-busy={busy || undefined}
                   aria-label={
-                    selected
-                      ? `Continue with ${store.name}`
-                      : `Collect from ${store.name}`
+                    shut
+                      ? `${store.name}, closed right now`
+                      : selected
+                        ? `Continue with ${store.name}`
+                        : `Collect from ${store.name}`
                   }
                   aria-describedby={detailsId}
                   className={cn(
@@ -383,7 +414,7 @@ export function StoreList({
                     // that clips them, which reads as the board jumping. The
                     // press is a deeper tint instead, on the same timing.
                     "group w-full text-left transition-colors duration-200 ease-out active:duration-75",
-                    "disabled:cursor-progress",
+                    shut ? "cursor-not-allowed" : "disabled:cursor-progress",
                     // The board clips its corners, so the ring is drawn inside
                     // the row, where the clip cannot eat it.
                     "focus-visible:outline-offset-[-3px]",
@@ -407,6 +438,14 @@ export function StoreList({
                         selected ? "text-nybb-ink/80" : "text-nybb-bone/60",
                       )}
                     >
+                      {shut ? (
+                        <>
+                          <span className="text-nybb-bone">Closed now</span>{" "}
+                          <span aria-hidden className="mx-0.5">
+                            ·
+                          </span>{" "}
+                        </>
+                      ) : null}
                       {selected ? (
                         <>
                           <Check
@@ -430,7 +469,12 @@ export function StoreList({
                       ) : null}
                       {branchFormatLabel[store.format]}
                     </span>
-                    <span className="font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl">
+                    <span
+                      className={cn(
+                        "font-display mt-1.5 block text-xl leading-tight text-balance sm:text-2xl",
+                        shut && "text-nybb-bone/65",
+                      )}
+                    >
                       {store.shortName}
                     </span>
                   </span>
@@ -446,6 +490,7 @@ export function StoreList({
                     {km !== undefined ? (
                       <Distance
                         km={km}
+                        measured={isMeasured(store.slug)}
                         className={cn("mb-1", selected ? "text-nybb-ink" : "text-nybb-bone")}
                       />
                     ) : null}
@@ -469,9 +514,15 @@ export function StoreList({
                       </span>
                     ) : null}
 
-                    {store.closedNow ? (
+                    {shut ? (
                       <span className="mt-1 block">
-                        Closed right now. Checkout shows its next windows.
+                        {store.branch?.opensAt
+                          ? `Closed right now. Opens at ${formatOpening(
+                              store.branch.opensAt,
+                              store.branch.timezone,
+                              new Date().toISOString(),
+                            )}.`
+                          : "Closed right now. You can choose it once it opens."}
                       </span>
                     ) : null}
                   </span>
@@ -483,10 +534,14 @@ export function StoreList({
                       "font-display flex min-h-11 items-center gap-2 text-sm tracking-[0.06em] uppercase",
                       selected
                         ? "text-nybb-ink"
-                        : "text-nybb-orange group-hover:text-nybb-orange-lit transition-colors",
+                        : shut
+                          ? "text-nybb-bone/60"
+                          : "text-nybb-orange group-hover:text-nybb-orange-lit transition-colors",
                     )}
                   >
-                    {busy ? (
+                    {shut ? (
+                      <span>Closed</span>
+                    ) : busy ? (
                       <>
                         <span className="hidden sm:inline">Choosing</span>
                         <LoaderCircle
@@ -532,7 +587,7 @@ export function StoreList({
       )}
 
       {closed.length > 0 ? (
-        <section aria-labelledby="other-counters" className="mt-12">
+        <section aria-labelledby="other-counters" className="reveal mt-12">
           <h2 id="other-counters" className="font-display heading-minor">
             {orderingOpen ? "The rest of the counters" : "Every counter"}
           </h2>
@@ -558,7 +613,11 @@ export function StoreList({
 
                 <div className={cn(ROW_DETAILS, "text-sm leading-relaxed")}>
                   {distances?.has(store.slug) ? (
-                    <Distance km={distances.get(store.slug)!} className="text-nybb-bone mb-1" />
+                    <Distance
+                      km={distances.get(store.slug)!}
+                      measured={isMeasured(store.slug)}
+                      className="text-nybb-bone mb-1"
+                    />
                   ) : null}
                   <p className="text-nybb-bone/65">
                     {store.addressLine}, {store.city}
@@ -611,11 +670,19 @@ export function StoreList({
  * already uses for a number compared down the board, and a pin in front. A
  * span, so it is valid inside a row's button as well as a phone-only row.
  */
-function Distance({ km, className }: { km: number; className?: string }) {
+function Distance({
+  km,
+  measured,
+  className,
+}: {
+  km: number;
+  measured: boolean;
+  className?: string;
+}) {
   return (
     <span className={cn("font-mono-tabular flex items-center gap-1.5", className)}>
       <MapPin aria-hidden className="size-3.5 shrink-0" strokeWidth={2.25} />
-      {distanceLabel(km)}
+      {distanceLabel(km, measured)}
     </span>
   );
 }

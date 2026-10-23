@@ -10,7 +10,7 @@ import {
   normalizeFranchiseLeadFilters,
   type FranchiseLead,
 } from "@/lib/staff/franchise-leads";
-import { requireStaff, WORKSPACE_HOME } from "@/lib/staff/session";
+import { requireStaff, WORKSPACE_DENIED } from "@/lib/staff/session";
 import { telHref } from "@/lib/phone";
 import { LeadHandledControl } from "./LeadHandledControl";
 
@@ -54,7 +54,7 @@ export default async function FranchiseLeadsPage({
     requireStaff("/workspace/franchise"),
     searchParams,
   ]);
-  if (profile.role !== "admin") redirect(WORKSPACE_HOME);
+  if (profile.role !== "admin") redirect(WORKSPACE_DENIED);
 
   const filters = normalizeFranchiseLeadFilters(values);
   const page = await getFranchiseLeads(filters);
@@ -121,7 +121,7 @@ export default async function FranchiseLeadsPage({
                     ? "Nothing waiting"
                     : "No leads yet"}
               </p>
-              <p className="text-nybb-bone/50 mt-2 text-sm">
+              <p className="text-nybb-bone/55 mt-2 text-sm">
                 {isPaged
                   ? "This is the end of the list for these filters."
                   : showingOpen

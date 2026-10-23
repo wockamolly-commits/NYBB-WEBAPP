@@ -24,6 +24,21 @@ export type BranchAvailability = {
   hasPublishedHours: boolean;
 };
 
+/** A branch's published details, as the edit form shows them. */
+export type BranchDetails = {
+  branchId: string;
+  name: string;
+  shortName: string;
+  format: "street" | "mall" | "food-hall" | "petrol" | "hospital" | "casino";
+  addressLine: string;
+  barangay: string | null;
+  city: string;
+  phones: string[];
+};
+
+/** A price list a new branch can be attached to. */
+export type PriceListOption = { id: string; slug: string; name: string };
+
 export type OrderIntakeSettings = {
   acceptingOrders: boolean;
   slotHorizonHours: number;

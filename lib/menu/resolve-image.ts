@@ -1,4 +1,6 @@
 import { catalogImageBySource } from "@/lib/catalog/images";
+import { isImagePlaceholder, isOwnStorageImageUrl } from "@/lib/images/safe-url";
+import { MENU_IMAGE_BUCKET } from "@/lib/staff/menu-image-limits";
 import type { MenuImage } from "./types";
 
 /**
@@ -52,7 +54,15 @@ export type ResolvedMenuImage = MenuImage & { origin: MenuImageOrigin };
 export function resolveMenuImage(
   image: StoredMenuImage | undefined,
 ): ResolvedMenuImage | null {
-  if (image?.src && image.width && image.height && image.blurDataURL) {
+  // An uploaded file counts only when it is one of ours (lib/images/safe-url.ts,
+  // 0101). Anything else falls through to the archive or to no picture.
+  if (
+    image?.src
+    && image.width
+    && image.height
+    && isOwnStorageImageUrl(image.src, MENU_IMAGE_BUCKET)
+    && isImagePlaceholder(image.blurDataURL)
+  ) {
     return {
       src: image.src,
       width: image.width,

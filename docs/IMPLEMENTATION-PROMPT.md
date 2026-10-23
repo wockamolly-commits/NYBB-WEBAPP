@@ -322,7 +322,7 @@ These were settled with the project owner. Do not relitigate them.
 
 | # | Decision | Consequence |
 |---|---|---|
-| D1 | **Pickup only.** No delivery, no dine-in, no take-out-vs-dine-in distinction. | Delete the entire delivery subsystem and the rider app. See section 8. |
+| D1 | **Pickup only.** No delivery, no dine-in, no take-out-vs-dine-in distinction. | Delete the entire delivery subsystem and the rider app. See section 8. **Amended 2026-10-14: delivery is signposted, not built.** The storefront carries one floating card (`components/site/DeliveryCard.tsx`) that links out to the Tablevibe ordering page, as the old WordPress site did, so delivery customers are not lost while this site stays pickup only. Nothing here takes, prices or tracks a delivery order. The card's offer wording lives in `lib/site/delivery-card.ts` behind one switch. **Amended 2026-10-21:** the card stays off item pages (`/menu/<category>/<item>`) at every width, because it covered the flavour grid on desktop; the menu, category pages and the rest of the storefront keep it. |
 | D2 | **Single branch at launch, multi-branch-ready schema.** This is a proposal to the CEO. It must demo as one clean store while provably scaling to ten. | Every menu, pricing, hours, stock, order, and settings table carries `branch_id` from migration one. ~~The branch picker is fully built and hidden behind a flag.~~ **Superseded 2026-08-19: the counter picker ships at `/stores`, unhidden.** Hiding it did not make the product read as one clean store, it made the customer's most load-bearing question invisible: `get_pickup_slots(null)` resolved the first active branch by `sort_order`, so the shop somebody collected from was chosen for them and named only in a footnote at the bottom of checkout, while the cart screen promised "the branch you choose at checkout". The picker now lists all nine counters, marks the live one as choosable and the other eight as phone-only with their real numbers, and hides itself only where no order can be completed at all. Migration 0049 adds the `get_orderable_branches()` read this needs, because `branches` is RLS'd to staff. Never hardcode a branch. |
 | D3 | **ZenPOS integration via an adapter, with a discovery phase.** ZenPOS (zenpos.co, CodeLikeUs Technologies, Cebu) publishes no public API reference, no webhook spec, and no developer portal. Their marketing lists a Kitchen Display System, QR Ordering, and a Remote Terminal, which implies an internal order-ingest path exists, but nothing is documented. | Build `POSAdapter` as an interface. Ship a `ManualRekeyAdapter` that works on day one with zero ZenPOS cooperation. Stub `ZenPosAdapter` behind the same interface. Run the discovery checklist in section 16.2 before writing a line of ZenPOS HTTP code. |
 | D4 | ~~**Both payment rails, owner-configurable.**~~ **Superseded 2026-08-11: payment first only.** The owner ruled that pickup orders must be paid online before processing, so pay at counter is not offered. The counter rail stays in the schema (the `payment_method` enum keeps `'counter'`) but is unreachable from pickup checkout. See section 17. | Port the ZOMBEANS PayMongo layer as a **Phase 1 launch blocker**, not a Phase 5 option. Ordering cannot open until it works and merchant approval lands. |
@@ -1163,7 +1163,7 @@ a maintenance liability and a confusing demo.
 | Feature | Class |
 |---|---|
 | Nonce-based CSP via `proxy.ts` | **Keep as-is** |
-| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Keep** `geolocation=(self)`. Originally dropped because pickup has no delivery address to capture; restored 2026-09-14 for the nearest counter suggestion on `/stores`, which reads position in the browser only and never sends it to the server |
+| Security headers (HSTS, nosniff, frame-deny, referrer, permissions policy) | **Keep** `geolocation=(self)`. Originally dropped because pickup has no delivery address to capture; restored 2026-09-14 for the nearest counter suggestion on `/stores`. Since 2026-09-24 the position is sent once to the server, which passes it to the Mapbox Matrix API for road distances to each counter and stores or logs it nowhere. Flag-gated on `MAPBOX_ACCESS_TOKEN`; unset, the page shows a straight line estimate worked out in the browser, as before |
 | Postgres-backed rate limiting | **Keep as-is** |
 | Constant-time cron authentication | **Keep as-is** |
 | Audit logging of staff actions | **Keep as-is** |
@@ -1305,6 +1305,13 @@ fallback. Cards show: short code, pickup slot with a live countdown, item count,
 badge (Paid online / Collect at counter), heat level chips, and an arrival badge when
 `customer_arrived_at` is set. Orders past their slot time turn amber, then red.
 
+> **Status, 2026-10-21.** Built: each card's pickup chip counts down to the slot time, turns amber
+> once it passes and red fifteen minutes later (`pickupUrgency` in `lib/staff/board.ts`). The board
+> reads the 200 newest live orders and says so when there are more. Ended orders still holding money
+> (`payments.needs_refund`) are listed above the lanes until refunded. Not built: an automatic
+> no-show, which waits on owner question 5b (section 28); until then staff close an uncollected
+> order by refusing it.
+
 **The one-tap path.** ZOMBEANS learned that a six-status workflow means six taps per order during
 a rush, and cashiers stop using it. Collapse aggressively:
 
@@ -1320,6 +1327,11 @@ Three taps per order, total.
 live the panel becomes read-only confirmation; until then it is the re-key surface with the
 "Mark as entered in POS" guard against double entry.
 
+> **Correction, 2026-10-21.** Migration 0035 removed the "Mark as entered in POS" step
+> (`staff_record_manual_zenpos_entry`), and nothing writes `pos_sync.entered_at` any more. The
+> analytics discount check depends on it, so that card now says it is not measured rather than
+> showing zeros. Restoring the step is a product decision, not a bug fix.
+
 **Permissions.** Inherit the model exactly: a job role supplies defaults, per-user override rows
 force a single permission on or off, and effective permissions are computed by
 `resolvePermissions()`. Roles for NYBB: `cashier` (orders, menu availability), `manager` (adds
@@ -1330,6 +1342,52 @@ the same tickets would only split the work in two.
 **Owner-editable without a developer:** menu items and prices, availability and sold-out holds,
 weekly hours, prep minutes, slot capacity, promo codes, feature flags, staff and permissions. If
 the owner has to call you to change a price, the platform has failed.
+
+> **Super Admin handover, 2026-10-21 (migration 0100).** Changing `SUPER_ADMIN_EMAIL` alone used
+> to leave the outgoing Super Admin with full database rights until the new one signed in. The
+> database now keeps its own record of the Super Admin's address (`super_admin_authority`, service
+> role only) and refuses to provision any other. The handover is one transaction:
+>
+> 1. `node scripts/hand-over-super-admin.mjs new@address` shows what will happen and changes
+>    nothing. Add `--yes` to do it. In that one step the new address is recorded, every other
+>    active Super Admin profile is switched off, their Auth sessions are ended, and each change is
+>    audited (`staff.super_admin_handed_over`). The outgoing account loses its database rights
+>    when the step commits, because every admin check requires an active profile. An access token
+>    it still holds is then worthless, and expires within the hour.
+> 2. Set `SUPER_ADMIN_EMAIL` in Vercel to the same address and redeploy. Until then nobody can
+>    sign in as Super Admin, which is the safe way round.
+> 3. The new Super Admin signs in with a one-time code as usual.
+>
+> If the script reports that sessions could not be ended, sign the old account out from the
+> Supabase dashboard as well. Its profile is already off either way.
+
+> **Audit log, 2026-10-21 (migration 0098).** On the owner's decision, a manager without
+> `vouchers:manage` still sees voucher entries but not the promo codes in them. The database
+> stores each such entry with the code masked, and keeps the full copy in
+> `audit_log_restricted_details`, which only `vouchers:manage` (and the Super Admin) can read, for
+> rows they could read anyway. The screen shows each change as readable lines; the raw record is
+> shown to the Super Admin only.
+
+> **Checkout abuse, 2026-10-21: what holds and what does not.** `place_order` stays callable with
+> the anon key, because it reads the signed-in customer from `auth.uid()` and moving it behind
+> the service role would lose that. What holds inside the function, for every caller:
+> at most two unpaid online orders per phone number in the past hour (`UNPAID_ORDERS_OPEN`),
+> serialised per number with an advisory lock so two requests at once cannot both pass; every
+> written form of a Philippine mobile or landline counted as one number; five orders a minute
+> per signed-in user or per number; and no direct table writes (anon and authenticated hold no
+> insert on `orders` or `payments`).
+>
+> What does not hold: a script can make up a fresh valid-looking number for every order, and
+> nothing in the database knows the caller's address. Each unpaid order holds a pickup window,
+> and any capped promo code it uses, until the expiry sweep releases it. The site's own Server
+> Action limits by address, but a direct call skips it.
+>
+> **Proposed fix, not built:** have the checkout Server Action call `place_order` with the
+> service role, passing the customer's verified user id as an argument the function trusts only
+> from that role (or a short-lived signed token minted by the action), and revoke `place_order`
+> from anon and authenticated. Every order then passes the address limit and the bot check, and
+> the customer identity still reaches the function. This changes how sign-in reaches the
+> database, so it waits for a decision.
 
 ---
 
@@ -1696,6 +1754,72 @@ form field coerced to 0 and turned "no heat level" into "0% heat" on every save.
 go-to-market slide): a first-order pickup code, a slow-hours discount targeting the 2pm to 5pm
 trough, and a "skip the queue" framing rather than a discount, since pickup ordering sells time.
 
+### 18.1 Promo discovery, added 2026-09-23
+
+**This section said to port the voucher engine unchanged, and that was done. What it did not
+account for is that a ported engine can only take a code the customer already knows.** Every
+promo the owner created was invisible: there was a field at checkout and nothing anywhere that
+said a code existed. The engine could accept, and the shop could not offer.
+
+So there is now a customer-facing half: a dismissible bar under the storefront header, a `/promos`
+page that lists each running promo with `voucherSummary`'s sentence and an Apply button, and an
+opt-in Web Push notification for a new promo. Apply is a link to `/checkout?promo=CODE` which
+seeds the field and lets the existing `preview_voucher` path do the checking. There is no second
+validation path, and the client still sends a code and never a price.
+
+**The deliberate divergence, and its bound.** Migration 0009 records that "a customer never
+selects from vouchers ... the code space cannot be scraped". Listing promos breaks that, so it is
+broken one row at a time: `vouchers.publicise` (0073) is `not null default false`, and
+`list_customer_promos` (0074) returns a voucher only when an admin ticked it, or when the voucher
+belongs to the caller's own account. Every code nobody ticks keeps 0009's property exactly. A
+voucher naming a customer by `phone_digits` is never listed to anybody, including its holder,
+because resolving one would mean answering "does this phone number have a discount" for any number
+a caller cared to try, and a phone number is a far denser guessing space than a promo code.
+
+**`publicise` is not a frozen term.** 0067 freezes terms once a voucher has met an order, and
+deliberately left `admin_set_voucher_active` outside that freeze because switching a code off is
+the brake. Advertising is the gentler brake, so `admin_set_voucher_publicise` (0073) sits outside
+the freeze for the same reason: an owner whose campaign has gone wrong must be able to pull the
+advert without refusing the code for the customers mid-checkout with it.
+
+**The listing is an announcement, not a verdict.** It applies every eligibility rule
+`resolve_voucher` applies except the ones needing a cart: the minimum, the item and category
+scope, and the per-customer cap. Those are checked when the code is applied. A listed code is live
+and is never promised to fit the order.
+
+**How often the bar appears, revised 2026-09-23.** It first shipped with a
+dismissal remembered in a cookie for a year. The owner replaced that the same
+day: closing the bar now lasts only for the page it was closed on, and a refresh
+or a navigation brings it back. What is permanent instead is redemption. A promo
+the customer has no uses left on is filtered out of the listing, by
+`list_customer_promos` (0076) counting their redemptions for a signed-in
+customer and by the `nybb_promos_used` cookie for a browser that placed the
+order. Both only ever remove, and because 0065 deletes the redemption row when
+an order is cancelled, the server-side half gives the promo back when an order
+falls over.
+
+The test is "can this person still redeem it" rather than "have they used it".
+`max_uses_per_customer` is `not null default 1`, so the two readings are the
+same sentence for every code that exists; they come apart only on a promo worth
+more than one visit, where hiding it after the first would take away uses the
+customer still holds. The bar also does not draw on `/checkout` or `/promos`,
+where it would be repeating itself.
+
+**Promo push is a separate consent from order push.** `push_promo_optins` (0075) is its own table,
+not a column on `push_subscriptions`, so revoking marketing never silences an order. Announcing is
+a deliberate staff action, not a trigger on `publicise`, and `claim_promo_announcement` makes it
+exactly once for the life of the code.
+
+**Every new code has a poster, added 2026-10-16.** The poster (0077) was optional and was attached
+after the code was created, so a failed upload left a live code with no artwork. Migration 0089
+makes it part of creating: `admin_create_voucher` takes the terms and the poster together and
+writes both in one transaction, and `admin_upsert_voucher` now refuses a create (it still does
+every edit). The workspace action uploads and processes the image before calling it, and the form
+refuses Create until a valid image is chosen, all three with the same rules from
+`voucherPosterProblem`. A poster can be replaced, including on a locked code, but no longer
+removed. Codes created before 0089 without a poster keep working and can be given one; the
+workspace list marks them "No poster yet".
+
 ---
 
 ## 19. Loyalty: recommendation
@@ -1968,6 +2092,8 @@ the owner agreeing to trade away a Tier 1 control.
   NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
   PAYMONGO_SECRET_KEY, NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY, PAYMONGO_WEBHOOK_SECRET
   RESEND_API_KEY, RESEND_FROM
+  MAPBOX_ACCESS_TOKEN                        (optional, road distances and routes on /stores)
+  NEXT_PUBLIC_MAPBOX_TOKEN                   (optional, the route map; URL restricted)
   ZENPOS_BASE_URL                            (unset until discovery completes)
   CRON_SECRET
   ```
@@ -2154,6 +2280,23 @@ Stop and ask before deciding these. Do not invent answers.
    held for a stated period, remade on a later visit, refunded in full, refunded in part, or
    forfeited? This did not need an answer while orders were unpaid. It does now, and it needs to
    be published to customers before the first order, since it is a money question.
+
+   **Decision so far (2026-10-21):** staff keep closing uncollected orders by hand for now. No
+   automatic no-show or cancellation is built until the rules below are approved. **Proposal,
+   for the owner to approve or change; none of it is decided:**
+
+   | Rule | Proposed | Needs the owner to say |
+   | --- | --- | --- |
+   | Pickup deadline | The end of the chosen pickup window | Whether that, or a fixed time after Ready |
+   | Grace period | 30 minutes past the deadline | How long food is held, per item type if needed |
+   | Reminder | One push at the deadline: "Your order is waiting" | Whether to send it, and its wording |
+   | Status move | `ready` to `no_show` after the grace period, by staff or automatically | Which, once the rest is agreed |
+   | Money | Not decided | Full refund, part refund, store credit, or forfeit |
+   | Customer notice | One push on the move, saying what happens to the money | The wording, once the money rule is set |
+   | Published policy | On the checkout page and the order page | The exact text |
+
+   The board already turns an order amber at its pickup time and red fifteen minutes later, and
+   the `no_show` status already exists, so automation is a small step once these are answered.
 5c. **Who reconciles online sales at branch cash up**, and in what form they need them, so the
    ZenPOS tender-type answer can be judged against a real process rather than a guess.
 5d. ~~**What counts as a returning customer**, for the analytics report.~~ **Resolved 2026-09-04.**

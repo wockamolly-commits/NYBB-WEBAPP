@@ -7,7 +7,7 @@ const CUSTOMER_ID = "88000000-0000-4000-8000-000000000002";
 
 async function asRole<T>(
   db: PGlite,
-  role: "anon" | "authenticated",
+  role: "anon" | "authenticated" | "service_role",
   userId: string | null,
   sql: string,
 ): Promise<readonly T[]> {
@@ -49,7 +49,7 @@ describe("submit_franchise_inquiry", () => {
   it("lets a stranger leave a lead", async () => {
     const [row] = await asRole<{ ok: boolean }>(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry(
          'Maria Santos', 'maria@example.com', '09170000000',
@@ -65,7 +65,7 @@ describe("submit_franchise_inquiry", () => {
   it("stores the email folded and trimmed, so two spellings are one lead", async () => {
     await asRole(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry('Maria Santos', '  Maria@Example.COM ', '09170000000')`,
     );
@@ -77,7 +77,7 @@ describe("submit_franchise_inquiry", () => {
   it("turns blank optional fields into null rather than empty strings", async () => {
     await asRole(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry('Maria Santos', 'm@example.com', '09170000000', '   ', '  ')`,
     );
@@ -93,7 +93,7 @@ describe("submit_franchise_inquiry", () => {
   it("leaves a lead unhandled, so the open-leads index finds it", async () => {
     await asRole(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry('Maria Santos', 'm@example.com', '09170000000')`,
     );
@@ -110,7 +110,7 @@ describe("submit_franchise_inquiry", () => {
     // limiter hashes addresses for the same reason; see the note in 0045.
     await asRole(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry('Maria Santos', 'm@example.com', '09170000000')`,
     );
@@ -131,7 +131,7 @@ describe("submit_franchise_inquiry", () => {
     ]) {
       const [row] = await asRole<{ ok: boolean }>(
         db,
-        "anon",
+        "service_role",
         null,
         `select submit_franchise_inquiry(${args}) as ok`,
       );
@@ -142,10 +142,26 @@ describe("submit_franchise_inquiry", () => {
     expect(stored).toBe(0);
   });
 
+  it("can only be called by the server, which is where the rate limit is", async () => {
+    // 0088. The address limit lives in lib/franchise/submit.ts, and the anon
+    // key is in every browser, so a public grant let a script skip it.
+    for (const role of ["anon", "authenticated"] as const) {
+      await expect(
+        asRole(
+          db,
+          role,
+          role === "anon" ? null : CUSTOMER_ID,
+          `select submit_franchise_inquiry('Spam', 's@example.com', '09170000000')`,
+        ),
+      ).rejects.toThrow(/permission denied/);
+    }
+    expect(await scalar<number>(db, "select count(*)::int from franchise_inquiries")).toBe(0);
+  });
+
   it("refuses an over-long field rather than storing megabytes", async () => {
     const [row] = await asRole<{ ok: boolean }>(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry(
          'Maria Santos', 'm@example.com', '09170000000', null, repeat('a', 4001)
@@ -165,7 +181,7 @@ describe("franchise_inquiries visibility", () => {
     db = await setup();
     await asRole(
       db,
-      "anon",
+      "service_role",
       null,
       `select submit_franchise_inquiry('Maria Santos', 'm@example.com', '09170000000')`,
     );

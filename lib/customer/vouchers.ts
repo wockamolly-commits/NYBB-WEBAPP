@@ -7,7 +7,8 @@ import {
   voucherVerdictSchema,
   type VoucherPreviewResult,
 } from "@/lib/vouchers/preview";
-import { callerClient, type CustomerCaller } from "./caller";
+import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
+import type { CustomerCaller } from "./caller";
 
 /**
  * Trying a promo code, for any client that can be reduced to a caller.
@@ -69,7 +70,16 @@ export async function previewVoucher(
     };
   }
 
-  const supabase = await callerClient(caller);
+  // A signed-in customer asks as themselves, because a personal code has to
+  // recognise them, and the database limits each account (0094). A guest has
+  // no identity to carry, and since 0094 anon cannot call this function at
+  // all, so a guest's preview goes through the service role, after the address
+  // limit above. That limit is now the only way a guest reaches it.
+  const identity = await caller.identity();
+  if (!identity && !adminConfigured()) {
+    return { ok: false, error: "Promo codes are not available at the moment.", field: "voucher" };
+  }
+  const supabase = identity ?? createAdminClient();
   const { data, error } = await supabase.rpc("preview_voucher", {
     p_code: parsed.data.code,
     p_branch_slug: parsed.data.branchSlug,

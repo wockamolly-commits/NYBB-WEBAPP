@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { mergeStores } from "@/lib/branches/merge";
 import {
   RECOMMEND_WITHIN_KM,
+  ROAD_FACTOR,
   distanceKm,
   distanceLabel,
   distancesBySlug,
   formatDistance,
   rankByDistance,
+  roadKm,
   suggestNearest,
 } from "@/lib/branches/nearest";
 import type { Branch } from "@/lib/catalog/types";
@@ -70,6 +72,58 @@ describe("how far a counter is", () => {
     const manila = { lat: 14.5995, lng: 120.9842 };
     expect(distanceKm(manila, MANGO)).toBeGreaterThan(550);
     expect(distanceKm(manila, MANGO)).toBeLessThan(590);
+  });
+});
+
+// Google Maps measures the road, and customers compare against it. A bare
+// straight line reads as the page being wrong, so rows show the road estimate.
+describe("how far it is by road", () => {
+  it("stretches the straight line by the road factor", () => {
+    expect(roadKm(MANGO, CENTRAL_BLOC)).toBeCloseTo(distanceKm(MANGO, CENTRAL_BLOC) * ROAD_FACTOR, 10);
+    expect(roadKm(MANGO, CENTRAL_BLOC)).toBeCloseTo(3.5, 1);
+  });
+
+  it("is what every row and the suggestion carry", () => {
+    const stores = storesFrom([catalogEntry("central-bloc", CENTRAL_BLOC)], ["central-bloc"]);
+
+    expect(distancesBySlug(stores, MANGO).get("central-bloc")).toBeCloseTo(roadKm(MANGO, CENTRAL_BLOC), 10);
+    expect(suggestNearest(stores, distancesBySlug(stores, MANGO))).toMatchObject({
+      km: roadKm(MANGO, CENTRAL_BLOC),
+      measured: false,
+    });
+  });
+
+  // Mapbox's own road distance replaces the estimate wherever it answered.
+  it("gives way to a measured road distance, counter by counter", () => {
+    const stores = storesFrom(
+      [catalogEntry("mango", MANGO), catalogEntry("central-bloc", CENTRAL_BLOC)],
+      ["mango", "central-bloc"],
+    );
+    const distances = distancesBySlug(stores, SM_CITY, { "central-bloc": 4.1 });
+
+    expect(distances.get("central-bloc")).toBe(4.1);
+    expect(distances.get("mango")).toBeCloseTo(roadKm(SM_CITY, MANGO), 10);
+  });
+
+  // Measured road distances can rank counters differently from the straight
+  // line: a river or a one way system puts the nearer pin further away.
+  it("suggests by the measured road, not the straight line", () => {
+    const stores = storesFrom(
+      [catalogEntry("mango", MANGO), catalogEntry("central-bloc", CENTRAL_BLOC)],
+      ["mango", "central-bloc"],
+    );
+    const measured = { mango: 5.2, "central-bloc": 2.3 };
+
+    expect(suggestNearest(stores, distancesBySlug(stores, MANGO, measured), measured)).toMatchObject({
+      store: { slug: "central-bloc" },
+      km: 2.3,
+      measured: true,
+    });
+  });
+
+  it("does not invent a distance for an unpinned counter Mapbox answered for", () => {
+    const stores = storesFrom([catalogEntry("shell-naga")], ["shell-naga"]);
+    expect(distancesBySlug(stores, MANGO, { "shell-naga": 3 }).has("shell-naga")).toBe(false);
   });
 });
 
@@ -152,7 +206,7 @@ describe("which counter is suggested", () => {
     );
     const standingInLahug = { lat: 10.33, lng: 123.905 };
 
-    expect(suggestNearest(stores, standingInLahug)).toMatchObject({
+    expect(suggestNearest(stores, distancesBySlug(stores, standingInLahug))).toMatchObject({
       kind: "nearest",
       store: { slug: "central-bloc" },
     });
@@ -167,7 +221,21 @@ describe("which counter is suggested", () => {
       ["mango"],
     );
 
-    expect(suggestNearest(stores, SM_CITY)).toMatchObject({
+    expect(suggestNearest(stores, distancesBySlug(stores, SM_CITY))).toMatchObject({
+      kind: "nearest",
+      store: { slug: "mango" },
+    });
+  });
+
+  // A shut counter is shown greyed out on the board and cannot be chosen, so
+  // the suggestion's button would offer a press the server refuses.
+  it("passes over a closer counter that is closed right now", () => {
+    const stores = storesFrom(
+      [catalogEntry("mango", MANGO), catalogEntry("sm-city", SM_CITY)],
+      ["mango", "sm-city"],
+    ).map((store) => (store.slug === "sm-city" ? { ...store, closedNow: true } : store));
+
+    expect(suggestNearest(stores, distancesBySlug(stores, SM_CITY))).toMatchObject({
       kind: "nearest",
       store: { slug: "mango" },
     });
@@ -178,7 +246,7 @@ describe("which counter is suggested", () => {
       [catalogEntry("first", MANGO), catalogEntry("second", MANGO)],
       ["first", "second"],
     );
-    expect(suggestNearest(stores, MANGO)).toMatchObject({
+    expect(suggestNearest(stores, distancesBySlug(stores, MANGO))).toMatchObject({
       store: { slug: "first" },
     });
   });
@@ -190,7 +258,7 @@ describe("which counter is suggested", () => {
       [catalogEntry("shell-naga"), catalogEntry("nustar", { lat: 10.2715457, lng: 123.8802395 })],
       ["shell-naga", "nustar"],
     );
-    expect(suggestNearest(stores, MANGO)).toMatchObject({
+    expect(suggestNearest(stores, distancesBySlug(stores, MANGO))).toMatchObject({
       store: { slug: "nustar" },
     });
   });
@@ -200,7 +268,7 @@ describe("which counter is suggested", () => {
       [catalogEntry("shell-naga"), catalogEntry("sm-city", SM_CITY)],
       ["shell-naga"],
     );
-    expect(suggestNearest(stores, MANGO)).toEqual({ kind: "none" });
+    expect(suggestNearest(stores, distancesBySlug(stores, MANGO))).toEqual({ kind: "none" });
   });
 
   // Somebody browsing from Manila should not be told to collect from a counter
@@ -209,7 +277,7 @@ describe("which counter is suggested", () => {
     const stores = storesFrom([catalogEntry("mango", MANGO)], ["mango"]);
     const manila = { lat: 14.5995, lng: 120.9842 };
 
-    const result = suggestNearest(stores, manila);
+    const result = suggestNearest(stores, distancesBySlug(stores, manila));
     expect(result).toMatchObject({ kind: "far", store: { slug: "mango" } });
     expect(result.kind === "far" && result.km).toBeGreaterThan(RECOMMEND_WITHIN_KM);
   });
@@ -237,7 +305,9 @@ describe("how a distance is written", () => {
   });
 
   it("reads as a sentence on a counter row", () => {
-    expect(distanceLabel(2.51)).toBe("About 2.5 km away");
+    expect(distanceLabel(2.51)).toBe("About 2.5 km away by road");
+    expect(distanceLabel(2.31, true)).toBe("2.3 km away by road");
+    expect(distanceLabel(0.05, true)).toBe("Under 100 m away");
     expect(distanceLabel(0.02)).toBe("Under 100 m away");
   });
 });

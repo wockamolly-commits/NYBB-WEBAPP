@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { StoreList } from "@/components/store/StoreList";
 import { ButtonLink } from "@/components/ui/Button";
 import { branchEntries } from "@/lib/branches/entries";
 import type { StoreHoursRow } from "@/lib/branches/hours";
 import { getStoreHours } from "@/lib/branches/hours-reader";
+import { listBranches } from "@/lib/branches/reader";
 import { safeReturnTo } from "@/lib/branches/href";
-import { branches as catalogBranches } from "@/lib/catalog/branches";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 
@@ -53,17 +54,18 @@ type PageProps = {
 };
 
 export default async function StoresPage({ searchParams }: PageProps) {
-  const [selection, query, orderingOpen, hours] = await Promise.all([
+  const [selection, query, orderingOpen, hours, branches] = await Promise.all([
     getStoreSelection(),
     searchParams,
     onlineOrderingOpen(),
     readHours(),
+    listBranches(),
   ]);
 
   // For the detail sheet the nearest-counter suggestion opens, the same one
   // the Branches page shows. The stores come from the selection already read
   // above, so this costs no second orderable-branches round trip.
-  const entries = branchEntries(catalogBranches, selection.stores, hours);
+  const entries = branchEntries(branches, selection.stores, hours);
 
   // Validated here rather than in the client component, because a query string
   // is a value a stranger can set and an unchecked one sent to router.push is
@@ -73,6 +75,8 @@ export default async function StoresPage({ searchParams }: PageProps) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <ScrollReveal />
+
       <h1 className="font-display heading-page">Where are you collecting?</h1>
 
       <p className="text-nybb-ink/75 mt-4 max-w-xl text-base leading-relaxed">

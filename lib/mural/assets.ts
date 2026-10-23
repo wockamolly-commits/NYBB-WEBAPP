@@ -21,8 +21,6 @@ export const MURAL_MOTIFS = {
   "tile-signal": { src: "/mural/tile-signal.2ae36db1.svg", width: 600, height: 635 },
   "tile-car": { src: "/mural/tile-car.ba5c4701.svg", width: 700, height: 420 },
   "tile-crowd": { src: "/mural/tile-crowd.f8ea73de.svg", width: 640, height: 673 },
-  "skyline-band": { src: "/mural/skyline-band.ef4c128c.svg", width: 1560, height: 102 },
-  "skyline": { src: "/mural/skyline.0a6cb78d.svg", width: 1100, height: 861 },
 } as const satisfies Record<string, MuralMotif>;
 
 export type MuralMotifName = keyof typeof MURAL_MOTIFS;

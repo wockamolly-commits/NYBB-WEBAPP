@@ -41,4 +41,22 @@ describe("the notification trigger points", () => {
     const source = read("lib/customer/payment.ts");
     expect(source).toContain("notifyStaffOfNewOrder");
   });
+
+  // Without a scheduler on the free Vercel plan, the open orders board is the
+  // only thing that sends the queued "payment time ran out" pushes.
+  it("drains the push queue from the orders board", () => {
+    const source = read("app/(workspace)/workspace/orders/page.tsx");
+    expect(source).toContain("drainPushQueue");
+    expect(source).toMatch(/import \{[^}]*after[^}]*\} from "next\/server"/);
+  });
+
+  it("tells the counter when a customer arrives", () => {
+    const source = read("app/actions/order-arrival.ts");
+    expect(source).toContain("notifyStaffOfArrival");
+  });
+
+  it("tells the customer about a refund from the action and the webhook", () => {
+    expect(read("app/(workspace)/workspace/orders/actions.ts")).toContain("notifyCustomerOfRefund");
+    expect(read("app/api/paymongo/webhook/route.ts")).toContain("notifyCustomerOfRefund");
+  });
 });

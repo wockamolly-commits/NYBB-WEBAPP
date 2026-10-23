@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { manilaWallClockIso } from "@/lib/staff/manila-dates";
+import { isOwnStorageImageUrl } from "@/lib/images/safe-url";
+import { VOUCHER_POSTER_BUCKET } from "@/lib/staff/voucher-poster-limits";
 
 /**
  * The voucher form, as its Save posts it, and the payload the RPC reads.
@@ -114,6 +116,18 @@ export const voucherFormSchema = z
 
     isActive: z.boolean().default(true),
 
+    /**
+     * Whether this code may be listed to customers who were never told it.
+     *
+     * Defaults false, the opposite direction to isActive above, and the
+     * asymmetry is the point. A voucher that exists is meant to be
+     * redeemable, so "on" is the right default for the switch that decides
+     * that. A voucher is NOT automatically meant to be advertised, and
+     * migration 0009's promise that the code space cannot be scraped holds
+     * for every code nobody deliberately ticked.
+     */
+    publicise: z.boolean().default(false),
+
     branchIds: z.array(z.uuid()).default([]),
     itemIds: z.array(z.uuid()).default([]),
     categoryIds: z.array(z.uuid()).default([]),
@@ -187,6 +201,7 @@ export const voucherFormSchema = z
       expiresAt: value.expiresAt === "" ? null : manilaWallClockIso(value.expiresAt),
 
       isActive: value.isActive,
+      publicise: value.publicise,
       branchIds: value.branchIds,
       itemIds: value.itemIds,
       categoryIds: value.categoryIds,
@@ -238,8 +253,19 @@ export const voucherRowSchema = z.object({
   starts_at: z.string().nullable(),
   expires_at: z.string().nullable(),
   is_active: z.boolean(),
+  publicise: z.boolean(),
+  // Null means it has never been announced, which is the normal state: a code
+  // is publicised and announced by two separate deliberate acts.
+  announced_at: z.string().nullable(),
   owner_user_id: z.uuid().nullable(),
   created_at: z.string(),
+  // All three null together means "no poster" (0077's vouchers_poster_complete),
+  // never a zero-sized one. Nullable, not coerced, per AGENTS.md rule 6.
+  poster_url: z.string().nullable(),
+  poster_width: z.number().int().positive().nullable(),
+  poster_height: z.number().int().positive().nullable(),
+  // 0078. The owner's storefront rank; null is "not placed", never rank 0.
+  display_priority: z.number().int().positive().nullable(),
 });
 
 export type VoucherRow = z.infer<typeof voucherRowSchema>;
@@ -261,8 +287,16 @@ export function toVoucher(row: VoucherRow) {
     startsAt: row.starts_at,
     expiresAt: row.expires_at,
     isActive: row.is_active,
+    publicise: row.publicise,
+    announcedAt: row.announced_at,
     ownerUserId: row.owner_user_id,
     createdAt: row.created_at,
+    poster:
+      row.poster_url !== null && row.poster_width !== null && row.poster_height !== null
+        && isOwnStorageImageUrl(row.poster_url, VOUCHER_POSTER_BUCKET)
+        ? { url: row.poster_url, width: row.poster_width, height: row.poster_height }
+        : null,
+    displayPriority: row.display_priority,
   };
 }
 

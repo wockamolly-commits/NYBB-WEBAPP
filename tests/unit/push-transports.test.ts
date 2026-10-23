@@ -49,7 +49,7 @@ describe("assertVapidKey", () => {
 });
 
 describe("sendWeb", () => {
-  const target = { endpoint: "https://push.example/abc", p256dh: "p256dh-key", auth_key: "auth-key" };
+  const target = { endpoint: "https://fcm.googleapis.com/fcm/send/abc", p256dh: "p256dh-key", auth_key: "auth-key" };
 
   beforeEach(() => {
     vi.mocked(webpush.sendNotification).mockReset();

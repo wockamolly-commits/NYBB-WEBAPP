@@ -1,5 +1,5 @@
 import "server-only";
-import { createPublicClient, supabaseConfigured } from "@/lib/supabase/public-client";
+import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 import { withinAddressLimit } from "@/lib/rate-limit/limiter";
 import type { FranchiseInquiry } from "./inquiry";
 
@@ -10,6 +10,11 @@ import type { FranchiseInquiry } from "./inquiry";
  * function, because the public has no insert grant on `franchise_inquiries` and
  * should not get one. That is the same shape every other public write in this
  * schema uses.
+ *
+ * It is called with the service role, and only from here (0088). The address
+ * limit below is the only thing that bounds a flood of junk leads, and while
+ * the function was granted to anon a script could call it straight through
+ * the REST endpoint and never meet that limit.
  *
  * THE MAIL IS SENT ELSEWHERE, AND DELIBERATELY NOT FROM HERE.
  * ================================================================
@@ -64,9 +69,9 @@ export async function storeFranchiseInquiry(
   });
   if (!allowed) return { ok: false, message: throttled };
 
-  if (!supabaseConfigured()) return { ok: false, message: unavailable };
+  if (!adminConfigured()) return { ok: false, message: unavailable };
 
-  const { data, error } = await createPublicClient().rpc("submit_franchise_inquiry", {
+  const { data, error } = await createAdminClient().rpc("submit_franchise_inquiry", {
     p_name: inquiry.name,
     p_email: inquiry.email,
     p_phone: inquiry.phone,

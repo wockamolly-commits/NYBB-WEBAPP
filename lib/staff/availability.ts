@@ -2,9 +2,9 @@ import "server-only";
 
 import { z } from "zod";
 import { createReadOnlyStaffClient } from "@/lib/supabase/server";
-import { toWeek, type BranchAvailability, type OrderIntakeSettings, type StoreHoursDay } from "./availability-types";
+import { toWeek, type BranchAvailability, type BranchDetails, type OrderIntakeSettings, type PriceListOption, type StoreHoursDay } from "./availability-types";
 
-export type { BranchAvailability, OrderIntakeSettings } from "./availability-types";
+export type { BranchAvailability, BranchDetails, OrderIntakeSettings, PriceListOption } from "./availability-types";
 
 const hoursRowSchema = z.object({
   weekday: z.number().int().min(0).max(6),
@@ -111,4 +111,65 @@ export async function getOrderIntakeSettings(): Promise<OrderIntakeSettings | nu
     acceptingOrders: parsed.data.accepting_orders,
     slotHorizonHours: parsed.data.slot_horizon_hours,
   };
+}
+
+const priceListRowSchema = z.object({ id: z.uuid(), slug: z.string(), name: z.string() });
+
+/**
+ * The price lists a new branch can be attached to. Null when the read failed,
+ * so the add-branch form can say so rather than offering no choice.
+ */
+export async function getPriceLists(): Promise<PriceListOption[] | null> {
+  const supabase = await createReadOnlyStaffClient();
+  const { data, error } = await supabase.rpc("staff_list_price_lists");
+  if (error) {
+    console.error("[workspace] price list read failed:", error.message);
+    return null;
+  }
+  const parsed = z.array(priceListRowSchema).safeParse(data ?? []);
+  if (!parsed.success) return null;
+  return parsed.data;
+}
+
+const branchDetailsRowSchema = z.object({
+  branch_id: z.uuid(),
+  name: z.string(),
+  short_name: z.string(),
+  format: z.enum(["street", "mall", "food-hall", "petrol", "hospital", "casino"]),
+  address_line: z.string(),
+  // Null is "no barangay on file", and stays null rather than becoming "".
+  barangay: z.string().nullable(),
+  city: z.string(),
+  phones: z.array(z.string()),
+});
+
+/**
+ * The details of every branch the caller may edit, keyed by branch id. Null
+ * when the read failed, so the edit form can say so instead of opening blank
+ * and inviting somebody to save blanks over a real address.
+ */
+export async function getBranchDetails(): Promise<Record<string, BranchDetails> | null> {
+  const supabase = await createReadOnlyStaffClient();
+  const { data, error } = await supabase.rpc("staff_list_branch_details");
+  if (error) {
+    console.error("[workspace] branch details read failed:", error.message);
+    return null;
+  }
+  const parsed = z.array(branchDetailsRowSchema).safeParse(data ?? []);
+  if (!parsed.success) return null;
+  return Object.fromEntries(
+    parsed.data.map((row) => [
+      row.branch_id,
+      {
+        branchId: row.branch_id,
+        name: row.name,
+        shortName: row.short_name,
+        format: row.format,
+        addressLine: row.address_line,
+        barangay: row.barangay,
+        city: row.city,
+        phones: row.phones,
+      },
+    ]),
+  );
 }

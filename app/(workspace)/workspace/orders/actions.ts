@@ -10,7 +10,7 @@ import { classifyRefundFailure, isRefundReason, type RefundActionResult } from "
 import { createPaymongoRefund } from "@/lib/paymongo/refunds";
 import { isMockPaymentId, mockPaymentsEnabled } from "@/lib/paymongo/mock";
 import { isRejectReasonCode } from "@/lib/orders/reject-reasons";
-import { notifyCustomer } from "@/lib/push/dispatch";
+import { notifyCustomer, notifyCustomerOfRefund, notifyCustomerReady } from "@/lib/push/dispatch";
 import type { StaffOrderActionResult } from "@/lib/staff/order-types";
 import { getStaffProfile, hasStaffPermission } from "@/lib/staff/session";
 import { createStaffClient } from "@/lib/supabase/server";
@@ -31,6 +31,7 @@ function friendly(message: string | undefined): string {
   if (message?.includes("ORDER_NOT_FOUND")) return "That order no longer exists.";
   if (message?.includes("FORBIDDEN")) return "You do not have access to change this order.";
   if (message?.includes("REJECT_REASON_INVALID")) return "Choose a reason before refusing this order.";
+  if (message?.includes("RING_COOLDOWN")) return "The customer was rung a moment ago. Give it a few seconds.";
   return "The order could not be updated. Try again.";
 }
 
@@ -59,7 +60,9 @@ async function setStatus(
   // Only ready is worth a customer's lock screen. Preparing and claimed are
   // both things they either already know or are standing there for.
   if (status === "ready") {
-    after(notifyCustomer(parsedId.data));
+    // Claimed once per order (0097), so a second Ready tap on an order that is
+    // already ready does not buzz the customer again.
+    after(notifyCustomerReady(parsedId.data));
   }
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace");
@@ -81,6 +84,34 @@ export async function claimOrder(
   const parsed = codeSchema.safeParse(pickupCode.trim());
   if (!parsed.success) return { ok: false, error: "Enter the four-digit pickup code." };
   return setStatus(orderId, "claimed", parsed.data);
+}
+
+/**
+ * Rings the customer again for a ready order (0085).
+ *
+ * For a customer who said "I'm coming" and has not come, or who never opened
+ * the page. The database clears their acknowledgement, which is what makes the
+ * open tracking page ring again, and the push is for a closed one.
+ */
+export async function ringCustomerAgain(orderId: string): Promise<StaffOrderActionResult> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "orders:manage")) {
+    return { ok: false, error: "You do not have access to change orders." };
+  }
+  const parsedId = idSchema.safeParse(orderId);
+  if (!parsedId.success) return { ok: false, error: "Invalid order." };
+
+  const supabase = await createStaffClient();
+  const { error } = await supabase.rpc("staff_ring_ready_order", {
+    p_order_id: parsedId.data,
+  });
+  if (error) {
+    console.error("[workspace] staff_ring_ready_order failed", error.message);
+    return { ok: false, error: friendly(error.message) };
+  }
+  after(notifyCustomer(parsedId.data, "ring"));
+  revalidatePath("/workspace/orders");
+  return { ok: true };
 }
 
 /**
@@ -187,6 +218,7 @@ export async function refundOrder(input: {
       console.error("[workspace] mock refund reconciliation failed", reconcileError.message);
       return { ok: false, error: "The mock refund could not be completed." };
     }
+    after(notifyCustomerOfRefund({ refundId: reservation.data.refund_id, providerRefundId: null }));
     revalidateRefundPages();
     return { ok: true, settled: true, message: "Mock refund issued." };
   }
@@ -215,6 +247,10 @@ export async function refundOrder(input: {
     if (reconcileError) {
       console.error("[workspace] refund reconciliation failed", reconcileError.message);
       return { ok: false, error: "The refund is pending confirmation. Do not submit it again." };
+    }
+    // A pending refund settles later through the webhook, which sends then.
+    if (providerStatus === "succeeded") {
+      after(notifyCustomerOfRefund({ refundId: reservation.data.refund_id, providerRefundId: null }));
     }
     revalidateRefundPages();
     return providerStatus === "succeeded"
@@ -247,6 +283,14 @@ function friendlyRefund(message: string | undefined): string {
   if (message?.includes("REFUND_PAYMENT_NOT_PAID")) return "This payment is not available for a refund.";
   if (message?.includes("REFUND_PROVIDER_UNSUPPORTED")) return "Only PayMongo payments can be refunded here.";
   if (message?.includes("FORBIDDEN")) return "You do not have access to issue refunds.";
+  // These four cannot succeed on a retry, so "Try again" sent staff round a
+  // loop. Each says what to do instead.
+  if (message?.includes("REFUND_BELOW_MINIMUM")) return "A refund has to be at least PHP 1.00.";
+  if (message?.includes("REFUND_NO_PROVIDER_PAYMENT")) {
+    return "PayMongo has no completed payment for this order, so there is nothing to refund through it. Settle it with the customer directly.";
+  }
+  if (message?.includes("PAYMENT_NOT_FOUND")) return "This order has no payment to refund.";
+  if (message?.includes("REFUND_REASON_INVALID")) return "Choose a reason for the refund.";
   return "The refund could not be started. Try again.";
 }
 

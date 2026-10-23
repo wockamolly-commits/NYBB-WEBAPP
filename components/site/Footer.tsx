@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Wordmark } from "@/components/brand/Wordmark";
-import { MuralArt } from "@/components/mural/MuralArt";
+import { FooterDoodles } from "@/components/site/FooterDoodles";
 import { HeatRule } from "@/components/site/HeatRule";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { branches } from "@/lib/catalog";
+import { SKYLINE_OUTLINE } from "@/lib/mural/skyline-outline";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,13 +53,123 @@ import { cn } from "@/lib/utils";
  * the wordmark and leave it on the clean top of the gradient.
  */
 
+/**
+ * The Company column.
+ *
+ * Promos first: the navbar carries it at every width, and this is the second
+ * way back to it for somebody who has scrolled to the bottom of a long page.
+ *
+ * One franchise route, not two. /franchise carries the inquiry form and the
+ * franchise mailbox for people who would rather write than fill in a form, so
+ * a footer mailto beside it only opened a mail client nobody asked for.
+ */
+const company = [
+  { href: "/promos", label: "Promos" },
+  { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
+  { href: "/franchise", label: "Franchise" },
+];
+
+/**
+ * The two brand glyphs, drawn here because lucide no longer ships brand marks.
+ * Instagram is the outline camera, which is how the platform draws its own
+ * glyph at small sizes. TikTok is the note, filled, because an outlined note
+ * loses its offset shadow shape and stops being recognisable.
+ */
+function InstagramIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4.2" />
+      <circle cx="17.4" cy="6.6" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M16.6 2h-3.3v13.4a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9.2a6.3 6.3 0 1 0 5.3 6.2V8.6a8 8 0 0 0 4.4 1.4V6.7a4.6 4.6 0 0 1-4.4-4.7Z" />
+    </svg>
+  );
+}
+
 const socials = [
   // Only Hot Wings channels. The live site's footer still links
   // @ny.bbsportslounge and the Sports Lounge Facebook page, both of which now
   // point at a restaurant that closed in August 2026.
-  { href: "https://www.instagram.com/nybuffalobrads/", label: "Instagram" },
-  { href: "https://www.tiktok.com/@nybbhotwings", label: "TikTok" },
+  {
+    href: "https://www.instagram.com/nybuffalobrads/",
+    label: "Instagram",
+    handle: "@nybuffalobrads",
+    Icon: InstagramIcon,
+  },
+  {
+    href: "https://www.tiktok.com/@nybbhotwings",
+    label: "TikTok",
+    handle: "@nybbhotwings",
+    Icon: TikTokIcon,
+  },
 ];
+
+/**
+ * A column heading with the heat scale under it.
+ *
+ * The five swatches are the same five the heat rule on the footer's top edge
+ * runs, at a size that marks the column rather than divides the page. They are
+ * the one piece of colour in the link block, and orange can be a graphic here
+ * where it cannot be type.
+ */
+function FooterHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="font-display type-caps text-nybb-ink">
+      {children}
+      <span aria-hidden="true" className="mt-2.5 flex h-[3px] w-8 overflow-hidden rounded-full">
+        <span className="bg-nybb-heat-1 flex-1" />
+        <span className="bg-nybb-heat-2 flex-1" />
+        <span className="bg-nybb-heat-3 flex-1" />
+        <span className="bg-nybb-heat-4 flex-1" />
+        <span className="bg-nybb-heat-5 flex-1" />
+      </span>
+    </h2>
+  );
+}
+
+/**
+ * A footer link. Hover darkens the text and draws an orange rule in from the
+ * left. The rule is a scaled pseudo element, so the effect is transform only
+ * and nothing reflows; keyboard focus draws the same rule beside the outline.
+ */
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="group text-nybb-ink/70 hover:text-nybb-ink focus-visible:text-nybb-ink relative inline-flex min-h-11 items-center text-base sm:text-sm transition-colors"
+    >
+      {children}
+      <span
+        aria-hidden="true"
+        className="bg-nybb-orange absolute inset-x-0 bottom-2.5 h-0.5 origin-left scale-x-0 transition-transform duration-300 ease-out group-hover:scale-x-100 group-focus-visible:scale-x-100 motion-reduce:transition-none"
+      />
+    </Link>
+  );
+}
 
 /**
  * Grain, at 3.5%.
@@ -70,7 +182,18 @@ const socials = [
 const GRAIN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-export function Footer({ flush = false }: { flush?: boolean }) {
+export function Footer({
+  flush = false,
+  branchCount = branches.length,
+}: {
+  flush?: boolean;
+  /**
+   * Every branch, including any added from the workspace. The storefront
+   * layout passes the database's count; the 404 page, which reads nothing,
+   * falls back to the catalog's.
+   */
+  branchCount?: number;
+}) {
   return (
     // WHY THE TOP MARGIN IS A PROP.
     // ================================================================
@@ -107,10 +230,11 @@ export function Footer({ flush = false }: { flush?: boolean }) {
           className="pointer-events-none absolute inset-0 -z-10 opacity-[0.035] mix-blend-overlay"
           style={{ backgroundImage: GRAIN }}
         />
+        <FooterDoodles />
 
-        <div className="mx-auto max-w-6xl px-4 pt-14 sm:px-6">
-          <div className="grid gap-x-10 gap-y-12 md:grid-cols-[1.3fr_1fr_1fr]">
-            <div>
+        <div className="mx-auto max-w-6xl px-4 pt-14 sm:px-6 sm:pt-16">
+          <div className="grid gap-y-12 lg:grid-cols-12 lg:gap-x-12">
+            <div className="lg:col-span-5">
             {/* Untouched. A transparent PNG on the light ground it was drawn
                 for, which is the whole reason this footer is bone. */}
             <Wordmark
@@ -160,190 +284,151 @@ export function Footer({ flush = false }: { flush?: boolean }) {
               Hot wings, burgers and hotdogs across Cebu. Order ahead, collect
               at the counter.
             </p>
-          </div>
-
-          <div>
-            <h2 className="font-display type-caps text-nybb-ink">Branches</h2>
-            <ul className="mt-5 space-y-2.5">
-              {branches.slice(0, 5).map((branch) => (
-                <li key={branch.slug} className="text-nybb-ink/70 text-sm">
-                  {branch.shortName}
-                </li>
-              ))}
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-nybb-ink decoration-nybb-ink/40 hover:decoration-nybb-ink text-sm underline underline-offset-4 transition-colors"
-                >
-                  All {branches.length} branches
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="font-display type-caps text-nybb-ink">Company</h2>
-            <ul className="mt-5 space-y-2.5 text-sm">
-              <li>
-                <Link
-                  href="/about"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Contact
-                </Link>
-              </li>
-              {/* The page first, the mailbox second. /franchise carries the
-                  figures and the inquiry form, so it is the route somebody
-                  wanting to open a counter should land on; the address below it
-                  stays for people who would rather write than fill in a form. */}
-              <li>
-                <Link
-                  href="/franchise"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Franchise
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="mailto:franchise@5bdf.ph"
-                  className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                >
-                  Franchise enquiries
-                </a>
-              </li>
-            </ul>
-
-            <h2 className="font-display type-caps text-nybb-ink mt-7">Follow</h2>
-            <ul className="mt-5 flex gap-5 text-sm">
-              {socials.map((social) => (
-                <li key={social.href}>
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-nybb-ink/70 hover:text-nybb-ink transition-colors"
-                  >
-                    {social.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
             </div>
+
+            {/* The three link columns, as one block.
+                ================================================================
+                Follow used to sit under Company, which made the right column
+                twice the height of the middle one and left the footer looking
+                unfinished at the bottom right. Its own column gives three
+                columns of descending length, longest first, which reads as a
+                deliberate stair rather than a ragged edge.
+
+                Every row is 2.75rem whether it is a link or not, so the first
+                branch, Promos and the icons sit on one line across the block
+                and the lists keep a shared rhythm. That is also the system's
+                minimum target height, which the old 1.875rem rows were under.
+
+                On a phone Branches takes the full width, because "Shell Cebu
+                Country Club" cannot share a row with anything at 320px, and
+                Company and Follow pair up beneath it. The block only moves
+                beside the wordmark from `lg`: at tablet width four columns left
+                Branches about 120px, and every Shell name broke over two
+                lines. */}
+            <nav
+              aria-label="Footer"
+              className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-[1.4fr_1fr_auto] sm:gap-x-10 lg:col-span-7"
+            >
+              <div className="col-span-2 sm:col-span-1">
+                <FooterHeading>Branches</FooterHeading>
+                <ul className="mt-3">
+                  {branches.slice(0, 5).map((branch) => (
+                    <li
+                      key={branch.slug}
+                      className="text-nybb-ink/70 flex min-h-11 items-center py-2 text-base sm:text-sm leading-snug"
+                    >
+                      {branch.shortName}
+                    </li>
+                  ))}
+                  <li>
+                    <Link
+                      href="/contact"
+                      className="text-nybb-ink decoration-nybb-orange hover:decoration-nybb-ink inline-flex min-h-11 items-center text-base sm:text-sm font-medium underline decoration-2 underline-offset-[6px] transition-colors"
+                    >
+                      All {branchCount} branches
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <FooterHeading>Company</FooterHeading>
+                <ul className="mt-3">
+                  {company.map((link) => (
+                    <li key={link.href}>
+                      <FooterLink href={link.href}>{link.label}</FooterLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <FooterHeading>Follow</FooterHeading>
+                <ul className="mt-3 flex gap-3 pt-0.5">
+                  {socials.map((social) => (
+                    <li key={social.href}>
+                      <a
+                        href={social.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`${social.label}, ${social.handle} (opens in a new tab)`}
+                        title={`${social.label} ${social.handle}`}
+                        className="border-nybb-ink/25 text-nybb-ink/80 hover:border-nybb-ink hover:bg-nybb-ink hover:text-nybb-cream flex size-11 items-center justify-center rounded-full border transition-[translate,background-color,color,border-color] duration-200 ease-out hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                      >
+                        <social.Icon className="size-5" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </nav>
           </div>
-
-          {/* The skyline off the packaging, traced from the printed cup.
-              Decoration: the wordmark already names the company.
-
-              WHY IT IS DOWN HERE AND NOT ON THE TOP EDGE. The heat rule owns
-              that edge and keeps it. Its stated job is to bracket the page in
-              the brand's own scale and tie the navbar and the footer together
-              as one material, and moving it to make room would trade a
-              structural job for a decorative one. Stacking both on one edge was
-              the other option and it is worse than either alone.
-
-              WHY RIGHT ALIGNED, AND WHY ITS FEET ARE ON THE PLINTH. It was in
-              the brand column first, under the wordmark, and it was wrong
-              there: the two link columns are short, so the footer carried a
-              tall drawing bottom left and a large hole bottom right. Moved
-              across, it fills that hole and balances the wordmark diagonally.
-              The container has no bottom padding under it on purpose, so the
-              buildings stand directly on the legal plinth. That is what turns
-              it from a picture floating in a footer into the ground the page
-              ends on.
-
-              It is an emblem rather than a band because of what it is: this
-              artwork wraps a cup and is centred on the Liberty figure, roughly
-              1.28:1. Stretched full width it would stand four hundred pixels
-              tall. */}
         </div>
+
 
         {/* The city the page ends on.
             ================================================================
-            Two drawings on one baseline, and they are one object: plain
-            buildings running the full width of the viewport, with the
-            packaging's landmarks rising at the right where the columns end.
+            The designer's traced skyline, drawn as the pen line it is: one
+            continuous stepped outline running the full width of the viewport.
+            It replaced a filled version of the same drawing paired with the
+            packaging's Liberty emblem at the right, changed on request on
+            2026-10-09 to match the designer's reference exactly.
 
-            WHY IT TAKES TWO FILES. The packaging skyline wraps a cup and is
-            centred on the Liberty figure, so it is a compact emblem at roughly
-            1.28:1. Stretched across a footer it would stand four hundred pixels
-            tall, and repeating it to fill the width puts four Statues of
-            Liberty in a row. The width is therefore carried by the designer's
-            own traced outline, which is 15:1 and was drawn for exactly this
-            job, filled at trace time so it matches the packaging's weight
-            rather than reading as a hairline beside a solid.
+            WHY INLINE AND NOT MuralArt. A mask scales its ink with the box, so
+            a line that reads at 1920px is a hairline that disappears on a
+            phone. Inline, the path can carry `non-scaling-stroke`, and the
+            weight is then set in screen pixels: the source's own proportion
+            (5px across 3118) through the middle of the range, held between
+            1.5px and 3px at the ends. The path is 3kB and the footer renders
+            once per page, so inlining costs nothing that matters.
 
-            WHY IT IS DOWN HERE AND NOT ON THE TOP EDGE. The heat rule owns that
-            edge and keeps it: bracketing the page in the brand's own scale is a
-            structural job, and moving it to make room for this would trade it
-            for a decorative one. Stacking both on one edge was the other option
-            and is worse than either alone.
+            WHY THE BOX IS THE FILE'S OWN RATIO. Height comes from the viewBox,
+            so the horizon is scaled, never stretched. Below about 560px that
+            would leave it under 40px tall, so a floor kicks in and `slice`
+            crops the sides instead, keeping the middle of the city at a size
+            the eye can still read as buildings. Centred, so the crop is even.
 
-            Full bleed rather than inside the container, because a horizon that
-            stops short of the window is a picture of a horizon. The emblem
-            stays on the container's right rail so it lands under the last
-            column instead of floating off in the margin. Nothing below it: the
-            buildings stand directly on the legal plinth, which is what makes
-            this the ground the page ends on rather than a graphic sitting near
-            the bottom. */}
-        <div aria-hidden="true" className="relative mt-10">
-          <div className="mx-auto flex max-w-6xl justify-end px-4 sm:px-6">
-            <MuralArt
-              motif="skyline"
-              className="text-nybb-ink w-[10rem] sm:w-[14rem]"
-            />
-          </div>
-          {/* No height: the aspect ratio sets it from the width, so the band is
-              a true horizon at every viewport instead of a stretched one.
+            WHY ITS FEET ARE ON THE PLINTH. The lowest stretches of the line are
+            the ground itself, and the viewBox ends exactly where their ink
+            ends, so they sit on the legal bar's top edge. Nothing below it:
+            that is what makes this the ground the page ends on rather than a
+            graphic floating near the bottom.
 
-              WHY `cover` AND NOT `contain`, WHICH LEFT A HOLE IN THE HORIZON.
-              ================================================================
-              The element already carries the file's own ratio, so on paper the
-              two fit identically and `contain` was the obvious default. It is
-              not identical in practice. `contain` fits the drawing inside the
-              box, the box height is `width * 102 / 1560` and lands on a
-              fraction, and the mask then fits to whichever axis rounds shorter.
-              When that is the height, the drawing is laid down a few pixels
-              narrower than the element, and since it is pinned `left bottom`
-              the whole shortfall opens as bare parchment on the right, with the
-              solid baseline strip stopping dead in mid air. Measured across
-              eleven viewport widths it ran to 11px at 1280 and was never
-              stable: 5px at 1152, 2px at 1440, 0px at 1024, and at 768 the
-              drawing sat 2px in from both edges because the SVG's own
-              `preserveAspectRatio` centres the remainder.
-
-              `cover` fits to the axis that rounds longer, so the width is
-              always covered and the overflow, sub-pixel in every case, goes
-              off the top of the box where the drawing is empty sky. Same
-              intent, no gap at any width. `100% 100%` also holds, and is not
-              used because it would stretch the horizon rather than scale it if
-              the ratio ever drifted. */}
-          <MuralArt
-            motif="skyline-band"
-            fit="cover"
-            position="left bottom"
-            className="text-nybb-ink absolute inset-x-0 bottom-0 w-full"
+            The heat rule keeps the top edge. Bracketing the page in the
+            brand's own scale is a structural job, and moving it to make room
+            for this would trade it for a decorative one. */}
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          viewBox={`0 0 ${SKYLINE_OUTLINE.width} ${SKYLINE_OUTLINE.height}`}
+          preserveAspectRatio="xMidYMax slice"
+          className="text-nybb-ink mt-14 block h-auto min-h-10 w-full sm:mt-20"
+        >
+          <path
+            d={SKYLINE_OUTLINE.d}
+            fill="none"
+            stroke="currentColor"
+            strokeLinejoin="miter"
+            strokeLinecap="butt"
+            vectorEffect="non-scaling-stroke"
+            style={{ strokeWidth: "clamp(1.5px, 0.16vw, 3px)" }}
           />
-        </div>
+        </svg>
       </div>
 
       {/* The legal bar sits on flat bone below the bloom, which is what gives
           the glow somewhere to fade out to. */}
       <div className="bg-nybb-parchment-deep border-nybb-ink/12 relative border-t">
         <div className="text-nybb-ink/65 mx-auto flex max-w-6xl flex-col gap-1 px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>
+          {/* Obstacles for BackToTop, so at the foot of the page on a phone the
+              button rises above this line instead of sitting on it. */}
+          <p data-back-to-top-obstacle>
             Five Brad Dragons Food Franchise Corporation, Cebu Business Park,
             Cebu City.
           </p>
-          <p className="font-mono-tabular">Pickup only. No delivery.</p>
+          <p data-back-to-top-obstacle>
+            Pickup at the counter. Delivery on <TablevibeLink />.
+          </p>
         </div>
       </div>
     </footer>

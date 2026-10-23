@@ -1,8 +1,17 @@
+import { cookies } from "next/headers";
 import { CartBar } from "@/components/cart/CartBar";
 import { CartSync } from "@/components/cart/CartSync";
+import { BackToTop } from "@/components/site/BackToTop";
 import { MuralArt } from "@/components/mural/MuralArt";
+import { DeliveryCard } from "@/components/site/DeliveryCard";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
+import { PromoBar } from "@/components/site/PromoBar";
+import { PromoPosterPopup } from "@/components/site/PromoPosterPopup";
+import { listBranches } from "@/lib/branches/reader";
+import { getStoreSelection } from "@/lib/branches/selection";
+import { PROMO_USED_COOKIE, parseUsed, withoutUsed } from "@/lib/promos/used";
+import { listPromos } from "@/lib/promos/read";
 
 /**
  * The public storefront chrome.
@@ -18,9 +27,26 @@ import { Header } from "@/components/site/Header";
  * the staff board will not either. Opting in here makes both of those the
  * default rather than something each surface has to switch off.
  */
-export default function StorefrontLayout({
+export default async function StorefrontLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Both reads are memoised for the length of one request, so a page below
+  // that asks the same questions pays nothing twice. listPromos answers with
+  // an empty list for every failure including the flag being off, which is
+  // what makes the bar absent rather than broken on a dark engine.
+  const [selection, jar, branches] = await Promise.all([getStoreSelection(), cookies(), listBranches()]);
+
+  // Two filters, and they cover different people. list_customer_promos drops
+  // anything a SIGNED-IN customer has no redemptions left on, which works
+  // across their devices and gives a promo back when an order is cancelled.
+  // The cookie drops anything THIS BROWSER has spent, which is how a guest is
+  // covered, since a listing has no phone number to count them by and must
+  // never ask for one. Both only ever remove.
+  const promos = withoutUsed(
+    await listPromos(selection.selected?.slug ?? null),
+    parseUsed(jar.get(PROMO_USED_COOKIE)?.value),
+  );
+
   return (
     <>
       <a
@@ -73,12 +99,26 @@ export default function StorefrontLayout({
         className="pointer-events-none fixed inset-0 z-[-1] h-full w-full text-nybb-ink opacity-[0.10]"
       />
       <Header />
+      {/* Below the sticky header rather than inside it, so the band is seen
+          on arrival and then scrolls away, handing over to a small floating
+          reminder that PromoBar draws itself. It renders nothing when there
+          is no promo, so there is no empty element in the flow. */}
+      <PromoBar promos={promos} />
+      {/* The same filtered list, so the popup can never show a poster for a
+          promo the bar would not. It keeps only the ones with a poster and
+          opens on each arrival at the home page, and on no other page. */}
+      <PromoPosterPopup promos={promos} />
       <main id="main">{children}</main>
-      <Footer />
+      <Footer branchCount={branches.length} />
       <CartSync />
       {/* After the footer, because it reserves its own height there rather
           than covering the last line of it. */}
       <CartBar />
+      {/* Delivery is Tablevibe's; this card points there. It stands clear of
+          the promo reminder and the cart bar on its own (see globals.css). */}
+      <DeliveryCard />
+      {/* Last, so it can measure the three above and stand clear of them. */}
+      <BackToTop />
     </>
   );
 }

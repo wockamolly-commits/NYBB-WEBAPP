@@ -6,10 +6,16 @@ import { getWorkspaceSnapshot } from "@/lib/staff/dashboard";
 import { workspaceLandingPath } from "@/lib/staff/roles";
 import { hasStaffPermission, requireStaff } from "@/lib/staff/session";
 
-export default async function WorkspaceDashboard() {
-  const { profile } = await requireStaff();
+export default async function WorkspaceDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [{ profile }, params] = await Promise.all([requireStaff(), searchParams]);
   const landingPath = workspaceLandingPath(profile);
-  if (landingPath !== "/workspace") redirect(landingPath);
+  // Carry the "not yours to open" flag through, or a cashier turned away from
+  // a manager's page lands on the board with the reason lost on the way.
+  if (landingPath !== "/workspace") redirect(params.denied === "1" ? `${landingPath}?denied=1` : landingPath);
 
   const snapshot = await getWorkspaceSnapshot(profile.branchId);
   const firstName = profile.displayName.trim().split(/\s+/)[0] || "team";

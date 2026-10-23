@@ -9,7 +9,7 @@ import { manilaWallClockIso } from "@/lib/staff/manila-dates";
 // export async functions, so nothing declared here can be unit tested. See the
 // note in menu-schemas.ts: that is how its heat percent branch stayed wrong.
 import { endOfManilaDayInputValue } from "@/lib/staff/branch-availability";
-import { branchAvailabilityGridSchema, optionSchema } from "@/lib/staff/menu-schemas";
+import { branchAvailabilityGridSchema, itemSchema, optionSchema } from "@/lib/staff/menu-schemas";
 import {
   MENU_IMAGE_BUCKET,
   MENU_IMAGE_CACHE_CONTROL,
@@ -328,7 +328,10 @@ export async function saveMenuOption(
     heatPercent: formData.get("heatPercent") ?? "",
     isActive: formData.get("isActive") ?? "true",
   });
-  if (!parsed.success) return { status: "error", message: "Check the option name and price." };
+  if (!parsed.success) {
+    const priceIssue = parsed.error.issues.find((issue) => issue.path[0] === "priceCents");
+    return { status: "error", message: priceIssue?.message ?? "Check the option name and price." };
+  }
 
   const profile = await getStaffProfile();
   if (!profile || !hasStaffPermission(profile, "menu:configure")) {
@@ -357,44 +360,6 @@ export async function saveMenuOption(
   return { status: "success", message: parsed.data.id ? "Option saved." : "Option added." };
 }
 
-/**
- * One size of one item, as the editor sends it.
- *
- * An empty id is a size that does not exist yet; the action turns it into
- * null and staff_save_menu_item mints the row and its slug. A slug is never
- * sent, on a create or on a rename.
- *
- * isActive false is how the screen expresses "take this size off the menu".
- * The row stays in the payload rather than dropping out of it, because the
- * RPC has no delete path for a variation (ruling R4) and a row it does not
- * see is deactivated anyway. Sending the removal explicitly is what lets a
- * mistake be undone before saving instead of after.
- *
- * The bounds are the RPC's own, or tighter. name stops at 80 because
- * staff_save_menu_item raises INVALID_INPUT above that, and a limit only the
- * database knows would surface as "Check the details and try again" with
- * nothing pointing at the name.
- */
-const variationInputSchema = z.object({
-  id: z.union([z.uuid(), z.literal("")]).default(""),
-  label: z.string().trim().min(1).max(60),
-  shortLabel: z.string().trim().min(1).max(20),
-  priceCents: z.number().int().min(0).max(10_000_000),
-  isDefault: z.boolean(),
-  isActive: z.boolean(),
-});
-
-const itemSchema = z.object({
-  id: z.union([z.uuid(), z.literal("")]).default(""),
-  categoryId: z.uuid(),
-  name: z.string().trim().min(2).max(80),
-  code: z.string().trim().max(16).default(""),
-  description: z.string().trim().max(500).default(""),
-  isFeatured: z.boolean(),
-  isActive: z.boolean(),
-  variations: z.array(variationInputSchema).min(1).max(30),
-  optionGroupIds: z.array(z.uuid()).max(30),
-});
 
 /**
  * Create or update one item, its sizes and its option group links, in one
@@ -444,6 +409,7 @@ export async function saveMenuItem(
       isActive: variation.isActive,
     })),
     p_option_group_ids: parsed.data.optionGroupIds,
+    p_option_rules: parsed.data.optionGroupRules,
   });
   if (error) {
     console.error("[workspace] item save failed:", error.message);

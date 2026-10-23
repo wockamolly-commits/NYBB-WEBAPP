@@ -6,6 +6,9 @@ import { formatPeso } from "@/lib/format";
 import { requireStaffPermission } from "@/lib/staff/session";
 import { getVouchersEnabled, listVouchers, type VoucherListRow } from "@/lib/staff/vouchers";
 import { EngineSwitch } from "./EngineSwitch";
+import { PosterThumb } from "./PosterThumb";
+import { PromoOrder } from "./PromoOrder";
+import { storefrontOrder } from "@/lib/vouchers/order";
 import {
   usageLabel,
   VOUCHER_STATUS_LABELS,
@@ -41,6 +44,13 @@ const STATUS_FILTERS = [
 ] as const;
 
 type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+
+/**
+ * Live by default: the codes customers can use right now are what somebody
+ * opening this screen almost always means. Any status is one choice away, and
+ * so are the ended and switched off codes, which stay fully editable.
+ */
+const DEFAULT_STATUS: StatusFilter = "active";
 
 function isStatusFilter(value: string): value is StatusFilter {
   return STATUS_FILTERS.some((option) => option.value === value);
@@ -135,9 +145,9 @@ export default async function WorkspaceVouchersPage({
 
   const params = await searchParams;
   const rawQuery = typeof params.q === "string" ? params.q : "";
-  const rawStatus = typeof params.status === "string" ? params.status : "all";
+  const rawStatus = typeof params.status === "string" ? params.status : DEFAULT_STATUS;
   const query = rawQuery.trim().slice(0, 80);
-  const status: StatusFilter = isStatusFilter(rawStatus) ? rawStatus : "all";
+  const status: StatusFilter = isStatusFilter(rawStatus) ? rawStatus : DEFAULT_STATUS;
 
   const [all, enginesOn] = await Promise.all([listVouchers(), getVouchersEnabled()]);
 
@@ -156,7 +166,6 @@ export default async function WorkspaceVouchersPage({
     );
   });
 
-  const filtered = query !== "" || status !== "all";
 
   return (
     <div>
@@ -181,6 +190,24 @@ export default async function WorkspaceVouchersPage({
       </div>
 
       <EngineSwitch enabled={enginesOn} />
+
+      {/* Every advertised code, in the order the storefront lists them,
+          whatever the search below is filtering. Ordering a filtered subset
+          would silently move the codes the filter hid. */}
+      <PromoOrder
+        rows={storefrontOrder(all).map((voucher) => ({
+          id: voucher.id,
+          code: voucher.code,
+          status: voucher.status,
+          displayPriority: voucher.displayPriority,
+          offer: [discountLabel(voucher) + " off", voucher.description]
+            .filter(Boolean)
+            .join(". "),
+          poster: voucher.poster,
+          startsAt: voucher.startsAt,
+          expiresAt: voucher.expiresAt,
+        }))}
+      />
 
       <form role="search" className="bg-nybb-charcoal mt-4 grid gap-4 rounded-md p-4 md:grid-cols-3">
         <div>
@@ -212,9 +239,11 @@ export default async function WorkspaceVouchersPage({
 
       {vouchers.length === 0 ? (
         <p className="text-nybb-bone/55 mt-7 text-sm leading-relaxed">
-          {filtered
-            ? "No promo code matches that. Try a different search, or reset the filters."
-            : "No promo codes yet. The New code button above starts one."}
+          {all.length === 0
+            ? "No promo codes yet. The New code button above starts one."
+            : status === "active" && query === ""
+              ? "No code is live right now. Choose Any status to see the rest."
+              : "No promo code matches that. Try a different search, or choose Any status."}
         </p>
       ) : (
         // Two layouts, one DOM, per DESIGN.md's workspace table: the cells stack
@@ -236,20 +265,27 @@ export default async function WorkspaceVouchersPage({
                 key={voucher.id}
                 className="border-nybb-bone/15 border-b py-4 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1.6fr)_minmax(0,0.9fr)_minmax(0,0.8fr)_auto] lg:items-baseline lg:gap-4"
               >
-                <div className="min-w-0">
-                  {/* The whole row's target is the code, because editing is the
-                      only thing anybody comes to this list to do. */}
-                  <a
-                    href={`/workspace/vouchers/${voucher.id}`}
-                    className="font-display text-nybb-bone hover:text-nybb-orange focus-visible:text-nybb-orange break-words underline-offset-4 hover:underline focus-visible:underline"
-                  >
-                    {voucher.code}
-                  </a>
-                  {voucher.description ? (
-                    <p className="text-nybb-bone/55 mt-1 text-xs leading-relaxed">
-                      {voucher.description}
-                    </p>
-                  ) : null}
+                <div className="flex min-w-0 items-start gap-3">
+                  <PosterThumb poster={voucher.poster} className="h-14 w-10" />
+                  <div className="min-w-0">
+                    {/* The whole row's target is the code, because editing is the
+                        only thing anybody comes to this list to do. */}
+                    <a
+                      href={`/workspace/vouchers/${voucher.id}`}
+                      className="font-display text-nybb-bone hover:text-nybb-orange focus-visible:text-nybb-orange break-words underline-offset-4 hover:underline focus-visible:underline"
+                    >
+                      {voucher.code}
+                    </a>
+                    {voucher.description ? (
+                      <p className="text-nybb-bone/55 mt-1 text-xs leading-relaxed">
+                        {voucher.description}
+                      </p>
+                    ) : null}
+                    {/* Only a code from before 0089 can lack one. */}
+                    {voucher.poster ? null : (
+                      <p className="text-nybb-yellow mt-1 text-xs">No poster yet</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 lg:mt-0">

@@ -14,7 +14,9 @@ import {
   type OrderHistoryEntry,
   type OrderHistoryStatus,
 } from "@/lib/staff/order-history";
+import { canFilterByBranch, effectiveBranchFilter } from "@/lib/staff/branch-filter";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
+import { listAssignableBranches } from "@/lib/staff/team";
 import { RefundControl } from "../RefundControl";
 
 export const metadata: Metadata = { title: "Order history" };
@@ -70,10 +72,24 @@ export default async function OrderHistoryPage({
     requireStaffPermission("orders:view", "/workspace/orders/history"),
     searchParams,
   ]);
-  const filters = normalizeOrderHistoryFilters(values);
+  const requested = normalizeOrderHistoryFilters(values);
+  // The branch in the URL is honoured for the Super Admin only, and an
+  // assigned person's own branch always wins over it. The row policies pin an
+  // assigned person to their counter underneath this regardless.
+  const filters = { ...requested, branch: effectiveBranchFilter(profile, requested.branch) };
   // YYYY-MM-DD sorts the same as a string as it does as a date, so no parsing.
   const datesReversed = filters.from !== "" && filters.to !== "" && filters.from > filters.to;
-  const orders = await getOrderHistory(profile.branchId, filters);
+  const mayPickBranch = canFilterByBranch(profile);
+  const [orders, branches] = await Promise.all([
+    getOrderHistory(profile.branchId ?? (filters.branch || null), filters),
+    mayPickBranch ? listAssignableBranches() : Promise.resolve(null),
+  ]);
+  const branchOptions: WorkspaceSelectOption<string>[] = [
+    { value: "", label: "All branches" },
+    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.shortName })),
+  ];
+  // Name the counter on each order whenever the list can hold more than one.
+  const showBranch = profile.branchId === null && filters.branch === "";
   const summary = summarizeOrderHistory(orders ?? []);
   const mayRefund = hasStaffPermission(profile, "refunds:manage");
 
@@ -92,7 +108,10 @@ export default async function OrderHistoryPage({
         </ButtonLink>
       </div>
 
-      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-5">
+      <form
+        role="search"
+        className={`bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 ${branches ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}
+      >
         <div className="md:col-span-2 xl:col-span-1">
           <WorkspaceFieldLabel htmlFor="history-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -110,6 +129,16 @@ export default async function OrderHistoryPage({
           options={statusOptions}
           defaultValue={filters.status}
         />
+        {branches ? (
+          <WorkspaceSelect
+            id="history-branch"
+            name="branch"
+            label="Branch"
+            options={branchOptions}
+            defaultValue={filters.branch}
+            placeholder="All branches"
+          />
+        ) : null}
         <WorkspaceDateField
           id="history-from"
           name="from"
@@ -142,19 +171,19 @@ export default async function OrderHistoryPage({
         <>
           <section aria-label="History summary" className="mt-5 grid gap-px overflow-hidden rounded-md bg-nybb-bone/15 sm:grid-cols-3">
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Orders</p>
+              <p className="type-caps text-nybb-bone/55">Orders</p>
               <p className="font-display heading-panel mt-2">{summary.orderCount}</p>
               {summary.testOrderCount ? <p className="text-nybb-bone/55 mt-1 text-xs">Includes {summary.testOrderCount} test</p> : null}
             </div>
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Paid orders</p>
+              <p className="type-caps text-nybb-bone/55">Paid orders</p>
               <p className="font-display heading-panel mt-2">{summary.paidOrderCount}</p>
-              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test, refused and cancelled orders excluded</p>
             </div>
             <div className="bg-nybb-charcoal p-4">
-              <p className="type-caps text-nybb-bone/50">Paid sales</p>
+              <p className="type-caps text-nybb-bone/55">Paid sales</p>
               <p className="font-display heading-panel mt-2">{formatPeso(summary.paidSalesCents)}</p>
-              <p className="text-nybb-bone/55 mt-1 text-xs">Test orders excluded</p>
+              <p className="text-nybb-bone/55 mt-1 text-xs">Test, refused and cancelled orders excluded</p>
             </div>
           </section>
 
@@ -172,6 +201,7 @@ export default async function OrderHistoryPage({
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-mono text-lg font-bold">{order.shortCode}</h2>
                       <span className="bg-nybb-graphite text-nybb-bone/70 rounded px-2 py-1 text-xs font-medium">{statusLabels[order.status]}</span>
+                      {showBranch && order.branchName ? <span className="text-nybb-bone/70 rounded border border-nybb-bone/25 px-2 py-0.5 text-xs font-medium">{order.branchName}</span> : null}
                       {order.isTest ? <span className="border-nybb-yellow/60 text-nybb-yellow rounded border px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider">Test</span> : null}
                     </div>
                     <p className="text-nybb-bone/60 mt-1 text-sm">{order.customer.name} · {order.customer.phone}</p>
@@ -226,7 +256,7 @@ export default async function OrderHistoryPage({
             {orders.length === 0 ? (
               <div className="border-nybb-bone/25 rounded-md border border-dashed px-4 py-12 text-center">
                 <p className="font-display heading-panel">No matching orders</p>
-                <p className="text-nybb-bone/50 mt-2 text-sm">
+                <p className="text-nybb-bone/55 mt-2 text-sm">
                   Nothing closed matches these filters. A search runs across every closed
                   order for this branch, so a code that finds nothing here was never placed
                   at this counter.

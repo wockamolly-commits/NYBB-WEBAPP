@@ -25,4 +25,11 @@ describe("public/sw.js", () => {
     // FALLBACK_URL constant pointing at the board is exactly the bug.
     expect(source).not.toMatch(/const FALLBACK_URL = "\/workspace\/orders"/);
   });
+
+  // FALLBACKS is keyed on "audience:kind". A dotted lookup like
+  // FALLBACKS.staff reads a key that does not exist and throws a TypeError
+  // inside the push or click handler, so the tap opens nothing.
+  it("only reads FALLBACKS by its audience:kind keys", () => {
+    expect(source).not.toMatch(/FALLBACKS\.\w/);
+  });
 });

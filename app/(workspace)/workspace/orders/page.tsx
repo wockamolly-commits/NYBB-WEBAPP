@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { ButtonLink } from "@/components/ui/Button";
 import { StaffPushOptIn } from "@/components/workspace/StaffPushOptIn";
+import { BoardAlerts, type BoardAlert } from "./BoardAlerts";
 import { OrderCard } from "./OrderCard";
 import { OrdersPoller } from "./OrdersPoller";
-import { getWorkspaceOrders } from "@/lib/staff/orders";
+import { formatPeso } from "@/lib/format";
+import { drainPushQueue } from "@/lib/push/drain";
+import { getRefundsOwed, getWorkspaceOrders } from "@/lib/staff/orders";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
 import type { WorkspaceOrder } from "@/lib/staff/order-types";
 
@@ -34,9 +38,52 @@ function manilaTime(value: Date): string {
 
 export default async function WorkspaceOrdersPage() {
   const { profile } = await requireStaffPermission("orders:view", "/workspace/orders");
-  const orders = await getWorkspaceOrders(profile.branchId);
+  const [board, refundsOwed] = await Promise.all([
+    getWorkspaceOrders(profile.branchId),
+    getRefundsOwed(profile.branchId),
+  ]);
+  const orders = board?.orders ?? null;
   const mayRefund = hasStaffPermission(profile, "refunds:manage");
   const readAt = manilaTime(new Date());
+
+  // The board is what sends the "payment time ran out" pushes. pg_cron's sweep
+  // queues them every five minutes but cannot send a Web Push itself, and the
+  // free Vercel plan cannot run a cron route more than once a day. The counter
+  // tablet redraws this page at least every 20 seconds for the whole time the
+  // shop takes orders, which is also the only time an unpaid order can expire.
+  // The claim skips locked rows, so two tablets draining at once are safe, and
+  // an empty queue costs one RPC. /api/cron/expire-orders remains the manual
+  // trigger for when no board is open.
+  after(drainPushQueue(10));
+  // What the board can sound for: an order waiting to be started, a customer
+  // on the way for one that is ready, and a customer standing at the counter.
+  const alerts: BoardAlert[] = (orders ?? []).flatMap((order): BoardAlert[] => {
+    if (order.status === "pending" && order.payment?.status !== "refunded") {
+      return [{
+        key: `new:${order.id}`,
+        shortCode: order.shortCode,
+        kind: "new",
+        ticket: {
+          customerName: order.customerName,
+          itemCount: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          total: formatPeso(order.totalCents),
+          pickupAt: order.pickupAt ? manilaTime(new Date(order.pickupAt)) : null,
+          isTest: order.isTest,
+        },
+      }];
+    }
+    if (order.status === "ready" && order.customerArrived) {
+      return [{ key: `arrived:${order.id}`, shortCode: order.shortCode, kind: "arrived" }];
+    }
+    if (order.status === "ready" && order.readyAcknowledgedAt) {
+      return [{
+        key: `coming:${order.id}:${order.readyAcknowledgedAt}`,
+        shortCode: order.shortCode,
+        kind: "coming",
+      }];
+    }
+    return [];
+  });
 
   return (
     <div>
@@ -66,12 +113,63 @@ export default async function WorkspaceOrdersPage() {
             A second check here would be a second place for the two to drift.
           */}
           <StaffPushOptIn />
+          <BoardAlerts alerts={alerts} />
           <ButtonLink href="/workspace/orders/history" tone="dark" variant="secondary">History</ButtonLink>
         </div>
       </div>
 
+      {refundsOwed.length > 0 ? (
+        // Money that landed on an order after it ended: a payment made after
+        // the expiry sweep, or an order refused after it was paid. Each stays
+        // listed until the refund is made from History, which clears it.
+        <section
+          aria-labelledby="refunds-owed"
+          className="border-nybb-red/60 bg-nybb-charcoal mt-6 rounded-md border px-4 py-3"
+        >
+          <h2 id="refunds-owed" className="font-display heading-panel text-nybb-bone">
+            Refund owed
+          </h2>
+          <p className="text-nybb-bone/75 mt-1 text-sm">
+            These customers paid for an order that did not go ahead. Open each one in History to refund it.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {refundsOwed.map((owed) => (
+              <li key={owed.id} className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <span>
+                  <span className="font-mono">{owed.shortCode}</span>
+                  {" "}
+                  {owed.customerName}, {owed.customerPhone}, {formatPeso(owed.totalCents)}
+                  {owed.status === "cancelled" && owed.closedReason === "payment_timeout"
+                    ? " (paid after the order lapsed)"
+                    : owed.status === "rejected"
+                      ? " (refused after payment)"
+                      : null}
+                </span>
+                <ButtonLink
+                  href={`/workspace/orders/history?q=${encodeURIComponent(owed.shortCode)}`}
+                  tone="dark"
+                  variant="secondary"
+                >
+                  Open in History
+                </ButtonLink>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {board?.truncated ? (
+        <p role="status" className="border-nybb-yellow/60 text-nybb-bone mt-6 rounded-md border px-4 py-3 text-sm">
+          There are more live orders than the board can show, so the oldest are hidden. Refuse or claim
+          the orders that are finished to bring the rest back.
+        </p>
+      ) : null}
+
       {orders ? (
-      <div className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Four lanes from 1024px, not 1280px. Most counter tablets in
+            landscape are 1024 to 1279 CSS pixels wide, where two rows put the
+            Ready lane below the fold. */}
         {columns.map((column) => {
           const columnOrders = orders
             .filter(column.matches)

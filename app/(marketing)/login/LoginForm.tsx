@@ -72,7 +72,7 @@ export function LoginForm() {
               aria-describedby="otp-expiry"
               className="border-nybb-bone/40 text-nybb-bone caret-nybb-orange mt-2 h-16 w-full rounded-md border bg-transparent px-4 text-center font-mono text-3xl tracking-[0.35em] outline-none transition-colors focus:border-nybb-bone"
             />
-            <p id="otp-expiry" className="text-nybb-bone/50 mt-2 font-mono text-xs">
+            <p id="otp-expiry" className="text-nybb-bone/55 mt-2 font-mono text-xs">
               {expiresIn > 0 ? `Expires in ${remainingLabel(expiresIn)}` : "This code has expired"}
             </p>
           </div>

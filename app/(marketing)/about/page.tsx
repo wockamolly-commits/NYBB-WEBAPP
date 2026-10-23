@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { HeatMeter } from "@/components/menu/HeatMeter";
-import { branches, catalogImage } from "@/lib/catalog";
+import { ScrollReveal } from "@/components/site/ScrollReveal";
+import { TablevibeLink } from "@/components/site/TablevibeLink";
+import { listBranches } from "@/lib/branches/reader";
+import { catalogImage } from "@/lib/catalog";
 import {
   findItem,
   findOptionGroup,
@@ -19,6 +22,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
+  const branches = await listBranches();
   const hero = catalogImage("scene-alfresco-dusk");
   const counter = catalogImage("scene-counter");
 
@@ -54,6 +58,8 @@ export default async function AboutPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <ScrollReveal />
+
       {/* One colour. "Cebu built" used to be text-nybb-orange, which on the
           amber ground measures about 1.8:1 and fails even the 3:1 that large
           text is allowed. There is no accent in this palette that survives on
@@ -117,10 +123,15 @@ export default async function AboutPage() {
         </div>
 
         <div className="bg-nybb-charcoal text-nybb-bone h-fit rounded-md p-6">
-          <dl className="space-y-5">
+          {/* The one sequence on this page, and the only thing here the
+              reveal system is allowed to touch. Three facts counted off in
+              a row is a list; the three body paragraphs beside it are a
+              passage, and DESIGN.md's narrowed ban is precisely on fading a
+              passage in as though it were a list. */}
+          <dl className="reveal-stagger space-y-5">
             {facts.map((fact) => (
               <div key={fact.label}>
-                <dt className="type-caps text-nybb-bone/50">{fact.label}</dt>
+                <dt className="type-caps text-nybb-bone/55">{fact.label}</dt>
                 <dd className="font-mono-tabular text-nybb-orange mt-1 text-3xl">
                   {fact.value}
                 </dd>
@@ -130,7 +141,7 @@ export default async function AboutPage() {
 
           {insane ? (
             <div className="border-nybb-bone/15 mt-6 border-t pt-5">
-              <p className="type-caps text-nybb-bone/50">Top of the scale</p>
+              <p className="type-caps text-nybb-bone/55">Top of the scale</p>
               <HeatMeter
                 percent={insane.heatPercent ?? 100}
                 label={insane.name}
@@ -159,7 +170,13 @@ export default async function AboutPage() {
           two sentences of the second section, which is the size the honest
           answer is: it does not exist yet, the menu does, and the phones
           work. */}
-      <section className="border-nybb-ink/20 mt-16 border-t pt-12">
+      {/* The section arrives as one object, not as a stagger of its own
+          paragraphs. That distinction is the whole permission: a passage
+          faded in line by line is a passage pretending to be a list, which
+          is what DESIGN.md's ban was written against, and it is still
+          banned. A section rising once, complete, says only "here is the
+          next part", which is true. */}
+      <section className="reveal border-nybb-ink/20 mt-16 border-t pt-12">
         <h2 className="font-display heading-minor">
           All time favorite is a claim
         </h2>
@@ -232,7 +249,7 @@ export default async function AboutPage() {
           would have run at two different measures three inches apart. An empty
           grid cell costs nothing and says "the same column as the one above"
           in a way a hand-computed width cannot. */}
-      <section className="border-nybb-ink/20 mt-16 border-t pt-12">
+      <section className="reveal border-nybb-ink/20 mt-16 border-t pt-12">
         <h2 className="font-display heading-minor">Fried to order</h2>
         <div className="mt-6 grid gap-10 md:grid-cols-[1.4fr_1fr]">
           <div className="max-w-[68ch] space-y-5 text-base leading-relaxed">
@@ -243,10 +260,11 @@ export default async function AboutPage() {
               you asked for and not to the level somebody assumed you wanted.
             </p>
             <p className="text-nybb-ink/75">
-              Then you collect it. There is no delivery here and there is not
-              going to be, which is a decision rather than a gap: fried chicken
-              has a short window where the skin is still the point, and the
-              shortest trip between the fryer and you is the counter.
+              Then you collect it, or it comes to you. The shortest trip
+              between the fryer and you is the counter, because fried chicken
+              has a short window where the skin is still the point, so pickup
+              is what this site is built for. When the counter is too far,
+              delivery is ordered on <TablevibeLink />.
             </p>
             <p className="text-nybb-ink/75">
               Ordering ahead from your phone is being built, branch by branch.

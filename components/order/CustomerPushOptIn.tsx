@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Shared with components/site/PromoPushOptIn.tsx. Two copies of the iOS rule
+// would be two chances to offer an iPhone a button that cannot work.
+import { needsHomeScreenInstall, pushSupported, subscribeForPush } from "@/lib/push/browser";
 import { Button } from "@/components/ui/Button";
 
 /**
@@ -39,45 +42,6 @@ type State =
   | { kind: "on" }
   | { kind: "failed"; message: string };
 
-/**
- * `applicationServerKey` takes bytes, and a VAPID key is distributed as
- * base64url text. The browser rejects the string form with a DOMException that
- * names neither the key nor the encoding.
- */
-function vapidKeyBytes(key: string): Uint8Array<ArrayBuffer> {
-  const padded = key.padEnd(key.length + ((4 - (key.length % 4)) % 4), "=");
-  const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
-  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-  return bytes;
-}
-
-function supported(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
-  );
-}
-
-/**
- * An iOS browser that is not running as an installed app.
- *
- * The display-mode query is the reliable half: iOS only exposes PushManager at
- * all in standalone mode, so a browser that has the API is already installed.
- * The platform check keeps this from mislabelling a desktop browser, which
- * needs no install and would be told to do something impossible.
- */
-function needsHomeScreenInstall(): boolean {
-  const isStandalone =
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // Safari's own, older, non-standard flag.
-    (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-  const isApple = /iPad|iPhone|iPod/.test(window.navigator.userAgent);
-  return isApple && !isStandalone;
-}
-
 export function CustomerPushOptIn({
   shortCode,
   trackingToken,
@@ -93,7 +57,7 @@ export function CustomerPushOptIn({
     async function look() {
       if (typeof window === "undefined") return { kind: "checking" } as const;
       if (needsHomeScreenInstall()) return { kind: "needs-install" } as const;
-      if (!supported()) return { kind: "unsupported" } as const;
+      if (!pushSupported()) return { kind: "unsupported" } as const;
       if (!VAPID_PUBLIC_KEY) return { kind: "unconfigured" } as const;
 
       // getRegistration rather than register: this runs for every customer who
@@ -102,7 +66,17 @@ export function CustomerPushOptIn({
       const registration = await navigator.serviceWorker.getRegistration("/");
       const subscription = await registration?.pushManager.getSubscription();
       const granted = Notification.permission === "granted";
-      return subscription && granted ? ({ kind: "on" } as const) : ({ kind: "off" } as const);
+      if (!subscription || !granted) return { kind: "off" } as const;
+
+      // A subscription on this device says nothing about THIS order. It may
+      // have been made for promos or for an earlier order, and showing "on"
+      // for it meant the customer was promised an alert nobody would send.
+      // Permission is already granted, so following this order as well needs
+      // no prompt: hand the same subscription to the server for this order.
+      // Registration is an upsert, so a device already following it is a
+      // harmless repeat.
+      const followed = await followOrder(shortCode, trackingToken, subscription);
+      return followed ? ({ kind: "on" } as const) : ({ kind: "off" } as const);
     }
 
     look()
@@ -116,7 +90,7 @@ export function CustomerPushOptIn({
     return () => {
       live = false;
     };
-  }, []);
+  }, [shortCode, trackingToken]);
 
   async function turnOn() {
     setState({ kind: "working" });
@@ -142,10 +116,8 @@ export function CustomerPushOptIn({
         return;
       }
 
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
-      });
+      const existing = await registration.pushManager.getSubscription();
+      const subscription = await subscribeForPush(registration.pushManager, VAPID_PUBLIC_KEY);
 
       const response = await fetch("/api/push/customer/subscribe", {
         method: "POST",
@@ -157,7 +129,11 @@ export function CustomerPushOptIn({
         // The browser now holds a subscription the server does not know about.
         // Dropping it keeps the two in step, so tapping again is a clean retry
         // rather than a resubscribe the browser answers from its own cache.
-        await subscription.unsubscribe().catch(() => {});
+        //
+        // Only one this tap created, though. A subscription that was already
+        // here is also what delivers promo alerts and other orders' alerts,
+        // and one refused registration must not silently switch those off.
+        if (!existing) await subscription.unsubscribe().catch(() => {});
         const body = await response.json().catch(() => null);
         setState({
           kind: "failed",
@@ -196,7 +172,7 @@ export function CustomerPushOptIn({
   if (state.kind === "unconfigured") return null;
 
   if (state.kind === "on") {
-    return <Note>We will tell you when this order is ready.</Note>;
+    return <Note>Alerts are on. We will tell you when this order is ready, or if anything goes wrong with it.</Note>;
   }
 
   return (
@@ -211,6 +187,20 @@ export function CustomerPushOptIn({
       ) : null}
     </div>
   );
+}
+
+/** Registers an existing subscription for this order. True when the server took it. */
+async function followOrder(
+  shortCode: string,
+  trackingToken: string | null,
+  subscription: PushSubscription,
+): Promise<boolean> {
+  const response = await fetch("/api/push/customer/subscribe", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ shortCode, trackingToken, subscription: subscription.toJSON() }),
+  });
+  return response.ok;
 }
 
 function Note({ children }: { children: React.ReactNode }) {

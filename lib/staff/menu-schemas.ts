@@ -19,9 +19,9 @@ const HOLD_REASONS_TUPLE = HOLD_REASONS as unknown as [string, ...string[]];
  * exactly the kind of thing a unit test catches in a millisecond and no amount
  * of clicking catches at all.
  *
- * Only the option schema has moved so far, because it is the one that was
- * wrong. The others in app/(workspace)/workspace/menu/actions.ts belong here
- * too and can follow.
+ * The option schema moved first, because it was the one that was wrong. The
+ * item schema followed when a blank size price was found saving as a free
+ * size. The rest in app/(workspace)/workspace/menu/actions.ts can follow.
  */
 
 /**
@@ -87,6 +87,14 @@ export const optionSchema = z
     heatPercent: z.union([z.literal(""), z.coerce.number().int().min(0).max(100)]).default(""),
     isActive: z.enum(["true", "false"]).transform((value) => value === "true"),
   })
+  // "Flat" means a price, and "Free" is the way to say nothing. The editor
+  // turns a blank amount into 0 before posting, so without this a flat price
+  // left empty was saved as free, and the row reopened as Free with no sign
+  // that a price had been lost.
+  .refine((value) => value.pricing !== "flat" || value.priceCents > 0, {
+    message: "Enter the add-on price, or choose Free.",
+    path: ["priceCents"],
+  })
   .transform((value) => ({
     ...value,
     resolvedPriceCents:
@@ -151,4 +159,72 @@ export const branchAvailabilityGridSchema = z.object({
    * longer than that is not a person ticking boxes.
    */
   branches: z.array(branchAvailabilityRowSchema).max(50),
+});
+
+/**
+ * One size of one item, as the editor sends it.
+ *
+ * An empty id is a size that does not exist yet; the action turns it into
+ * null and staff_save_menu_item mints the row and its slug. A slug is never
+ * sent, on a create or on a rename.
+ *
+ * isActive false is how the screen expresses "take this size off the menu".
+ * The row stays in the payload rather than dropping out of it, because the
+ * RPC has no delete path for a variation (ruling R4) and a row it does not
+ * see is deactivated anyway. Sending the removal explicitly is what lets a
+ * mistake be undone before saving instead of after.
+ *
+ * A size on the menu has to cost something. staff_save_menu_item accepts 0,
+ * and the editor's pesos field reads a blank as 0, so without this a size
+ * saved with its price left empty went on sale for nothing: the storefront
+ * showed PHP 0 and place_order charged it. A removed size is not checked, so
+ * taking a size off the menu never demands a price first.
+ *
+ * The bounds are the RPC's own, or tighter. name stops at 80 because
+ * staff_save_menu_item raises INVALID_INPUT above that, and a limit only the
+ * database knows would surface as "Check the details and try again" with
+ * nothing pointing at the name.
+ */
+export const variationInputSchema = z
+  .object({
+    id: z.union([z.uuid(), z.literal("")]).default(""),
+    label: z.string().trim().min(1).max(60),
+    shortLabel: z.string().trim().min(1).max(20),
+    priceCents: z.number().int().min(0).max(10_000_000),
+    isDefault: z.boolean(),
+    isActive: z.boolean(),
+  })
+  .refine((variation) => !variation.isActive || variation.priceCents > 0, {
+    message: "Every size on the menu needs a price.",
+    path: ["priceCents"],
+  });
+
+/**
+ * How many choices a customer must and may make from one linked group.
+ * minSelect 0 is optional, 1 or more is required. The bounds are the RPC's
+ * (0093).
+ */
+export const optionRuleSchema = z
+  .object({
+    groupId: z.uuid(),
+    minSelect: z.number().int().min(0).max(20),
+    maxSelect: z.number().int().min(1).max(20),
+  })
+  .refine((rule) => rule.minSelect <= rule.maxSelect, {
+    message: "A group cannot require more choices than it allows.",
+    path: ["minSelect"],
+  });
+
+/** One item with its sizes and option group links. See saveMenuItem. */
+export const itemSchema = z.object({
+  id: z.union([z.uuid(), z.literal("")]).default(""),
+  categoryId: z.uuid(),
+  name: z.string().trim().min(2).max(80),
+  code: z.string().trim().max(16).default(""),
+  description: z.string().trim().max(500).default(""),
+  isFeatured: z.boolean(),
+  isActive: z.boolean(),
+  variations: z.array(variationInputSchema).min(1).max(30),
+  optionGroupIds: z.array(z.uuid()).max(30),
+  optionGroupRules: z.array(optionRuleSchema).max(30).default([]),
 });

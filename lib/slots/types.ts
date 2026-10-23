@@ -42,7 +42,10 @@ export type SlotUnavailableReason =
   | "not_accepting"
   /** The branch is live but its weekly hours have never been entered. */
   | "no_hours"
-  /** It has hours, and none of them fall inside the horizon. Shut for now. */
+  /**
+   * Shut at this minute, so there is nothing to order (place_order refuses
+   * while a branch is shut), or no window opens inside the horizon.
+   */
   | "closed_now"
   /** Windows exist and every one of them is at capacity. */
   | "fully_booked";
@@ -55,4 +58,6 @@ export type PickupSlots = {
   horizonHours: number | null;
   slots: PickupSlot[];
   unavailableReason: SlotUnavailableReason | null;
+  /** When the branch next opens, while it is `closed_now`. Since 0092. */
+  opensAt?: string | null;
 };

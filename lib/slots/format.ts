@@ -107,6 +107,18 @@ export function dayLabel(dateKey: string, timezone: string, nowIso: string): str
   }).format(new Date(Date.UTC(year, month - 1, day, 12)));
 }
 
+/**
+ * "10:00am today", "10:00am tomorrow", "10:00am on Friday": when a shut
+ * counter opens, relative to the branch's own day.
+ */
+export function formatOpening(opensAt: string, timezone: string, nowIso: string): string {
+  const time = formatSlotTime(opensAt, timezone);
+  const label = dayLabel(localDateKey(opensAt, timezone), timezone, nowIso);
+  if (label === "Today") return `${time} today`;
+  if (label === "Tomorrow") return `${time} tomorrow`;
+  return `${time} on ${label}`;
+}
+
 export type SlotDay = {
   /** The local date, "2026-08-06". */
   key: string;
@@ -193,11 +205,17 @@ export function unavailableMessage(
           "This is a switch the shop controls, so it can come back at any time. " +
           "Call the branch if you need the order today.",
       };
-    case "closed_now":
+    case "closed_now": {
+      const timezone = payload.branch?.timezone;
+      const opens =
+        payload.opensAt && timezone ? formatOpening(payload.opensAt, timezone, payload.generatedAt) : null;
       return {
-        title: `${shop} is closed for now`,
-        body: `Nothing opens in ${window}. Try again when the shop is open, or call the branch.`,
+        title: `${shop} is closed right now`,
+        body: opens
+          ? `It opens at ${opens}, and pickup windows appear here from then. You can also call the branch.`
+          : `Nothing opens in ${window}. Try again when the shop is open, or call the branch.`,
       };
+    }
     case "fully_booked":
       return {
         title: "Every pickup window is full",

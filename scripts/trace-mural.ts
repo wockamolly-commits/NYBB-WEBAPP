@@ -51,7 +51,6 @@ const OUT = path.join(process.cwd(), "public", "mural");
 const SOURCES = {
   mural1: "Wall Mural 1.jpg",
   leftMural: "Left Mural After Cashier 153x130 inches.jpg",
-  skylineOutline: "Silhouette_traced building copy.png",
 } as const;
 
 type Motif = TraceOptions & {
@@ -66,10 +65,6 @@ type Motif = TraceOptions & {
    *  thinner than 2r+1, which is how a small variant loses its hatching
    *  deliberately instead of losing it to resampling. */
   cull?: number;
-  /** Straighten a baseline bent by the curve of a cup. */
-  flattenBaseline?: boolean;
-  /** Turn an open outline into a solid silhouette by inking everything under it. */
-  fillBelow?: boolean;
   title?: string;
 };
 
@@ -217,47 +212,6 @@ const MOTIFS: Motif[] = [
     simplify: 1.1,
     minArea: 14,
   },
-  {
-    // The footer. Traced off the printed cup rather than from the delivered
-    // "Silhouette_traced building copy.png", because that file is an anonymous
-    // hollow outline and the packaging carries a filled skyline with the
-    // Liberty figure and the bridge in it. The footer's whole argument is that
-    // it matches the box in the customer's hand, and the delivered file does
-    // not. Traced from a photograph of a cylinder, so the baseline is
-    // straightened afterwards.
-    // The plain city that carries the footer across its full width.
-    //
-    // The packaging skyline is a compact emblem centred on the Liberty figure,
-    // roughly 1.28:1, because it wraps a cup. It cannot be a full width band:
-    // stretched across a footer it would stand four hundred pixels tall, and
-    // repeating it puts four Statues of Liberty in a row. So the width is
-    // carried by the designer's own traced outline, which is 15:1 and was drawn
-    // for exactly this job, filled here so it matches the packaging's weight.
-    // The two sit on one baseline in the footer: plain buildings running the
-    // width, the landmarks anchored at the right.
-    slug: "skyline-band",
-    source: "skylineOutline",
-    workingWidth: 1560,
-    threshold: 160,
-    simplify: 0.5,
-    minArea: 20,
-    fillBelow: true,
-  },
-  {
-    slug: "skyline",
-    source: "leftMural",
-    // The middle of the printed band only. Towards the cup's edges the print
-    // foreshortens into the curve and the baseline correction below cannot help
-    // with that, because there the distortion is a horizontal compression
-    // rather than a vertical shift.
-    crop: { left: 669, top: 7600, width: 761, height: 596 },
-    workingWidth: 1100,
-    threshold: 118,
-    simplify: 0.7,
-    minArea: 25,
-    flattenBaseline: true,
-    title: "The New York skyline from the Buffalo Brad's packaging",
-  },
 ];
 
 async function main() {
@@ -289,8 +243,6 @@ async function main() {
     let grey: Uint8Array = Uint8Array.from(data);
 
     if (motif.cull) grey = cullThinStrokes(grey, info.width, info.height, motif.cull, motif.threshold ?? 128);
-    if (motif.fillBelow) grey = fillBelow(grey, info.width, info.height, motif.threshold ?? 128);
-    if (motif.flattenBaseline) grey = flattenBaseline(grey, info.width, info.height, motif.threshold ?? 128);
 
     const traced = traceBitmap(grey, info.width, info.height, {
       threshold: motif.threshold,
@@ -453,89 +405,6 @@ function separable(
   }
 
   return vertical;
-}
-
-/**
- * Turn an open outline into a solid silhouette.
- *
- * The designer's traced skyline is a single stepped hairline: the top edge of a
- * city and nothing else, open along the bottom. That is the correct shape for a
- * footer band and the wrong weight, because the packaging prints its skyline
- * filled, and a hairline next to a solid emblem would read as two different
- * drawings rather than one city.
- *
- * Filling it is one pass: find the highest ink in each column and ink
- * everything below. Columns with no ink at all stay empty, which is what keeps
- * a genuine gap in the skyline a gap rather than a block.
- */
-function fillBelow(
-  grey: Uint8Array,
-  width: number,
-  height: number,
-  threshold: number,
-): Uint8Array {
-  const out = new Uint8Array(width * height).fill(255);
-
-  for (let x = 0; x < width; x++) {
-    let top = -1;
-    for (let y = 0; y < height; y++) {
-      if (grey[y * width + x] < threshold) {
-        top = y;
-        break;
-      }
-    }
-    if (top < 0) continue;
-    for (let y = top; y < height; y++) out[y * width + x] = 0;
-  }
-
-  return out;
-}
-
-/**
- * Straighten a baseline bent by the curve of the cup it is printed on.
- *
- * The packaging skyline is only available as a photograph of a cylinder, so its
- * base arcs. Every column is shifted vertically until the lowest ink in it sits
- * on the same row, which is exactly right for a cylinder seen head on: the
- * distortion along a vertical line is a translation, not a scale.
- *
- * It does not correct the horizontal foreshortening towards the cup's edges,
- * which is why the crop takes the middle of the printed band and leaves the
- * ends alone.
- */
-function flattenBaseline(
-  grey: Uint8Array,
-  width: number,
-  height: number,
-  threshold: number,
-): Uint8Array {
-  const baseline = new Int32Array(width).fill(-1);
-
-  for (let x = 0; x < width; x++) {
-    for (let y = height - 1; y >= 0; y--) {
-      if (grey[y * width + x] < threshold) {
-        baseline[x] = y;
-        break;
-      }
-    }
-  }
-
-  const known = [...baseline].filter((value) => value >= 0);
-  if (known.length === 0) return grey;
-  const target = Math.max(...known);
-
-  const out = new Uint8Array(width * height).fill(255);
-  for (let x = 0; x < width; x++) {
-    if (baseline[x] < 0) continue;
-    const shift = target - baseline[x];
-    for (let y = 0; y < height; y++) {
-      const sy = y - shift;
-      if (sy < 0 || sy >= height) continue;
-      out[y * width + x] = grey[sy * width + x];
-    }
-  }
-
-  return out;
 }
 
 main().catch((error) => {

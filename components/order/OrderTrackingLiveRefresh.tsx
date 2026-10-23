@@ -7,6 +7,7 @@ import {
   orderTrackingTopic,
 } from "@/lib/orders/tracking";
 import { createStorefrontBrowserClient } from "@/lib/supabase/browser";
+import { usePaymentState } from "./usePaymentState";
 
 const POLL_MS = 20_000;
 const REFRESH_DELAY_MS = 100;
@@ -20,11 +21,19 @@ const REFRESH_DELAY_MS = 100;
 export function OrderTrackingLiveRefresh({
   shortCode,
   trackingToken,
+  awaitingPayment = false,
 }: {
   shortCode: string;
   trackingToken: string | null;
+  /** An online payment is still open, so watch it more closely than the order. */
+  awaitingPayment?: boolean;
 }) {
   const router = useRouter();
+  // A payment settling does not change the order's status, so the broadcast
+  // below stays silent for it. This is where PayMongo returns a customer, often
+  // before its webhook has landed, so the payment is watched on its own and the
+  // page re-renders the moment the server has an answer.
+  const payment = usePaymentState({ shortCode, trackingToken, active: awaitingPayment });
   const refreshTimer = useRef<number | null>(null);
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current !== null) return;
@@ -33,6 +42,10 @@ export function OrderTrackingLiveRefresh({
       router.refresh();
     }, REFRESH_DELAY_MS);
   }, [router]);
+
+  useEffect(() => {
+    if (payment !== "waiting") scheduleRefresh();
+  }, [payment, scheduleRefresh]);
 
   useEffect(() => {
     let disposed = false;

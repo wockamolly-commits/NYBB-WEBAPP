@@ -354,3 +354,125 @@ describe("notifyStaffOfNewOrder", () => {
     expect(sendWeb).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("notifyStaffOfArrival", () => {
+  const arrivedOrder = {
+    id: orderId,
+    branch_id: "44444444-4444-4444-8444-444444444444",
+    branches: { short_name: "Katipunan" },
+  };
+
+  it("claims, then sends the arrival to the order's branch", async () => {
+    from.mockImplementation((table: string) => {
+      if (table === "orders") return makeSelectBuilder({ data: arrivedOrder, error: null });
+      if (table === "push_subscriptions") return makeSubscriptionsBuilder([], () => {});
+      throw new Error(`unexpected table ${table}`);
+    });
+    rpc.mockImplementation((fn: string) =>
+      fn === "claim_staff_arrival_notice"
+        ? Promise.resolve({ data: true, error: null })
+        : Promise.resolve({
+            data: [{ endpoint: "https://web.push/live", p256dh: "p", auth_key: "a" }],
+            error: null,
+          }),
+    );
+
+    const { notifyStaffOfArrival } = await import("@/lib/push/dispatch");
+    await notifyStaffOfArrival("NY-ABC234");
+
+    expect(rpc).toHaveBeenCalledWith("claim_staff_arrival_notice", { p_order_id: orderId });
+    expect(rpc).toHaveBeenCalledWith("staff_push_targets", {
+      p_branch_id: "44444444-4444-4444-8444-444444444444",
+    });
+    expect(sendWeb).toHaveBeenCalledTimes(1);
+    const payload = sendWeb.mock.calls[0][1];
+    expect(payload.title).toBe("Customer is here: NY-ABC234");
+    expect(payload.audience).toBe("staff");
+  });
+
+  // A second tap is ordinary traffic, and it must not ring the counter again.
+  it("sends nothing when the arrival was already announced", async () => {
+    from.mockImplementation(() => makeSelectBuilder({ data: arrivedOrder, error: null }));
+    rpc.mockResolvedValue({ data: false, error: null });
+
+    const { notifyStaffOfArrival } = await import("@/lib/push/dispatch");
+    await notifyStaffOfArrival("NY-ABC234");
+
+    expect(sendWeb).not.toHaveBeenCalled();
+  });
+
+  // Fails closed, the opposite of the new-order notice, and this test is the
+  // record of that choice: every tap reaches here, so failing open would ring
+  // once per tap whenever the claim is unavailable.
+  it("sends nothing when the claim itself errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation(() => makeSelectBuilder({ data: arrivedOrder, error: null }));
+    rpc.mockResolvedValue({ data: null, error: new Error("function does not exist") });
+
+    const { notifyStaffOfArrival } = await import("@/lib/push/dispatch");
+    await expect(notifyStaffOfArrival("NY-ABC234")).resolves.toBeUndefined();
+
+    expect(sendWeb).not.toHaveBeenCalled();
+  });
+});
+
+describe("notifyCustomerOfRefund", () => {
+  const refundId = "55555555-5555-4555-8555-555555555555";
+
+  function refundTable(row: unknown) {
+    return (table: string) => {
+      if (table === "refunds") return makeSelectBuilder({ data: row, error: null });
+      // Reaching the orders table means notifyCustomer was called.
+      if (table === "orders") return makeSelectBuilder({ data: null, error: null });
+      throw new Error(`unexpected table ${table}`);
+    };
+  }
+
+  it("tells the customer once the payment is fully refunded", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    from.mockImplementation(refundTable({
+      order_id: orderId,
+      status: "succeeded",
+      payments: { status: "refunded" },
+    }));
+
+    const { notifyCustomerOfRefund } = await import("@/lib/push/dispatch");
+    await notifyCustomerOfRefund({ refundId, providerRefundId: null });
+
+    expect(from).toHaveBeenCalledWith("orders");
+  });
+
+  // A partial refund leaves the payment as it was, so statusCopy would repeat
+  // the order status and say nothing about money.
+  it("stays silent for a partial refund", async () => {
+    from.mockImplementation(refundTable({
+      order_id: orderId,
+      status: "succeeded",
+      payments: { status: "paid" },
+    }));
+
+    const { notifyCustomerOfRefund } = await import("@/lib/push/dispatch");
+    await notifyCustomerOfRefund({ refundId, providerRefundId: null });
+
+    expect(from).not.toHaveBeenCalledWith("orders");
+  });
+
+  it("stays silent for a refund that has not succeeded", async () => {
+    from.mockImplementation(refundTable({
+      order_id: orderId,
+      status: "pending",
+      payments: { status: "refunded" },
+    }));
+
+    const { notifyCustomerOfRefund } = await import("@/lib/push/dispatch");
+    await notifyCustomerOfRefund({ refundId, providerRefundId: null });
+
+    expect(from).not.toHaveBeenCalledWith("orders");
+  });
+
+  it("does nothing without a refund reference", async () => {
+    const { notifyCustomerOfRefund } = await import("@/lib/push/dispatch");
+    await notifyCustomerOfRefund({ refundId: null, providerRefundId: null });
+    expect(from).not.toHaveBeenCalled();
+  });
+});

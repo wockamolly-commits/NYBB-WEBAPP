@@ -107,7 +107,7 @@ export const metadata: Metadata = {
   // who has not yet been told what the food is, on a business whose one
   // genuinely uncopyable thing is that it prices heat on a five stop scale.
   description:
-    "Ten flavours of chicken wings on a five stop scale of heat, fried to order at counters across Cebu. Pickup only.",
+    "Ten flavours of chicken wings on a five stop scale of heat, fried to order at counters across Cebu. Pickup at the counter, delivery through Tablevibe.",
   openGraph: {
     title: "New York Buffalo Brad's Hot Wings",
     // The store's own tagline leads the share card, which is also what the

@@ -209,6 +209,8 @@ describe("get_order_by_tracking, the customer's own order", () => {
       cancelledAt: null,
       cancelledReason: null,
       customerArrivedAt: null,
+      readyAcknowledgedAt: null,
+      readyRingAt: null,
       noShowAt: null,
     });
   });

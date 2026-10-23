@@ -134,8 +134,19 @@ export async function migrationFiles(): Promise<string[]> {
   return entries.filter((name) => name.endsWith(".sql")).sort();
 }
 
-/** A fresh database with every checked-in migration applied, optionally seeded. */
-export async function freshDatabase({ seed = false } = {}): Promise<PGlite> {
+/**
+ * A fresh database with every checked-in migration applied, optionally seeded.
+ *
+ * `counterPayments` switches on app_settings.counter_payments_enabled, which
+ * ships off (0087). It defaults to on HERE because most of these files place
+ * orders with no payment method, which is a counter order, and were written
+ * before the gate existed; what they test is not the payment rail. The gate's
+ * own file asks for the shipped state with `counterPayments: false`.
+ */
+export async function freshDatabase({
+  seed = false,
+  counterPayments = true,
+} = {}): Promise<PGlite> {
   const db = await PGlite.create({ extensions: { pgcrypto } });
   await db.exec(SUPABASE_SHIM);
 
@@ -149,6 +160,9 @@ export async function freshDatabase({ seed = false } = {}): Promise<PGlite> {
   }
 
   if (seed) await db.exec(await readSeed());
+  if (counterPayments) {
+    await db.exec("update app_settings set counter_payments_enabled = true where id = 1");
+  }
   return db;
 }
 

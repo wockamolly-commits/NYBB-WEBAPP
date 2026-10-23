@@ -3,13 +3,21 @@ import { CalendarClock, ShieldAlert, UserRound } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
 import { WorkspaceFieldLabel, WorkspaceInput } from "@/components/ui/WorkspaceField";
+import { WorkspaceSelect, type WorkspaceSelectOption } from "@/components/ui/WorkspaceSelect";
 import {
   auditFilterParams,
   getAuditLog,
   normalizeAuditFilters,
   type AuditLogEntry,
 } from "@/lib/staff/audit-log";
+import { describeAuditDetail, type AuditDetailSummary } from "@/lib/staff/audit-detail";
+import {
+  BUSINESS_WIDE_BRANCH,
+  canFilterByBranch,
+  effectiveBranchFilter,
+} from "@/lib/staff/branch-filter";
 import { requireStaffPermission } from "@/lib/staff/session";
+import { listAssignableBranches } from "@/lib/staff/team";
 
 export const metadata: Metadata = { title: "Audit log" };
 
@@ -30,6 +38,7 @@ const ACTION_LABELS: Record<string, string> = {
   "order.accepted": "Order accepted",
   "order.started": "Order started",
   "order.ready": "Order marked ready",
+  "order.ready_rung": "Customer called again for a ready order",
   "order.claimed": "Order claimed at the counter",
   "order.rejected": "Order refused by the branch",
   "order.zenpos_entry_recorded": "Order entered into the POS",
@@ -37,12 +46,18 @@ const ACTION_LABELS: Record<string, string> = {
   "refund.requested": "Refund requested",
   "refund.succeeded": "Refund completed",
   "refund.failed": "Refund failed",
+  "payment.amount_mismatch": "Payment refused: amount did not match",
   // The shop
   "store.orders_paused": "Counter paused",
   "store.orders_resumed": "Counter resumed",
   "store.hours_changed": "Opening hours changed",
   "store.hours_cleared": "Opening hours cleared",
+  "store.branch_created": "Branch added",
+  "store.branch_deleted": "Branch deleted",
+  "store.branch_details_changed": "Branch details changed",
   "store.branch_settings_changed": "Branch settings changed",
+  "store.branch_location_changed": "Branch map pin set",
+  "store.branch_location_cleared": "Branch map pin removed",
   "store.order_intake_changed": "Business-wide intake changed",
   // Access
   "workspace.access_granted": "Workspace access granted",
@@ -57,6 +72,7 @@ const ACTION_LABELS: Record<string, string> = {
   "workspace.kitchen_role_retired": "Kitchen role retired",
   "staff.super_admin_bootstrapped": "Super Admin provisioned",
   "staff.super_admin_revoked_by_configuration": "Super Admin replaced by configuration",
+  "staff.super_admin_handed_over": "Super Admin handed over",
   // The menu
   "menu.category.created": "Menu category created",
   "menu.category.updated": "Menu category changed",
@@ -90,7 +106,7 @@ function manilaDateTime(value: string): string {
 
 function actorRoleLabel(entry: AuditLogEntry): string {
   if (entry.actorRole === "admin") return "Super Admin";
-  if (entry.actorRole === "staff") return "Staff";
+  if (entry.actorRole === "staff" || entry.actorHidden) return "Staff";
   return "System";
 }
 
@@ -99,13 +115,25 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [, values] = await Promise.all([
+  const [{ profile }, values] = await Promise.all([
     requireStaffPermission("audit:view", "/workspace/audit"),
     searchParams,
   ]);
-  const filters = normalizeAuditFilters(values);
+  const requested = normalizeAuditFilters(values);
+  // The branch in the URL is honoured for the Super Admin only. Anyone else
+  // reads exactly what they would without it, and the row policies under that
+  // still pin an assigned manager to their own counter.
+  const filters = { ...requested, branch: effectiveBranchFilter(profile, requested.branch) };
   const datesReversed = filters.from !== "" && filters.to !== "" && filters.from > filters.to;
-  const page = await getAuditLog(filters);
+  const [page, branches] = await Promise.all([
+    getAuditLog(filters),
+    canFilterByBranch(profile) ? listAssignableBranches() : Promise.resolve(null),
+  ]);
+  const branchOptions: WorkspaceSelectOption<string>[] = [
+    { value: "", label: "All branches" },
+    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.shortName })),
+    { value: BUSINESS_WIDE_BRANCH, label: "Business wide only" },
+  ];
   const olderHref = page?.olderCursor
     ? `/workspace/audit?${auditFilterParams(filters, page.olderCursor)}`
     : null;
@@ -127,7 +155,10 @@ export default async function AuditLogPage({
         </ButtonLink>
       </div>
 
-      <form role="search" className="bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 xl:grid-cols-4">
+      <form
+        role="search"
+        className={`bg-nybb-charcoal mt-7 grid gap-4 rounded-md p-4 md:grid-cols-2 ${branches ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+      >
         <div>
           <WorkspaceFieldLabel htmlFor="audit-query">Search</WorkspaceFieldLabel>
           <WorkspaceInput
@@ -150,6 +181,16 @@ export default async function AuditLogPage({
           label="Recorded through"
           defaultValue={filters.to}
         />
+        {branches ? (
+          <WorkspaceSelect
+            id="audit-branch"
+            name="branch"
+            label="Branch"
+            options={branchOptions}
+            defaultValue={filters.branch}
+            placeholder="All branches"
+          />
+        ) : null}
         <div className="flex items-end gap-2">
           <Button type="submit" tone="dark" className="flex-1">Filter</Button>
           <ButtonLink href="/workspace/audit" tone="dark" variant="ghost">Reset</ButtonLink>
@@ -171,7 +212,11 @@ export default async function AuditLogPage({
           {page.entries.length ? (
             <div className="mt-6 space-y-3">
               {page.entries.map((entry) => (
-                <AuditEntryCard key={entry.id} entry={entry} />
+                <AuditEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  showRaw={profile.role === "admin"}
+                />
               ))}
             </div>
           ) : (
@@ -224,7 +269,71 @@ export default async function AuditLogPage({
   );
 }
 
-function AuditEntryCard({ entry }: { entry: AuditLogEntry }) {
+const SUMMARY_HEADINGS: Record<AuditDetailSummary["kind"], string> = {
+  changed: "What changed",
+  created: "What was set",
+  removed: "What was removed",
+  details: "Details",
+};
+
+/**
+ * The diff in words, for everyone who can read the entry. The raw record is
+ * shown only to the Super Admin, and only as a second, closed disclosure: it
+ * is the same redacted object, so it carries nothing the lines do not, but it
+ * is the evidence when the lines read something the wrong way.
+ */
+function AuditDetail({ detail, showRaw }: { detail: Record<string, unknown>; showRaw: boolean }) {
+  const summary = describeAuditDetail(detail);
+  return (
+    <details className="border-nybb-bone/15 mt-4 rounded-md border">
+      <summary className="type-caps text-nybb-bone/70 hover:text-nybb-bone flex min-h-11 cursor-pointer items-center px-3">
+        {SUMMARY_HEADINGS[summary.kind]}
+      </summary>
+      <div className="border-nybb-bone/15 border-t px-3 py-3">
+        {summary.lines.length > 0 ? (
+          <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(8rem,auto)_1fr]">
+            {summary.lines.map((line, index) => (
+              <div key={`${line.label}-${index}`} className="contents">
+                <dt className="text-nybb-bone/55">{line.label}</dt>
+                <dd className="text-nybb-bone/80 min-w-0 break-words">
+                  {"value" in line ? (
+                    line.value
+                  ) : (
+                    <>
+                      <span className="text-nybb-bone/55 line-through decoration-1">{line.before}</span>
+                      <span aria-hidden className="text-nybb-orange px-1.5">→</span>
+                      <span className="sr-only"> changed to </span>
+                      {line.after}
+                    </>
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="text-nybb-bone/55 text-sm">No field changed value.</p>
+        )}
+        {summary.hiddenCount > 0 ? (
+          <p className="text-nybb-bone/55 mt-2 text-xs">
+            And {summary.hiddenCount} more {summary.hiddenCount === 1 ? "field" : "fields"}.
+          </p>
+        ) : null}
+        {showRaw ? (
+          <details className="mt-3">
+            <summary className="text-nybb-bone/55 hover:text-nybb-bone cursor-pointer text-xs">
+              Raw record
+            </summary>
+            <pre className="text-nybb-bone/70 mt-2 overflow-x-auto text-xs leading-relaxed">
+              {JSON.stringify(detail, null, 2)}
+            </pre>
+          </details>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function AuditEntryCard({ entry, showRaw }: { entry: AuditLogEntry; showRaw: boolean }) {
   const label = ACTION_LABELS[entry.action] ?? entry.action;
   const hasDetail = entry.detail !== null && Object.keys(entry.detail).length > 0;
 
@@ -246,12 +355,15 @@ function AuditEntryCard({ entry }: { entry: AuditLogEntry }) {
 
       <div className="text-nybb-bone/70 mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
         <span className="inline-flex items-center gap-1.5">
-          {entry.actorName ? (
+          {entry.actorName || entry.actorHidden ? (
             <UserRound aria-hidden className="text-nybb-orange size-4" />
           ) : (
             <ShieldAlert aria-hidden className="text-nybb-orange size-4" />
           )}
-          {entry.actorName ?? "System or an account no longer in the workspace"}
+          {entry.actorName ??
+            (entry.actorHidden
+              ? "Another staff member"
+              : "System or an account no longer in the workspace")}
         </span>
         <span className="bg-nybb-graphite text-nybb-bone/70 rounded px-2 py-1 text-xs font-medium">
           {actorRoleLabel(entry)}
@@ -261,15 +373,11 @@ function AuditEntryCard({ entry }: { entry: AuditLogEntry }) {
         </span>
       </div>
 
-      {hasDetail ? (
-        <details className="border-nybb-bone/15 mt-4 rounded-md border">
-          <summary className="type-caps text-nybb-bone/70 hover:text-nybb-bone flex min-h-11 cursor-pointer items-center px-3">
-            What changed
-          </summary>
-          <pre className="border-nybb-bone/15 text-nybb-bone/80 overflow-x-auto border-t px-3 py-3 text-xs leading-relaxed">
-            {JSON.stringify(entry.detail, null, 2)}
-          </pre>
-        </details>
+      {hasDetail && entry.detail ? <AuditDetail detail={entry.detail} showRaw={showRaw} /> : null}
+      {entry.restricted ? (
+        <p className="text-nybb-bone/55 mt-2 text-xs">
+          The promo code is hidden. It is shown to staff who can manage promo codes.
+        </p>
       ) : null}
     </article>
   );

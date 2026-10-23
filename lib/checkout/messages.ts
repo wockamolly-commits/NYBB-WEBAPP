@@ -116,6 +116,17 @@ export function checkoutFailure(raw: string): CheckoutFailure {
         field: "phone",
       };
 
+    // 0090. The orders it counts are still waiting on payment, so the useful
+    // advice is to finish one of those rather than to start another.
+    case "UNPAID_ORDERS_OPEN":
+      return {
+        error:
+          "This number already has orders waiting for payment. Please pay for " +
+          "one of those, or wait about 15 minutes for them to lapse, before " +
+          "placing another.",
+        field: "phone",
+      };
+
     case "INVALID_EMAIL":
       return {
         error: "That email address does not look right. Leave it blank if you would rather.",
@@ -182,7 +193,7 @@ export function checkoutFailure(raw: string): CheckoutFailure {
 
     case "PAYMENT_METHOD_UNAVAILABLE":
       return {
-        error: "That payment method is not available. Orders are paid at the counter on collection.",
+        error: "That payment method is not available right now. Please choose another way to pay.",
       };
 
     case "VOUCHERS_DISABLED":

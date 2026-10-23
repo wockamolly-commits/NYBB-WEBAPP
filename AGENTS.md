@@ -84,5 +84,15 @@ When writing a schema for a value that may legitimately be absent:
   `lib/` and test the parse. See `lib/staff/menu-schemas.ts` and
   `tests/unit/menu-option-schema.test.ts`.
 
-Known columns where this still matters, none of them read by any code yet: `vouchers.amount_cents`
-(null = a percentage voucher) and `vouchers.max_uses` (null = unlimited). See spec section 18.
+Known columns where this matters: `vouchers.amount_cents` (null = a percentage voucher),
+`vouchers.max_uses` (null = unlimited), `vouchers.max_discount_cents` (null = uncapped),
+`vouchers.starts_at` (null = live already), `vouchers.expires_at` (null = never ends) and
+`vouchers.owner_user_id` (null = anyone). See spec section 18.
+
+This paragraph used to end "none of them read by any code yet", and that stopped being true on
+2026-09-04 when the voucher engine shipped. They are read in `lib/vouchers/schema.ts`,
+`lib/vouchers/status.ts` and `lib/staff/vouchers.ts`, and since promo discovery shipped they are
+read again on the customer side in `lib/promos/schema.ts`, which parses them straight out of a
+`SECURITY DEFINER` listing and renders them on a public page. The rule is now load bearing rather
+than anticipatory: a coerced `amount_cents` no longer means a wrong number in a form, it means
+every visitor to `/promos` being told a percentage promo is "₱0.00 off".
