@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { placeOrder } from "@/app/actions/checkout";
@@ -659,6 +660,22 @@ export function CheckoutView({
             {onlineMethod
               ? "You will pay by QR Ph next."
               : "The counters are taking orders by phone in the meantime."}
+          </p>
+
+          {/* Next to the button it describes, before money changes hands.
+              Plain links rather than TextLink: that component is a display
+              face at 44px tall, which would turn one line of fine print into
+              three. */}
+          <p className="text-nybb-bone/65 mt-3 text-sm leading-relaxed">
+            By placing this order you agree to our{" "}
+            <Link href="/terms" className="text-nybb-bone underline decoration-nybb-orange/60 underline-offset-4 hover:decoration-nybb-orange">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-nybb-bone underline decoration-nybb-orange/60 underline-offset-4 hover:decoration-nybb-orange">
+              Privacy Policy
+            </Link>
+            .
           </p>
 
           {/* THE GUEST'S ONE WAY BACK TO THIS ORDER.

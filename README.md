@@ -568,8 +568,13 @@ flavour grid.
 
 ## Not built yet, and deliberately
 
-`/terms`, `/privacy` and `/refund` do not exist, so nothing links to them. They
-are required before PayMongo will approve card payments (spec section 17) and
-land with that work. The landing page carries an honest line saying online
+`/privacy` and `/terms` exist (2026-10-23) and are linked from the footer's legal
+bar and from checkout, but they are drafts: every fact only the owner can supply
+(registered business name and address, the Data Protection Officer, retention,
+refunds, cancellation, no-show, effective date) is null in `lib/legal/details.ts`
+and renders as a visible placeholder under a draft notice until it is filled in.
+There is no separate `/refund` page; refunds are a section of the Terms. The NPC
+seal on `/privacy` hides itself after `npcSeal.validThrough`; to renew, replace
+`components/legal/npc-dpo-dps-seal.jpg` and change that date. The landing page carries an honest line saying online
 ordering opens soon and pointing at the branch phone numbers, rather than a
 button that does nothing.

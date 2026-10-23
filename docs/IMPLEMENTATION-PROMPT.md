@@ -2333,6 +2333,15 @@ Stop and ask before deciding these. Do not invent answers.
    rebuilt around it as a franchise sales site. See
    `docs/superpowers/specs/2026-08-17-franchise-marketing-site-design.md`. Marketing still owes
    the sales copy and any franchise-specific photography, which blocks the pages but not the form.
+8. **The facts the legal pages need.** Opened 2026-10-23, when `/privacy` and `/terms` were
+   drafted from the code. Each is null in `lib/legal/details.ts` and shows as a placeholder:
+   the registered business name and address of the personal information controller (the
+   site names Five Brad Dragons Food Franchise Corporation as franchisor; whether that is the
+   NPC-registered controller for the branches is the owner's to confirm), the Data Protection
+   Officer's name, email and phone, how long each kind of record is kept (nothing is deleted
+   on a schedule today), the refund policy, the customer cancellation rule, the no-show rule
+   (item 5b), and the effective date. The NPC DPO/DPS seal supplied with them is valid
+   through 2026-10-28 and the page stops showing it after that date.
 
 ---
 
