@@ -68,6 +68,11 @@ const company = [
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
   { href: "/franchise", label: "Franchise" },
+  // Here and not in the legal bar under the skyline, which is where they
+  // first went: the delivery card floats over that bar at every width, so on
+  // the live site both links were present and covered.
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
 ];
 
 /**
@@ -429,27 +434,6 @@ export function Footer({
           <p data-back-to-top-obstacle>
             Pickup at the counter. Delivery on <TablevibeLink />.
           </p>
-          {/* Here rather than in the Company column: these are the fine print,
-              and the legal bar is where a visitor looks for it. Each is a full
-              44px target, the same minimum every footer row keeps. */}
-          <ul data-back-to-top-obstacle className="flex gap-5">
-            <li>
-              <Link
-                href="/privacy"
-                className="text-nybb-ink/80 hover:text-nybb-ink inline-flex min-h-11 items-center underline decoration-nybb-ink/30 underline-offset-4 hover:decoration-nybb-ink"
-              >
-                Privacy Policy
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/terms"
-                className="text-nybb-ink/80 hover:text-nybb-ink inline-flex min-h-11 items-center underline decoration-nybb-ink/30 underline-offset-4 hover:decoration-nybb-ink"
-              >
-                Terms of Service
-              </Link>
-            </li>
-          </ul>
         </div>
       </div>
     </footer>
