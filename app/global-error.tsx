@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { reportBoundaryError } from "@/lib/monitoring/report-boundary-error";
 import "./globals.css";
 
 /**
@@ -19,6 +21,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  useEffect(() => {
+    reportBoundaryError(error);
+  }, [error]);
+
   return (
     <html lang="en-PH">
       <body className="flex min-h-dvh items-center justify-center px-4">

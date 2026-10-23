@@ -34,9 +34,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets and images. Those are served straight from
-  // the CDN and gain nothing from a per-request nonce.
+  // Everything except static assets and images, which are served straight from
+  // the CDN and gain nothing from a per-request nonce, and /monitoring, Sentry's
+  // tunnel (next.config.ts), which forwards error reports and has no session to
+  // refresh.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|avif)$).*)",
+    "/((?!_next/static|_next/image|monitoring|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|avif)$).*)",
   ],
 };

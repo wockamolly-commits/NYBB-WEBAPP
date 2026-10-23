@@ -1,3 +1,4 @@
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 // Imported rather than repeated. This file and the two writers,
 // app/(workspace)/workspace/menu/actions.ts and
@@ -125,4 +126,28 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry's build step. It does two things here and deliberately nothing else.
+//
+// tunnelRoute sends browser error reports to /monitoring on this site, which
+// forwards them to Sentry, so the Content Security Policy keeps connect-src at
+// 'self' and an ad blocker that drops sentry.io does not drop the report.
+// proxy.ts excludes the route from its matcher: it carries no session.
+//
+// Source maps, which turn a minified stack back into file and line, are
+// uploaded only when SENTRY_AUTH_TOKEN is set on the build, and deleted from
+// the output afterwards so the public never downloads them. Without the token
+// the build still succeeds and errors still arrive, just with minified stacks.
+//
+// No tracing, so the per route manifest and the server dependency
+// instrumentation that only tracing reads are both switched off.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  tunnelRoute: "/monitoring",
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  routeManifestInjection: false,
+  buildTimeInstrumentation: false,
+  telemetry: false,
+});

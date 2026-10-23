@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { useEffect } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { reportBoundaryError } from "@/lib/monitoring/report-boundary-error";
 
 /**
  * What a customer sees when a storefront page throws.
@@ -28,6 +29,7 @@ export default function StorefrontError({
 }) {
   useEffect(() => {
     console.error("[storefront] unhandled render error:", error);
+    reportBoundaryError(error);
   }, [error]);
 
   return (

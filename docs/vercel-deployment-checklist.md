@@ -164,7 +164,7 @@ alone.
 
 ## Step 2: the environment variables
 
-Seventeen names appear in `.env.example`. They are not equal in urgency and they are not all safe
+Twenty-four names appear in `.env.example`. They are not equal in urgency and they are not all safe
 to paste into a chat window.
 
 ### Set these yourself, in the Vercel dashboard, and nowhere else
@@ -181,6 +181,7 @@ that logs, and do not hand them to an assistant.
 | `CRON_SECRET` | The only guard on `/api/cron/expire-orders`. |
 | `ZENPOS_API_KEY` | Leave unset. Section 16.2 discovery is unanswered. |
 | `RESEND_API_KEY` | Optional, and dark until `app_settings` enables email. |
+| `SENTRY_AUTH_TOKEN` | Uploads source maps to Sentry. Optional: unset, errors still arrive with minified stacks. |
 
 ### Safe to set, and required for anything beyond the brand site
 
@@ -194,6 +195,8 @@ that logs, and do not hand them to an assistant.
 | `VAPID_SUBJECT` | `mailto:` address | Production |
 | `NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY` | Only when going live with payments | Production |
 | `RESEND_FROM` | Only alongside `RESEND_API_KEY` | Production |
+| `NEXT_PUBLIC_SENTRY_DSN` | The Sentry project's DSN. Unset, error alerts are off | Production only |
+| `SENTRY_ORG`, `SENTRY_PROJECT` | The Sentry slugs, read only by the source map upload | Production only |
 
 ### Do not set
 
