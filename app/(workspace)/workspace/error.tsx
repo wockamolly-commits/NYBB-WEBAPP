@@ -3,6 +3,7 @@
 import { RotateCcw } from "lucide-react";
 import { useEffect } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { reportBoundaryError } from "@/lib/monitoring/report-boundary-error";
 
 /**
  * The last page between a thrown error and a counter with a queue at it.
@@ -34,6 +35,7 @@ export default function WorkspaceError({
 }) {
   useEffect(() => {
     console.error("[workspace] unhandled render error:", error);
+    reportBoundaryError(error);
   }, [error]);
 
   return (

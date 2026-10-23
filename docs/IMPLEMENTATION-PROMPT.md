@@ -2096,6 +2096,8 @@ the owner agreeing to trade away a Tier 1 control.
   NEXT_PUBLIC_MAPBOX_TOKEN                   (optional, the route map; URL restricted)
   ZENPOS_BASE_URL                            (unset until discovery completes)
   CRON_SECRET
+  NEXT_PUBLIC_SENTRY_DSN                     (optional, error alerts; unset means off)
+  SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN  (optional, source map upload at build)
   ```
   **`ZENPOS_API_KEY` was removed on 2026-08-11.** Each branch runs its own ZenPOS account, so
   credentials are per branch and cannot live in a single environment variable. They belong in a
@@ -2109,6 +2111,24 @@ the owner agreeing to trade away a Tier 1 control.
   to a Vercel subdomain (`order.nybuffalobrads.com.ph` via a DNS-only CNAME when approved) and
   leave the WordPress brochure site running until the CEO decides. Write the cutover as a checklist
   in `docs/domain-cutover-checklist.md`, do not execute it.
+
+  > **Cutover done, 2026-10-23.** The cutover was carried out on the apex rather than an `order.`
+  > subdomain: `nybuffalobrads.com.ph` and `www` now point at the Vercel project (apex `A`
+  > 216.198.79.1, `www` CNAME to the project's `vercel-dns-017.com` host), the apex 308-redirects to
+  > `www`, and `NEXT_PUBLIC_SITE_URL` is `https://www.nybuffalobrads.com.ph`. DNS stays at Namecheap,
+  > and Namecheap's per-record HTTPS switch must stay off on both records or its proxy sits in
+  > front of Vercel and the certificate cannot be issued. The old site is untouched on the cPanel
+  > server (114.142.162.49) and a full account backup was taken on 2026-10-21, so restoring the
+  > previous records is a complete rollback. `delivery.nybuffalobrads.com.ph` (Google Cloud, owner
+  > unknown) was left as it was.
+- **Error monitoring: Sentry, errors only (2026-10-23).** Server errors arrive through
+  `onRequestError` in `instrumentation.ts`, browser errors through `instrumentation-client.ts` and
+  the three `error.tsx` screens (which skip errors carrying a `digest`, because the server already
+  reported those). Browser reports go to `/monitoring` on the site and are forwarded, so the
+  Content Security Policy keeps `connect-src 'self'`. No tracing and no session replay. Every
+  event passes `lib/monitoring/sentry-options.ts`, which keeps only a request's URL and method,
+  strips query strings, masks `/order/<code>`, redacts phone numbers and email addresses, and drops
+  console breadcrumbs. Off whenever `NEXT_PUBLIC_SENTRY_DSN` is unset.
 
 ---
 
