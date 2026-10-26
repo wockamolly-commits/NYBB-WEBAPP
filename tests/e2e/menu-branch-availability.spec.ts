@@ -42,6 +42,27 @@ function card(page: Page) {
 }
 
 /**
+ * Opens the throwaway item's sold out control. It sits behind the row's
+ * Availability disclosure, so nothing inside it is reachable until this runs.
+ */
+async function openAvailability(page: Page) {
+  await card(page).getByRole("button", { name: /^Availability for / }).click();
+  return card(page);
+}
+
+/**
+ * The list, searched down to the throwaway item, with its control open. The
+ * search goes in the URL, which is also what keeps a filtered list across
+ * opening an item and pressing Back.
+ */
+async function openCard(page: Page) {
+  await page.goto(`${MENU}?q=${encodeURIComponent(ITEM_NAME_PREFIX)}`, {
+    waitUntil: "domcontentloaded",
+  });
+  return openAvailability(page);
+}
+
+/**
  * Picks a reason for one counter's row.
  *
  * By the select's own accessible name, which carries the counter. "Why" alone
@@ -122,8 +143,7 @@ async function holdRows(): Promise<Array<{ branch_id: string; kind: string; reas
 }
 
 test("shows one row per counter this person may act on", async ({ page }) => {
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
   await expect(item).toBeVisible();
 
   for (const name of branchNames) {
@@ -143,8 +163,7 @@ test("shows one row per counter this person may act on", async ({ page }) => {
 
 test("stops selling at a counter, and says so without a reload", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
   const save = item.getByRole("button", { name: "Save availability" });
 
   // Nothing to commit yet, so the button is quiet and dead. A Save that is
@@ -178,8 +197,7 @@ test("stops selling at a counter, and says so without a reload", async ({ page }
 
 test("the back on field appears only where it can apply", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
 
   // A "comes back" beside a counter that IS selling the item is a field with
   // nothing to say. The old control showed it permanently, greyed out.
@@ -208,8 +226,7 @@ test("a counter's name stays on the line with its own tick box when the time ope
   // both were correct the whole time. This one reads geometry, the way the
   // options and categories layout specs do.
   await page.setViewportSize({ width: 1440, height: 1200 });
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
   const first = branchNames[0]!;
 
   const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}$`) });
@@ -232,8 +249,7 @@ test("a counter's name stays on the line with its own tick box when the time ope
 
 test("writes a timed hold, and reads its end back rather than dropping it", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
 
   await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
   await chooseReason(item, first, "Out of stock");
@@ -257,6 +273,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
   // empty field here would turn a timed hold into an indefinite one on the
   // next Save, which is a hold that has stopped expiring on its own.
   await page.reload({ waitUntil: "domcontentloaded" });
+  await openAvailability(page);
   await expect(card(page).getByLabel("Back on")).not.toHaveValue("");
 
   // And Save with nothing touched writes nothing, so it is still dead.
@@ -265,8 +282,7 @@ test("writes a timed hold, and reads its end back rather than dropping it", asyn
 
 test("puts a counter back by ticking it, and leaves no hold row behind", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
   const box = item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) });
   const save = item.getByRole("button", { name: "Save availability" });
 
@@ -295,8 +311,7 @@ test("takes several counters off in one Save", async ({ page }) => {
   // The reason the per row buttons went. Skips itself while one branch trades.
   test.skip(branchNames.length < 2, "needs a second trading branch to be a multi-counter test");
 
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
-  const item = card(page);
+  const item = await openCard(page);
   for (const name of branchNames.slice(0, 2)) {
     await item.getByRole("checkbox", { name: new RegExp(`Sell .* at ${name}`) }).uncheck();
   }
@@ -320,7 +335,7 @@ test("takes several counters off in one Save", async ({ page }) => {
 
 test("the item editor points at the one control instead of carrying a second", async ({ page }) => {
   const first = branchNames[0]!;
-  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  await openCard(page);
   await card(page).getByRole("checkbox", { name: new RegExp(`Sell .* at ${first}`) }).uncheck();
   await chooseReason(card(page), first, "Temporarily unavailable");
   await card(page).getByRole("button", { name: "Save availability" }).click();
