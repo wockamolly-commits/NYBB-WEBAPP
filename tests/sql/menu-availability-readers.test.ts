@@ -135,6 +135,50 @@ describe("hold aware storefront readers", () => {
     expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
   });
 
+  // 0102. Held at EVERY trading counter is not "held at one of them": there is
+  // no counter left for a customer who has not chosen to go and choose, and
+  // leaving the item listed is how it reached carts that checkout then refused.
+  // Written straight into the table because the cashier is scoped to 'pilot'.
+  async function holdEverywhere(slug: string) {
+    const item = await itemId(db, slug);
+    await db.exec(
+      `insert into menu_item_branch_holds (item_id, branch_id, kind)
+       select '${item}', id, 'indefinite' from branches where is_active`,
+    );
+  }
+
+  it("hides an item held at every active branch when the caller named no branch", async () => {
+    await holdEverywhere("chicken-wings");
+
+    expect(await menuSlugs(db, null)).toEqual(["fries"]);
+    expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
+    expect(await menuSlugs(db, "other")).toEqual(["fries"]);
+  });
+
+  it("shows it again with no branch named once any one counter puts it back", async () => {
+    await holdEverywhere("chicken-wings");
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', null)`);
+
+    expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
+    expect(await menuSlugs(db, "pilot")).toEqual(["chicken-wings", "fries"]);
+    expect(await menuSlugs(db, "other")).toEqual(["fries"]);
+  });
+
+  it("ignores a closed branch when deciding whether an item is off everywhere", async () => {
+    // Held at 'pilot' only, and 'other' has stopped trading. Every counter a
+    // customer could choose holds it, so it is off everywhere that matters,
+    // even though no hold row exists for 'other'.
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
+    expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
+
+    await db.exec("update branches set is_active = false where slug = 'other'");
+    expect(await menuSlugs(db, null)).toEqual(["fries"]);
+  });
+
   it("drops a category whose every item is held", async () => {
     const fries = await itemId(db, "fries");
     const pilot = await branchId(db, "pilot");

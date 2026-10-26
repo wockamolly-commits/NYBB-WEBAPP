@@ -1004,12 +1004,17 @@ here was built as specified.
     hold without one, so the audit trail can tell a broken fryer from a delivery that did not
     arrive. Null is not a fifth reason: it marks a row written before that column existed.
 
-    `get_storefront_menu(null)` applies NO holds (0057). It used to resolve a missing slug to the
-    first active branch, so `/menu`, which every customer sees before choosing a store, applied one
-    counter's sold-out list to everybody. This is the one place availability and pricing
+    `get_storefront_menu(null)` hides only an item that **every** active branch holds (0102). It
+    used to resolve a missing slug to the first active branch, so `/menu`, which every customer
+    sees before choosing a store, applied one counter's sold-out list to everybody. 0057 fixed that
+    by applying no holds at all to a branch-less call, which overcorrected: an item marked off at
+    every counter stayed on the menu for anyone who had not chosen a store (every first visit, and
+    every new browser, since the choice is a cookie and not part of the account), reached their
+    cart, and was refused at checkout. 0102 keeps 0057's rule for an item held at some counters,
+    because the customer can still choose one that has it, and hides an item no counter can sell.
+    With no branch active at all nothing is hidden. This is the one place availability and pricing
     deliberately diverge: a menu with no prices cannot be rendered, so `resolve_price_list_id`
-    still falls back to the active branch, while availability has a correct answer for "no branch
-    chosen" and it is "show everything". `place_order` is unaffected, because its branch comes
+    still falls back to the active branch. `place_order` is unaffected, because its branch comes
     from the order payload, so a held item is still refused at checkout and there is no oversell
     window.
 
