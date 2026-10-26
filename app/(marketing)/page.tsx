@@ -6,7 +6,7 @@ import { HomeTopOnReload } from "@/components/site/HomeLink";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
-import { ProductTile } from "@/components/menu/ProductTile";
+import { ShowcaseTile } from "@/components/menu/ShowcaseTile";
 import { ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
 import { catalogImage } from "@/lib/catalog";
@@ -194,7 +194,16 @@ export default async function Home() {
   // food. Somebody new is asked where they are collecting first, because on a
   // pickup-only platform that question changes the four screens after it.
   const orderHref = selection.selected ? "/menu" : storesHref("/menu");
-  const featured = featuredItems(categories);
+  // The strip is photographs or nothing. A featured item without a photograph
+  // draws a name on a plain orange square, which on this page is a blank where
+  // the appetite was supposed to be; it is still on /menu. Then cut to whole
+  // rows of four, so the desktop grid never ends ragged and the phone's rows
+  // of two divide it too. Fewer than four shows what there is.
+  const photographed = featuredItems(categories).filter((item) => item.image);
+  const featured =
+    photographed.length < 4
+      ? photographed
+      : photographed.slice(0, Math.floor(Math.min(photographed.length, 8) / 4) * 4);
   const counter = catalogImage("scene-counter");
 
   const wings = findItem(categories, WINGS_ITEM_SLUG);
@@ -623,15 +632,34 @@ export default async function Home() {
               so nobody in the group has to compromise.
             </p>
           </div>
-          <TextLink href="/menu" tone="light">
-            Full menu
-          </TextLink>
         </header>
 
-        <div className="reveal-stagger mt-8 grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
-          {featured.map((item) => (
-            <ProductTile key={item.slug} item={item} showPrice={false} />
-          ))}
+        {/* The flavour tile, not the menu one: a photograph and a name, the
+            same shape as the ten flavours above, so the page browses in one
+            grammar and the prices, the Add buttons and the detail wait for
+            /menu. Each tile still opens its own item page, which resolves
+            against the counter this page read the menu for. */}
+        {featured.length > 0 ? (
+          <ul className="reveal-stagger mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+            {featured.map((item) => (
+              <li key={item.slug} className="group h-full">
+                <ShowcaseTile
+                  name={item.name}
+                  alt={item.name}
+                  code={item.code}
+                  image={item.image}
+                  href={`/menu/${item.categorySlug}/${item.slug}`}
+                  imageSizes="(min-width: 1024px) 23vw, 45vw"
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="reveal mt-10 flex justify-center sm:mt-12">
+          <ButtonLink href="/menu" tone="light" size="lg">
+            View full menu
+          </ButtonLink>
         </div>
       </section>
 

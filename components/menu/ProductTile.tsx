@@ -33,18 +33,10 @@ export function ProductTile({
   item,
   className,
   priority = false,
-  showPrice = true,
 }: {
   item: MenuItem;
   className?: string;
   priority?: boolean;
-  /**
-   * Off on the landing page, which shows the food and leaves the numbers to
-   * the menu. The footer row keeps its height either way, so a tile without a
-   * price is the same size as one with it and the Add button still lands in
-   * the same corner.
-   */
-  showPrice?: boolean;
 }) {
   const image = item.image;
   const { fromCents, toCents } = itemPriceRange(item);
@@ -136,11 +128,9 @@ export function ProductTile({
               quickAddable && "pr-14 md:pr-28",
             )}
           >
-            {showPrice ? (
-              <p className="font-mono-tabular text-nybb-orange text-base leading-none font-medium">
-                {formatPesoRange(fromCents, toCents)}
-              </p>
-            ) : null}
+            <p className="font-mono-tabular text-nybb-orange text-base leading-none font-medium">
+              {formatPesoRange(fromCents, toCents)}
+            </p>
           </div>
         </div>
       </Link>

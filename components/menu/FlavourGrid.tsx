@@ -1,8 +1,6 @@
-import Image from "next/image";
-import Link from "next/link";
 import type { MenuOption } from "@/lib/menu/types";
 import { cn } from "@/lib/utils";
-import { NoPhotoTile } from "./NoPhotoTile";
+import { ShowcaseTile } from "./ShowcaseTile";
 
 /**
  * The wing flavour grid.
@@ -22,34 +20,6 @@ import { NoPhotoTile } from "./NoPhotoTile";
  * photographs, which is noise in front of someone who has not decided they want
  * wings yet. There the name carries it and the description waits for /menu.
  */
-/**
- * One body, linked or not. Duplicating the tile markup for the two cases is
- * how the linked version and the display version drift apart.
- */
-function Wrapper({
-  href,
-  className,
-  children,
-}: {
-  href?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return href ? (
-    <Link
-      href={href}
-      className={cn(
-        className,
-        "focus-visible:outline-nybb-ink focus-visible:outline-2 focus-visible:outline-offset-2",
-      )}
-    >
-      {children}
-    </Link>
-  ) : (
-    <div className={className}>{children}</div>
-  );
-}
-
 export function FlavourGrid({
   flavours,
   hrefFor,
@@ -91,56 +61,19 @@ export function FlavourGrid({
         className,
       )}
     >
-      {flavours.map((flavour) => {
-        const image = flavour.image;
-
-        return (
-          <li key={flavour.slug} className="group h-full">
-            <Wrapper
-              href={hrefFor?.(flavour)}
-              className="bg-nybb-charcoal text-nybb-bone flex h-full flex-col overflow-hidden rounded-md"
-            >
-              <div className="tile-orange relative aspect-square shrink-0 overflow-hidden">
-                {image ? (
-                  <Image
-                    src={image.src}
-                    alt={`${flavour.name} wings`}
-                    fill
-                    sizes={imageSizes}
-                    placeholder="blur"
-                    blurDataURL={image.blurDataURL}
-                    className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                  />
-                ) : (
-                  <NoPhotoTile name={flavour.name} className="absolute inset-0" />
-                )}
-              </div>
-              <div className="flex flex-1 flex-col px-3 py-2.5 sm:px-4 sm:py-3.5">
-                {/* The flavour's menu code, on its own line above the name and
-                    styled exactly as ProductTile styles an item's code, so a
-                    code reads the same wherever it appears. The printed menu
-                    burns it into the photograph's top-left corner instead; the
-                    ingest crops that off, because a code baked into pixels
-                    cannot be read out, reordered or corrected. */}
-                {flavour.code ? (
-                  <span className="font-mono-tabular text-nybb-bone/60 mb-1 block text-xs leading-none">
-                    {flavour.code}
-                  </span>
-                ) : null}
-
-                <h3 className="font-display text-base leading-none sm:text-lg">
-                  {flavour.name}
-                </h3>
-                {withDescriptions && flavour.description ? (
-                  <p className="text-nybb-bone/65 mt-2 text-xs leading-snug">
-                    {flavour.description}
-                  </p>
-                ) : null}
-              </div>
-            </Wrapper>
-          </li>
-        );
-      })}
+      {flavours.map((flavour) => (
+        <li key={flavour.slug} className="group h-full">
+          <ShowcaseTile
+            name={flavour.name}
+            alt={`${flavour.name} wings`}
+            code={flavour.code}
+            description={withDescriptions ? flavour.description : null}
+            image={flavour.image}
+            href={hrefFor?.(flavour)}
+            imageSizes={imageSizes}
+          />
+        </li>
+      ))}
     </ul>
   );
 }
