@@ -6,7 +6,7 @@ import { HomeTopOnReload } from "@/components/site/HomeLink";
 import { ScrollReveal } from "@/components/site/ScrollReveal";
 import { TablevibeLink } from "@/components/site/TablevibeLink";
 import { FlavourGrid } from "@/components/menu/FlavourGrid";
-import { ProductTile } from "@/components/menu/ProductTile";
+import { ShowcaseTile } from "@/components/menu/ShowcaseTile";
 import { ButtonLink } from "@/components/ui/Button";
 import { TextLink } from "@/components/ui/TextLink";
 import { catalogImage } from "@/lib/catalog";
@@ -14,17 +14,15 @@ import { storesHref } from "@/lib/branches/href";
 import { listBranches } from "@/lib/branches/reader";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
-import { optionPriceCents } from "@/lib/catalog/pricing";
 import {
-  featuredItems,
   findItem,
   findOptionGroup,
   getStorefrontMenu,
+  landingShowcase,
   WINGS_ITEM_SLUG,
   WING_FLAVOUR_GROUP_SLUG,
   WING_HEAT_GROUP_SLUG,
 } from "@/lib/menu";
-import { formatPesoCompact } from "@/lib/format";
 import { telHref } from "@/lib/phone";
 
 /**
@@ -196,16 +194,19 @@ export default async function Home() {
   // food. Somebody new is asked where they are collecting first, because on a
   // pickup-only platform that question changes the four screens after it.
   const orderHref = selection.selected ? "/menu" : storesHref("/menu");
-  const featured = featuredItems(categories);
+  // Not the wings, photographs only, whole rows. See landingShowcase.
+  const featured = landingShowcase(categories);
   const counter = catalogImage("scene-counter");
 
   const wings = findItem(categories, WINGS_ITEM_SLUG);
-  const half = wings?.variations.find((variation) => variation.slug === "half");
-  const full = wings?.variations.find((variation) => variation.slug === "full");
 
-  // Both the scale and its prices come from the menu the page rendered from,
-  // so the landing page cannot advertise a heat price the menu no longer
-  // charges.
+  // NO PRICES ON THIS PAGE. The landing page shows the food and the heat scale
+  // and leaves every number to the menu, where the price is read against the
+  // counter somebody is ordering from. That covers the wings line under the
+  // flavours, the upcharge on the scale, and the featured tiles below.
+  //
+  // The scale still comes from the menu the page rendered from, so it cannot
+  // show a level the menu no longer sells.
   const heatOptions = (findOptionGroup(wings, WING_HEAT_GROUP_SLUG)?.options ?? []).filter(
     (option) => (option.heatPercent ?? 0) > 0,
   );
@@ -214,15 +215,6 @@ export default async function Home() {
   // where somebody is deciding, but a landing page selling heat has no reason
   // to open on the absence of it.
   const heatSteps = heatStops(heatOptions);
-
-  // Keyed by slug and formatted here, because pricing lives on the server and a
-  // function cannot cross into the client component that draws the bar.
-  const heatPrices: Record<string, string> = Object.fromEntries(
-    heatOptions.map((option) => [
-      option.slug,
-      `+${formatPesoCompact(optionPriceCents(option, "half"))}`,
-    ]),
-  );
 
   return (
     <>
@@ -523,15 +515,6 @@ export default async function Home() {
               One shoot, one basket, ten sauces. Every one of them takes a
               level of heat on top, at no change to the flavour you picked.
             </p>
-            {half && full ? (
-              <p className="font-mono-tabular type-caps text-nybb-ink/75 mt-4">
-                Half 6 pcs {formatPesoCompact(half.priceCents)}
-                <span aria-hidden className="px-2">
-                  /
-                </span>
-                Full 10 pcs {formatPesoCompact(full.priceCents)}
-              </p>
-            ) : null}
           </div>
           <TextLink href="/menu/chicken-wings" tone="light">
             See the wings
@@ -574,7 +557,6 @@ export default async function Home() {
               and .heat-slider__head in globals.css. */}
           <HeatSlider
             stops={heatSteps}
-            prices={heatPrices}
             variant="band"
             label="Try the Level of Hotness scale"
             sweepOnView
@@ -594,8 +576,8 @@ export default async function Home() {
           />
 
           <p className="text-nybb-bone/55 mt-10 text-xs">
-            The upcharge on top of any flavour, per order. Choose for real on
-            the wings page.
+            Any level goes on top of any flavour. Choose for real on the wings
+            page.
           </p>
         </div>
       </section>
@@ -642,15 +624,34 @@ export default async function Home() {
               so nobody in the group has to compromise.
             </p>
           </div>
-          <TextLink href="/menu" tone="light">
-            Full menu
-          </TextLink>
         </header>
 
-        <div className="reveal-stagger mt-8 grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
-          {featured.map((item) => (
-            <ProductTile key={item.slug} item={item} />
-          ))}
+        {/* The flavour tile, not the menu one: a photograph and a name, the
+            same shape as the ten flavours above, so the page browses in one
+            grammar and the prices, the Add buttons and the detail wait for
+            /menu. Each tile still opens its own item page, which resolves
+            against the counter this page read the menu for. */}
+        {featured.length > 0 ? (
+          <ul className="reveal-stagger mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+            {featured.map((item) => (
+              <li key={item.slug} className="group h-full">
+                <ShowcaseTile
+                  name={item.name}
+                  alt={item.name}
+                  code={item.code}
+                  image={item.image}
+                  href={`/menu/${item.categorySlug}/${item.slug}`}
+                  imageSizes="(min-width: 1024px) 23vw, 45vw"
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="reveal mt-10 flex justify-center sm:mt-12">
+          <ButtonLink href="/menu" tone="light" size="lg">
+            View full menu
+          </ButtonLink>
         </div>
       </section>
 
