@@ -128,17 +128,16 @@ function hydrate(categories: z.infer<typeof categoriesSchema>): MenuCategory[] {
  *
  * `branchSlug` is the counter the customer chose, and it is not decoration.
  * The RPC gates availability on it: an item held at that branch is absent from
- * what comes back. Passing nothing resolves the active branch with the lowest
- * sort_order, which is right only while one branch trades. The day a second
- * one goes live, a no-slug call shows the first branch's availability to a
- * customer buying from the second, and `place_order` (which resolves the
- * branch from the slug in the checkout payload) then refuses an item the menu
- * had offered. Every buying surface therefore passes the chosen slug.
+ * what comes back. Every buying surface therefore passes the chosen slug, so
+ * the menu and `place_order` (which resolves the branch from the slug in the
+ * checkout payload) are judging the same counter.
  *
  * Null is a real answer rather than a missing one, exactly as in
- * `selectedBranchSlug()`: nobody has chosen yet, so let the database resolve
- * the default. `generateStaticParams` passes nothing for the same reason from
- * the other direction, since it runs at build with no customer to ask.
+ * `selectedBranchSlug()`: nobody has chosen yet. The RPC then hides only an
+ * item that every trading counter has marked unavailable (0102), and keeps one
+ * held at some of them, because the customer can still choose a counter that
+ * has it. `generateStaticParams` passes nothing for the same reason from the
+ * other direction, since it runs at build with no customer to ask.
  */
 export async function getStorefrontMenu(
   branchSlug?: string | null,
