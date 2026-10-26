@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Layers, ListPlus, Plus } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { getManagedMenu } from "@/lib/staff/menu";
 import { hasStaffPermission, requireStaffPermission } from "@/lib/staff/session";
@@ -27,15 +28,24 @@ export default async function WorkspaceMenuPage() {
           <h1 className="font-display heading-major mt-2">Menu</h1>
           <p className="text-nybb-bone/60 mt-2 max-w-2xl text-sm">
             {can.configure
-              ? "Everything the storefront sells. Changes are saved through audited database controls and reach the site immediately."
-              : "Everything the storefront sells. Mark an item sold out at your counter and it stops being offered there straight away."}
+              ? "Everything the storefront sells. Search for an item, open Availability to mark it sold out at a counter, or Edit to change its details. Changes reach the site immediately."
+              : "Everything the storefront sells. Search for an item and open Availability to mark it sold out at your counter. It stops being offered there straight away."}
           </p>
         </div>
         {can.configure ? (
           <div className="flex flex-wrap gap-2">
-            <ButtonLink href="/workspace/menu/items/new" tone="dark" variant="primary">New item</ButtonLink>
-            <ButtonLink href="/workspace/menu/categories" tone="dark" variant="secondary">Categories</ButtonLink>
-            <ButtonLink href="/workspace/menu/options" tone="dark" variant="secondary">Options</ButtonLink>
+            <ButtonLink href="/workspace/menu/items/new" tone="dark" variant="primary">
+              <Plus aria-hidden className="size-4" />
+              New item
+            </ButtonLink>
+            <ButtonLink href="/workspace/menu/categories" tone="dark" variant="secondary">
+              <Layers aria-hidden className="size-4" />
+              Categories
+            </ButtonLink>
+            <ButtonLink href="/workspace/menu/options" tone="dark" variant="secondary">
+              <ListPlus aria-hidden className="size-4" />
+              Options
+            </ButtonLink>
           </div>
         ) : null}
       </div>

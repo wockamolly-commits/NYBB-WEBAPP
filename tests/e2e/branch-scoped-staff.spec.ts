@@ -55,6 +55,8 @@ test("still opens the menu, without the catalog controls", async ({ page }) => {
   // assignment, so this page must still open. A change that took the whole
   // menu away from a branch manager would break their shift.
   await expect(page).toHaveURL(/\/workspace\/menu$/);
+  // The sold out control sits behind each row's Availability disclosure.
+  await page.getByRole("button", { name: /^Availability for / }).first().click();
   await expect(page.getByText("Selling at").first()).toBeVisible();
 
   // The catalog half of the same screen is gone.
