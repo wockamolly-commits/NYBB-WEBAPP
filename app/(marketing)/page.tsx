@@ -15,10 +15,10 @@ import { listBranches } from "@/lib/branches/reader";
 import { getStoreSelection } from "@/lib/branches/selection";
 import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import {
-  featuredItems,
   findItem,
   findOptionGroup,
   getStorefrontMenu,
+  landingShowcase,
   WINGS_ITEM_SLUG,
   WING_FLAVOUR_GROUP_SLUG,
   WING_HEAT_GROUP_SLUG,
@@ -194,16 +194,8 @@ export default async function Home() {
   // food. Somebody new is asked where they are collecting first, because on a
   // pickup-only platform that question changes the four screens after it.
   const orderHref = selection.selected ? "/menu" : storesHref("/menu");
-  // The strip is photographs or nothing. A featured item without a photograph
-  // draws a name on a plain orange square, which on this page is a blank where
-  // the appetite was supposed to be; it is still on /menu. Then cut to whole
-  // rows of four, so the desktop grid never ends ragged and the phone's rows
-  // of two divide it too. Fewer than four shows what there is.
-  const photographed = featuredItems(categories).filter((item) => item.image);
-  const featured =
-    photographed.length < 4
-      ? photographed
-      : photographed.slice(0, Math.floor(Math.min(photographed.length, 8) / 4) * 4);
+  // Not the wings, photographs only, whole rows. See landingShowcase.
+  const featured = landingShowcase(categories);
   const counter = catalogImage("scene-counter");
 
   const wings = findItem(categories, WINGS_ITEM_SLUG);
