@@ -139,7 +139,7 @@ export function itemMatchesStatus(
     case "available":
       return item.isActive && category.isActive && !item.holds.some((hold) => holdIsLive(hold, now));
     case "sold-out":
-      return item.holds.length > 0;
+      return item.holds.some((hold) => holdIsLive(hold, now));
     case "off-menu":
       return !item.isActive || !category.isActive;
     case "featured":
