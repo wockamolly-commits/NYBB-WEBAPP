@@ -379,6 +379,19 @@ export function ItemEditor({
 
   const disabled = pending || leaving;
   const soldOutSummary = item ? holdSummary(item.holds) : null;
+  // Read from what is saved, not from the draft's Sell this item at all box,
+  // because this section states what customers see now. It used to fall
+  // straight through to "on sale at every counter" whenever nothing was held,
+  // so an item the list badged Off the menu, and the storefront did not sell,
+  // was described here as on sale.
+  const savedCategory = item ? categories.find((category) => category.id === item.categoryId) : undefined;
+  const offMenuSummary = !item
+    ? null
+    : !item.isActive
+      ? "This item is off the menu, so no counter is selling it. Tick Sell this item at all above to put it back."
+      : savedCategory && !savedCategory.isActive
+        ? `${savedCategory.name} is off the menu, so no counter is selling this item.`
+        : null;
   const activeCount = activeSizes.length;
 
   return (
@@ -712,12 +725,17 @@ export function ItemEditor({
             </p>
           }
         >
-          <p className="text-nybb-bone/65 max-w-md text-sm">
-            {soldOutSummary ??
-              (actingBranchId
-                ? "This item is on sale at your counter."
-                : "This item is on sale at every counter.")}
-          </p>
+          <div className="text-nybb-bone/65 max-w-md space-y-1 text-sm">
+            {offMenuSummary ? <p>{offMenuSummary}</p> : null}
+            {soldOutSummary ? <p>{soldOutSummary}</p> : null}
+            {!offMenuSummary && !soldOutSummary ? (
+              <p>
+                {actingBranchId
+                  ? "This item is on sale at your counter."
+                  : "This item is on sale at every counter."}
+              </p>
+            ) : null}
+          </div>
           <ButtonLink href="/workspace/menu" tone="dark" variant="secondary" className="mt-3">
             Go to the menu list
           </ButtonLink>

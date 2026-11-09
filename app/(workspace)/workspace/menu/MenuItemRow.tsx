@@ -144,6 +144,16 @@ export function MenuItemRow({
 
       {can.availability ? (
         <div id={panelId} hidden={!open} className="border-nybb-bone/15 border-t p-4 sm:px-5">
+          {/* Ticked boxes under an item nobody can order read as "selling
+              here". The marks are still worth setting ahead of switching it
+              back on, so the control stays, with the reason it does nothing
+              yet said first. */}
+          {!item.isActive || !category.isActive ? (
+            <p className="text-nybb-bone/70 mb-4 text-sm">
+              {!item.isActive ? "This item" : `${category.name}`} is off the menu, so customers cannot
+              order it at any counter. Sold out marks here apply once it is back on.
+            </p>
+          ) : null}
           <SoldOutControl item={item} branches={branches} actingBranchId={actingBranchId} />
         </div>
       ) : null}
