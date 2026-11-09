@@ -1,0 +1,6860 @@
+{
+ "source": "https://buffalobrads.tablevibe.co/ (menu API: /p/api/s/v2/brand_venues/MJe2yYGj2TgtfJ4x8mC6cnjv/menu, kind=pickup; kind=delivery returned the same)",
+ "venue": "NY Buffalo Brad's Hot Wings - Mango, Mango Avenue, Cebu City",
+ "captured": "2026-11-09",
+ "currency": "PHP",
+ "prices": "centavos",
+ "categories": [
+  {
+   "name": "What's New",
+   "items": [
+    {
+     "sku": "QDUEMJCMWGPQGCR"
+    },
+    {
+     "sku": "AQLCSRRCENYNXNB"
+    },
+    {
+     "sku": "KMIFTVBJHUBGMPV"
+    }
+   ]
+  },
+  {
+   "name": "Chicken",
+   "items": [
+    {
+     "sku": "TRKTKJQUSGOUGYA"
+    },
+    {
+     "sku": "YWUGVRUESHLEIZS"
+    },
+    {
+     "sku": "SUEWRWLTRWRIWAM"
+    },
+    {
+     "sku": "XIAKZKKGEXRKPNT"
+    },
+    {
+     "sku": "SBAEJLEVSVQXYKV"
+    },
+    {
+     "sku": "YJHJUYBLYOQWYEH"
+    },
+    {
+     "sku": "ZGEUZMPTANWNCVY"
+    },
+    {
+     "sku": "PHGHWHUDFCQBSLG"
+    },
+    {
+     "sku": "LKBWCNSDMHBASLN"
+    }
+   ]
+  },
+  {
+   "name": "Hunger Buster",
+   "items": [
+    {
+     "sku": "KLYSQBTSKCHFQAU"
+    },
+    {
+     "sku": "GXFJOUFAHWXCNCD"
+    },
+    {
+     "sku": "ALRUCJLLPVEPXWG"
+    },
+    {
+     "sku": "YFPQDNGHWJEHZZD"
+    },
+    {
+     "sku": "HMFLIWKJODSMMWU"
+    },
+    {
+     "sku": "CMFELFPNAFSOATF"
+    },
+    {
+     "sku": "XDKMDQHPOCFNXYS"
+    },
+    {
+     "sku": "IZLVUHTFCYPMCAN"
+    }
+   ]
+  },
+  {
+   "name": "Breaktime Treats",
+   "items": [
+    {
+     "sku": "KJDGNUMDHTWCMAU"
+    },
+    {
+     "sku": "GNKMNOMYHWOHNVE"
+    },
+    {
+     "sku": "LNSEQJTHZXHHLPK"
+    },
+    {
+     "sku": "XHVWDNGEGHJMMEG"
+    }
+   ]
+  },
+  {
+   "name": "NY Specials",
+   "items": [
+    {
+     "sku": "QMAWCCXENLMUHAE"
+    },
+    {
+     "sku": "WWLSBJBPEWWGDMD"
+    },
+    {
+     "sku": "LMHKISCIPNQNMEA"
+    }
+   ]
+  },
+  {
+   "name": "Pasta",
+   "items": [
+    {
+     "sku": "JHLTMUETGIYIZQE"
+    },
+    {
+     "sku": "VXXTKJOLXKVQPLB"
+    }
+   ]
+  },
+  {
+   "name": "Value Meal",
+   "items": [
+    {
+     "sku": "GHORTDPCBACVQHH"
+    },
+    {
+     "sku": "FMWRWIEZWZIIXJS"
+    },
+    {
+     "sku": "HVKBODJTWMGQEOZ"
+    },
+    {
+     "sku": "MKPUKLMHIMONRWO"
+    },
+    {
+     "sku": "QIUYMJHKANKAZVD"
+    },
+    {
+     "sku": "FHTVSKQNALAXQMY"
+    },
+    {
+     "sku": "XWUATSJAJCEYXYO"
+    },
+    {
+     "sku": "LSBJVADFXRIBHEJ"
+    }
+   ]
+  },
+  {
+   "name": "NY Burgers",
+   "items": [
+    {
+     "sku": "UYEETEQMHZASZGR"
+    },
+    {
+     "sku": "LFWALHFDFNHMYPW"
+    },
+    {
+     "sku": "ZILHFCLMXIYYJXM"
+    },
+    {
+     "sku": "GKTGQSUDMFAYPQL"
+    },
+    {
+     "sku": "ACHFYPMEKWFWFFD"
+    },
+    {
+     "sku": "IDBRVMVOIUMFRRZ"
+    },
+    {
+     "sku": "CGPLHGBJATEEOHE"
+    },
+    {
+     "sku": "MKZMZFOSNYHYTOW"
+    }
+   ]
+  },
+  {
+   "name": "Hotdog and Sausage",
+   "items": [
+    {
+     "sku": "UZLQIBSRQBWDNDC"
+    },
+    {
+     "sku": "NRZLIBKCHPDYCQS"
+    },
+    {
+     "sku": "DIPXASOSBZMZLCX"
+    },
+    {
+     "sku": "FJLHZXCIOSXOYTB"
+    }
+   ]
+  },
+  {
+   "name": "Fries & Sides",
+   "items": [
+    {
+     "sku": "JCFWPAZPSGWLGVB"
+    },
+    {
+     "sku": "WQRQQBPCUSKMKBP"
+    },
+    {
+     "sku": "DFPWYWWTMVQKRSJ"
+    },
+    {
+     "sku": "CZEIWCQBCBAYGQO"
+    },
+    {
+     "sku": "JXOLEZRZLRLFPOB"
+    },
+    {
+     "sku": "JCFLEITFWPUNUYB"
+    },
+    {
+     "sku": "SHHSAZUQYWASFWP"
+    },
+    {
+     "sku": "UUGUTPNIWKTVDFP"
+    },
+    {
+     "sku": "TWBDRYJKTYUUZAP"
+    },
+    {
+     "sku": "FBWHRKAWPRTRZSQ"
+    },
+    {
+     "sku": "HOYENFLJZVYUIKN"
+    },
+    {
+     "sku": "ITBWSGYKHHGMQWL"
+    }
+   ]
+  },
+  {
+   "name": "Coffee Series",
+   "items": [
+    {
+     "sku": "YUNOUUMENSFITET"
+    },
+    {
+     "sku": "VZGZBMMEXNLNUQM"
+    },
+    {
+     "sku": "TGWIWPOIMMVMYOQ"
+    },
+    {
+     "sku": "BNTHFNXJBQTLXHU"
+    },
+    {
+     "sku": "SOAHFXBRVHUDNCD"
+    }
+   ]
+  },
+  {
+   "name": "Beverages",
+   "items": [
+    {
+     "sku": "BCRKPEDVZQBOZYN"
+    },
+    {
+     "sku": "ZGUHUQOZFCDFNFH"
+    },
+    {
+     "sku": "JWHQTHUQTZNZNZZ"
+    },
+    {
+     "sku": "CSLVKVLSBZNXYYO"
+    },
+    {
+     "sku": "CIHSNSEMZWVFBCA"
+    },
+    {
+     "sku": "ZPPKSSBWBJPRKJY"
+    },
+    {
+     "sku": "BDTJEHWWURFQEGV"
+    },
+    {
+     "sku": "KRGNCLXVTKZCPOI"
+    },
+    {
+     "sku": "VHGNYLANNOBYFER"
+    }
+   ]
+  }
+ ],
+ "items": {
+  "QDUEMJCMWGPQGCR": {
+   "name": "NY Umbrella",
+   "description": "Stay dry in style with our NY Umbrella featuring a sturdy frame and reliable canopy Perfect for rainy days in the city with a compact design that fits easily in any bag",
+   "price": 34900,
+   "full_price": 34900,
+   "available": true,
+   "customizations": []
+  },
+  "AQLCSRRCENYNXNB": {
+   "name": "Rainy Day Rush 2026 (Bundle A)",
+   "description": "Bundle A: \r\n1 Half Order Chicken Wings\r\n2 Rice\r\n1 Carbonara\r\n2 Juices (16oz)\r\n1 Free NY Umbrella",
+   "price": 129900,
+   "full_price": 129900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Chicken Flavor (6pcs)",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drink 1",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pineapple 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Orange 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Cucumber Lemonade 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drink 2",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pineapple 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Orange 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Cucumber Lemonade 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "KMIFTVBJHUBGMPV": {
+   "name": "Rainy Day Rush 2026 (Bundle B)",
+   "description": "Bundle B:\r\n1 Carbonara\r\n2 Flavored Fries\r\n2 Juices (16oz)\r\n2 Classic Hotdog\r\n1 Free NY Umbrella",
+   "price": 129900,
+   "full_price": 129900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries (Medium Size) 1",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Cheese",
+       "price": 0
+      },
+      {
+       "name": "Barbecue",
+       "price": 0
+      },
+      {
+       "name": "Sour Cream",
+       "price": 0
+      },
+      {
+       "name": "Original",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Fries (Medium Size) 2",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Cheese",
+       "price": 0
+      },
+      {
+       "name": "Barbecue",
+       "price": 0
+      },
+      {
+       "name": "Sour Cream",
+       "price": 0
+      },
+      {
+       "name": "Original",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drink 1",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pineapple 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Orange 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Cucumber Lemonade 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drink 2",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pineapple 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Orange 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Cucumber Lemonade 16 Oz",
+       "price": 0
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "TRKTKJQUSGOUGYA": {
+   "name": "Garlic Parmesan",
+   "description": "Chicken wings tossed in a creamy and cheesy sauce with the right balance of garlic taste and mild spice.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "YWUGVRUESHLEIZS": {
+   "name": "Classic Buffalo ",
+   "description": "Chicken wings tossed in a perfect combination of our special hot sauce and butter, giving its rich flavor and spice.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "SUEWRWLTRWRIWAM": {
+   "name": "Honey Garlic",
+   "description": "Chicken wings tossed in a perfect balance of sweet pure honey and garlicky sauce.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "XIAKZKKGEXRKPNT": {
+   "name": "Honey Mustard",
+   "description": "Chicken wings tossed in herbs and spices, blended with mustard, and sweetened with pure honey.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "SBAEJLEVSVQXYKV": {
+   "name": "BBQ Lime",
+   "description": "Chicken wings tossed in a unique and Asian-inspired barbecue sauce infused with lime.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "YJHJUYBLYOQWYEH": {
+   "name": "Brad's Gravy",
+   "description": "Chicken wings tossed in a flavorful and meaty sauce made from meat stock and mushroom with hints of vegetables and aromatics.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "ZGEUZMPTANWNCVY": {
+   "name": "Sweet and Spicy",
+   "description": "Chicken wings tossed in a tangy sauce with a combination of pure honey and specially blended hot sauce.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "PHGHWHUDFCQBSLG": {
+   "name": "Smokey BBQ",
+   "description": "Chicken wings tossed in a mild smoky flavored barbecue sauce sprinkled with different herbs and spices.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "LKBWCNSDMHBASLN": {
+   "name": "Cheezy",
+   "description": "A rich, creamy cheese sauce, subtly enhanced with a delicate hint of unique flavors and aroma.",
+   "price": 39800,
+   "full_price": 39800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Portion Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Half (6 Pcs)",
+       "price": 0
+      },
+      {
+       "name": "Full (10 Pcs)",
+       "price": 22700
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Chicken",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Chicken Wings",
+       "price": 0
+      },
+      {
+       "name": "Boneless Chicken",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Level of Hotness",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Lite",
+       "price": 2900
+      },
+      {
+       "name": "Moderate",
+       "price": 2900
+      },
+      {
+       "name": "Hot ",
+       "price": 2900
+      },
+      {
+       "name": "Wild",
+       "price": 2900
+      },
+      {
+       "name": "Insane",
+       "price": 2900
+      }
+     ]
+    },
+    {
+     "display_name": "Extra Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "No Extra Sauce",
+       "price": 0
+      },
+      {
+       "name": "Classic Buffalo Small",
+       "price": 5500
+      },
+      {
+       "name": "Garlic Parmesan Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Garlic Small",
+       "price": 5500
+      },
+      {
+       "name": "Brad's Gravy Small",
+       "price": 5500
+      },
+      {
+       "name": "BBQ Lime Small",
+       "price": 5500
+      },
+      {
+       "name": "Honey Mustard Small",
+       "price": 5500
+      },
+      {
+       "name": "Sweet Spicy Small",
+       "price": 5500
+      },
+      {
+       "name": "Smokey BBQ Small",
+       "price": 5500
+      },
+      {
+       "name": "Cheezy Small",
+       "price": 5500
+      },
+      {
+       "name": "Salted Egg Small",
+       "price": 5500
+      },
+      {
+       "name": "Classic Buffalo Large",
+       "price": 13500
+      },
+      {
+       "name": "Garlic Parmesan Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Garlic Large",
+       "price": 13500
+      },
+      {
+       "name": "Brad's Gravy Large",
+       "price": 13500
+      },
+      {
+       "name": "BBQ Lime Large",
+       "price": 13500
+      },
+      {
+       "name": "Honey Mustard Large",
+       "price": 13500
+      },
+      {
+       "name": "Sweet Spicy Large",
+       "price": 13500
+      },
+      {
+       "name": "Smokey BBQ Large",
+       "price": 13500
+      },
+      {
+       "name": "Cheezy Large",
+       "price": 13500
+      },
+      {
+       "name": "Salted Egg Large",
+       "price": 13500
+      }
+     ]
+    },
+    {
+     "display_name": "Add-ons",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 99999,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi",
+       "price": 6900
+      },
+      {
+       "name": "7-Up",
+       "price": 6900
+      },
+      {
+       "name": "Mountain Dew",
+       "price": 6900
+      },
+      {
+       "name": "Cucumber Lemonade Juice",
+       "price": 7900
+      },
+      {
+       "name": "Strawberry Red Tea",
+       "price": 7900
+      },
+      {
+       "name": "Pineapple Juice",
+       "price": 7900
+      },
+      {
+       "name": "Lemon Iced Tea Juice",
+       "price": 7900
+      },
+      {
+       "name": "NY Fries",
+       "price": 8900
+      }
+     ]
+    }
+   ]
+  },
+  "KLYSQBTSKCHFQAU": {
+   "name": "Brad's Angus Burger Meal",
+   "description": "Brad's specially grilled Angus burger patty topped with juicy tomato, lettuce and cheese, infused with aioli and sweet barbecue sauce, and served with fries and drink.",
+   "price": 40900,
+   "full_price": 40900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "GXFJOUFAHWXCNCD": {
+   "name": "BLT Burger Meal",
+   "description": "Juicy grilled quarter pounder patty with bacon, lettuce, and tomato, made perfect with aioli barbecue sauce, and served with fries and a drink.",
+   "price": 36900,
+   "full_price": 36900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "ALRUCJLLPVEPXWG": {
+   "name": "Smokey BBQ Chicken Burger Meal",
+   "description": "Smokey, savory, crispy and golden chicken fillet topped with Buffalo Brad's special smokey BBQ sauce, and paired with NY french fries and a drink.",
+   "price": 34800,
+   "full_price": 34800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "YFPQDNGHWJEHZZD": {
+   "name": "Honey Garlic Chicken Burger Meal",
+   "description": "Crispy and golden chicken fillet glazed with Buffalo Brad's sweet and tangy special honey garlic sauce, and paired with NY french fries and a drink.",
+   "price": 34800,
+   "full_price": 34800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "HMFLIWKJODSMMWU": {
+   "name": "Buffalo Chicken Burger Meal",
+   "description": "Succulent chicken thigh fillet sandwich on a bed of fresh lettuce served with our signature Classic Buffalo sauce, fries and a drink",
+   "price": 34800,
+   "full_price": 34800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "CMFELFPNAFSOATF": {
+   "name": "Cheezy Chicken Burger Meal",
+   "description": "Crispy and golden chicken fillet, topped with Buffalo Brad's special cheezy sauce all tucked between soft buns, and paired with NY french fries and a drink.",
+   "price": 34800,
+   "full_price": 34800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "XDKMDQHPOCFNXYS": {
+   "name": "The Quarterback Burger Meal",
+   "description": "Classic grilled quarter pounder patty deliciously topped with cheese, basted with Brad's thousand island sauce, and served with fries and a drink.",
+   "price": 28200,
+   "full_price": 28200,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "IZLVUHTFCYPMCAN": {
+   "name": "Rookie Burger Meal",
+   "description": "Our mouthwatering burger perfectly topped with our signature aioli sauce and paired with fries and drink for an unparalleled burst of flavor.",
+   "price": 18800,
+   "full_price": 18800,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "KJDGNUMDHTWCMAU": {
+   "name": "Hungarian Sandwich Meal",
+   "description": "Juicy and tender sausage topped with white onion, drizzled with sausage sauce, and served with fries and a drink.",
+   "price": 27500,
+   "full_price": 27500,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "GNKMNOMYHWOHNVE": {
+   "name": "Chili Cheesedog Meal",
+   "description": "An appetizing cheese hotdog smothered with chili con carne, mustard, ketchup and mayo, sprinkled with cheddar cheese, and served with fries and a drink.",
+   "price": 25500,
+   "full_price": 25500,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "LNSEQJTHZXHHLPK": {
+   "name": "Jalapeño Cheesedog Meal",
+   "description": "Cheesy hotdog covered with nacho cheese, mustard, ketchup, mayo, pickled jalapeño and onion bits, and served with fries and a drink.",
+   "price": 21500,
+   "full_price": 21500,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "XHVWDNGEGHJMMEG": {
+   "name": "Classic Hotdog Meal",
+   "description": "Classic tasty grilled beef hotdog with mayo, ketchup and mustard, and served with fries and a drink.",
+   "price": 17500,
+   "full_price": 17500,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "QMAWCCXENLMUHAE": {
+   "name": "NY Ribs ",
+   "description": "Tender and juicy spare ribs smothered with the signature NY original or spicy sauce.",
+   "price": 39900,
+   "full_price": 39900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Ribs",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Original",
+       "price": 0
+      },
+      {
+       "name": "Spicy",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "WWLSBJBPEWWGDMD": {
+   "name": "10-Pc. Chicken Nuggets",
+   "description": "10-piece deep fried breaded chicken meat served with your choice of flavored sauce.",
+   "price": 24900,
+   "full_price": 24900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "LMHKISCIPNQNMEA": {
+   "name": "6-Pc. Chicken Nuggets",
+   "description": "6-piece deep fried breaded chicken meat served with your choice of flavored sauce.",
+   "price": 16900,
+   "full_price": 16900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "JHLTMUETGIYIZQE": {
+   "name": "Spaghetti",
+   "description": "Spaghetti pasta topped with sweet-style spaghetti sauce, cheddar cheese and juicy meatballs.",
+   "price": 18600,
+   "full_price": 18600,
+   "available": true,
+   "customizations": []
+  },
+  "VXXTKJOLXKVQPLB": {
+   "name": "Carbonara",
+   "description": "Fettuccini pasta topped with creamy carbonara sauce and mushroom slices, and garnished with parmesan cheese and parsley flakes.",
+   "price": 18600,
+   "full_price": 18600,
+   "available": true,
+   "customizations": []
+  },
+  "GHORTDPCBACVQHH": {
+   "name": "VM1 Burger Steak Solo",
+   "description": "Juicy and tender 2-piece burger steaks served with rice and rich savory gravy a satisfying classic meal done the Buffalo Brad's way.",
+   "price": 12400,
+   "full_price": 12400,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "FMWRWIEZWZIIXJS": {
+   "name": "VM2 Chicken Nuggets Solo",
+   "description": "Crispy and golden 4-piece chicken nuggets paired with rice and your choice of dip. Perfectly bite-sized, big on flavor.",
+   "price": 12400,
+   "full_price": 12400,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "HVKBODJTWMGQEOZ": {
+   "name": "VM3 Boneless Chicken Solo",
+   "description": "Get 2 pieces of our signature boneless chicken in your favorite sauce, served with rice. All the flavor, none of the bones!",
+   "price": 12400,
+   "full_price": 12400,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "MKPUKLMHIMONRWO": {
+   "name": "VM4 Chicken Wings Solo",
+   "description": "Savor 2 pieces of NY Buffalo Brad's iconic chicken wings tossed in your chosen sauce served with rice for a bold, flavorful meal.",
+   "price": 12400,
+   "full_price": 12400,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    }
+   ]
+  },
+  "QIUYMJHKANKAZVD": {
+   "name": "VM1 Burger Steak Meal",
+   "description": "Juicy and tender 2-piece burger steaks served with rice and rich savory gravy a satisfying classic meal done the Buffalo Brad's way",
+   "price": 19900,
+   "full_price": 19900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "FHTVSKQNALAXQMY": {
+   "name": "VM2 Chicken Nuggets Meal",
+   "description": "Crispy and golden 4-piece chicken nuggets paired with rice and your choice of dip. Perfectly bite-sized, big on flavor",
+   "price": 19900,
+   "full_price": 19900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "XWUATSJAJCEYXYO": {
+   "name": "VM3 Boneless Chicken Meal",
+   "description": "Get 2 pieces of our signature boneless chicken in your favorite sauce, served with rice. All the flavor, none of the bones!",
+   "price": 19900,
+   "full_price": 19900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "LSBJVADFXRIBHEJ": {
+   "name": "VM4 Chicken Wings Meal",
+   "description": "Savor 2 pieces of NY Buffalo Brad's iconic chicken wings tossed in your chosen sauce served with rice for a bold, flavorful meal.",
+   "price": 19900,
+   "full_price": 19900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Choice of Sauce",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 1,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Classic Buffalo ",
+       "price": 0
+      },
+      {
+       "name": "Garlic Parmesan ",
+       "price": 0
+      },
+      {
+       "name": "Honey Garlic ",
+       "price": 0
+      },
+      {
+       "name": "Brad's Gravy ",
+       "price": 0
+      },
+      {
+       "name": "BBQ Lime ",
+       "price": 0
+      },
+      {
+       "name": "Honey Mustard ",
+       "price": 0
+      },
+      {
+       "name": "Sweet Spicy ",
+       "price": 0
+      },
+      {
+       "name": "Smokey BBQ ",
+       "price": 0
+      },
+      {
+       "name": "Cheezy ",
+       "price": 0
+      },
+      {
+       "name": "Salted Egg ",
+       "price": 0
+      },
+      {
+       "name": "Plain",
+       "price": 0
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Fries",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small Fries",
+       "price": 0
+      },
+      {
+       "name": "Medium Fries",
+       "price": 2000
+      },
+      {
+       "name": "Large Fries",
+       "price": 3000
+      }
+     ]
+    },
+    {
+     "display_name": "Choice of Drinks",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Pepsi 8oz",
+       "price": 0
+      },
+      {
+       "name": "Mountain Dew 8oz",
+       "price": 0
+      },
+      {
+       "name": "7-Up 8oz",
+       "price": 0
+      },
+      {
+       "name": "NY Black Coffee (Hot)",
+       "price": 0
+      },
+      {
+       "name": "Pepsi 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Mountain Dew 16oz",
+       "price": 1000
+      },
+      {
+       "name": "7-Up 16oz",
+       "price": 1000
+      },
+      {
+       "name": "Pineapple Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Lemon Iced Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Strawberry Red Tea 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Orange Juice 8oz",
+       "price": 1000
+      },
+      {
+       "name": "Pepsi 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Mountain Dew 22oz",
+       "price": 2000
+      },
+      {
+       "name": "7-Up 22oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Lemon Iced Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Strawberry Red Tea 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Orange Juice 16oz",
+       "price": 2000
+      },
+      {
+       "name": "Pineapple Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Lemon Iced Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Cucumber Lemonade Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Strawberry Red Tea 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Orange Juice 22oz",
+       "price": 3000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 6900
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 6900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 6900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 6900
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 6900
+      }
+     ]
+    },
+    {
+     "display_name": "Best Value Offer",
+     "kind": "multi",
+     "required": false,
+     "min_choices": null,
+     "max_choices": 6,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Bavarian Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Chocolate Waffle",
+       "price": 5900
+      },
+      {
+       "name": "Classic Hotdog",
+       "price": 11500
+      },
+      {
+       "name": "Rookie Burger",
+       "price": 11900
+      }
+     ]
+    }
+   ]
+  },
+  "UYEETEQMHZASZGR": {
+   "name": "Brad's Angus Burger",
+   "description": "Brad's specially grilled Angus burger patty topped with juicy tomato, lettuce and cheese, and infused with aioli and sweet barbecue sauce.",
+   "price": 37900,
+   "full_price": 37900,
+   "available": true,
+   "customizations": []
+  },
+  "LFWALHFDFNHMYPW": {
+   "name": "BLT Burger",
+   "description": "Juicy grilled quarter pounder patty with bacon, lettuce, and tomato, made perfect with aioli and sweet barbecue sauce.",
+   "price": 30900,
+   "full_price": 30900,
+   "available": true,
+   "customizations": []
+  },
+  "ZILHFCLMXIYYJXM": {
+   "name": "Smokey BBQ Chicken Burger",
+   "description": "Smoky, savory, crispy and golden chicken fillet topped with Buffalo Brad's special smokey BBQ sauce.",
+   "price": 28800,
+   "full_price": 28800,
+   "available": true,
+   "customizations": []
+  },
+  "GKTGQSUDMFAYPQL": {
+   "name": "Buffalo Chicken Burger",
+   "description": "Succulent chicken thigh fillet sandwich on a bed of fresh lettuce served with our signature Classic Buffalo sauce.",
+   "price": 28800,
+   "full_price": 28800,
+   "available": true,
+   "customizations": []
+  },
+  "ACHFYPMEKWFWFFD": {
+   "name": "Cheezy Chicken Burger",
+   "description": "Crispy and golden chicken fillet, topped with Buffalo Brad's special cheezy sauce all tucked between soft buns.",
+   "price": 28800,
+   "full_price": 28800,
+   "available": true,
+   "customizations": []
+  },
+  "IDBRVMVOIUMFRRZ": {
+   "name": "Honey Garlic Chicken Burger",
+   "description": "Crispy and golden chicken fillet glazed with Buffalo Brad's sweet and tangy special honey garlic sauce.",
+   "price": 28800,
+   "full_price": 28800,
+   "available": true,
+   "customizations": []
+  },
+  "CGPLHGBJATEEOHE": {
+   "name": "The Quarterback Burger",
+   "description": "Classic grilled quarter pounder patty deliciously topped with cheese and basted with Brad's thousand island sauce.",
+   "price": 20900,
+   "full_price": 20900,
+   "available": true,
+   "customizations": []
+  },
+  "MKZMZFOSNYHYTOW": {
+   "name": "Rookie Burger",
+   "description": "Our mouthwatering burger perfectly topped with our signature aioli sauce for an unparalleled burst of flavor.",
+   "price": 11900,
+   "full_price": 11900,
+   "available": true,
+   "customizations": []
+  },
+  "UZLQIBSRQBWDNDC": {
+   "name": "Hungarian Sausage Sandwich",
+   "description": "Juicy and tender sausage topped with white onion and drizzled with sausage sauce.",
+   "price": 21500,
+   "full_price": 21500,
+   "available": true,
+   "customizations": []
+  },
+  "NRZLIBKCHPDYCQS": {
+   "name": "Chili Cheesedog",
+   "description": "An appetizing cheese hotdog smothered with chili con carne, mustard, ketchup and mayo, and sprinkled with cheddar cheese.",
+   "price": 19500,
+   "full_price": 19500,
+   "available": true,
+   "customizations": []
+  },
+  "DIPXASOSBZMZLCX": {
+   "name": "Jalapeño Cheesedog",
+   "description": "Cheesy hotdog covered with nacho cheese, mustard, ketchup, mayo, pickled jalapeño and onion bits.",
+   "price": 15500,
+   "full_price": 15500,
+   "available": true,
+   "customizations": []
+  },
+  "FJLHZXCIOSXOYTB": {
+   "name": "Classic Hotdog",
+   "description": "Classic tasty grilled beef hotdog with mayo, ketchup and mustard.",
+   "price": 11500,
+   "full_price": 11500,
+   "available": true,
+   "customizations": []
+  },
+  "JCFWPAZPSGWLGVB": {
+   "name": "Mozzarella Sticks",
+   "description": "Deep-fried mozzarella with a golden and crispy texture outside, gooey and stretchy melted cheese texture inside, and paired with marinara sauce.",
+   "price": 35900,
+   "full_price": 35900,
+   "available": true,
+   "customizations": []
+  },
+  "WQRQQBPCUSKMKBP": {
+   "name": "Sunrise Waffle",
+   "description": "A savory delight filled with tender ham, egg, and cheese, all nestled in a warm and soft waffle. Perfect for breakfast or anytime.",
+   "price": 10900,
+   "full_price": 10900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Coffee Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 7000
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 7000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 7000
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 9900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 9900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 9900
+      }
+     ]
+    }
+   ]
+  },
+  "DFPWYWWTMVQKRSJ": {
+   "name": "Bavarian Waffle",
+   "description": "A soft, golden waffle filled with smooth, creamy Bavarian filling for an indulgent experience in every bite.",
+   "price": 5900,
+   "full_price": 5900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Coffee Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 7000
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 7000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 7000
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 9900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 9900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 9900
+      }
+     ]
+    }
+   ]
+  },
+  "CZEIWCQBCBAYGQO": {
+   "name": "Chocolate Waffle",
+   "description": "A warm, soft waffle filled with rich and perfect blend of chocolate sweetness in every bite. Perfect for satisfying your sweet cravings.",
+   "price": 5900,
+   "full_price": 5900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Coffee Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 7000
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 7000
+      },
+      {
+       "name": "Iced Americano",
+       "price": 7000
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 9900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 9900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 9900
+      }
+     ]
+    }
+   ]
+  },
+  "JXOLEZRZLRLFPOB": {
+   "name": "Sunrise Waffle Combo",
+   "description": "A savory delight filled with tender ham, egg, and cheese, all nestled in a warm and soft waffle with your favorite iced coffee. Perfect for breakfast or anytime.",
+   "price": 17900,
+   "full_price": 17900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Combo Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 0
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 0
+      },
+      {
+       "name": "Iced Americano",
+       "price": 0
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 2900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 2900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 2900
+      }
+     ]
+    }
+   ]
+  },
+  "JCFLEITFWPUNUYB": {
+   "name": "Chocolate Waffle Combo",
+   "description": "A warm, soft waffle filled with rich and perfect blend of chocolate sweetness in every bite. Perfect for satisfying your sweet cravings with your favorite iced coffee.",
+   "price": 13900,
+   "full_price": 13900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Combo Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 0
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 0
+      },
+      {
+       "name": "Iced Americano",
+       "price": 0
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 2900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 2900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 2900
+      }
+     ]
+    }
+   ]
+  },
+  "SHHSAZUQYWASFWP": {
+   "name": "Bavarian Waffle Combo",
+   "description": "A soft, golden waffle filled with smooth, creamy Bavarian filling paired with your favorite iced coffee for an indulgent experience in every bite.",
+   "price": 13900,
+   "full_price": 13900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Waffle Combo Upgrade",
+     "kind": "single",
+     "required": false,
+     "min_choices": 0,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Hot Coffee",
+       "price": 0
+      },
+      {
+       "name": "Iced Sweet Black",
+       "price": 0
+      },
+      {
+       "name": "Iced Americano",
+       "price": 0
+      },
+      {
+       "name": "Iced Vanilla",
+       "price": 2900
+      },
+      {
+       "name": "Iced Hazelnut",
+       "price": 2900
+      },
+      {
+       "name": "Iced Dark Mocha",
+       "price": 2900
+      }
+     ]
+    }
+   ]
+  },
+  "UUGUTPNIWKTVDFP": {
+   "name": "French Fries Sour Cream",
+   "description": "Crispy golden thick-cut fries with sour cream flavor.",
+   "price": 16500,
+   "full_price": 16500,
+   "available": true,
+   "customizations": []
+  },
+  "TWBDRYJKTYUUZAP": {
+   "name": "French Fries BBQ",
+   "description": "Crispy golden thick-cut fries with barbecue flavor.",
+   "price": 16500,
+   "full_price": 16500,
+   "available": true,
+   "customizations": []
+  },
+  "FBWHRKAWPRTRZSQ": {
+   "name": "French Fries Cheese",
+   "description": "Crispy golden thick-cut fries with cheese flavor.",
+   "price": 16500,
+   "full_price": 16500,
+   "available": true,
+   "customizations": []
+  },
+  "HOYENFLJZVYUIKN": {
+   "name": "NY Fries",
+   "description": "Crispy golden thick-cut fries.",
+   "price": 8900,
+   "full_price": 8900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "Small",
+       "price": 0
+      },
+      {
+       "name": "Medium ",
+       "price": 6000
+      },
+      {
+       "name": "Large",
+       "price": 8000
+      }
+     ]
+    }
+   ]
+  },
+  "ITBWSGYKHHGMQWL": {
+   "name": "Plain Rice",
+   "description": "Plain white rice topped with parsley flakes.",
+   "price": 4900,
+   "full_price": 4900,
+   "available": true,
+   "customizations": []
+  },
+  "YUNOUUMENSFITET": {
+   "name": "Iced Dark Mocha",
+   "description": "For reference only: Refreshing iced beverage with dark chocolate and espresso.",
+   "price": 16900,
+   "full_price": 16900,
+   "available": true,
+   "customizations": []
+  },
+  "VZGZBMMEXNLNUQM": {
+   "name": "Iced Vanilla",
+   "description": "For reference only: Indulge in the euphoric blend of sweet vanilla in this refreshing iced drink.",
+   "price": 16900,
+   "full_price": 16900,
+   "available": true,
+   "customizations": []
+  },
+  "TGWIWPOIMMVMYOQ": {
+   "name": "Iced Hazelnut",
+   "description": "For reference only: Indulge in the rich and nutty goodness of Hazelnut, a delightful flavor that adds a touch of warmth and sophistication to your favorite beverages.",
+   "price": 16900,
+   "full_price": 16900,
+   "available": true,
+   "customizations": []
+  },
+  "BNTHFNXJBQTLXHU": {
+   "name": "Iced Americano",
+   "description": "For reference: Enjoy the bold and invigorating taste of this Iced Americano.",
+   "price": 11900,
+   "full_price": 11900,
+   "available": true,
+   "customizations": []
+  },
+  "SOAHFXBRVHUDNCD": {
+   "name": "Iced Sweet Black",
+   "description": "For reference: Iced sweet black, a cold and slightly sweetened black coffee.",
+   "price": 11900,
+   "full_price": 11900,
+   "available": true,
+   "customizations": []
+  },
+  "BCRKPEDVZQBOZYN": {
+   "name": "Cucumber Lemonade Juice",
+   "description": "Cucumber Lemonade",
+   "price": 7900,
+   "full_price": 7900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "ZGUHUQOZFCDFNFH": {
+   "name": "Pineapple Juice",
+   "description": "For reference only: Quench your thirst with Pineapple Juice, a refreshing beverage bursting with tropical flavor.",
+   "price": 7900,
+   "full_price": 7900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "JWHQTHUQTZNZNZZ": {
+   "name": "Strawberry Red Tea",
+   "description": "For reference: Refresh yourself with this pure and tangy Strawberry Red Tea, a natural sweetness in every sip.",
+   "price": 7900,
+   "full_price": 7900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "CSLVKVLSBZNXYYO": {
+   "name": "Lemon Iced Tea Juice",
+   "description": "Iced Tea",
+   "price": 7900,
+   "full_price": 7900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "CIHSNSEMZWVFBCA": {
+   "name": "Pepsi",
+   "description": "Satisfy your thirst with the ultimate refreshment of Pepsi, as its unique blend of flavors and effervescence provides a revitalizing and satisfying drinking experience.",
+   "price": 6900,
+   "full_price": 6900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "ZPPKSSBWBJPRKJY": {
+   "name": "7-Up",
+   "description": "Lemon-lime-flavored soda.",
+   "price": 6900,
+   "full_price": 6900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "BDTJEHWWURFQEGV": {
+   "name": "Mountain Dew",
+   "description": "Experience the bold and exhilarating taste of Mountain Dew, offering a refreshing and energizing beverage.",
+   "price": 6900,
+   "full_price": 6900,
+   "available": true,
+   "customizations": [
+    {
+     "display_name": "Size",
+     "kind": "single",
+     "required": true,
+     "min_choices": 1,
+     "max_choices": 1,
+     "free_choices": 0,
+     "limit_per_option": 1,
+     "options": [
+      {
+       "name": "8oz",
+       "price": 0
+      },
+      {
+       "name": "16oz",
+       "price": 4000
+      },
+      {
+       "name": "22oz",
+       "price": 6000
+      }
+     ]
+    }
+   ]
+  },
+  "KRGNCLXVTKZCPOI": {
+   "name": "Bottled Water",
+   "description": "Bottled drinking water",
+   "price": 4900,
+   "full_price": 4900,
+   "available": true,
+   "customizations": []
+  },
+  "VHGNYLANNOBYFER": {
+   "name": "Hot Coffee",
+   "description": "Hot black coffee",
+   "price": 4900,
+   "full_price": 4900,
+   "available": true,
+   "customizations": []
+  }
+ }
+}
