@@ -6,11 +6,13 @@ import { createStaffClient } from "@/lib/supabase/server";
 // A value import, not a type: HOLD_REASONS is read at runtime to narrow what
 // the database sent.
 import { HOLD_REASONS } from "./menu-types";
+import { holdIsLive } from "./menu-browse";
 import type {
   OptionRule,
   HoldKind,
   HoldReason,
   ManagedCategory,
+  ManagedHold,
   ManagedImage,
   ManagedItem,
   ManagedMenu,
@@ -41,11 +43,14 @@ const bySortOrder = <T extends { sortOrder: number }>(a: T, b: T) => a.sortOrder
 /**
  * Rows in, tree out. Pure, so the grouping is unit tested without a database.
  *
+ * `now` decides which holds are still running. One that has passed its end is
+ * dropped here, once, rather than at every screen that reads `item.holds`.
+ *
  * price_cents arrives from PostgREST as a number for bigint columns within
  * range, but Number() is applied anyway so a string can never reach a form
  * input and become "32900" + 100.
  */
-export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
+export function assembleManagedMenu(rows: ManagedMenuRows, now: number = Date.now()): ManagedMenu {
   const branchNames = new Map(rows.branches.map((branch) => [branch.id, branch.short_name]));
 
   const variationsByItem = new Map<string, ManagedVariation[]>();
@@ -123,8 +128,7 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
 
   const holdsByItem = new Map<string, ManagedItem["holds"]>();
   for (const row of rows.holds) {
-    const list = holdsByItem.get(row.item_id) ?? [];
-    list.push({
+    const hold: ManagedHold = {
       branchId: row.branch_id,
       branchShortName: branchNames.get(row.branch_id) ?? "Another branch",
       kind: row.kind as HoldKind,
@@ -135,7 +139,15 @@ export function assembleManagedMenu(rows: ManagedMenuRows): ManagedMenu {
       // exists for, which renders as blank rather than as anything a person
       // could read.
       reason: HOLD_REASONS.includes(row.reason as HoldReason) ? (row.reason as HoldReason) : null,
-    });
+    };
+    // Nothing sweeps a hold that has run out (0051), so last night's "sold
+    // out for today" is still a row this morning while the storefront sells
+    // the item. Kept, it showed a Sold out badge, counted under the Sold out
+    // chip, and opened the Availability control with that counter unticked.
+    // Saving the counter again is unaffected: the write is an upsert.
+    if (!holdIsLive(hold, now)) continue;
+    const list = holdsByItem.get(row.item_id) ?? [];
+    list.push(hold);
     holdsByItem.set(row.item_id, list);
   }
 
