@@ -24,6 +24,7 @@ import {
   WING_HEAT_GROUP_SLUG,
 } from "@/lib/menu";
 import { telHref } from "@/lib/phone";
+import { MenuLiveRefresh } from "@/components/menu/MenuLiveRefresh";
 
 /**
  * The landing page.
@@ -219,6 +220,7 @@ export default async function Home() {
   return (
     <>
       <ScrollReveal />
+      <MenuLiveRefresh />
       {/* A refresh of this page starts at the hero rather than wherever the
           browser last left it. */}
       <HomeTopOnReload />

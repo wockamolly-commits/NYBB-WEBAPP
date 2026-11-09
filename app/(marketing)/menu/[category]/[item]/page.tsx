@@ -9,6 +9,7 @@ import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { formatPesoCompact, formatPesoRange } from "@/lib/format";
 import { findCategory, getStorefrontMenu } from "@/lib/menu";
 import type { MenuItem } from "@/lib/menu/types";
+import { MenuLiveRefresh } from "@/components/menu/MenuLiveRefresh";
 
 type Params = { category: string; item: string };
 
@@ -79,6 +80,7 @@ export default async function ItemPage({ params }: { params: Promise<Params> }) 
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <MenuLiveRefresh />
       <TextLink href={`/menu/${category.slug}`} tone="light">
         Back to {category.name}
       </TextLink>

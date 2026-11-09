@@ -123,15 +123,64 @@ describe("hold aware storefront readers", () => {
     expect(await menuSlugs(db, null)).toEqual(["fries"]);
   });
 
-  it("hides nothing when no branch is active at all", async () => {
+  // 0105. This used to read "hides nothing when no branch is active at all".
+  // That is how NY Umbrella and both Rainy Day Rush bundles came to be listed
+  // as orderable on 2026-11-09 while the workspace badged them sold out: every
+  // counter had been switched off, and with it every hold.
+  it("keeps a hold standing when no branch is active at all", async () => {
     const wings = await itemId(db, "chicken-wings");
     const pilot = await branchId(db, "pilot");
     await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
     await db.exec("update branches set is_active = false");
 
-    // With nothing trading there is no counter whose stock could be out, so
-    // resolve_pickup_branch_id(null) returns null and the availability call
-    // sees a null branch, which hides nothing.
+    // No branch named: held anywhere is held, because nothing trades.
+    expect(await menuSlugs(db, null)).toEqual(["fries"]);
+    // The closed counter that holds it still says so by name.
+    expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
+    // A closed counter that never held it does not.
+    expect(await menuSlugs(db, "other")).toEqual(["chicken-wings", "fries"]);
+  });
+
+  it("forgets nothing when the store closes and reopens", async () => {
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
+    await db.exec("update branches set is_active = false");
+    expect(await menuSlugs(db, null)).toEqual(["fries"]);
+
+    // Reopened, 0102's rule is back: held at one trading counter of two
+    // still shows to a customer who has not chosen, and not at that counter.
+    await db.exec("update branches set is_active = true where slug in ('pilot', 'other')");
+    expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
+    expect(await menuSlugs(db, "pilot")).toEqual(["fries"]);
+  });
+
+  // 0106. An open menu page refreshes on this signal, so a hold reaches it
+  // without a reload. Empty payload: the page re-reads the menu itself.
+  it("signals the public menu topic when a hold is set or lifted", async () => {
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    const sent = async () =>
+      (await db.query<{ n: number }>(
+        "select count(*)::int as n from realtime.sent_messages where topic = 'menu' and event = 'changed' and not private",
+      )).rows[0]!.n;
+
+    const before = await sent();
+    await asUser(db, CASHIER, `select staff_set_menu_item_hold('${wings}', '${pilot}', 'indefinite', null, 'out_of_stock')`);
+    const afterSet = await sent();
+    expect(afterSet).toBeGreaterThan(before);
+    await db.exec(`delete from menu_item_branch_holds where item_id = '${wings}'`);
+    expect(await sent()).toBeGreaterThan(afterSet);
+  });
+
+  it("ignores a hold that has run out, with the store closed", async () => {
+    const wings = await itemId(db, "chicken-wings");
+    const pilot = await branchId(db, "pilot");
+    await db.exec(
+      `insert into menu_item_branch_holds (item_id, branch_id, kind, unavailable_until)
+       values ('${wings}', '${pilot}', 'until', now() - interval '1 hour')`,
+    );
+    await db.exec("update branches set is_active = false");
     expect(await menuSlugs(db, null)).toEqual(["chicken-wings", "fries"]);
   });
 
