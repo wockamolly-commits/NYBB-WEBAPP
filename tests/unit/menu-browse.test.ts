@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   browseMenu,
+  holdIsLive,
   itemMatchesQuery,
   menuBrowseSearch,
   normaliseSearchText,
@@ -110,7 +111,7 @@ describe("browseMenu", () => {
 
   it("counts each status chip as what pressing it would leave", () => {
     const { statusCounts } = browseMenu(menu, none);
-    expect(statusCounts).toEqual({ all: 4, "sold-out": 1, "off-menu": 2, featured: 1 });
+    expect(statusCounts).toEqual({ all: 4, available: 1, "sold-out": 1, "off-menu": 2, featured: 1 });
   });
 
   it("counts an item in a switched off category as off the menu", () => {
@@ -128,7 +129,50 @@ describe("browseMenu", () => {
   it("counts categories after the search and status, and status chips inside the category", () => {
     const result = browseMenu(menu, { ...none, categoryId: "wings", status: "sold-out" });
     expect(result.categoryCounts).toEqual({ wings: 1, sides: 0, drinks: 0, empty: 0 });
-    expect(result.statusCounts).toEqual({ all: 2, "sold-out": 1, "off-menu": 0, featured: 1 });
+    expect(result.statusCounts).toEqual({ all: 2, available: 1, "sold-out": 1, "off-menu": 0, featured: 1 });
+  });
+});
+
+describe("the available filter", () => {
+  const now = Date.parse("2026-11-09T04:00:00Z");
+  const timed = (unavailableUntil: string | null): ManagedItem =>
+    item({
+      id: "timed",
+      name: "Timed Wings",
+      holds: [{ branchId: "b", branchShortName: "IT Park", kind: "today", unavailableUntil, reason: null }],
+    });
+
+  it("keeps only items on the menu, in a category that is on, with no hold", () => {
+    const result = browseMenu(menu, { ...none, status: "available" }, now);
+    expect(result.sections.flatMap((s) => s.items.map((i) => i.id))).toEqual(["gravy"]);
+  });
+
+  it("stops counting a hold whose end has passed, as menu_item_is_available() does", () => {
+    const yesterday = timed("2026-11-08T15:59:00Z");
+    const tonight = timed("2026-11-09T15:59:00Z");
+    expect(holdIsLive(yesterday.holds[0]!, now)).toBe(false);
+    expect(holdIsLive(tonight.holds[0]!, now)).toBe(true);
+    const state: MenuBrowseState = { ...none, status: "available" };
+    expect(browseMenu([category("w", "Wings", [yesterday])], state, now).shown).toBe(1);
+    expect(browseMenu([category("w", "Wings", [tonight])], state, now).shown).toBe(0);
+  });
+
+  it("treats a timed hold with no end as over, matching null > now() in SQL", () => {
+    expect(holdIsLive(timed(null).holds[0]!, now)).toBe(false);
+  });
+
+  it("combines with the search and the category", () => {
+    expect(browseMenu(menu, { query: "classic", categoryId: null, status: "available" }, now).shown).toBe(0);
+    expect(browseMenu(menu, { query: "gravy", categoryId: "wings", status: "available" }, now).shown).toBe(1);
+    const sides = browseMenu(menu, { ...none, categoryId: "sides", status: "available" }, now);
+    expect(sides.shown).toBe(0);
+    expect(sides.sections.map((s) => s.category.id)).toEqual(["sides"]);
+  });
+
+  it("round trips through the address", () => {
+    const state: MenuBrowseState = { ...none, status: "available" };
+    expect(menuBrowseSearch(state, menu)).toBe("?status=available");
+    expect(parseMenuBrowseParams({ status: "available" }, menu)).toEqual(state);
   });
 });
 

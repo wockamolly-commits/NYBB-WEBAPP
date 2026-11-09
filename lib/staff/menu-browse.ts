@@ -1,4 +1,4 @@
-import type { ManagedCategory, ManagedItem } from "./menu-types";
+import type { ManagedCategory, ManagedHold, ManagedItem } from "./menu-types";
 
 /**
  * The menu list's search and filters, decided away from the component.
@@ -10,10 +10,11 @@ import type { ManagedCategory, ManagedItem } from "./menu-types";
  */
 
 /** Which slice of the menu the status filter keeps. */
-export type MenuStatusFilter = "all" | "sold-out" | "off-menu" | "featured";
+export type MenuStatusFilter = "all" | "available" | "sold-out" | "off-menu" | "featured";
 
 export const MENU_STATUS_FILTERS: readonly MenuStatusFilter[] = [
   "all",
+  "available",
   "sold-out",
   "off-menu",
   "featured",
@@ -21,6 +22,7 @@ export const MENU_STATUS_FILTERS: readonly MenuStatusFilter[] = [
 
 export const MENU_STATUS_FILTER_LABELS: Record<MenuStatusFilter, string> = {
   all: "All items",
+  available: "Available",
   "sold-out": "Sold out",
   "off-menu": "Off the menu",
   featured: "Featured",
@@ -99,19 +101,43 @@ export function itemMatchesQuery(
 }
 
 /**
+ * Whether a hold still stops the item being sold at `now`, by the same test
+ * menu_item_is_available() makes in 0051: indefinite, or an end still ahead.
+ *
+ * Nothing sweeps a hold that has run out. The row stays until somebody saves
+ * that counter again, and the database simply stops counting it, so last
+ * night's "sold out for today" is still in `item.holds` this morning while
+ * the storefront is selling the item.
+ */
+export function holdIsLive(hold: ManagedHold, now: number): boolean {
+  // A timed hold with no end is not live, because `null > now()` is null in
+  // SQL and the database's not exists reads that as available.
+  if (hold.kind === "indefinite") return true;
+  return hold.unavailableUntil !== null && Date.parse(hold.unavailableUntil) > now;
+}
+
+/**
  * Whether one item belongs in a status slice.
  *
  * "Off the menu" counts an item whose category is off, because a customer
  * cannot see it either way and the person asking "what is hidden" means both.
+ *
+ * "Available" is what a customer can order right now: the item and its
+ * category on, and no live hold at any counter this session reads. Holds
+ * arrive already scoped by RLS (0059), so a cashier asks about their own
+ * counter and an owner about every counter.
  */
 export function itemMatchesStatus(
   item: ManagedItem,
   category: ManagedCategory,
   status: MenuStatusFilter,
+  now: number = Date.now(),
 ): boolean {
   switch (status) {
     case "all":
       return true;
+    case "available":
+      return item.isActive && category.isActive && !item.holds.some((hold) => holdIsLive(hold, now));
     case "sold-out":
       return item.holds.length > 0;
     case "off-menu":
@@ -126,9 +152,15 @@ export function isUnfiltered(state: MenuBrowseState): boolean {
   return normaliseSearchText(state.query) === "" && state.categoryId === null && state.status === "all";
 }
 
-export function browseMenu(categories: ManagedCategory[], state: MenuBrowseState): MenuBrowseResult {
+/** `now` is a parameter so the tests can stand either side of a hold's end. */
+export function browseMenu(
+  categories: ManagedCategory[],
+  state: MenuBrowseState,
+  now: number = Date.now(),
+): MenuBrowseResult {
   const statusCounts: Record<MenuStatusFilter, number> = {
     all: 0,
+    available: 0,
     "sold-out": 0,
     "off-menu": 0,
     featured: 0,
@@ -148,12 +180,12 @@ export function browseMenu(categories: ManagedCategory[], state: MenuBrowseState
       total += 1;
       if (!itemMatchesQuery(item, category, state.query)) continue;
 
-      const statusMatch = itemMatchesStatus(item, category, state.status);
+      const statusMatch = itemMatchesStatus(item, category, state.status, now);
       if (statusMatch) categoryCounts[category.id]! += 1;
 
       if (!inCategory) continue;
       for (const status of MENU_STATUS_FILTERS) {
-        if (itemMatchesStatus(item, category, status)) statusCounts[status] += 1;
+        if (itemMatchesStatus(item, category, status, now)) statusCounts[status] += 1;
       }
       if (statusMatch) kept.push(item);
     }
