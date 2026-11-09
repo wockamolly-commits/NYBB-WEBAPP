@@ -153,6 +153,33 @@ test("the available chip keeps what the database says can be sold now", async ({
   await expect(page).toHaveURL(/status=available/);
 });
 
+test("an item off the menu is never described as on sale", async ({ page }) => {
+  // The throwaway item is off the menu. The list badges it so, and neither
+  // the Availability panel nor the editor may then say it is selling.
+  await page.goto(`${MENU}?q=${encodeURIComponent(itemName)}`, { waitUntil: "domcontentloaded" });
+  await expect(row(page).getByText("Off the menu", { exact: true })).toBeVisible();
+  await row(page).getByRole("button", { name: `Availability for ${itemName}` }).click();
+  await expect(row(page).getByText(/is off the menu, so customers cannot order it at any counter/)).toBeVisible();
+
+  await page.goto(`${MENU}/items/${itemId}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("This item is off the menu, so no counter is selling it.", { exact: false })).toBeVisible();
+  await expect(page.getByText(/This item is on sale at/)).toHaveCount(0);
+
+  // And an item that is on, in a category that is on, with nothing held,
+  // still reads as on sale. Only read, never changed.
+  const db = serviceClient();
+  const [{ data: onItems }, { data: holds }] = await Promise.all([
+    db.from("menu_items").select("id, menu_categories!inner(is_active)").eq("is_active", true).eq("menu_categories.is_active", true),
+    db.from("menu_item_branch_holds").select("item_id"),
+  ]);
+  const held = new Set((holds ?? []).map((hold) => hold.item_id));
+  const onSale = (onItems ?? []).find((item) => !held.has(item.id));
+  if (!onSale) test.skip(true, "needs an item on sale with nothing held");
+  await page.goto(`${MENU}/items/${onSale!.id}`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText(/This item is on sale at/)).toBeVisible();
+  await expect(page.getByText(/is off the menu, so no counter is selling/)).toHaveCount(0);
+});
+
 test("a category chip shows that category alone", async ({ page }) => {
   const { data: item } = await serviceClient()
     .from("menu_items")
