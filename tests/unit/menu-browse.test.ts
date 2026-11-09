@@ -22,6 +22,7 @@ function item(overrides: Partial<ManagedItem> & { id: string; name: string }): M
     isFeatured: false,
     isActive: true,
     sortOrder: 0,
+    pricingNote: null,
     variations: [],
     optionLinks: [],
     holds: [],

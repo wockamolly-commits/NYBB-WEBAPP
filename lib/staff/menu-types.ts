@@ -145,6 +145,12 @@ export type ManagedItem = {
   isFeatured: boolean;
   isActive: boolean;
   sortOrder: number;
+  /**
+   * Free text written by the menu import about where the price came from, or
+   * null. Not edited anywhere in the workspace, so it can outlive what it
+   * says: read it through offMenuReason(), never print it as the item's state.
+   */
+  pricingNote: string | null;
   variations: ManagedVariation[];
   optionLinks: ManagedItemOptionLink[];
   /** One per branch that currently holds this item. Empty when nothing holds it. */

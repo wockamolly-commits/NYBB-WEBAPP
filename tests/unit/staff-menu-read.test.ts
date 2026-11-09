@@ -166,6 +166,15 @@ describe("assembleManagedMenu", () => {
     expect(indefinite.categories[0]?.items[0]?.holds).toHaveLength(1);
   });
 
+  it("carries the price note, and null when the row has none", () => {
+    const noted = assembleManagedMenu({
+      ...rows,
+      items: rows.items.map((item) => ({ ...item, pricing_note: "Inactive until the owner confirms." })),
+    });
+    expect(noted.categories[0]?.items[0]?.pricingNote).toBe("Inactive until the owner confirms.");
+    expect(assembleManagedMenu(rows).categories[0]?.items[0]?.pricingNote).toBeNull();
+  });
+
   it("leaves holds empty for an item nothing holds", () => {
     const menu = assembleManagedMenu({ ...rows, holds: [] });
     expect(menu.categories[0]?.items[0]?.holds).toEqual([]);
