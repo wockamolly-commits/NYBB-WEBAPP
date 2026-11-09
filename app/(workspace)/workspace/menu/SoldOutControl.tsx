@@ -108,7 +108,7 @@ export function SoldOutControl({
   branches: ManagedBranch[];
   actingBranchId: string | null;
 }) {
-  const actable = actableBranches(branches, actingBranchId);
+  const actable = actableBranches(branches, actingBranchId, item.holds);
 
   if (actable.length === 0) {
     return (

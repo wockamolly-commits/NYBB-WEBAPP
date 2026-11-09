@@ -15,6 +15,7 @@ import {
 } from "@/lib/menu";
 import { heatStops } from "@/lib/menu/heat-slider";
 import { formatPeso, formatPesoCompact } from "@/lib/format";
+import { MenuLiveRefresh } from "@/components/menu/MenuLiveRefresh";
 
 type Params = { category: string };
 
@@ -89,6 +90,7 @@ export default async function CategoryPage({
 
   return (
     <>
+      <MenuLiveRefresh />
       <CategoryNav
         categories={categories}
         activeSlug={category.slug}

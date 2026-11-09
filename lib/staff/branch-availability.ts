@@ -43,14 +43,23 @@ export function tradingBranches(branches: ManagedBranch[]): ManagedBranch[] {
  * It stays because it is cheap, because it still does the work for a roving
  * manager, and because a screen should not depend on a policy elsewhere being
  * the only thing standing between it and the wrong counter.
+ *
+ * A closed counter that still holds this item is offered too, so the hold can
+ * be lifted. Since 0105 the public menu keeps honouring a hold while the store
+ * is shut, and before this the control offered nothing at all once every
+ * counter was switched off: a hold set before closing could be neither seen
+ * here nor removed, while it kept the item off the menu. staff_set_menu_item_hold
+ * has never required a trading branch, only one the caller may act on.
  */
 export function actableBranches(
   branches: ManagedBranch[],
   actingBranchId: string | null,
+  holds: ManagedHold[] = [],
 ): ManagedBranch[] {
-  const trading = tradingBranches(branches);
-  if (!actingBranchId) return trading;
-  return trading.filter((branch) => branch.id === actingBranchId);
+  const held = new Set(holds.map((hold) => hold.branchId));
+  const offered = branches.filter((branch) => branch.isActive || held.has(branch.id));
+  if (!actingBranchId) return offered;
+  return offered.filter((branch) => branch.id === actingBranchId);
 }
 
 /**

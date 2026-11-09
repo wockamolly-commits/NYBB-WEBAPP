@@ -96,6 +96,14 @@ describe("actableBranches", () => {
   it("never offers a counter that has never opened, even as a cashier's own", () => {
     expect(actableBranches([shut], shut.id)).toEqual([]);
   });
+
+  it("offers a closed counter that still holds the item, so the hold can be lifted", () => {
+    // 0105: the menu keeps a hold while the store is shut, so the control
+    // must not lose sight of it then either.
+    expect(actableBranches([pilot, other, shut], null, [hold(shut)])).toEqual([pilot, other, shut]);
+    expect(actableBranches([shut], shut.id, [hold(shut)])).toEqual([shut]);
+    expect(actableBranches([shut, other], null, [hold(other)])).toEqual([other]);
+  });
 });
 
 describe("untilByBranch", () => {

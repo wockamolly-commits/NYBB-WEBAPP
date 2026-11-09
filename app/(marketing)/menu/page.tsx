@@ -10,6 +10,7 @@ import { onlineOrderingOpen } from "@/lib/checkout/payment-settings";
 import { getStorefrontMenu, WING_FLAVOUR_GROUP_SLUG } from "@/lib/menu";
 import { findOptionGroup } from "@/lib/menu";
 import { formatPesoCompact } from "@/lib/format";
+import { MenuLiveRefresh } from "@/components/menu/MenuLiveRefresh";
 
 export const metadata: Metadata = {
   title: "Menu",
@@ -54,6 +55,7 @@ export default async function MenuPage() {
 
   return (
     <>
+      <MenuLiveRefresh />
       <CategoryNav categories={categories} hrefFor={(slug) => `#${slug}`} />
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
