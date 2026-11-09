@@ -153,6 +153,43 @@ test("the available chip keeps what the database says can be sold now", async ({
   await expect(page).toHaveURL(/status=available/);
 });
 
+test("a hold whose end has passed no longer reads as sold out", async ({ page }) => {
+  const db = serviceClient();
+  // Any branch, trading or not: whether a hold has run out is a question
+  // about its clock alone, and no branch may be trading when this runs.
+  const { data: branch, error: branchError } = await db
+    .from("branches")
+    .select("id")
+    .order("sort_order")
+    .limit(1)
+    .single();
+  if (branchError) throw new Error(`no branch to hold the item at: ${branchError.message}`);
+  // Written straight to the table, because the hold RPC refuses an end in the
+  // past. This is the row last night's "sold out for today" leaves behind. It
+  // goes with the item in afterEach, by the cascade.
+  const hold = { item_id: itemId!, branch_id: branch.id, kind: "today", reason: "out_of_stock" };
+  const { error } = await db
+    .from("menu_item_branch_holds")
+    .insert({ ...hold, unavailable_until: new Date(Date.now() - 60 * 60_000).toISOString() });
+  if (error) throw new Error(`could not plant the expired hold: ${error.message}`);
+
+  await page.goto(`${MENU}?q=${encodeURIComponent(itemName)}`, { waitUntil: "domcontentloaded" });
+  await expect(row(page)).toBeVisible();
+  await expect(row(page).getByText("Sold out", { exact: true })).toHaveCount(0);
+  const soldOut = page.getByRole("group", { name: "Show" }).getByRole("button", { name: /^Sold out/ });
+  await expect(soldOut.locator("span")).toHaveText("0");
+
+  // The same row with its end still ahead is sold out, so the test above is
+  // about the clock and not about a badge that never draws.
+  await db
+    .from("menu_item_branch_holds")
+    .update({ unavailable_until: new Date(Date.now() + 60 * 60_000).toISOString() })
+    .eq("item_id", itemId!);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(row(page).getByText("Sold out", { exact: true })).toBeVisible();
+  await expect(soldOut.locator("span")).toHaveText("1");
+});
+
 test("a category chip shows that category alone", async ({ page }) => {
   const { data: item } = await serviceClient()
     .from("menu_items")

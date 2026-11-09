@@ -157,6 +157,12 @@ describe("the available filter", () => {
     expect(browseMenu([category("w", "Wings", [tonight])], state, now).shown).toBe(0);
   });
 
+  it("leaves an item whose hold has passed out of Sold out, so the two never overlap", () => {
+    const counts = browseMenu([category("w", "Wings", [timed("2026-11-08T15:59:00Z")])], none, now).statusCounts;
+    expect(counts.available).toBe(1);
+    expect(counts["sold-out"]).toBe(0);
+  });
+
   it("treats a timed hold with no end as over, matching null > now() in SQL", () => {
     expect(holdIsLive(timed(null).holds[0]!, now)).toBe(false);
   });

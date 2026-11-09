@@ -132,7 +132,7 @@ describe("assembleManagedMenu", () => {
   });
 
   it("attaches a hold to its item and names the branch", () => {
-    const menu = assembleManagedMenu(rows);
+    const menu = assembleManagedMenu(rows, Date.parse("2026-08-25T10:00:00.000Z"));
     const item = menu.categories[0]?.items[0];
     expect(item?.holds).toEqual([
       { branchId: "branch-pilot", branchShortName: "Central Bloc", kind: "until", unavailableUntil: "2026-08-25T18:00:00.000Z", reason: "out_of_stock" },
@@ -154,6 +154,16 @@ describe("assembleManagedMenu", () => {
   it("reports which items an option group is used by", () => {
     const menu = assembleManagedMenu(rows);
     expect(menu.optionGroups[0]?.linkedItemIds).toEqual(["item-wings"]);
+  });
+
+  it("drops a hold whose end has passed, and keeps an indefinite one", () => {
+    const after = Date.parse("2026-08-26T00:00:00.000Z");
+    expect(assembleManagedMenu(rows, after).categories[0]?.items[0]?.holds).toEqual([]);
+    const indefinite = assembleManagedMenu(
+      { ...rows, holds: [{ ...rows.holds[0]!, kind: "indefinite", unavailable_until: null }] },
+      after,
+    );
+    expect(indefinite.categories[0]?.items[0]?.holds).toHaveLength(1);
   });
 
   it("leaves holds empty for an item nothing holds", () => {
