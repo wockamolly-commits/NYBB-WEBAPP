@@ -117,6 +117,42 @@ test("the status chips filter, and say how many each holds", async ({ page }) =>
   await expect(page).toHaveURL(/status=off-menu/);
 });
 
+test("the available chip keeps what the database says can be sold now", async ({ page }) => {
+  // The same question menu_item_is_available() answers, asked of the tables
+  // directly: on, in a category that is on, and no hold still running. The
+  // e2e persona is business wide, so it reads every counter's holds.
+  const db = serviceClient();
+  const [{ data: items }, { data: holds }] = await Promise.all([
+    db.from("menu_items").select("id, is_active, menu_categories(is_active)"),
+    db
+      .from("menu_item_branch_holds")
+      .select("item_id")
+      .or(`kind.eq.indefinite,unavailable_until.gt.${new Date().toISOString()}`),
+  ]);
+  const held = new Set((holds ?? []).map((hold) => hold.item_id));
+  const expected = (items ?? []).filter(
+    (item) =>
+      item.is_active &&
+      (item.menu_categories as unknown as { is_active: boolean }).is_active &&
+      !held.has(item.id),
+  ).length;
+
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  const available = page.getByRole("group", { name: "Show" }).getByRole("button", { name: /^Available/ });
+  await expect(available.locator("span")).toHaveText(String(expected));
+
+  await available.click();
+  await expect(available).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("article")).toHaveCount(expected);
+  await expect(page).toHaveURL(/status=available/);
+  // The throwaway item is off the menu, so it is not available, and a search
+  // for it inside this slice finds nothing rather than ignoring the chip.
+  await expect(row(page)).toHaveCount(0);
+  await page.getByRole("searchbox", { name: "Search the menu" }).fill(itemName);
+  await expect(page.getByText("Nothing matches")).toBeVisible();
+  await expect(page).toHaveURL(/status=available/);
+});
+
 test("a category chip shows that category alone", async ({ page }) => {
   const { data: item } = await serviceClient()
     .from("menu_items")
