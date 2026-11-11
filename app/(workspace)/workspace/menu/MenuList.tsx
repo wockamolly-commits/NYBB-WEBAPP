@@ -201,6 +201,7 @@ export function MenuList({
                       branches={menu.branches}
                       actingBranchId={actingBranchId}
                       can={can}
+                      showCategory={state.query.trim() !== ""}
                     />
                   ))}
                 </div>

@@ -217,6 +217,33 @@ test("a hold whose end has passed no longer reads as sold out", async ({ page })
   await expect(soldOut.locator("span")).toHaveText("1");
 });
 
+test("a search names each result's category, and says why an item is off", async ({ page }) => {
+  // Read only. Rookie Burger and Rookie Burger Meal are the pair that got
+  // mistaken for one another: one sold, one off waiting on a price.
+  const { data: rookies } = await serviceClient()
+    .from("menu_items")
+    .select("name, is_active, pricing_note, menu_categories(name)")
+    .ilike("name", "rookie%");
+  const off = (rookies ?? []).find((item) => !item.is_active && item.pricing_note?.includes("Inactive until the owner confirms"));
+  const on = (rookies ?? []).find((item) => item.is_active);
+  if (!off || !on) test.skip(true, "needs the Rookie Burger and its switched off meal");
+  const categoryOf = (item: typeof off) => (item!.menu_categories as unknown as { name: string }).name;
+
+  await page.goto(`${MENU}?q=rookie`, { waitUntil: "domcontentloaded" });
+  const offRow = page.locator("article").filter({ has: page.getByRole("heading", { name: off!.name, exact: true }) });
+  const onRow = page.locator("article").filter({ has: page.getByRole("heading", { name: on!.name, exact: true }) });
+
+  await expect(offRow.getByText(`in ${categoryOf(off)}`, { exact: true })).toBeVisible();
+  await expect(onRow.getByText(`in ${categoryOf(on)}`, { exact: true })).toBeVisible();
+  await expect(offRow.getByText("Waiting for the owner to confirm a pickup price.")).toBeVisible();
+  await expect(onRow.getByText("Waiting for the owner to confirm a pickup price.")).toHaveCount(0);
+
+  // Browsing without a search keeps the category to its heading.
+  await page.goto(MENU, { waitUntil: "domcontentloaded" });
+  await expect(offRow.getByText(`in ${categoryOf(off)}`, { exact: true })).toHaveCount(0);
+  await expect(offRow.getByText("Waiting for the owner to confirm a pickup price.")).toBeVisible();
+});
+
 test("a category chip shows that category alone", async ({ page }) => {
   const { data: item } = await serviceClient()
     .from("menu_items")

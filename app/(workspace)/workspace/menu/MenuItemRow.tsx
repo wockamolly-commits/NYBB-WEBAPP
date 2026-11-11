@@ -7,6 +7,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { formatPeso } from "@/lib/format";
 import { holdSummary } from "@/lib/staff/branch-availability";
+import { offMenuReason } from "@/lib/staff/off-menu-reason";
 import type {
   ManagedBranch,
   ManagedCategory,
@@ -44,18 +45,27 @@ export function MenuItemRow({
   branches,
   actingBranchId,
   can,
+  showCategory = false,
 }: {
   item: ManagedItem;
   category: ManagedCategory;
   branches: ManagedBranch[];
   actingBranchId: string | null;
   can: { configure: boolean; availability: boolean };
+  /**
+   * Name the category on the row itself. Set while a search is typed: the
+   * results are still grouped under category headings, but two near
+   * namesakes from different categories ("Rookie Burger" and "Rookie Burger
+   * Meal") then sit a heading apart, and the heading is easy to miss.
+   */
+  showCategory?: boolean;
 }) {
   const uid = useId();
   const nameId = `${uid}-name`;
   const panelId = `${uid}-availability`;
   const [open, setOpen] = useState(false);
   const soldOut = holdSummary(item.holds);
+  const offReason = offMenuReason(item);
 
   return (
     <article aria-labelledby={nameId} className="bg-nybb-charcoal rounded-md">
@@ -76,6 +86,7 @@ export function MenuItemRow({
             {item.code ? (
               <span className="text-nybb-bone/60 font-mono text-xs uppercase">{item.code}</span>
             ) : null}
+            {showCategory ? <span className="text-nybb-bone/60 text-sm">in {category.name}</span> : null}
             {!item.isActive ? (
               <span className={`bg-nybb-bone/10 text-nybb-bone/70 ${CHIP}`}>Off the menu</span>
             ) : !category.isActive ? (
@@ -96,6 +107,8 @@ export function MenuItemRow({
           {/* Only while the panel is shut. Open, the control prints the same
               sentence per counter, and saying it twice is one fact told twice. */}
           {soldOut && !open ? <p className="text-nybb-bone/80 mt-1 text-sm">{soldOut}</p> : null}
+          {/* Why the badge says Off the menu, when the database can say. */}
+          {offReason ? <p className="text-nybb-bone/80 mt-1 text-sm">{offReason}</p> : null}
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">

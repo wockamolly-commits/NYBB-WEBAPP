@@ -28,7 +28,7 @@ import type {
  */
 export type ManagedMenuRows = {
   categories: Array<{ id: string; slug: string; name: string; blurb: string | null; is_active: boolean; sort_order: number }>;
-  items: Array<{ id: string; category_id: string; slug: string; name: string; code: string | null; description: string | null; image_url: string | null; image_source: string | null; image_width: number | null; image_height: number | null; image_blur_data_url: string | null; image_treatment: string | null; is_featured: boolean; is_active: boolean; sort_order: number }>;
+  items: Array<{ id: string; category_id: string; slug: string; name: string; code: string | null; description: string | null; image_url: string | null; image_source: string | null; image_width: number | null; image_height: number | null; image_blur_data_url: string | null; image_treatment: string | null; is_featured: boolean; is_active: boolean; sort_order: number; pricing_note?: string | null }>;
   variations: Array<{ id: string; item_id: string; slug: string; label: string; short_label: string; price_cents: number; is_default: boolean; is_active: boolean; sort_order: number }>;
   groups: Array<{ id: string; slug: string; name: string; description: string | null; is_active: boolean; sort_order: number }>;
   options: Array<{ id: string; group_id: string; slug: string; name: string; code: string | null; description: string | null; price_cents: number | null; heat_percent: number | null; image_url: string | null; image_source: string | null; image_width: number | null; image_height: number | null; image_blur_data_url: string | null; is_active: boolean; sort_order: number }>;
@@ -165,6 +165,7 @@ export function assembleManagedMenu(rows: ManagedMenuRows, now: number = Date.no
       isFeatured: row.is_featured,
       isActive: row.is_active,
       sortOrder: row.sort_order,
+      pricingNote: row.pricing_note ?? null,
       variations: (variationsByItem.get(row.id) ?? []).sort(bySortOrder),
       optionLinks: (linksByItem.get(row.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
       holds: holdsByItem.get(row.id) ?? [],
@@ -299,7 +300,7 @@ export async function getManagedMenu(): Promise<ManagedMenu | null> {
   const supabase = await createStaffClient();
   const [categories, items, variations, groups, options, links, holds, branches, optionPrices] = await Promise.all([
     supabase.from("menu_categories").select("id, slug, name, blurb, is_active, sort_order").order("sort_order").order("name"),
-    supabase.from("menu_items").select("id, category_id, slug, name, code, description, image_url, image_source, image_width, image_height, image_blur_data_url, image_treatment, is_featured, is_active, sort_order").order("sort_order").order("name"),
+    supabase.from("menu_items").select("id, category_id, slug, name, code, description, image_url, image_source, image_width, image_height, image_blur_data_url, image_treatment, is_featured, is_active, sort_order, pricing_note").order("sort_order").order("name"),
     supabase.from("item_variations").select("id, item_id, slug, label, short_label, price_cents, is_default, is_active, sort_order").order("sort_order"),
     supabase.from("menu_option_groups").select("id, slug, name, description, is_active, sort_order").order("sort_order").order("name"),
     supabase.from("menu_options").select("id, group_id, slug, name, code, description, price_cents, heat_percent, image_url, image_source, image_width, image_height, image_blur_data_url, is_active, sort_order").order("sort_order"),
