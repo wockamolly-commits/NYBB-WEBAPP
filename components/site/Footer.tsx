@@ -223,7 +223,7 @@ export function Footer({
     // A caller passing `flush` is saying "what is above me bleeds into you",
     // and it then owns its own bottom spacing. Default is unchanged, so every
     // existing page keeps the exact gap it had.
-    <footer className={cn("surface-chrome text-nybb-ink", flush ? "mt-0" : "mt-20")}>
+    <footer className={cn("site-footer surface-chrome text-nybb-ink", flush ? "mt-0" : "mt-20")}>
       <HeatRule />
 
       <div className="relative isolate overflow-hidden">

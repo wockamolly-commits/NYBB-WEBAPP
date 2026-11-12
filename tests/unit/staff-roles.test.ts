@@ -97,11 +97,12 @@ describe("staff roles", () => {
     ).not.toContain("menu:configure");
   });
 
-  it("names the catalog and the promo codes as the business wide capabilities", () => {
+  it("names the catalog, the promo codes and the theme as the business wide capabilities", () => {
     // Both are one shared list with no branch on it: renaming an item, or
     // minting a code, is something a pinned manager would be doing to all nine
-    // counters. vouchers:manage joined on 2026-09-04 with migration 0066.
-    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual(["menu:configure", "vouchers:manage"]);
+    // counters. vouchers:manage joined on 2026-09-04 with migration 0066, and
+    // themes:manage with 0107: the theme is every counter's public face.
+    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual(["menu:configure", "vouchers:manage", "themes:manage"]);
     for (const permission of BUSINESS_WIDE_PERMISSIONS) {
       expect(isStaffPermission(permission)).toBe(true);
     }

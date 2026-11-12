@@ -4,6 +4,9 @@ import localFont from "next/font/local";
 import { connection } from "next/server";
 import { siteUrl } from "@/lib/site-url";
 import "./globals.css";
+// After globals, so a seasonal theme's tokens win over the defaults. Generated:
+// edit scripts/build-themes-css.ts and run `npm run themes:css`.
+import "./themes.css";
 
 const anton = Anton({
   variable: "--font-anton",

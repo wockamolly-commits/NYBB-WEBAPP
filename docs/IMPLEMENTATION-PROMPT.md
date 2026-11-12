@@ -2157,7 +2157,10 @@ Design decisions that keep the door open, and what you would do next:
    in the reference at `docs/ios-native-push-scope.md`.
 7. **Kitchen Display System:** the `preparing` and `ready` transitions are already events. A KDS is
    a new realtime subscriber, not a new pipeline.
-8. **Scale ceiling to watch:** Supabase free-tier **egress**, not storage. The reference blew its
+8. **Seasonal themes (shipped 2026-11-12):** the public site can wear one of nine seasonal looks,
+   chosen in the Workspace under a `themes:manage` permission and stored in `site_themes` (0107).
+   Look only, never content or prices. See `docs/seasonal-themes.md`.
+9. **Scale ceiling to watch:** Supabase free-tier **egress**, not storage. The reference blew its
    meter on image egress, not on rows. Long image cache TTLs and immutable upload paths are the fix
    and they are already specified in section 5.6.
 

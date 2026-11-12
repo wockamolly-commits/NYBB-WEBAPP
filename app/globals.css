@@ -16,7 +16,16 @@
    Orange is the only loud thing. Yellow and red are accents with
    narrow, stated jobs. Nothing else gets a color.
    ================================================================ */
-@theme inline {
+/* Brand colours are a plain @theme, not @theme inline.
+   ================================================================
+   With `inline`, Tailwind writes the hex straight into every utility,
+   so `bg-nybb-orange` compiles to `#ef6212` and nothing downstream can
+   change it. Seasonal themes (app/themes.css) work by redefining these
+   variables, so the utilities have to point at them:
+   `bg-nybb-orange` compiles to `var(--color-nybb-orange)` here. The
+   default values are exactly what they were. Keep new colours on these
+   tokens; a literal in a component is a colour no theme can reach. */
+@theme {
   /* Grounds. Ink is not pure black: a trace of blue keeps large dark
      areas from looking dead next to warm food photography, and gives
      the charcoal card a visible edge against the page. */
@@ -94,6 +103,9 @@
   --color-nybb-heat-4: #ef4a17;
   --color-nybb-heat-5: #ee2329;
 
+}
+
+@theme inline {
   /* shadcn mapping (consumed by components/ui) */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -159,6 +171,14 @@
      This solid is the fallback and the value anything using bg-background
      gets: a mid stop of that gradient, so the two never disagree. */
   --background: #f7a70f;
+
+  /* The page ground's four stops, and the warm shadow under the chrome,
+     as tokens so a seasonal theme can recolour them (app/themes.css). */
+  --nybb-ground-1: #f2860f;
+  --nybb-ground-2: #f7a70f;
+  --nybb-ground-3: #f9c614;
+  --nybb-ground-4: #fae51a;
+  --nybb-chrome-shadow: 84 46 8;
   /* Ink, because the ground is now light. Dark surfaces (the header, the
      category bar, every card) set text-nybb-bone on the container so their
      contents inherit the right colour rather than each leaf declaring it. */
@@ -235,10 +255,10 @@
     background-color: var(--background);
     background-image: linear-gradient(
       180deg in oklab,
-      #f2860f 0%,
-      #f7a70f 26%,
-      #f9c614 58%,
-      #fae51a 100%
+      var(--nybb-ground-1) 0%,
+      var(--nybb-ground-2) 26%,
+      var(--nybb-ground-3) 58%,
+      var(--nybb-ground-4) 100%
     );
     background-attachment: fixed;
   }
@@ -2000,10 +2020,10 @@
     background-image:
       linear-gradient(
         180deg,
-        rgb(11 11 12 / 0.76) 0,
-        rgb(11 11 12 / 0.65) 12rem,
-        rgb(11 11 12 / 0.65) calc(100% - 12rem),
-        rgb(11 11 12 / 0.76) 100%
+        color-mix(in srgb, var(--color-nybb-ink) 76%, transparent) 0,
+        color-mix(in srgb, var(--color-nybb-ink) 65%, transparent) 12rem,
+        color-mix(in srgb, var(--color-nybb-ink) 65%, transparent) calc(100% - 12rem),
+        color-mix(in srgb, var(--color-nybb-ink) 76%, transparent) 100%
       ),
       url("/texture/bricks.webp");
     background-size:

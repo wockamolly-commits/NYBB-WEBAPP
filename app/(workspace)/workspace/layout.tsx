@@ -52,6 +52,9 @@ function navItems(profile: StaffProfile): WorkspaceNavItem[] {
   if (hasStaffPermission(profile, "vouchers:manage")) {
     items.push({ href: "/workspace/vouchers", label: "Promos", icon: "vouchers" });
   }
+  if (hasStaffPermission(profile, "themes:manage")) {
+    items.push({ href: "/workspace/themes", label: "Themes", icon: "themes" });
+  }
   if (hasStaffPermission(profile, "audit:view")) {
     items.push({ href: "/workspace/audit", label: "Audit", icon: "audit" });
   }
