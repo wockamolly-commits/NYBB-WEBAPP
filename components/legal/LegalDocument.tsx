@@ -43,22 +43,35 @@ export function LegalPage({
   title,
   intro,
   sibling,
+  lastUpdated,
   children,
 }: {
   title: string;
   intro: React.ReactNode;
   /** The other legal page, linked under the title. */
   sibling: { href: string; label: string };
+  /**
+   * For a page whose text the owner supplied as a finished document, the
+   * "Last Updated" date printed on that document, as YYYY-MM-DD. It replaces
+   * the shared effective date, and the page carries no draft notice, because
+   * nothing on it is waiting on `legalDetails`.
+   */
+  lastUpdated?: string;
   children: React.ReactNode;
 }) {
-  const pending = pendingDetails(legalDetails);
+  const pending = lastUpdated ? [] : pendingDetails(legalDetails);
   const effective = legalDetails.effectiveDate;
+  const dateLine = lastUpdated ? (
+    <>Last updated {formatEffectiveDate(lastUpdated)}.</>
+  ) : (
+    <>Effective {effective ? formatEffectiveDate(effective) : <Pending>effective date</Pending>}.</>
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
       <h1 className="font-display heading-page">{title}</h1>
       <p className="text-nybb-ink/70 mt-4 text-sm">
-        Effective {effective ? formatEffectiveDate(effective) : <Pending>effective date</Pending>}.
+        {dateLine}
         {" "}See also the{" "}
         <Link href={sibling.href} className="text-nybb-ink underline decoration-nybb-ink/40 underline-offset-4 hover:decoration-nybb-ink">
           {sibling.label}
@@ -78,7 +91,9 @@ export function LegalPage({
         </p>
       ) : null}
 
-      <div className="text-nybb-ink/85 mt-8 space-y-4 text-base leading-relaxed">{intro}</div>
+      {intro ? (
+        <div className="text-nybb-ink/85 mt-8 space-y-4 text-base leading-relaxed">{intro}</div>
+      ) : null}
 
       <div className="mt-4">{children}</div>
     </div>
@@ -103,5 +118,15 @@ export function LegalSection({
         {children}
       </div>
     </section>
+  );
+}
+
+/** A numbered subsection inside a LegalSection, such as "2.1 Personal Data". */
+export function LegalSubsection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="pt-2">
+      <h3 className="text-nybb-ink text-lg font-semibold">{title}</h3>
+      <div className="mt-2 space-y-4">{children}</div>
+    </div>
   );
 }

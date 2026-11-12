@@ -66,16 +66,16 @@ export function pendingDetails(details: LegalDetails): (keyof LegalDetails)[] {
 /**
  * The NPC "DPO/DPS Registered" seal.
  *
- * TO SWAP IN A RENEWED SEAL: replace components/legal/npc-dpo-dps-seal.jpg
+ * TO SWAP IN A RENEWED SEAL: replace components/legal/npc-dpo-dps-seal.png
  * with the new file (same name) and change `validThrough` to the date printed
  * under VALIDITY PERIOD. Nothing else. The image is a static import, so its
  * URL carries a content hash and no cache can keep serving the old one, and
  * its dimensions are read from the file.
  *
- * The page stops showing the seal the day after `validThrough`, in Manila
- * time. A seal printed with a date that has passed tells a visitor the
- * registration has lapsed, which is worse than showing none, so an overdue
- * renewal makes the seal disappear rather than go stale.
+ * The page used to stop showing the seal the day after `validThrough`, in
+ * Manila time. As of 2026-11-12 the owner has it shown regardless (see
+ * components/legal/NpcSeal.tsx), so `validThrough` is now a record of the
+ * printed date and `isSealCurrent` is unused by the page.
  */
 export const npcSeal = {
   validThrough: "2026-10-28",
