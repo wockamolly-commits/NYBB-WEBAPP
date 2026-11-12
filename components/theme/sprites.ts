@@ -52,40 +52,78 @@ export const SLEIGH = svg(
   <path d="M52 16q8-2 14 4" stroke="#5a3a1a" stroke-width="1.4" fill="none"/>`,
 );
 
+/**
+ * The dragon's head, facing right, drawn after the classic dance dragon: a
+ * long red snout with a round nose, an open jaw, a big eye under a gold brow,
+ * curling horns, a layered teal and blue mane, and gold whiskers. The body is
+ * not part of this drawing; the engine paints it as one tapered, scaled curve
+ * so it can ripple smoothly (see dragon() in engine.ts). The neck joins at the
+ * left edge, around (14, 50).
+ */
 export const DRAGON_HEAD = svg(
-  64,
-  44,
-  `<path d="M2 22q6-14 26-14 12 0 20 6l12 2-4 6 6 4-14 2q-6 8-20 8Q8 36 2 22z" fill="#d7141e"/>
-  <path d="M10 26q14 6 34 0l10 2q-12 6-22 6Q16 34 10 26z" fill="#ffcf3f"/>
-  <path d="M20 8q-2-8 6-8M30 8q2-8 10-6" stroke="#ffcf3f" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <circle cx="38" cy="15" r="4" fill="#fff"/><circle cx="39" cy="15" r="2" fill="#1a0606"/>
-  <path d="M56 20q8 8 6 20M52 22q2 10-4 18" stroke="#ffcf3f" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-  <path d="M6 16q-6-6-4-14M10 14q0-8 6-12" stroke="#ffcf3f" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  132,
+  96,
+  `<path d="M40 14 26 2 31 22 10 12 22 32 2 30 20 44 4 54 24 58 10 72 32 66 24 84 42 70Z" fill="#0f8a6c"/>
+  <path d="M44 22 33 12 37 30 20 26 33 40 16 48 34 54 24 68 44 60Z" fill="#2b62d1"/>
+  <path d="M46 30 38 24 40 36 30 38 40 46 32 54 46 52Z" fill="#ffcf3f"/>
+  <path d="M56 22Q46 2 60 0q-6 8 4 18zM70 20Q70 2 84 4q-10 6-6 16z" fill="#ffb300" stroke="#c46a00" stroke-width="1.2"/>
+  <path d="M40 36Q44 18 70 18q22 0 34 12h12q12 0 12 10t-10 10H104Q92 58 74 60L56 66Q42 66 38 52z" fill="#e3262d"/>
+  <path d="M54 66Q76 60 104 62q6 6-2 10-26 8-46 4z" fill="#c4141d"/>
+  <path d="M58 64Q80 58 102 62 84 68 60 68z" fill="#f58aa0"/>
+  <path d="M74 60l3 5 3-5 3 5 3-5 3 5 3-5 3 5" stroke="#fff" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+  <circle cx="120" cy="40" r="8" fill="#ff5a3a"/><circle cx="123" cy="37" r="2.2" fill="#ffd2c4"/>
+  <path d="M60 30q12-12 26 0" stroke="#ffcf3f" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <ellipse cx="74" cy="38" rx="9" ry="8" fill="#fff"/><circle cx="77" cy="38" r="5" fill="#1d8a4a"/><circle cx="78" cy="37" r="2.4" fill="#0b1a10"/><circle cx="79.5" cy="35.5" r="1" fill="#fff"/>
+  <path d="M90 44q6 4 12 0M94 50q5 3 10 0" stroke="#ffcf3f" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M112 50q10 10 2 20t4 18M106 52q4 12-6 18t-2 14" stroke="#ffb300" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <path d="M112 30q8-16 18-14" stroke="#ffb300" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <path d="M42 50q4 8 0 14 8-2 10 6 3-8 10-6-5-6-2-14z" fill="#ffcf3f"/>`,
 );
 
-function lion(step: boolean): string {
+/**
+ * The lion dance, side on and facing right, after the southern lion: a red
+ * and gold cloth body edged with white fur, a tufted tail, and the two
+ * dancers' legs in striped trousers and yellow shoes. Two frames of gait. The
+ * head is a separate drawing (LION_HEAD) so it can nod and rear on its own.
+ */
+function lionBody(step: boolean): string {
   const legs = step
-    ? `<path d="M10 40l-4 12M18 40l4 12M42 40l-2 12M50 40l5 12" stroke="#ffcf3f" stroke-width="5" stroke-linecap="round"/>`
-    : `<path d="M10 40l2 12M18 40l-2 12M42 40l3 12M50 40l-3 12" stroke="#ffcf3f" stroke-width="5" stroke-linecap="round"/>`;
+    ? `<g stroke="#2a1208" stroke-width="1.6">
+        <path d="M24 52l-4 14h9l3-14zM40 52l3 14h9l-3-14zM70 52l-3 14h9l2-14zM86 52l4 14h9l-4-14z" fill="#f57c1f"/>
+        <path d="M19 65h10v5H17zM42 65h10l2 5H42zM66 65h10v5H64zM89 65h10l2 5H89z" fill="#ffcf3f"/></g>`
+    : `<g stroke="#2a1208" stroke-width="1.6">
+        <path d="M27 52l1 14h9l-1-14zM40 52l-1 14h9l1-14zM70 52l1 14h9l-1-14zM84 52l-1 14h9l1-14z" fill="#f57c1f"/>
+        <path d="M26 65h10v5H25zM37 65h10v5H36zM69 65h10v5H68zM81 65h10v5H80z" fill="#ffcf3f"/></g>`;
   return svg(
-    88,
-    58,
+    112,
+    72,
     `${legs}
-    <path d="M4 30q0-14 20-14h36v24H8q-4 0-4-10z" fill="#d7141e"/>
-    <path d="M6 34q10 4 16 0t16 0 16 0" stroke="#ffcf3f" stroke-width="2.6" fill="none"/>
-    <path d="M2 26q-2-6 4-8" stroke="#ffcf3f" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <circle cx="68" cy="24" r="19" fill="#ffcf3f"/>
-    <circle cx="68" cy="24" r="14" fill="#d7141e"/>
-    <path d="M58 8q10-8 20 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <circle cx="64" cy="20" r="4" fill="#fff"/><circle cx="76" cy="20" r="4" fill="#fff"/>
-    <circle cx="65" cy="20" r="2" fill="#1a0606"/><circle cx="77" cy="20" r="2" fill="#1a0606"/>
-    <path d="M60 30q10 8 20 0v4q-10 6-20 0z" fill="#fff"/>
-    <circle cx="70" cy="6" r="3" fill="#2f8a4e"/>`,
+    <path d="M10 30q-10-4-8-14 6 4 10 2 0 6 6 8z" fill="#ffb300" stroke="#2a1208" stroke-width="1.4"/>
+    <path d="M12 26Q16 12 40 12h50q16 0 18 16v18q0 8-10 8H20Q10 54 10 42z" fill="#e3262d" stroke="#2a1208" stroke-width="1.8"/>
+    <path d="M14 30q30-10 92-6v8q-60-4-92 6z" fill="#f57c1f"/>
+    <path d="M12 44q6-5 12 0t12 0 12 0 12 0 12 0 12 0 12 0 12 0" stroke="#fff" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <path d="M16 22q6-5 12 0t12 0 12 0 12 0 12 0 12 0 12 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`,
   );
 }
 
-export const LION_A = lion(true);
-export const LION_B = lion(false);
+export const LION_BODY_A = lionBody(true);
+export const LION_BODY_B = lionBody(false);
+
+/** The lion's head, side on, facing right: horn, mirror, big eye, white fur brow and beard. */
+export const LION_HEAD = svg(
+  72,
+  72,
+  `<path d="M30 6l6-6 4 8z" fill="#ffcf3f" stroke="#2a1208" stroke-width="1.4"/>
+  <path d="M10 30Q10 6 38 6q30 0 30 26 0 14-10 22l-8 10H22Q10 56 10 30z" fill="#e3262d" stroke="#2a1208" stroke-width="2"/>
+  <path d="M30 10q8-4 16 2" stroke="#ffcf3f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <circle cx="26" cy="20" r="4" fill="#ffcf3f" stroke="#2a1208" stroke-width="1.2"/>
+  <path d="M36 22q10-10 24-2-2 8-8 8-6 0-16-6z" fill="#fff" stroke="#2a1208" stroke-width="1.4"/>
+  <circle cx="50" cy="32" r="9" fill="#fff" stroke="#2a1208" stroke-width="1.6"/><circle cx="52" cy="32" r="5.5" fill="#ffb300"/><circle cx="53" cy="32" r="2.6" fill="#2a1208"/>
+  <path d="M40 46q8 10 30 2" stroke="#2a1208" stroke-width="1.4" fill="#fff"/>
+  <path d="M30 50q4 4 8 0t8 0 8 0 8 0 8-2" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M30 50q4 4 8 0t8 0 8 0 8 0 8-2" stroke="#2a1208" stroke-width="1" fill="none" opacity=".5"/>
+  <circle cx="66" cy="36" r="3" fill="#ffcf3f" stroke="#2a1208" stroke-width="1"/>`,
+);
 
 export const PAPER_PLANE = svg(
   56,

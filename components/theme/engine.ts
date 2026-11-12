@@ -3,8 +3,9 @@ import {
   BAT_A,
   BAT_B,
   DRAGON_HEAD,
-  LION_A,
-  LION_B,
+  LION_BODY_A,
+  LION_BODY_B,
+  LION_HEAD,
   PAPER_PLANE,
   REINDEER_A,
   REINDEER_B,
@@ -312,7 +313,7 @@ const SPRITES = new Map<string, HTMLCanvasElement[]>();
 
 const SPRITE_SOURCES: Partial<Record<EffectKind, Record<string, string[]>>> = {
   snow: { reindeer: [REINDEER_A, REINDEER_B], sleigh: [SLEIGH] },
-  lunar: { dragon: [DRAGON_HEAD], lion: [LION_A, LION_B] },
+  lunar: { dragon: [DRAGON_HEAD], lionBody: [LION_BODY_A, LION_BODY_B], lionHead: [LION_HEAD] },
   school: { plane: [PAPER_PLANE] },
   halloween: { bat: [BAT_A, BAT_B] },
 };
@@ -547,16 +548,16 @@ const EFFECTS: Record<Exclude<EffectKind, "none">, Effect> = {
     },
     burst: (x, y) => spray(x, y, 26, () => ({ draw: dot, size: rand(2, 4), color: pick(["#ffcf3f", "#ff4d4d", "#fff1b8"]) }), 300, 0.3),
     every: {
-      min: 18,
-      max: 30,
+      min: 12,
+      max: 20,
       solo: true,
       spawn: (w, h, ctx) => {
         ctx.turn += 1;
         const right = Math.random() < 0.5;
         if (ctx.turn % 2) {
           const [top, bottom] = skyBand(h, ctx);
-          const size = ctx.mobile ? 30 : 50;
-          const speed = ctx.mobile ? 110 : 160;
+          const size = ctx.mobile ? 34 : 56;
+          const speed = ctx.mobile ? 100 : 140;
           return [
             base({
               mode: "fly",
@@ -565,16 +566,16 @@ const EFFECTS: Record<Exclude<EffectKind, "none">, Effect> = {
               baseY: rand(top + size, Math.max(top + size, bottom)),
               vx: right ? speed : -speed,
               size,
-              len: size * 7,
-              sway: size * 0.35,
+              len: size * 8,
+              sway: size * 0.3,
             }),
           ];
         }
-        const size = ctx.mobile ? 44 : 70;
+        const size = ctx.mobile ? 46 : 68;
         return [
           base({
             mode: "prance",
-            draw: sprite("lion", size, 0.22),
+            draw: lionDance(size),
             x: right ? -size : w + size,
             y: h - size * 0.55,
             baseY: h - size * 0.55,
@@ -729,40 +730,188 @@ function sleighTeam(height: number): Draw {
   };
 }
 
-/** A dragon head chasing a pearl, its scaled body trailing in a wave behind. */
+/**
+ * A dance dragon chasing its pearl.
+ *
+ * The body is painted every frame as one continuous curve rather than a row of
+ * beads, which is what made the first version read as a centipede: it tapers
+ * from the neck to the tail, ripples in a travelling wave, carries a gold
+ * crest of spikes along its back, a darker scaled saddle, two pairs of clawed
+ * legs that paddle, and a flame tuft on the tail. Only the head is a picture
+ * (DRAGON_HEAD), so the ripple stays smooth at any size. Drawn facing right
+ * and mirrored for a crossing the other way.
+ */
 function dragon(size: number): Draw {
-  const head = sprite("dragon", size);
+  const N = 44;
+  const xs = new Float32Array(N + 1);
+  const ys = new Float32Array(N + 1);
+  // Slim at the neck so it disappears under the mane, fullest a little way
+  // back, then tapering to the tail.
+  const radius = (i: number) => {
+    const s = i / N;
+    const shape = s < 0.14 ? 0.55 + 0.45 * (s / 0.14) : 1 - 0.82 * ((s - 0.14) / 0.86);
+    return size * 0.3 * shape + size * 0.025;
+  };
+  /** The point k radii off the spine toward the back (k > 0) or the belly (k < 0). */
+  const edge = (i: number, k: number): [number, number] => {
+    const a = Math.max(0, i - 1);
+    const b = Math.min(N, i + 1);
+    const dx = xs[b] - xs[a];
+    const dy = ys[b] - ys[a];
+    const len = Math.hypot(dx, dy) || 1;
+    // The spine runs toward the tail (negative x), so (-dy, dx) points up.
+    const nx = -dy / len;
+    const ny = dx / len;
+    const r = radius(i) * k;
+    return [xs[i] + nx * r, ys[i] + ny * r];
+  };
+  const band = (c: CanvasRenderingContext2D, outer: (i: number) => number, inner: number) => {
+    c.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const [x, y] = edge(i, outer(i));
+      if (i === 0) c.moveTo(x, y);
+      else c.lineTo(x, y);
+    }
+    for (let i = N; i >= 0; i--) {
+      const [x, y] = edge(i, inner);
+      c.lineTo(x, y);
+    }
+    c.closePath();
+    c.fill();
+  };
+
   return (c, p, t) => {
     const dir = p.vx < 0 ? -1 : 1;
-    // Body, drawn tail first so the head sits on top.
-    for (let i = 12; i >= 1; i--) {
-      const bx = -dir * i * size * 0.45;
-      const by = Math.sin(t * 3 - i * 0.6) * size * 0.28;
-      const r = size * (0.34 - i * 0.012);
-      c.fillStyle = i % 2 ? "#d7141e" : "#b80f17";
+    const L = size * 6.2;
+    const amp = size * 0.75;
+    const phase = t * 3 + p.phase;
+    for (let i = 0; i <= N; i++) {
+      const s = i / N;
+      xs[i] = -size * 0.2 - s * L;
+      // The neck is steadier than the tail, as a dancer carrying the head is.
+      ys[i] = Math.sin(phase - s * Math.PI * 2) * amp * (0.2 + 0.8 * Math.min(1, s * 1.6));
+    }
+
+    c.save();
+    c.scale(dir, 1);
+
+    // Legs first, so the body overlaps their tops.
+    for (const [at, off] of [
+      [0.2, 0],
+      [0.26, 1.6],
+      [0.6, 0.8],
+      [0.66, 2.4],
+    ] as const) {
+      const i = Math.round(at * N);
+      const [bx, by] = edge(i, -0.7);
+      const swing = Math.sin(t * 6 + off) * 0.5;
+      const lx = bx + Math.sin(swing + 0.5) * size * 0.32;
+      const ly = by + Math.cos(swing + 0.5) * size * 0.32;
+      c.strokeStyle = "#c4141d";
+      c.lineWidth = size * 0.11;
+      c.lineCap = "round";
       c.beginPath();
-      c.arc(bx, by, r, 0, TAU);
-      c.fill();
-      c.fillStyle = "#ffcf3f";
+      c.moveTo(bx, by);
+      c.lineTo(lx, ly);
+      c.stroke();
+      c.strokeStyle = "#ffb300";
+      c.lineWidth = size * 0.04;
       c.beginPath();
-      c.moveTo(bx - r * 0.4, by - r);
-      c.lineTo(bx, by - r * 1.5);
-      c.lineTo(bx + r * 0.4, by - r);
+      for (const a of [-0.5, 0, 0.5]) {
+        c.moveTo(lx, ly);
+        c.lineTo(lx + Math.sin(a + 0.6) * size * 0.1, ly + Math.cos(a + 0.6) * size * 0.1);
+      }
+      c.stroke();
+    }
+
+    // The crest: gold spikes standing off the back.
+    c.fillStyle = "#ffb020";
+    band(c, (i) => (i % 2 ? 1.75 : 0.9), 0.5);
+
+    // The body.
+    c.fillStyle = "#e3262d";
+    band(c, () => 1, -1);
+
+    // The darker saddle along the back, and its gold scales.
+    c.fillStyle = "#b8121c";
+    band(c, () => 0.95, 0.05);
+    c.strokeStyle = "#ffd84a";
+    c.lineWidth = Math.max(1, size * 0.035);
+    for (let i = 2; i < N - 2; i += 3) {
+      const [x, y] = edge(i, 0.5);
+      const r = radius(i) * 0.28;
+      c.beginPath();
+      c.arc(x, y + r * 0.6, r, Math.PI * 1.15, Math.PI * 1.85);
+      c.stroke();
+    }
+
+    // The tail's flame tuft, fanned the way the tail points.
+    const ang = Math.atan2(ys[N] - ys[N - 2], xs[N] - xs[N - 2]);
+    c.fillStyle = "#ffb020";
+    for (const spread of [-0.7, -0.35, 0, 0.35, 0.7]) {
+      const a = ang + spread;
+      const l = size * (0.42 - Math.abs(spread) * 0.2);
+      c.beginPath();
+      c.moveTo(xs[N] + Math.cos(a + 1.4) * size * 0.05, ys[N] + Math.sin(a + 1.4) * size * 0.05);
+      c.lineTo(xs[N] + Math.cos(a) * l, ys[N] + Math.sin(a) * l);
+      c.lineTo(xs[N] + Math.cos(a - 1.4) * size * 0.05, ys[N] + Math.sin(a - 1.4) * size * 0.05);
       c.fill();
     }
+
     // The pearl it never quite catches.
-    const px = dir * size * 1.2;
-    const py = Math.sin(t * 2.2) * size * 0.2;
-    const glow = c.createRadialGradient(px, py, 0, px, py, size * 0.4);
+    const px = size * 1.55;
+    const py = ys[0] + Math.sin(t * 2.2) * size * 0.18;
+    const glow = c.createRadialGradient(px, py, 0, px, py, size * 0.36);
     glow.addColorStop(0, "rgba(255, 241, 184, 0.95)");
+    glow.addColorStop(0.45, "rgba(255, 216, 74, 0.8)");
     glow.addColorStop(1, "rgba(255, 207, 63, 0)");
     c.fillStyle = glow;
     c.beginPath();
-    c.arc(px, py, size * 0.4, 0, TAU);
+    c.arc(px, py, size * 0.36, 0, TAU);
     c.fill();
+
+    // The head, its neck on the body's first point, nodding with the wave.
+    const head = SPRITES.get("dragon")?.[0];
+    if (head) {
+      const hs = size / 96;
+      const tilt = Math.max(-0.35, Math.min(0.35, Math.atan2(ys[0] - ys[3], xs[0] - xs[3]) * 0.8));
+      c.translate(xs[0] + size * 0.05, ys[0]);
+      c.rotate(tilt);
+      c.drawImage(head, -14 * hs, -54 * hs, 132 * hs, 96 * hs);
+    }
+    c.restore();
+  };
+}
+
+/**
+ * A lion dance trotting along the bottom edge. Body and head are separate
+ * pictures so the head can do the dancing: it bobs as the lion trots, and when
+ * the lion stops mid screen the head rears up, shakes and sweeps, the way the
+ * front dancer lifts it. Drawn facing right and mirrored for the other way.
+ */
+function lionDance(size: number): Draw {
+  return (c, p, t) => {
+    const body = SPRITES.get("lionBody");
+    const head = SPRITES.get("lionHead")?.[0];
+    if (!body?.length || !head) return;
+    const dir = p.vx < 0 ? -1 : 1;
+    const dancing = p.pause > 0;
+    const frame = body[Math.floor(t / (dancing ? 0.13 : 0.2)) % body.length];
+    const bw = (size * 112) / 72;
+
     c.save();
-    c.translate(dir * size * 0.3, 0);
-    head(c, p, t);
+    c.scale(dir, 1);
+    c.drawImage(frame, -bw / 2, -size / 2, bw, size);
+
+    // Lift eases from 0 to 1 over the dance's first half second and back.
+    const lift = dancing ? Math.min(1, Math.min(2.6 - p.pause, p.pause) / 0.5) : 0;
+    const hs = size;
+    const hx = bw * 0.36;
+    const hy = -size * 0.28 - lift * size * 0.45;
+    const tilt = dancing ? -0.45 * lift + Math.sin(p.age * 10) * 0.16 : Math.sin(t * 8 + p.phase) * 0.06;
+    c.translate(hx, hy);
+    c.rotate(tilt);
+    c.drawImage(head, -hs * 0.3, -hs * 0.62, hs, hs);
     c.restore();
   };
 }
@@ -919,7 +1068,8 @@ export function startEngine({ canvas, kind, scope, still }: EngineOptions): { de
         if (p.pause > 0) {
           p.pause -= dt;
           p.y = p.baseY - Math.abs(Math.sin(p.age * 7)) * p.size * 0.18;
-          p.rot = Math.sin(p.age * 5) * 0.12;
+          // The dance is in the head (see lionDance); the body only sways.
+          p.rot = Math.sin(p.age * 5) * 0.04;
         } else {
           p.x += p.vx * dt;
           p.y = p.baseY - Math.abs(Math.sin(p.age * 9)) * p.size * 0.05;

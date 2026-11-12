@@ -93,9 +93,10 @@ export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
   },
   sinulog: {
     id: "sinulog",
-    name: "Sinulog",
+    name: "Sto. Niño (Sinulog)",
     season: "January, the third Sunday",
-    blurb: "Sunset red-orange and festival yellow, a woven banig print and banderitas bunting.",
+    blurb:
+      "Sunset red-orange and festival yellow, a woven banig print, banderitas bunting, and the Sto. Niño standing on the footer.",
     effectLabel: "Festival confetti and ribbons drift down. Click for a burst.",
     effect: "sinulog",
     banner: "Pit Señor! Fuel up for the parade with a bucket of wings.",
@@ -106,9 +107,10 @@ export const THEME_PRESETS: Record<ThemeId, ThemePreset> = {
     id: "chinese-new-year",
     name: "Chinese New Year",
     season: "Late January to February",
-    blurb: "Cinnabar and lucky gold, a cloud and coin print, lanterns on the header.",
+    blurb:
+      "Cinnabar and lucky gold, a cloud and coin print, lanterns on the header, and a lion dance on the footer.",
     effectLabel:
-      "Blossoms and coins fall, lanterns float up, and a dragon or a dance lion crosses now and then. Click for firecrackers.",
+      "Blossoms and coins fall and lanterns float up. A dragon chasing its pearl flies across, and a lion dance trots along the bottom and stops to dance. Click for firecrackers.",
     effect: "lunar",
     banner: "Kung Hei Fat Choi! Share a lucky basket with the family.",
     swatch: swatchOf("chinese-new-year"),

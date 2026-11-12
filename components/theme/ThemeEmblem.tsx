@@ -76,6 +76,21 @@ const ART: Record<ThemeId, React.ReactNode> = {
 };
 
 export function ThemeEmblem({ id, className }: { id: ThemeId; className?: string }) {
+  // Sinulog's mark is the Sto. Nino himself, in full colour. A one colour
+  // silhouette of a revered image would read as a stencil, not as him.
+  if (id === "sinulog") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a 24px static SVG; next/image adds nothing
+      <img
+        src="/themes/santo-nino.svg"
+        alt=""
+        aria-hidden="true"
+        width={32}
+        height={36}
+        className={cn("theme-emblem shrink-0 object-contain", className)}
+      />
+    );
+  }
   return (
     <svg
       viewBox="0 0 32 32"

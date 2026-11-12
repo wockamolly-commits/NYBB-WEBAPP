@@ -32,7 +32,7 @@ The themes, roughly when to run them:
 | Theme | Season |
 |---|---|
 | New Year | Late December to early January |
-| Sinulog | January, the third Sunday |
+| Sto. Niño (Sinulog) | January, the third Sunday |
 | Chinese New Year | Late January to February |
 | Valentine's | Early to mid February |
 | Summer | March to May |
@@ -49,7 +49,8 @@ The themes, roughly when to run them:
 |---|---|
 | The list of themes, names, banner copy, the setting schema, `parseTheme`, `bannerText` | `lib/themes/presets.ts` |
 | Each theme's colours | `lib/themes/palettes.ts` |
-| Patterns, garlands, logo toppers, the elf, the shared CSS rules | `scripts/build-themes-css.ts` |
+| Patterns, garlands, logo toppers, the shared CSS rules | `scripts/build-themes-css.ts` |
+| Footer figures (Christmas elf, Sto. Niño, lion dance) | `scripts/theme-figures.ts` and the elf in the build script |
 | The generated stylesheet (do not edit) | `app/themes.css`, plus `public/themes/*.svg` |
 | Storefront read, cached | `lib/themes/read.ts` (`getTheme`) |
 | Workspace read and writes | `lib/themes/admin.ts`, `app/(workspace)/workspace/themes/` |
@@ -106,6 +107,18 @@ logo at every width.
 `requestAnimationFrame` loop. Each effect declares a density, a pointer repel strength, an ambient
 spawner, a click burst and optional "hero" figures on a timer (the sleigh, the dragon and the dance
 lion, paper planes, bats). Figures in `sprites.ts` are original SVG, rasterised once.
+
+The dragon's body is not a picture: it is painted each frame as one tapered curve with a gold
+crest, a scaled saddle, paddling legs and a tail tuft, so it can swim in smooth S curves; only its
+head is a sprite. The lion dance is a body sprite (two gait frames) plus a separate head, which
+nods as it trots and rears up and shakes when the lion stops to dance. No animation library is
+used: the effects are particle and path drawing on one canvas, which a library would not make
+smoother, and it keeps the storefront free of an extra download.
+
+Footer figures: the elf (Christmas), the Sto. Niño (Sinulog) and a lion dance (Chinese New Year).
+Each theme has its own and none is shared. The Sto. Niño never moves; a revered image is not an
+animation. The elf waves and the lion nods and blinks, inside their own SVG, off under reduced
+motion.
 
 - Reduced motion or Save-Data: one still, thinned frame, no loop, no listeners.
 - Pointer events are read on the window (or the sample box); the canvas never takes them. Bursts

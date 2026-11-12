@@ -15,6 +15,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { PALETTES, type Palette } from "../lib/themes/palettes";
 import { SEASONAL_THEME_IDS, type SeasonalThemeId } from "../lib/themes/presets";
+import { LION_DANCE, SANTO_NINO } from "./theme-figures";
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -297,6 +298,8 @@ type Topper = {
   /** The pivot, as fractions of the box: the brim's middle for a hat, the cord's top for a hanger. */
   anchor: [number, number];
   motion: "theme-tip" | "theme-float" | "theme-swing" | "none";
+  /** A beside topper's own clear zone, when the shared corner is too small for it. */
+  zone?: { x0: number; y0: number; x1: number; y1: number };
   svg: string;
 };
 
@@ -309,14 +312,20 @@ const TOPPERS: Record<SeasonalThemeId, Topper> = {
     svg: `<path d="M20 2L3 42h34z" fill="#18275a"/><path d="M20 2l-6 14h12zM11 23h18l3 7H8zM6 36h28l2 6H4z" fill="#f5d06f"/>
       <circle cx="20" cy="4" r="4" fill="#f5d06f"/><path d="M1 40q19 8 38 0v5H1z" fill="#f5d06f"/>`,
   },
+  // The Sto. Nino himself, the same drawing that stands on the footer, tucked
+  // into the mark's corner the way the heart, sun and apple are: against the
+  // end of BRAD'S, his crown just under the O of BUFFALO, and above the
+  // registered sign, which stays clear. His zone is a little wider than the
+  // shared corner and runs slightly past the mark's edge, because the crown
+  // and cape need about 29px to read. Still, never animated: a revered image
+  // is not a bobbing ornament.
   sinulog: {
     kind: "beside",
-    box: [36, 44],
+    box: [200, 206],
     anchor: [0.5, 0.5],
     motion: "none",
-    svg: `<path d="M18 2l4 9 9-3-3 9 9 4-9 4 3 9-9-3-4 9-4-9-9 3 3-9-9-4 9-4-3-9 9 3z" fill="#ffd60a"/>
-      <circle cx="18" cy="21" r="8" fill="#e63946"/><circle cx="18" cy="21" r="4" fill="#ffd60a"/>
-      <path d="M12 30l-4 13 6-3 2 4 2-13zM24 30l4 13-6-3-2 4-2-13z" fill="#2a9d8f"/>`,
+    zone: { x0: 0.875, y0: 0.3, x1: 1.095, y1: 0.8 },
+    svg: SANTO_NINO.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, ""),
   },
   "chinese-new-year": {
     kind: "beside",
@@ -410,13 +419,14 @@ function topperVars(t: Topper): string[] {
   } else {
     // Fit the art's box into the clear corner, preserving its aspect, and
     // centre it there. Widths are in logo widths; heights in logo heights.
-    const zoneW = BESIDE.x1 - BESIDE.x0; // logo widths
-    const zoneH = (BESIDE.y1 - BESIDE.y0) / aspectLogo; // logo widths
+    const Z = t.zone ?? BESIDE;
+    const zoneW = Z.x1 - Z.x0; // logo widths
+    const zoneH = (Z.y1 - Z.y0) / aspectLogo; // logo widths
     const artAspect = bw / bh;
     const w = Math.min(zoneW, zoneH * artAspect);
     const h = w / artAspect;
-    const left = BESIDE.x0 + (zoneW - w) / 2;
-    const top = (BESIDE.y0 + (BESIDE.y1 - BESIDE.y0) / 2) / aspectLogo - h / 2; // logo widths
+    const left = Z.x0 + (zoneW - w) / 2;
+    const top = (Z.y0 + (Z.y1 - Z.y0) / 2) / aspectLogo - h / 2; // logo widths
     wPct = w * 100;
     xPct = (left + w * t.anchor[0]) * 100;
     yPct = ((top + h * t.anchor[1]) * aspectLogo) * 100;
@@ -468,6 +478,19 @@ const ELF = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 110" width=
 // Write the stylesheet.
 // ---------------------------------------------------------------------------
 
+/** Which theme stands which figure on the footer, and how big. */
+const FOOTER_FIGURES: Partial<Record<SeasonalThemeId, { file: string; svg: string; ratio: string; width: string }>> = {
+  christmas: { file: "elf.svg", svg: ELF, ratio: "80 / 110", width: "clamp(44px, 6vw, 64px)" },
+  sinulog: { file: "santo-nino.svg", svg: SANTO_NINO, ratio: "200 / 206", width: "clamp(68px, 8vw, 108px)" },
+  "chinese-new-year": { file: "lion-dance.svg", svg: LION_DANCE, ratio: "110 / 132", width: "clamp(56px, 7vw, 88px)" },
+};
+
+function figureVars(id: SeasonalThemeId): string[] {
+  const f = FOOTER_FIGURES[id];
+  if (!f) return [];
+  return [`--theme-figure: url("/themes/${f.file}");`, `--theme-figure-ratio: ${f.ratio};`, `--theme-figure-w: ${f.width};`];
+}
+
 function tokens(p: Palette): string[] {
   return [
     `--color-nybb-ink: ${p.ink};`,
@@ -514,6 +537,7 @@ function themeBlock(id: SeasonalThemeId): string {
     `--theme-garland-h: ${g.h}px;`,
     `--theme-garland-motion: ${g.twinkle ? "theme-twinkle" : "theme-sway"};`,
     ...topperVars(TOPPERS[id]),
+    ...figureVars(id),
   ];
   const body = decl.map((d) => `  ${d}`).join("\n");
   // The document level block carries the colours only. The artwork is drawn
@@ -592,22 +616,25 @@ const SHARED = `
   pointer-events: none;
 }
 
-/* The Christmas elf, standing on the footer's top edge, lined up with the
-   content column's left edge and well clear of the floating buttons, which
-   sit bottom right and bottom left at the viewport, not on the footer. */
-:is(.theme-root, .theme-sample)[data-theme="christmas"] .site-footer {
+/* Footer figures: the Christmas elf, the Sto. Nino for Sinulog, and a lion
+   dance for Chinese New Year. Each stands on the footer's top edge, lined up
+   with the content column's left edge, and well clear of the floating
+   buttons, which sit at the viewport's bottom corners, not on the footer.
+   One figure per theme and never shared, so no two seasons look alike.
+   Generated from FOOTER_FIGURES in the script. */
+:is(.theme-root, .theme-sample):is([data-theme="christmas"], [data-theme="sinulog"], [data-theme="chinese-new-year"]) .site-footer {
   position: relative;
 }
 
-:is(.theme-root, .theme-sample)[data-theme="christmas"] .site-footer::before {
+:is(.theme-root, .theme-sample):is([data-theme="christmas"], [data-theme="sinulog"], [data-theme="chinese-new-year"]) .site-footer::before {
   content: "";
   position: absolute;
   bottom: 100%;
   left: max(1rem, calc(50% - 36rem + 1.5rem));
-  width: clamp(44px, 6vw, 64px);
-  aspect-ratio: 80 / 110;
+  width: var(--theme-figure-w);
+  aspect-ratio: var(--theme-figure-ratio);
   margin-bottom: -2px;
-  background: url("/themes/elf.svg") center bottom / contain no-repeat;
+  background: var(--theme-figure) center bottom / contain no-repeat;
   pointer-events: none;
 }
 
@@ -788,7 +815,9 @@ function main() {
 
   const out = path.join(ROOT, "public", "themes");
   mkdirSync(out, { recursive: true });
-  writeFileSync(path.join(out, "elf.svg"), clean(ELF) + "\n");
+  for (const f of Object.values(FOOTER_FIGURES)) {
+    if (f) writeFileSync(path.join(out, f.file), clean(f.svg) + "\n");
+  }
   for (const id of SEASONAL_THEME_IDS) {
     const t = TOPPERS[id];
     writeFileSync(path.join(out, `${id}-topper.svg`), clean(doc(t.box[0], t.box[1], t.svg)) + "\n");
