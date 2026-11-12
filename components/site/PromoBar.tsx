@@ -198,7 +198,7 @@ export function PromoBar({ promos }: { promos: readonly Promo[] }) {
           "lg:bottom-6",
         )}
       >
-        <div className="bg-nybb-charcoal text-nybb-bone border-nybb-bone/15 flex max-w-[calc(100vw-2rem)] items-center rounded-md border shadow-[0_14px_32px_-12px_rgba(11,11,12,0.6)]">
+        <div className="bg-nybb-charcoal text-nybb-bone border-nybb-bone/15 flex max-w-[calc(100vw-2rem)] items-center rounded-md border shadow-[0_14px_32px_-12px_color-mix(in_srgb,var(--color-nybb-ink)_60%,transparent)]">
           <Link
             href="/promos"
             className="group flex min-h-12 min-w-0 items-center gap-3 py-1.5 pl-1.5"

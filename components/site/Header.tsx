@@ -72,7 +72,7 @@ export async function Header() {
     // shadow on a warm page reads as dirt.
     // It slides away on a scroll down and back on a scroll up. See
     // SiteHeaderShell, which is the client half of this element.
-    <SiteHeaderShell className="surface-chrome text-nybb-ink sticky top-0 z-50 shadow-[0_12px_28px_-14px_rgba(84,46,8,0.32)]">
+    <SiteHeaderShell className="surface-chrome text-nybb-ink sticky top-0 z-50 shadow-[0_12px_28px_-14px_rgb(var(--nybb-chrome-shadow)/0.32)]">
       {/* h-18/h-22 (72/88px), up from h-14/h-16. The bar used to be shorter
           than the logo inside it: a 104px wordmark renders 60px tall and was
           spilling out of a 56px header. These heights sit the mark with even
@@ -83,7 +83,7 @@ export async function Header() {
         {/* Back to the hero: a glide up when already home, a navigation
             to it from anywhere else. See HomeLink. */}
         <HomeLink
-          className="shrink-0 transition-opacity duration-200 hover:opacity-80"
+          className="site-header__logo shrink-0 transition-opacity duration-200 hover:opacity-80"
           aria-label="NYBB Hot Wings, home"
         >
           <Wordmark

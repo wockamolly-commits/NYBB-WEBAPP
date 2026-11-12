@@ -20,7 +20,8 @@
     "build:mural": "tsx scripts/trace-mural.ts",
     "build:skyline": "tsx scripts/trace-skyline-outline.ts",
     "build:prices-to-confirm": "tsx scripts/build-prices-to-confirm.ts",
-    "build:hero-slides": "tsx scripts/build-hero-slides.ts"
+    "build:hero-slides": "tsx scripts/build-hero-slides.ts",
+    "themes:css": "tsx scripts/build-themes-css.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

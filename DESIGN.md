@@ -191,6 +191,11 @@ is the product's own mechanism burning, not a fade applied to seven sections in 
 
 ## Colors
 
+**Keep new colours on the tokens.** Seasonal themes (`docs/seasonal-themes.md`) work by redefining
+the `--color-nybb-*` variables, the ground stops and `--nybb-chrome-shadow`. A literal colour in a
+component or in `app/globals.css` is a colour no theme can reach; mix from a token instead, e.g.
+`color-mix(in srgb, var(--color-nybb-ink) 60%, transparent)`.
+
 Warm the whole way through. There is no neutral grey anywhere in this system: even the near-black
 carries a trace of blue so it does not go dead beside warm food photography, and even the shadows
 are brown.

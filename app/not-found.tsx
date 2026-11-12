@@ -3,6 +3,8 @@ import { MuralArt } from "@/components/mural/MuralArt";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { ButtonLink } from "@/components/ui/Button";
+import { ThemeDocument } from "@/components/theme/ThemeDocument";
+import { getTheme } from "@/lib/themes/read";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -33,9 +35,12 @@ export const metadata: Metadata = {
  * different drawing, not this one scaled, which is the only honest way to make
  * a hatched drawing smaller.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  // This page sits outside the storefront layout, so it wears the seasonal
+  // theme itself. No banner: a dead end is not where a promotion belongs.
+  const theme = await getTheme();
   return (
-    <>
+    <div className="theme-root" data-theme={theme.id}>
       <Header />
 
       <main id="main">
@@ -142,6 +147,7 @@ export default function NotFound() {
           into the chrome rather than stop 80px short of it. The section owns
           the gutter that buys back instead, so nothing below `lg` moves. */}
       <Footer flush />
-    </>
+      <ThemeDocument theme={theme} />
+    </div>
   );
 }

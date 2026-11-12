@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { THEME_PRESETS, isThemeId } from "@/lib/themes/presets";
 import { CalendarClock, ShieldAlert, UserRound } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
@@ -92,6 +94,9 @@ const ACTION_LABELS: Record<string, string> = {
   "menu.option_group.updated": "Option group changed",
   "menu.option_group.deleted": "Option group deleted",
   "menu.reordered": "Menu order changed",
+  // The website
+  "theme.apply": "Seasonal theme applied",
+  "theme.restore": "Theme: default restored",
   // Machinery
   "cron.job": "Scheduled job ran",
 };
@@ -334,7 +339,11 @@ function AuditDetail({ detail, showRaw }: { detail: Record<string, unknown>; sho
 }
 
 function AuditEntryCard({ entry, showRaw }: { entry: AuditLogEntry; showRaw: boolean }) {
-  const label = ACTION_LABELS[entry.action] ?? entry.action;
+  // A theme row names the theme it applied, which the generic label cannot.
+  const label =
+    entry.action === "theme.apply" && isThemeId(entry.targetId)
+      ? `Theme: ${THEME_PRESETS[entry.targetId].name}`
+      : (ACTION_LABELS[entry.action] ?? entry.action);
   const hasDetail = entry.detail !== null && Object.keys(entry.detail).length > 0;
 
   return (
@@ -346,6 +355,14 @@ function AuditEntryCard({ entry, showRaw }: { entry: AuditLogEntry; showRaw: boo
             {entry.action} · {entry.targetTable}
             {entry.targetId ? ` · ${entry.targetId}` : ""}
           </p>
+          {entry.targetTable === "site_themes" ? (
+            <Link
+              href="/workspace/themes"
+              className="text-nybb-orange mt-1 inline-block text-sm underline underline-offset-2"
+            >
+              Open seasonal themes
+            </Link>
+          ) : null}
         </div>
         <p className="text-nybb-bone/55 inline-flex items-center gap-1.5 text-xs">
           <CalendarClock aria-hidden className="text-nybb-orange size-3.5" />

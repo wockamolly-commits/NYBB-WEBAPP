@@ -43,7 +43,8 @@ export type StaffPermission =
   | "settings:manage"
   | "audit:view"
   | "team:manage"
-  | "refunds:manage";
+  | "refunds:manage"
+  | "themes:manage";
 
 const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
   cashier: [
@@ -87,6 +88,7 @@ const PERMISSION_KEYS: Record<StaffPermission, true> = {
   "audit:view": true,
   "team:manage": true,
   "refunds:manage": true,
+  "themes:manage": true,
 };
 
 /**
@@ -113,11 +115,15 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS) as StaffPermission[]
  * owns it. So a manager pinned to one counter creating a code would be creating
  * it for the whole business, and a discount is money.
  *
- * business_wide_permission() in migrations 0059 and 0066 is the database's copy
+ * Seasonal themes are the third, added with 0107: the theme is the whole
+ * public website's look, so a manager pinned to one counter changing it would
+ * be changing it for all of them. No job role gets it by default either.
+ *
+ * business_wide_permission() in migrations 0059, 0066 and 0107 is the database's copy
  * of this list, and tests/sql/staff-business-wide-permissions.test.ts fails if
  * the two disagree.
  */
-export const BUSINESS_WIDE_PERMISSIONS = ["menu:configure", "vouchers:manage"] as const satisfies
+export const BUSINESS_WIDE_PERMISSIONS = ["menu:configure", "vouchers:manage", "themes:manage"] as const satisfies
   readonly StaffPermission[];
 
 export type PermissionOverride = {

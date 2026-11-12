@@ -90,7 +90,7 @@ export function DeliveryCard() {
       }}
       className="delivery-card fixed inset-x-4 z-30 sm:right-6 sm:left-auto sm:w-[21rem]"
     >
-      <div className="bg-nybb-bone text-nybb-ink ring-nybb-ink/10 relative rounded-lg shadow-[0_18px_40px_-16px_rgba(11,11,12,0.6)] ring-1">
+      <div className="bg-nybb-bone text-nybb-ink ring-nybb-ink/10 relative rounded-lg shadow-[0_18px_40px_-16px_color-mix(in_srgb,var(--color-nybb-ink)_60%,transparent)] ring-1">
         {/* The phone row. The whole row is the link, so the target is the
             card's full width rather than the button alone. */}
         <a
@@ -103,7 +103,7 @@ export function DeliveryCard() {
               alt=""
               width={44}
               height={44}
-              className="ring-nybb-ink size-11 rounded-md shadow-[0_6px_14px_-6px_rgba(11,11,12,0.7)] ring-2"
+              className="ring-nybb-ink size-11 rounded-md shadow-[0_6px_14px_-6px_color-mix(in_srgb,var(--color-nybb-ink)_70%,transparent)] ring-2"
             />
           </span>
           <span className="font-display min-w-0 flex-1 text-base leading-[1.1] tracking-[0.01em] text-balance">
@@ -134,7 +134,7 @@ export function DeliveryCard() {
         >
           <span
             aria-hidden
-            className="bg-nybb-bone text-nybb-ink/75 ring-nybb-ink/15 group-hover:text-nybb-ink sm:text-nybb-ink/60 sm:group-hover:bg-nybb-ink/8 inline-flex size-7 items-center justify-center rounded-full shadow-[0_4px_10px_-4px_rgba(11,11,12,0.6)] ring-1 transition-colors duration-200 sm:size-8 sm:bg-transparent sm:shadow-none sm:ring-0"
+            className="bg-nybb-bone text-nybb-ink/75 ring-nybb-ink/15 group-hover:text-nybb-ink sm:text-nybb-ink/60 sm:group-hover:bg-nybb-ink/8 inline-flex size-7 items-center justify-center rounded-full shadow-[0_4px_10px_-4px_color-mix(in_srgb,var(--color-nybb-ink)_60%,transparent)] ring-1 transition-colors duration-200 sm:size-8 sm:bg-transparent sm:shadow-none sm:ring-0"
           >
             <X className="size-4" strokeWidth={2.5} />
           </span>
@@ -153,7 +153,7 @@ export function DeliveryCard() {
               alt=""
               width={52}
               height={52}
-              className="ring-nybb-ink size-[3.25rem] rounded-md shadow-[0_6px_14px_-6px_rgba(11,11,12,0.7)] ring-2"
+              className="ring-nybb-ink size-[3.25rem] rounded-md shadow-[0_6px_14px_-6px_color-mix(in_srgb,var(--color-nybb-ink)_70%,transparent)] ring-2"
             />
           </span>
           <span className="font-display flex-1 text-center text-lg tracking-[0.08em] uppercase">

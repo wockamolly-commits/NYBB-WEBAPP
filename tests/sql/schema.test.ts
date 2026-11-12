@@ -126,6 +126,7 @@ describe("migrations", () => {
       "0104",
       "0105",
       "0106",
+      "0107",
     ]);
   });
 
@@ -545,6 +546,7 @@ describe("migrations", () => {
       "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
+      "get_site_theme",
       "get_store_hours",
       "get_storefront_menu",
       "list_customer_promos",
