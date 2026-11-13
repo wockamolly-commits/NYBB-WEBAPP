@@ -118,7 +118,7 @@ function callerFiles(dir = "app"): string[] {
  * purchasable items" is the right one.
  */
 const BUYING_SURFACES = [
-  "app/(marketing)/page.tsx",
+  "app/(marketing)/HomeView.tsx",
   "app/(marketing)/menu/page.tsx",
   "app/(marketing)/menu/[category]/page.tsx",
   "app/(marketing)/menu/[category]/[item]/page.tsx",
@@ -143,7 +143,7 @@ const STATIC_PARAMS_DECL = "export async function generateStaticParams";
  * menu for one sentence, and holds attach to items rather than to options, so
  * those counts do not move between counters.
  */
-const NON_SELLING = "app/(marketing)/about/page.tsx";
+const NON_SELLING = "app/(marketing)/about/AboutView.tsx";
 
 describe("which surfaces tell the menu reader the customer's counter", () => {
   it.each(BUYING_SURFACES)("%s passes the chosen branch slug", (path) => {

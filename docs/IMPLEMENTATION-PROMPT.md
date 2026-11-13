@@ -2160,6 +2160,15 @@ Design decisions that keep the door open, and what you would do next:
 8. **Seasonal themes (shipped 2026-11-12):** the public site can wear one of nine seasonal looks,
    chosen in the Workspace under a `themes:manage` permission and stored in `site_themes` (0107).
    Look only, never content or prices. See `docs/seasonal-themes.md`.
+   **Website content (built 2026-11-13):** the words of the landing page, About, `/privacy` and
+   `/terms` are edited from `/workspace/content` under a `content:manage` permission (business
+   wide, no role default). Edits save to a private draft (`site_page_drafts`), preview on the
+   real page at `/preview/content/[page]`, and publish as a new row of the append only
+   `site_page_versions` (0108), audited as `content.publish` or `content.restore`. The landing
+   page offers fixed plain text slots only, so its layout cannot change; the other three take a
+   small formatting language (`lib/content/markup.ts`) rendered to React elements, never HTML.
+   The built-in text in `lib/content/defaults.ts` is what shows until something is published
+   and whenever the stored copy cannot be read.
 9. **Scale ceiling to watch:** Supabase free-tier **egress**, not storage. The reference blew its
    meter on image egress, not on rows. Long image cache TTLs and immutable upload paths are the fix
    and they are already specified in section 5.6.
@@ -2350,6 +2359,11 @@ Stop and ask before deciding these. Do not invent answers.
    on a schedule today), the refund policy, the customer cancellation rule, the no-show rule
    (item 5b), and the effective date. The NPC DPO/DPS seal supplied with them is valid
    through 2026-10-28 and the page stops showing it after that date.
+   *Update 2026-11-13:* `/privacy` now carries the owner's own Privacy Notice, and the seal is
+   shown regardless of its printed date (owner's choice, 2026-11-12). The Terms placeholders
+   are now `[[pending: ...]]` markers in the Terms text itself, edited from
+   `/workspace/content/terms` by whoever holds `content:manage`; `lib/legal/details.ts` no longer
+   feeds either page. The answers are still the owner's to give.
 
 ---
 

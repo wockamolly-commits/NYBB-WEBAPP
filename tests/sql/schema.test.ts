@@ -127,6 +127,7 @@ describe("migrations", () => {
       "0105",
       "0106",
       "0107",
+      "0108",
     ]);
   });
 
@@ -535,6 +536,11 @@ describe("migrations", () => {
     // customer_acknowledge_ready_order (0085) is "I'm coming", fenced exactly
     // like customer_mark_order_arrived: the tracking token or the owner, a
     // ready order only, and one false for every refusal.
+    //
+    // get_site_page (0108) is the published text of the landing page, About
+    // and the two legal pages: exactly what those pages print. It takes a page
+    // name and returns the newest published body or null, never a draft and
+    // never who wrote it.
     expect(result.rows.map((row) => row.name)).toEqual([
       "branch_accepts_orders",
       "branch_is_open_at",
@@ -546,6 +552,7 @@ describe("migrations", () => {
       "get_orderable_branches",
       "get_pickup_slots",
       "get_public_settings",
+      "get_site_page",
       "get_site_theme",
       "get_store_hours",
       "get_storefront_menu",

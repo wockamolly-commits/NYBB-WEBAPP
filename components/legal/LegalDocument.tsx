@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { legalDetails, pendingDetails, type LegalDetails } from "@/lib/legal/details";
 
 /**
  * The pieces the Privacy Policy and the Terms of Service share.
@@ -24,12 +23,6 @@ export function Pending({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** One owner-supplied value, or its placeholder when it is still null. */
-export function Detail({ field, label }: { field: keyof LegalDetails; label: string }) {
-  const value = legalDetails[field];
-  return value ? <>{value}</> : <Pending>{label}</Pending>;
-}
-
 function formatEffectiveDate(value: string): string {
   return new Date(`${value}T00:00:00+08:00`).toLocaleDateString("en-PH", {
     day: "numeric",
@@ -39,33 +32,42 @@ function formatEffectiveDate(value: string): string {
   });
 }
 
+/**
+ * The frame of a legal page: title, date line, sibling link, draft notice.
+ *
+ * The date and the draft state come from the page's content (see
+ * lib/content/schema.ts), which is edited from /workspace/content. An empty
+ * date renders the owner placeholder, and any placeholder anywhere on the page
+ * raises the draft notice, so the page never presents an unfinished policy as
+ * a finished one.
+ */
 export function LegalPage({
   title,
-  intro,
   sibling,
-  lastUpdated,
+  dateLabel,
+  date,
+  draft,
+  intro,
   children,
 }: {
   title: string;
-  intro: React.ReactNode;
   /** The other legal page, linked under the title. */
   sibling: { href: string; label: string };
-  /**
-   * For a page whose text the owner supplied as a finished document, the
-   * "Last Updated" date printed on that document, as YYYY-MM-DD. It replaces
-   * the shared effective date, and the page carries no draft notice, because
-   * nothing on it is waiting on `legalDetails`.
-   */
-  lastUpdated?: string;
+  dateLabel: "effective" | "updated";
+  /** YYYY-MM-DD, or "" while the date is still the owner's to supply. */
+  date: string;
+  /** True while anything on the page is still "To be supplied by the owner". */
+  draft: boolean;
+  intro?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const pending = lastUpdated ? [] : pendingDetails(legalDetails);
-  const effective = legalDetails.effectiveDate;
-  const dateLine = lastUpdated ? (
-    <>Last updated {formatEffectiveDate(lastUpdated)}.</>
-  ) : (
-    <>Effective {effective ? formatEffectiveDate(effective) : <Pending>effective date</Pending>}.</>
-  );
+  const formatted = date ? formatEffectiveDate(date) : null;
+  const dateLine =
+    dateLabel === "updated" ? (
+      <>Last updated {formatted ?? <Pending>last updated date</Pending>}.</>
+    ) : (
+      <>Effective {formatted ?? <Pending>effective date</Pending>}.</>
+    );
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
@@ -79,7 +81,7 @@ export function LegalPage({
         .
       </p>
 
-      {pending.length > 0 ? (
+      {draft ? (
         // Says plainly that the text is not final, so nobody mistakes a
         // bracketed gap for the business's answer.
         <p
@@ -118,15 +120,5 @@ export function LegalSection({
         {children}
       </div>
     </section>
-  );
-}
-
-/** A numbered subsection inside a LegalSection, such as "2.1 Personal Data". */
-export function LegalSubsection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="pt-2">
-      <h3 className="text-nybb-ink text-lg font-semibold">{title}</h3>
-      <div className="mt-2 space-y-4">{children}</div>
-    </div>
   );
 }

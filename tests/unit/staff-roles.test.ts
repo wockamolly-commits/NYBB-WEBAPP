@@ -102,7 +102,13 @@ describe("staff roles", () => {
     // minting a code, is something a pinned manager would be doing to all nine
     // counters. vouchers:manage joined on 2026-09-04 with migration 0066, and
     // themes:manage with 0107: the theme is every counter's public face.
-    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual(["menu:configure", "vouchers:manage", "themes:manage"]);
+    // content:manage with 0108: the site's words and legal notices are too.
+    expect([...BUSINESS_WIDE_PERMISSIONS]).toEqual([
+      "menu:configure",
+      "vouchers:manage",
+      "themes:manage",
+      "content:manage",
+    ]);
     for (const permission of BUSINESS_WIDE_PERMISSIONS) {
       expect(isStaffPermission(permission)).toBe(true);
     }
