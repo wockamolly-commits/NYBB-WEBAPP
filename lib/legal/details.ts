@@ -7,7 +7,11 @@
  * never an empty answer: the pages render a visible placeholder for every null
  * and carry a draft notice until there are none left. See `pendingDetails`.
  *
- * Fill a value here and both pages pick it up. Nothing else needs editing.
+ * SUPERSEDED 2026-11-13. Neither page reads `legalDetails` any more: both are
+ * edited from /workspace/content (lib/content), and the Terms' open answers
+ * are [[pending: ...]] markers in its text. The type and `pendingDetails` stay
+ * for their tests and as the record of what the owner was asked for. `npcSeal`
+ * below is still current.
  *
  * A note on the business name. The footer, About, Contact and the franchise
  * page already name Five Brad Dragons Food Franchise Corporation at Latitude

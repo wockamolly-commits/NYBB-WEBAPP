@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { THEME_PRESETS, isThemeId } from "@/lib/themes/presets";
+import { CONTENT_PAGE_INFO, isContentPage } from "@/lib/content/schema";
 import { CalendarClock, ShieldAlert, UserRound } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { WorkspaceDateField } from "@/components/ui/WorkspaceDateField";
@@ -97,6 +98,8 @@ const ACTION_LABELS: Record<string, string> = {
   // The website
   "theme.apply": "Seasonal theme applied",
   "theme.restore": "Theme: default restored",
+  "content.publish": "Website content published",
+  "content.restore": "Website content: original text restored",
   // Machinery
   "cron.job": "Scheduled job ran",
 };
@@ -343,7 +346,9 @@ function AuditEntryCard({ entry, showRaw }: { entry: AuditLogEntry; showRaw: boo
   const label =
     entry.action === "theme.apply" && isThemeId(entry.targetId)
       ? `Theme: ${THEME_PRESETS[entry.targetId].name}`
-      : (ACTION_LABELS[entry.action] ?? entry.action);
+      : entry.action === "content.publish" && entry.targetId && isContentPage(entry.targetId)
+        ? `Published: ${CONTENT_PAGE_INFO[entry.targetId].name}`
+        : (ACTION_LABELS[entry.action] ?? entry.action);
   const hasDetail = entry.detail !== null && Object.keys(entry.detail).length > 0;
 
   return (
@@ -361,6 +366,14 @@ function AuditEntryCard({ entry, showRaw }: { entry: AuditLogEntry; showRaw: boo
               className="text-nybb-orange mt-1 inline-block text-sm underline underline-offset-2"
             >
               Open seasonal themes
+            </Link>
+          ) : null}
+          {entry.targetTable === "site_page_versions" && entry.targetId && isContentPage(entry.targetId) ? (
+            <Link
+              href={`/workspace/content/${entry.targetId}`}
+              className="text-nybb-orange mt-1 inline-block text-sm underline underline-offset-2"
+            >
+              Open the {CONTENT_PAGE_INFO[entry.targetId].name} editor
             </Link>
           ) : null}
         </div>

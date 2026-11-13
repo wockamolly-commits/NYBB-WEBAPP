@@ -26,6 +26,7 @@ export const PERMISSION_LABELS: Record<StaffPermission, string> = {
   "team:manage": "Manage team access",
   "refunds:manage": "Issue refunds",
   "themes:manage": "Seasonal themes",
+  "content:manage": "Website content",
 };
 
 export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
@@ -46,6 +47,8 @@ export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
   "refunds:manage": "Send money back to a customer for an online payment.",
   "themes:manage":
     "Pick the seasonal look of the public website. Changes colours and decoration, never the menu or prices.",
+  "content:manage":
+    "Edit and publish the landing page copy, the About page, the Privacy Policy and the Terms of Service.",
 };
 
 /**
@@ -60,7 +63,7 @@ export const PERMISSION_DESCRIPTIONS: Record<StaffPermission, string> = {
  *
  * Wiring it up would mean letting somebody who is not the Super Admin hand out
  * permissions, including refunds, and that is a decision rather than a
- * tidy-up. Until it is made, this list is fourteen.
+ * tidy-up. Until it is made, this list is fifteen.
  *
  * Written out rather than filtered from ALL_PERMISSIONS so that the literal
  * type survives, which is what lets the toggle schema in team-schemas.ts hand
@@ -84,9 +87,10 @@ export const MANAGEABLE_PERMISSIONS = [
   "audit:view",
   "refunds:manage",
   "themes:manage",
+  "content:manage",
 ] as const satisfies readonly StaffPermission[];
 
-/** One of the fourteen the panel offers, as opposed to any StaffPermission. */
+/** One of the fifteen the panel offers, as opposed to any StaffPermission. */
 export type ManageablePermission = (typeof MANAGEABLE_PERMISSIONS)[number];
 
 /**
@@ -140,7 +144,7 @@ export type PermissionGroup = {
  *
  * Grouped by the part of the Workspace each one opens, so the question the
  * Super Admin is actually asking ("can this person touch the menu?") is
- * answered by one block rather than by scanning fourteen rows. The order runs
+ * answered by one block rather than by scanning fifteen rows. The order runs
  * from what everybody has to what almost nobody should.
  *
  * tests/unit/permission-catalog.test.ts checks this partitions
@@ -153,5 +157,5 @@ export const PERMISSION_GROUPS: readonly PermissionGroup[] = [
   { label: "The counter", permissions: ["store:availability", "settings:manage"] },
   { label: "Money", permissions: ["vouchers:manage", "refunds:manage"] },
   { label: "Reporting", permissions: ["analytics:view", "audit:view"] },
-  { label: "Website", permissions: ["themes:manage"] },
+  { label: "Website", permissions: ["themes:manage", "content:manage"] },
 ];

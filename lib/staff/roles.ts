@@ -44,7 +44,8 @@ export type StaffPermission =
   | "audit:view"
   | "team:manage"
   | "refunds:manage"
-  | "themes:manage";
+  | "themes:manage"
+  | "content:manage";
 
 const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
   cashier: [
@@ -89,6 +90,7 @@ const PERMISSION_KEYS: Record<StaffPermission, true> = {
   "team:manage": true,
   "refunds:manage": true,
   "themes:manage": true,
+  "content:manage": true,
 };
 
 /**
@@ -119,11 +121,20 @@ export const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS) as StaffPermission[]
  * public website's look, so a manager pinned to one counter changing it would
  * be changing it for all of them. No job role gets it by default either.
  *
- * business_wide_permission() in migrations 0059, 0066 and 0107 is the database's copy
+ * Site content is the fourth, added with 0108, on the same argument: the
+ * landing page copy, About and the two legal notices are every counter's
+ * public voice. No job role gets it by default.
+ *
+ * business_wide_permission() in migrations 0059, 0066, 0107 and 0108 is the database's copy
  * of this list, and tests/sql/staff-business-wide-permissions.test.ts fails if
  * the two disagree.
  */
-export const BUSINESS_WIDE_PERMISSIONS = ["menu:configure", "vouchers:manage", "themes:manage"] as const satisfies
+export const BUSINESS_WIDE_PERMISSIONS = [
+  "menu:configure",
+  "vouchers:manage",
+  "themes:manage",
+  "content:manage",
+] as const satisfies
   readonly StaffPermission[];
 
 export type PermissionOverride = {

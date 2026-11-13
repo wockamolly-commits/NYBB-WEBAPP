@@ -95,10 +95,10 @@ describe("permissionRowState", () => {
 });
 
 describe("summarizePermissions", () => {
-  it("counts a plain cashier against the fourteen offered", () => {
+  it("counts a plain cashier against the fifteen offered", () => {
     expect(summarizePermissions("cashier", ROVING, NO_OVERRIDES)).toEqual({
       on: 7,
-      total: 14,
+      total: 15,
       changed: 0,
       unsaved: 0,
     });
@@ -107,7 +107,7 @@ describe("summarizePermissions", () => {
   it("counts a plain manager", () => {
     expect(summarizePermissions("manager", ROVING, NO_OVERRIDES)).toEqual({
       on: 13,
-      total: 14,
+      total: 15,
       changed: 0,
       unsaved: 0,
     });
@@ -119,7 +119,7 @@ describe("summarizePermissions", () => {
         { permission: "refunds:manage", granted: true },
         { permission: "orders:manage", granted: false },
       ]),
-    ).toEqual({ on: 7, total: 14, changed: 2, unsaved: 0 });
+    ).toEqual({ on: 7, total: 15, changed: 2, unsaved: 0 });
   });
 
   it("does not count team:manage, which the panel does not offer", () => {
@@ -127,7 +127,7 @@ describe("summarizePermissions", () => {
     // panel that has no switch to explain it.
     expect(
       summarizePermissions("cashier", ROVING, [{ permission: "team:manage", granted: true }]),
-    ).toEqual({ on: 7, total: 14, changed: 0, unsaved: 0 });
+    ).toEqual({ on: 7, total: 15, changed: 0, unsaved: 0 });
   });
 
   it("drops both business wide capabilities from an assigned manager's count", () => {
@@ -136,7 +136,7 @@ describe("summarizePermissions", () => {
     // own counter alone.
     expect(summarizePermissions("manager", IT_PARK, NO_OVERRIDES)).toEqual({
       on: 11,
-      total: 14,
+      total: 15,
       changed: 0,
       unsaved: 0,
     });
@@ -145,7 +145,7 @@ describe("summarizePermissions", () => {
   it("counts a profile with no role at all as nothing on", () => {
     expect(summarizePermissions(null, ROVING, NO_OVERRIDES)).toEqual({
       on: 0,
-      total: 14,
+      total: 15,
       changed: 0,
       unsaved: 0,
     });
@@ -193,7 +193,7 @@ describe("pending changes, before Save is pressed", () => {
     // is not expected to change the numbers, only to make them true.
     expect(
       summarizePermissions("cashier", ROVING, NO_OVERRIDES, { "refunds:manage": true }),
-    ).toEqual({ on: 8, total: 14, changed: 1, unsaved: 1 });
+    ).toEqual({ on: 8, total: 15, changed: 1, unsaved: 1 });
   });
 
   it("moves the DEFAULT badge to follow the switch rather than the stored row", () => {
@@ -220,12 +220,12 @@ describe("pending changes, before Save is pressed", () => {
   it("lets a pinned manager stage the catalog, and counts it as a change", () => {
     const staged = togglePending("manager", IT_PARK, NO_OVERRIDES, NONE, "menu:configure");
     expect(staged).toEqual({ "menu:configure": true });
-    // Twelve of fourteen, not all of them: vouchers:manage is another business
+    // Twelve of fifteen, not all of them: vouchers:manage is another business
     // wide capability and staging the catalog does not hand it over, and
-    // themes:manage is no role's default at all.
+    // themes:manage and content:manage are no role's default at all.
     expect(summarizePermissions("manager", IT_PARK, NO_OVERRIDES, staged)).toEqual({
       on: 12,
-      total: 14,
+      total: 15,
       changed: 1,
       unsaved: 1,
     });
