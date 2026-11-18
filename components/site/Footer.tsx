@@ -83,7 +83,7 @@ const legal = [
 ];
 
 /**
- * The two brand glyphs, drawn here because lucide no longer ships brand marks.
+ * The brand glyphs, drawn here because lucide no longer ships brand marks.
  * Instagram is the outline camera, which is how the platform draws its own
  * glyph at small sizes. TikTok is the note, filled, because an outlined note
  * loses its offset shadow shape and stops being recognisable.
@@ -122,10 +122,32 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * YouTube is the filled rounded screen with the play triangle knocked out,
+ * which is the platform's own mark reduced to one colour.
+ */
+function YouTubeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path
+        fillRule="evenodd"
+        d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8c1.6.4 7.8.4 7.8.4s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8ZM10 15.1V8.9l5.2 3.1-5.2 3.1Z"
+      />
+    </svg>
+  );
+}
+
 const socials = [
-  // Only Hot Wings channels. The live site's footer still links
-  // @ny.bbsportslounge and the Sports Lounge Facebook page, both of which now
-  // point at a restaurant that closed in August 2026.
+  // Only Hot Wings channels, as supplied by the owner on 2026-11-18. The old
+  // live site's footer linked @ny.bbsportslounge and the Sports Lounge
+  // Facebook page, both of which point at a restaurant that closed in August
+  // 2026. Tracking parameters from shared links are stripped.
   {
     href: "https://www.instagram.com/nybuffalobrads/",
     label: "Instagram",
@@ -137,6 +159,12 @@ const socials = [
     label: "TikTok",
     handle: "@nybbhotwings",
     Icon: TikTokIcon,
+  },
+  {
+    href: "https://www.youtube.com/@NYBuffaloBrads",
+    label: "YouTube",
+    handle: "@NYBuffaloBrads",
+    Icon: YouTubeIcon,
   },
 ];
 
@@ -356,7 +384,7 @@ export function Footer({
 
               <div>
                 <FooterHeading>Follow</FooterHeading>
-                <ul className="mt-3 flex gap-3 pt-0.5">
+                <ul className="mt-3 flex flex-wrap gap-3 pt-0.5">
                   {socials.map((social) => (
                     <li key={social.href}>
                       <a
