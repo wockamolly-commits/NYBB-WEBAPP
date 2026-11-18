@@ -211,7 +211,7 @@ ${detailRow("Location", hasCity ? escapeHtml(city) : `<span style="color:${MUTED
 
 <tr><td style="padding:24px 24px 0;font-family:${SANS};">
 <div style="font-size:11px;line-height:16px;letter-spacing:1.2px;text-transform:uppercase;color:${MUTED};font-weight:bold;">Their message</div>
-<div style="margin-top:8px;padding:14px 18px;border-left:4px solid ${ORANGE};background:${CREAM};border-radius:0 10px 10px 0;font-size:16px;line-height:24px;color:${INK};">${messageHtml}</div>
+<div style="margin-top:8px;padding:16px 20px;background:${CREAM};border-radius:10px;font-size:16px;line-height:24px;color:${INK};">${messageHtml}</div>
 </td></tr>
 
 <tr><td style="padding:28px 24px 26px;font-family:${SANS};">
