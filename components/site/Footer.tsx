@@ -123,6 +123,25 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 /**
+ * Facebook is the bare "f", filled, without the platform's circle: the button
+ * it sits in already draws the circle, and a disc inside a ring reads as a
+ * target rather than a logo.
+ */
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+      className={className}
+    >
+      <path d="M13.5 21.5v-8h2.7l.4-3.2h-3.1V8.3c0-.9.3-1.6 1.6-1.6h1.7V3.9a22 22 0 0 0-2.5-.1c-2.5 0-4.2 1.5-4.2 4.3v2.3H7.3v3.2h2.8v8h3.4Z" />
+    </svg>
+  );
+}
+
+/**
  * YouTube is the filled rounded screen with the play triangle knocked out,
  * which is the platform's own mark reduced to one colour.
  */
@@ -148,6 +167,12 @@ const socials = [
   // live site's footer linked @ny.bbsportslounge and the Sports Lounge
   // Facebook page, both of which point at a restaurant that closed in August
   // 2026. Tracking parameters from shared links are stripped.
+  {
+    href: "https://www.facebook.com/nybuffalobrads",
+    label: "Facebook",
+    handle: "nybuffalobrads",
+    Icon: FacebookIcon,
+  },
   {
     href: "https://www.instagram.com/nybuffalobrads/",
     label: "Instagram",
@@ -384,7 +409,9 @@ export function Footer({
 
               <div>
                 <FooterHeading>Follow</FooterHeading>
-                <ul className="mt-3 flex flex-wrap gap-3 pt-0.5">
+                {/* Two by two at every width. Four in a row widened this column
+                    enough to break branch names in the first one at 1280px. */}
+                <ul className="mt-3 grid w-max grid-cols-2 gap-3 pt-0.5">
                   {socials.map((social) => (
                     <li key={social.href}>
                       <a
