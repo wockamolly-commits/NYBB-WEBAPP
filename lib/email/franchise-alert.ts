@@ -1,8 +1,10 @@
 import "server-only";
-import { siteUrl } from "@/lib/site-url";
 import { adminConfigured, createAdminClient } from "@/lib/supabase/admin-client";
 import type { FranchiseInquiry } from "@/lib/franchise/inquiry";
 import { emailConfigured, sendEmail, type EmailResult } from "./client";
+import { franchiseAlertMessage } from "./franchise-alert-message";
+
+export { franchiseAlertMessage };
 
 /**
  * Telling somebody a franchise lead arrived.
@@ -69,9 +71,6 @@ function noteSkip(reason: "unconfigured" | "disabled"): void {
   );
 }
 
-/** Written out rather than left blank, so an empty line reads as an answer. */
-const NOT_GIVEN = "Not given";
-
 /**
  * The owner's inbox. Falls back to the address the site publishes for franchise
  * enquiries, which is the right default: it is already the place a customer is
@@ -104,61 +103,6 @@ async function emailEnabled(): Promise<boolean> {
   }
 
   return data.email_enabled === true;
-}
-
-/** Escapes the four characters that would otherwise let a lead write markup. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/**
- * The message itself.
- *
- * The subject carries the name and the city because that is what a phone shows
- * on a lock screen, and it is enough to tell a real enquiry in Cebu from an
- * obvious test without opening anything.
- */
-export function franchiseAlertMessage(inquiry: FranchiseInquiry) {
-  const city = inquiry.city?.trim() || NOT_GIVEN;
-  const message = inquiry.message?.trim() || NOT_GIVEN;
-  const leadsUrl = `${siteUrl()}/workspace/franchise`;
-
-  const subject = `Franchise inquiry: ${inquiry.name} (${city})`;
-
-  const text = [
-    "A new franchise inquiry arrived.",
-    "",
-    `Name:    ${inquiry.name}`,
-    `Email:   ${inquiry.email}`,
-    `Phone:   ${inquiry.phone}`,
-    `City:    ${city}`,
-    "",
-    "Message:",
-    message,
-    "",
-    "Reply to this email and it goes straight to them.",
-    "",
-    `All leads: ${leadsUrl}`,
-  ].join("\n");
-
-  const html = [
-    "<p>A new franchise inquiry arrived.</p>",
-    "<table cellpadding=\"4\">",
-    `<tr><td><strong>Name</strong></td><td>${escapeHtml(inquiry.name)}</td></tr>`,
-    `<tr><td><strong>Email</strong></td><td>${escapeHtml(inquiry.email)}</td></tr>`,
-    `<tr><td><strong>Phone</strong></td><td>${escapeHtml(inquiry.phone)}</td></tr>`,
-    `<tr><td><strong>City</strong></td><td>${escapeHtml(city)}</td></tr>`,
-    "</table>",
-    `<p><strong>Message</strong><br>${escapeHtml(message)}</p>`,
-    "<p>Reply to this email and it goes straight to them.</p>",
-    `<p><a href="${leadsUrl}">All leads</a></p>`,
-  ].join("");
-
-  return { subject, text, html };
 }
 
 /**
