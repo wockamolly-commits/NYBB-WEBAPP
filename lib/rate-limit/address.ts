@@ -149,8 +149,8 @@ export function addressBucket(address: string): string | null {
 /**
  * The `rate_limits.key` for an address, namespaced by the action it guards.
  *
- * Namespaced because the OTP request and the franchise form are limited too
- * (spec section 22 item 6), and a shared key would mean somebody who looked at
+ * Namespaced because more than one action is limited (spec section 22 item
+ * 6), and a shared key would mean somebody who looked at
  * the menu too fast could not then ask for a sign-in code.
  */
 export function addressRateKey(action: string, address: string | null): string | null {

@@ -89,8 +89,8 @@ export const metadata: Metadata = {
    * that blocks crawling would undo this.
    *
    * IT HIDES, IT DOES NOT LOCK. Anyone with the address still reaches the site,
-   * and the franchise form still stores a real lead and still sends a real
-   * alert. If the site needs to be genuinely unreachable, that is Vercel's
+   * and the franchise page still sends a real lead to the franchise team's
+   * inquiry form. If the site needs to be genuinely unreachable, that is Vercel's
    * Deployment Protection, which is a project setting rather than anything in
    * this repository.
    *

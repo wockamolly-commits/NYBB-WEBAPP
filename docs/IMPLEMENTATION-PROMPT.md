@@ -183,6 +183,9 @@ Parent: **Five Brad Dragons Food Franchise Corporation**, Unit D, 20th Floor, La
 Center, Mindanao Ave., Cebu Business Park, Cebu City. Franchise contact `franchise@5bdf.ph`,
 (032) 520-4930. Franchise fee PHP 1,000,000, capital investment PHP 9,000,000.
 
+**Superseded 2026-11-19:** the franchisor's own brochure, now on `/franchise`, prints the
+PHP 9,000,000 capital figure beside what it covers, which is the context asked for below.
+
 **Those two figures are deliberately not printed on `/franchise` as of 2026-09-16.** They were, as
 a "The numbers" table in the page's right column, and the owner asked for them out. The reasoning
 is worth keeping because it constrains where they may come back: a figure that size, read with
@@ -1026,8 +1029,8 @@ here was built as specified.
 Public web, app/(marketing). Franchise lead generation and brand. No ordering.
   /                          Landing: franchise as the primary call to action, app download
                              secondary, hero, heat scale hook, branch card with hours and map
-  /franchise                 Franchise inquiry form. Writes franchise_inquiries, mails
-                             franchise@5bdf.ph. Rate limited, honeypot, no CAPTCHA (N9)
+  /franchise                 Franchise brochures and a "Let's talk" link to the business's
+                             Google Form (2026-11-19; the on-site form and N9 are retired)
   /franchise/*               Sales pages: the offer, the numbers (PHP 1M fee, PHP 9M capital),
                              process and timeline, branch showcase, FAQ. Blocked on Marketing copy
   /menu                      Category tabs, photo grid, search. Brand showcase, not an ordering path
@@ -1242,7 +1245,8 @@ ZOMBEANS shows a static ETA; a pickup platform should learn the real one.
 
 **N8. ZenPOS adapter and sync surface.** Section 16.
 
-**N9. Franchise inquiry form.** The current site earns leads from it. Do not lose that. A simple
+**N9. Franchise inquiry form.** *(Retired 2026-11-19: inquiries now go to a Google Form the
+business runs, linked from `/franchise`. See the decision log.)* The current site earns leads from it. Do not lose that. A simple
 form writing to a `franchise_inquiries` table plus an email to `franchise@5bdf.ph`. Rate-limited,
 with a honeypot field, no CAPTCHA.
 
@@ -2440,6 +2444,7 @@ quietly reversed by someone who never learned why it was made.
 | 2026-08-17 | The website becomes a franchise sales and lead-generation site. Open question 7 resolved: the franchise form lives on this platform. | Marketing Head |
 | 2026-08-17 | **The mobile app is dropped. This is a web app.** The Expo app, the `/api/mobile/v1` contract, the Expo push transport and the customer notification path are deleted. The web storefront is un-retired and is the customer channel again. The franchise inquiry page stays. | Owner |
 | 2026-08-18 | Customer notifications return, on Web Push rather than Expo. The manifest splits so an iPhone customer can install the site and receive them. | Owner |
+| 2026-11-19 | The on-site franchise inquiry form is removed. `/franchise` now shows the franchisor's two brochures (which print the PHP 9M capital figure inside the case for it) and a "Let's talk" button to a Google Form the business runs. The `franchise_inquiries` table and the workspace Franchise leads screen stay for the leads already stored; nothing writes new rows. Supersedes N9. | Owner |
 
 **On delivery, in more detail.** The original amendment of 2026-08-12 announced pickup
 *and* delivery, and was superseded by the deferral the same day. Section 9 records the
