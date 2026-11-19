@@ -6,17 +6,18 @@ import { Resend } from "resend";
  *
  * IT NEVER THROWS, AND THAT IS THE WHOLE JOB.
  * ================================================================
- * Every caller is downstream of something that already succeeded: a franchise
- * lead is in the database before a word of mail is composed. So a mail failure
- * must be a logged non-event, never an exception travelling back up into a
- * Server Action that has already told somebody their inquiry was sent. This
+ * Every caller should be downstream of something that already succeeded, the
+ * way the franchise lead was in the database before its alert was composed
+ * (that form moved to a Google Form on 2026-11-19, so nothing calls this
+ * today). A mail failure must be a logged non-event, never an exception
+ * travelling back up into a Server Action that has already reported success. This
  * mirrors `lib/push/web.ts`, which makes the same promise for the same reason.
  *
  * WHY THE CLIENT IS BUILT PER CALL RATHER THAN ONCE AT MODULE SCOPE.
  * A module-scope client reads the API key when the module first loads, which on
  * a serverless platform can be a cold start in a different environment to the
  * one serving the request. Building it here keeps the key read next to its use,
- * and a franchise inquiry arrives rarely enough that the allocation is free.
+ * and mail is sent rarely enough that the allocation is free.
  */
 
 export type EmailResult =

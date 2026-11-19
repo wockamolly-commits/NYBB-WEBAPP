@@ -59,9 +59,9 @@ import { cn } from "@/lib/utils";
  * Promos first: the navbar carries it at every width, and this is the second
  * way back to it for somebody who has scrolled to the bottom of a long page.
  *
- * One franchise route, not two. /franchise carries the inquiry form and the
- * franchise mailbox for people who would rather write than fill in a form, so
- * a footer mailto beside it only opened a mail client nobody asked for.
+ * One franchise route, not two. /franchise carries the brochures, the way into
+ * the franchise inquiry form and the franchise mailbox, so a footer mailto
+ * beside it only opened a mail client nobody asked for.
  */
 const company = [
   { href: "/promos", label: "Promos" },
